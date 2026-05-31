@@ -1,7 +1,9 @@
 // @ts-nocheck
 import { PrismaClient } from "../src/generated/prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 
-const prisma = new PrismaClient();
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+const prisma = new PrismaClient({ adapter });
 
 const PROCESSES = [
   { id: "P001", name: "Leadgewinnung", category: "Vertrieb", description: "Gewinnung neuer potenzieller Kunden über Empfehlungen, Online-Kanäle, Netzwerke, Kaltakquise oder bezahlte Kampagnen." },

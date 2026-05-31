@@ -1,7 +1,10 @@
-import NextAuth from "next-auth";
-import Credentials from "next-auth/providers/credentials";
 import { NextResponse, type NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
+
+const secret =
+  process.env.AUTH_SECRET ||
+  process.env.NEXTAUTH_SECRET ||
+  "okun-systems-platform-secret-please-set-NEXTAUTH_SECRET-in-railway";
 
 export async function middleware(req: NextRequest) {
   const { nextUrl } = req;
@@ -14,7 +17,7 @@ export async function middleware(req: NextRequest) {
 
   const token = await getToken({
     req,
-    secret: process.env.NEXTAUTH_SECRET,
+    secret,
   });
 
   const isLoggedIn = !!token;
