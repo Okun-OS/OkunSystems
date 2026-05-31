@@ -4,7 +4,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, Building2, Mail, Phone,
-  FolderOpen, BarChart3, Lightbulb, MessageSquare, FileText, CalendarDays, Brain,
+  FolderOpen, BarChart3, Lightbulb, MessageSquare, FileText, CalendarDays, Brain, Target,
 } from "lucide-react";
 import { formatDate, formatDateTime } from "@/lib/utils";
 
@@ -55,10 +55,15 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Link href={`/admin/kunden/${id}/strategy`}
+              className="bg-[#22c55e] hover:bg-[#16a34a] text-black text-sm font-semibold rounded-lg px-4 py-2.5 transition-colors flex items-center gap-2">
+              <Target size={14} />
+              Strategy Session
+            </Link>
             <Link href={`/admin/kunden/${id}/analyse`}
               className="bg-[#22c55e]/10 hover:bg-[#22c55e]/20 border border-[#22c55e]/20 text-[#22c55e] text-sm font-medium rounded-lg px-4 py-2.5 transition-colors flex items-center gap-2">
               <Brain size={14} />
-              Blueprint™ Analyse
+              Analyse
             </Link>
             <Link href={`/admin/kunden/${id}/bearbeiten`}
               className="bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-[#f0f0f0] text-sm font-medium rounded-lg px-4 py-2.5 transition-colors">
