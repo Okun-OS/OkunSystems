@@ -6,8 +6,8 @@ import { signOut } from "next-auth/react";
 import {
   LayoutDashboard,
   Users,
-  Building2,
-  FolderKanban,
+  Brain,
+  BookOpen,
   BarChart2,
   Lightbulb,
   CheckSquare,
@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { href: "/admin/dashboard", icon: LayoutDashboard, label: "Übersicht" },
   { href: "/admin/kunden", icon: Users, label: "Kundenübersicht" },
-  { href: "/admin/projekte", icon: FolderKanban, label: "Projekte" },
+  { href: "/admin/methodik", icon: BookOpen, label: "Methodik & Library" },
   { href: "/admin/analysen", icon: BarChart2, label: "Analysen" },
   { href: "/admin/empfehlungen", icon: Lightbulb, label: "Empfehlungen" },
   { href: "/admin/aufgaben", icon: CheckSquare, label: "Aufgaben" },

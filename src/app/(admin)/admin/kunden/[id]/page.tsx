@@ -4,7 +4,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, Building2, Mail, Phone,
-  FolderOpen, BarChart3, Lightbulb, MessageSquare, FileText, CalendarDays,
+  FolderOpen, BarChart3, Lightbulb, MessageSquare, FileText, CalendarDays, Brain,
 } from "lucide-react";
 import { formatDate, formatDateTime } from "@/lib/utils";
 
@@ -24,6 +24,7 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
       retainers: { include: { tickets: true } },
       assessments: { include: { recommendations: true }, orderBy: { updatedAt: "desc" } },
       notes: { include: { author: true }, orderBy: { createdAt: "desc" } },
+      analysisSessions: { include: { score: true }, orderBy: { updatedAt: "desc" }, take: 1 },
     },
   });
 
@@ -31,6 +32,7 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
 
   const assessment = company.assessments[0];
   const project = company.projects[0];
+  const activeSession = company.analysisSessions[0];
 
   return (
     <div className="max-w-[1400px] mx-auto">
@@ -52,10 +54,17 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
               </div>
             </div>
           </div>
-          <Link href={`/admin/kunden/${id}/bearbeiten`}
-            className="bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-[#f0f0f0] text-sm font-medium rounded-lg px-4 py-2.5 transition-colors">
-            Bearbeiten
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href={`/admin/kunden/${id}/analyse`}
+              className="bg-[#22c55e]/10 hover:bg-[#22c55e]/20 border border-[#22c55e]/20 text-[#22c55e] text-sm font-medium rounded-lg px-4 py-2.5 transition-colors flex items-center gap-2">
+              <Brain size={14} />
+              Blueprint™ Analyse
+            </Link>
+            <Link href={`/admin/kunden/${id}/bearbeiten`}
+              className="bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-[#f0f0f0] text-sm font-medium rounded-lg px-4 py-2.5 transition-colors">
+              Bearbeiten
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -94,6 +103,39 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Blueprint Analysis Status */}
+          <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-[#f0f0f0] font-semibold text-sm flex items-center gap-2">
+                <Brain size={14} className="text-[#22c55e]" />
+                Blueprint™ Analyse
+              </h2>
+              <Link href={`/admin/kunden/${id}/analyse`} className="text-[#22c55e] text-xs hover:underline">Öffnen →</Link>
+            </div>
+            {!activeSession ? (
+              <p className="text-[#555] text-sm">Noch nicht gestartet</p>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#888]">Status</span>
+                  <span className={activeSession.status === "COMPLETED" ? "text-[#22c55e]" : "text-yellow-400"}>
+                    {activeSession.status === "COMPLETED" ? "Abgeschlossen" : activeSession.status === "ACTIVE" ? "Aktiv" : "Pausiert"}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#888]">Phase</span>
+                  <span className="text-[#f0f0f0]">{activeSession.phase}</span>
+                </div>
+                {activeSession.score && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-[#888]">OKUN Score™</span>
+                    <span className="text-[#22c55e] font-bold">{activeSession.score.totalScore}/100</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {assessment && (

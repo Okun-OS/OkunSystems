@@ -1,20 +1,20 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { redirect } from "next/navigation";
+import { NextResponse } from "next/server";
 import { ADVISOR_INTRO_MESSAGE } from "@/lib/engines/advisor-prompt";
-import AdvisorChat from "./AdvisorChat";
 
-export default async function AnalysePage() {
+// GET /api/advisor/session – get or create the active analysis session for the current client
+export async function GET() {
   const session = await auth();
-  if (!session?.user) redirect("/login");
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const userId = (session.user as { id: string }).id;
+  const userId = session.user.id as string;
   const user = await db.user.findUnique({ where: { id: userId } });
-  if (!user?.companyId) redirect("/dashboard");
+  if (!user?.companyId) return NextResponse.json({ error: "No company" }, { status: 400 });
 
   const companyId = user.companyId;
 
-  // Find or create active analysis session
+  // Find active or paused session
   let analysisSession = await db.analysisSession.findFirst({
     where: { companyId, status: { in: ["ACTIVE", "PAUSED"] } },
     include: { messages: { orderBy: { createdAt: "asc" } } },
@@ -22,6 +22,7 @@ export default async function AnalysePage() {
   });
 
   if (!analysisSession) {
+    // Create new session with intro message
     analysisSession = await db.analysisSession.create({
       data: {
         companyId,
@@ -41,19 +42,5 @@ export default async function AnalysePage() {
     });
   }
 
-  const initialSession = {
-    id: analysisSession.id,
-    phase: analysisSession.phase,
-    currentArea: analysisSession.currentArea,
-    status: analysisSession.status,
-    totalMessages: analysisSession.totalMessages,
-    messages: analysisSession.messages.map((m) => ({
-      id: m.id,
-      role: m.role as "user" | "assistant",
-      content: m.content,
-      createdAt: m.createdAt.toISOString(),
-    })),
-  };
-
-  return <AdvisorChat initialSession={initialSession} />;
+  return NextResponse.json({ session: analysisSession });
 }

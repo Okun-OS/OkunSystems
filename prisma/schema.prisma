@@ -21,9 +21,10 @@ model User {
   companyId String?
   company   Company? @relation(fields: [companyId], references: [id])
 
-  appointments Appointment[]
-  notes        Note[]
-  tickets      RetainerTicket[]
+  appointments     Appointment[]
+  notes            Note[]
+  tickets          RetainerTicket[]
+  learningReviews  LearningProposal[]
 }
 
 model Company {
@@ -38,13 +39,19 @@ model Company {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users        User[]
-  projects     Project[]
-  appointments Appointment[]
-  documents    Document[]
-  retainers    Retainer[]
-  assessments  Assessment[]
-  notes        Note[]
+  users           User[]
+  projects        Project[]
+  appointments    Appointment[]
+  documents       Document[]
+  retainers       Retainer[]
+  assessments     Assessment[]
+  notes           Note[]
+  analysisSessions AnalysisSession[]
+  processes       ProcessProfile[]
+  detectedProblems DetectedProblem[]
+  opportunities   Opportunity[]
+  okunScores      OkunScore[]
+  memory          CompanyMemory?
 }
 
 model Project {
@@ -234,4 +241,203 @@ model Recommendation {
 
   assessmentId String
   assessment   Assessment @relation(fields: [assessmentId], references: [id])
+}
+
+// ─── OKUN Blueprint™ Engine Models ───────────────────────────────────────────
+
+model AnalysisSession {
+  id            String    @id @default(cuid())
+  status        String    @default("ACTIVE") // ACTIVE | PAUSED | COMPLETED | ARCHIVED
+  phase         String    @default("INTRO")  // INTRO | PROFIL | PROZESSE | TIEFE | VALIDIERUNG | ABSCHLUSS
+  currentArea   String?   // current analysis area being discussed
+  completedAreas String   @default("[]")     // JSON array of completed area keys
+  hypotheses    String    @default("[]")     // JSON array of internal hypotheses
+  memorySnapshot String   @default("{}")     // JSON snapshot of current memory state
+  totalMessages Int       @default(0)
+  startedAt     DateTime  @default(now())
+  resumedAt     DateTime?
+  completedAt   DateTime?
+  updatedAt     DateTime  @updatedAt
+
+  companyId String
+  company   Company              @relation(fields: [companyId], references: [id])
+  messages  ConversationMessage[]
+  processes ProcessProfile[]
+  problems  DetectedProblem[]
+  opportunities Opportunity[]
+  score     OkunScore?
+}
+
+model ConversationMessage {
+  id             String   @id @default(cuid())
+  role           String   // "user" | "assistant"
+  content        String
+  internalNotes  String?  // JSON: internal advisor reasoning, hypotheses formed, signals detected
+  memoryUpdates  String?  // JSON: what was stored to memory engine
+  createdAt      DateTime @default(now())
+
+  sessionId String
+  session   AnalysisSession @relation(fields: [sessionId], references: [id])
+}
+
+model ProcessProfile {
+  id            String   @id @default(cuid())
+  name          String
+  category      String   // from Process Library categories
+  libraryRef    String?  // reference to ProcessLibraryItem id if matched
+  isNew         Boolean  @default(false) // true if not in library → creates LearningProposal
+  trigger       String?  // what starts this process
+  goal          String?  // when is it successfully completed
+  roles         String   @default("[]")  // JSON array of involved roles
+  steps         String   @default("[]")  // JSON array of ProcessStep-like objects
+  systems       String   @default("[]")  // JSON array of tools/files/channels used
+  inputs        String   @default("[]")  // JSON: information sources
+  handoffs      String   @default("[]")  // JSON: handoff points
+  decisions     String   @default("[]")  // JSON: decision points
+  documentation String?  // how is this documented
+  frequency     String?  // how often does it occur
+  problems      String   @default("[]")  // JSON: observed problems in this process
+  maturityScore Int?     // 0-100 process maturity
+  officialVsActual String? // discrepancy between official and actual process
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sessionId String
+  session   AnalysisSession @relation(fields: [sessionId], references: [id])
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+}
+
+model DetectedProblem {
+  id             String   @id @default(cuid())
+  symptom        String   // what the customer described
+  operativeProblem String // what the actual operative problem is
+  rootCause      String?  // underlying root cause
+  category       String   // process | structure | leadership | automation | communication | sales | hr
+  severity       String   @default("MEDIUM") // LOW | MEDIUM | HIGH | CRITICAL
+  confidence     Int      @default(50)       // 0-100 confidence score
+  evidence       String   @default("[]")     // JSON array of evidence strings
+  libraryRef     String?  // reference to ProblemLibraryItem if matched
+  isNew          Boolean  @default(false)    // true if not in library → creates LearningProposal
+  isInternal     Boolean  @default(true)     // internal only, not shown to customer
+  processRef     String?  // reference to ProcessProfile id if applicable
+  createdAt      DateTime @default(now())
+
+  sessionId String
+  session   AnalysisSession @relation(fields: [sessionId], references: [id])
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+  opportunities Opportunity[]
+}
+
+model Opportunity {
+  id           String   @id @default(cuid())
+  title        String
+  type         String   // AUTOMATION | DELEGATION | STANDARDIZATION | TRANSPARENCY | SCALING
+  description  String
+  impact       String   @default("MEDIUM")  // LOW | MEDIUM | HIGH | VERY_HIGH
+  effort       String   @default("MEDIUM")  // LOW | MEDIUM | HIGH
+  priority     Int      @default(2)          // 1=high, 2=medium, 3=low
+  timeSaving   String?  // estimated time saving
+  okunSystem   String?  // internal: which OKUN system could address this (NOT shown to customer)
+  evidence     String   @default("[]")       // JSON evidence
+  isInternal   Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  sessionId   String
+  session     AnalysisSession  @relation(fields: [sessionId], references: [id])
+  companyId   String
+  company     Company @relation(fields: [companyId], references: [id])
+  problemId   String?
+  problem     DetectedProblem? @relation(fields: [problemId], references: [id])
+}
+
+model OkunScore {
+  id              String   @id @default(cuid())
+  totalScore      Int      // 0-100
+  maturityLevel   String   // INITIAL | DEVELOPING | DEFINED | MANAGED | OPTIMIZED
+  maturityLabel   String   // German label for customer
+  scoreProcesses  Int?     // 25% weight
+  scoreSales      Int?     // 20% weight
+  scoreLeadership Int?     // 15% weight
+  scoreAutomation Int?     // 15% weight
+  scoreStructure  Int?     // 10% weight
+  scoreCommunication Int?  // 10% weight
+  scoreHr         Int?     // 5% weight
+  strengths       String   @default("[]")   // JSON: 3-5 strengths (shown to customer)
+  potentials      String   @default("[]")   // JSON: 3-5 potential areas (shown to customer)
+  internalSummary String?  // full internal analysis summary
+  customerSummary String?  // short customer-facing summary
+  evidence        String   @default("{}")   // JSON: evidence per area
+  isPublished     Boolean  @default(false)
+  calculatedAt    DateTime @default(now())
+  publishedAt     DateTime?
+
+  sessionId String @unique
+  session   AnalysisSession @relation(fields: [sessionId], references: [id])
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+}
+
+model ProcessLibraryItem {
+  id          String   @id @default(cuid())
+  name        String
+  category    String   // Vertrieb | Kommunikation | Verwaltung | Personal | etc.
+  description String
+  typicalRoles String  @default("[]") // JSON
+  typicalSystems String @default("[]") // JSON
+  typicalProblems String @default("[]") // JSON
+  frequency   String?
+  isActive    Boolean  @default(true)
+  isCustom    Boolean  @default(false) // true = added via learning proposal
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ProblemLibraryItem {
+  id              String   @id @default(cuid())
+  name            String
+  symptomPatterns String   @default("[]") // JSON: keyword/phrase patterns that trigger detection
+  operativeProblem String
+  rootCause       String
+  category        String
+  severity        String   @default("MEDIUM")
+  opportunities   String   @default("[]") // JSON: typical opportunities this creates
+  okunSystems     String   @default("[]") // JSON: internal OKUN system references
+  isActive        Boolean  @default(true)
+  isCustom        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model LearningProposal {
+  id          String   @id @default(cuid())
+  type        String   // NEW_PROCESS | NEW_PROBLEM | NEW_OPPORTUNITY
+  title       String
+  description String
+  proposedData String  // JSON: full proposed entity data
+  sourceSessionId String?
+  sourceCompanyId String?
+  evidence    String   @default("[]") // JSON
+  status      String   @default("PENDING") // PENDING | APPROVED | REJECTED
+  reviewNote  String?
+  reviewedAt  DateTime?
+  reviewedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  reviewedBy User? @relation(fields: [reviewedById], references: [id])
+}
+
+model CompanyMemory {
+  id          String   @id @default(cuid())
+  companyId   String   @unique
+  company     Company  @relation(fields: [companyId], references: [id])
+  profile     String   @default("{}") // JSON: basic company profile (size, industry, locations)
+  roles       String   @default("[]") // JSON: identified roles/positions
+  systems     String   @default("[]") // JSON: tools and software in use
+  challenges  String   @default("[]") // JSON: expressed challenges
+  goals       String   @default("[]") // JSON: business goals
+  knowledgeDependencies String @default("[]") // JSON: who knows what
+  updatedAt   DateTime @updatedAt
 }

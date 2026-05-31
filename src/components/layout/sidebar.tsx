@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
   LayoutDashboard,
-  BarChart2,
+  Brain,
   FolderKanban,
   Calendar,
   FileText,
@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/analyse", icon: BarChart2, label: "Analyse" },
+  { href: "/analyse", icon: Brain, label: "OKUN Blueprint™" },
   { href: "/projektstatus", icon: FolderKanban, label: "Projektstatus" },
   { href: "/termine", icon: Calendar, label: "Termine" },
   { href: "/dokumente", icon: FileText, label: "Dokumente" },
