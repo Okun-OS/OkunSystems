@@ -1,0 +1,158 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { ArrowLeft, Building2, User, Mail, Lock, Globe, Phone, MapPin, Loader2 } from "lucide-react";
+
+export default function NeuerKundePage() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const [form, setForm] = useState({
+    companyName: "", industry: "", website: "", phone: "", address: "",
+    contactName: "", contactEmail: "", contactPassword: "",
+  });
+
+  function update(field: string, value: string) {
+    setForm(prev => ({ ...prev, [field]: value }));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+
+    try {
+      const res = await fetch("/api/companies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Fehler beim Anlegen");
+      router.push(`/admin/kunden/${data.id}`);
+    } catch (err: any) {
+      setError(err.message ?? "Ein Fehler ist aufgetreten.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="max-w-[800px] mx-auto">
+      <div className="mb-6">
+        <Link href="/admin/kunden" className="flex items-center gap-2 text-[#888] hover:text-[#f0f0f0] text-sm mb-4 transition-colors">
+          <ArrowLeft size={15} />
+          Zurück zur Übersicht
+        </Link>
+        <h1 className="text-2xl font-bold text-[#f0f0f0]">Neuen Kunden anlegen</h1>
+        <p className="text-[#888] text-sm mt-1">Erstellen Sie ein neues Kundenkonto mit Portal-Zugang.</p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Company */}
+        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-6">
+          <div className="flex items-center gap-2 mb-5">
+            <Building2 size={15} className="text-[#22c55e]" />
+            <h2 className="text-[#f0f0f0] font-semibold text-sm">Unternehmensdaten</h2>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-[#888] mb-1.5">Unternehmensname *</label>
+              <input required value={form.companyName} onChange={e => update("companyName", e.target.value)}
+                placeholder="Muster GmbH"
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[#888] mb-1.5">Branche</label>
+              <input value={form.industry} onChange={e => update("industry", e.target.value)}
+                placeholder="z.B. Pflegedienstleister"
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[#888] mb-1.5">Website</label>
+              <div className="relative">
+                <Globe size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#555]" />
+                <input value={form.website} onChange={e => update("website", e.target.value)}
+                  placeholder="https://example.de"
+                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg pl-9 pr-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[#888] mb-1.5">Telefon</label>
+              <div className="relative">
+                <Phone size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#555]" />
+                <input value={form.phone} onChange={e => update("phone", e.target.value)}
+                  placeholder="+49 ..."
+                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg pl-9 pr-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[#888] mb-1.5">Adresse</label>
+              <div className="relative">
+                <MapPin size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#555]" />
+                <input value={form.address} onChange={e => update("address", e.target.value)}
+                  placeholder="Musterstraße 1, 12345 Stadt"
+                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg pl-9 pr-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Contact / Login */}
+        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-6">
+          <div className="flex items-center gap-2 mb-5">
+            <User size={15} className="text-[#22c55e]" />
+            <h2 className="text-[#f0f0f0] font-semibold text-sm">Ansprechpartner & Portal-Zugang</h2>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-[#888] mb-1.5">Name des Ansprechpartners *</label>
+              <input required value={form.contactName} onChange={e => update("contactName", e.target.value)}
+                placeholder="Max Mustermann"
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[#888] mb-1.5">E-Mail-Adresse *</label>
+              <div className="relative">
+                <Mail size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#555]" />
+                <input required type="email" value={form.contactEmail} onChange={e => update("contactEmail", e.target.value)}
+                  placeholder="max@firma.de"
+                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg pl-9 pr-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[#888] mb-1.5">Initiales Passwort *</label>
+              <div className="relative">
+                <Lock size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#555]" />
+                <input required type="password" value={form.contactPassword} onChange={e => update("contactPassword", e.target.value)}
+                  placeholder="Temporäres Passwort"
+                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg pl-9 pr-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {error && (
+          <div className="bg-red-950/40 border border-red-900/50 text-red-400 text-sm rounded-lg px-4 py-3">
+            {error}
+          </div>
+        )}
+
+        <div className="flex gap-3">
+          <button type="submit" disabled={loading}
+            className="flex items-center gap-2 bg-[#22c55e] hover:bg-[#16a34a] disabled:opacity-50 text-black font-semibold text-sm rounded-lg px-6 py-2.5 transition-colors">
+            {loading && <Loader2 size={15} className="animate-spin" />}
+            {loading ? "Wird erstellt..." : "Kunden anlegen"}
+          </button>
+          <Link href="/admin/kunden"
+            className="px-6 py-2.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-[#888] font-medium text-sm rounded-lg transition-colors">
+            Abbrechen
+          </Link>
+        </div>
+      </form>
+    </div>
+  );
+}

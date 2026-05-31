@@ -1,0 +1,237 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id         String   @id @default(cuid())
+  email      String   @unique
+  name       String?
+  password   String
+  role       String   @default("CLIENT")
+  image      String?
+  firstLogin Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id])
+
+  appointments Appointment[]
+  notes        Note[]
+  tickets      RetainerTicket[]
+}
+
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  industry  String?
+  website   String?
+  phone     String?
+  address   String?
+  logoUrl   String?
+  status    String   @default("ONBOARDING")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users        User[]
+  projects     Project[]
+  appointments Appointment[]
+  documents    Document[]
+  retainers    Retainer[]
+  assessments  Assessment[]
+  notes        Note[]
+}
+
+model Project {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  status      String    @default("PLANNING")
+  phase       String?
+  startDate   DateTime?
+  endDate     DateTime?
+  progress    Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  companyId  String
+  company    Company     @relation(fields: [companyId], references: [id])
+  milestones Milestone[]
+  tasks      Task[]
+}
+
+model Milestone {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  dueDate     DateTime?
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+  order       Int       @default(0)
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id])
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  status      String    @default("TODO")
+  priority    String    @default("MEDIUM")
+  dueDate     DateTime?
+  completedAt DateTime?
+  isInternal  Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id])
+}
+
+model Appointment {
+  id          String   @id @default(cuid())
+  title       String
+  type        String   @default("STRATEGY")
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+  location    String?
+  meetingUrl  String?
+  status      String   @default("SCHEDULED")
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+  attendees User[]
+}
+
+model Document {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  category    String   @default("OTHER")
+  fileUrl     String?
+  fileName    String?
+  fileSize    Int?
+  mimeType    String?
+  isPublished Boolean  @default(false)
+  isInternal  Boolean  @default(false)
+  version     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+}
+
+model Retainer {
+  id            String    @id @default(cuid())
+  name          String
+  type          String    @default("STANDARD")
+  status        String    @default("ACTIVE")
+  startDate     DateTime
+  endDate       DateTime?
+  hoursPerMonth Int       @default(10)
+  usedHours     Int       @default(0)
+  description   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  companyId String
+  company   Company          @relation(fields: [companyId], references: [id])
+  tickets   RetainerTicket[]
+}
+
+model RetainerTicket {
+  id          String    @id @default(cuid())
+  title       String
+  description String
+  status      String    @default("OPEN")
+  priority    String    @default("MEDIUM")
+  type        String    @default("CHANGE_REQUEST")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  resolvedAt  DateTime?
+
+  retainerId  String
+  retainer    Retainer @relation(fields: [retainerId], references: [id])
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id])
+}
+
+model Note {
+  id         String   @id @default(cuid())
+  content    String
+  isInternal Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+  authorId  String
+  author    User    @relation(fields: [authorId], references: [id])
+}
+
+model Assessment {
+  id          String    @id @default(cuid())
+  status      String    @default("PENDING")
+  score       Int?
+  summary     String?
+  isPublished Boolean   @default(false)
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  companyId       String
+  company         Company              @relation(fields: [companyId], references: [id])
+  responses       AssessmentResponse[]
+  recommendations Recommendation[]
+}
+
+model AssessmentQuestion {
+  id       String  @id @default(cuid())
+  text     String
+  category String
+  type     String  @default("SCALE")
+  options  String?
+  weight   Int     @default(1)
+  order    Int     @default(0)
+  isActive Boolean @default(true)
+
+  responses AssessmentResponse[]
+}
+
+model AssessmentResponse {
+  id        String   @id @default(cuid())
+  answer    String
+  score     Int?
+  createdAt DateTime @default(now())
+
+  assessmentId String
+  assessment   Assessment         @relation(fields: [assessmentId], references: [id])
+  questionId   String
+  question     AssessmentQuestion @relation(fields: [questionId], references: [id])
+}
+
+model Recommendation {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  category    String
+  priority    Int      @default(1)
+  system      String?
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id])
+}
