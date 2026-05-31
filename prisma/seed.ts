@@ -2,16 +2,7 @@
 import { PrismaClient } from "../src/generated/prisma/client";
 import bcryptjs from "bcryptjs";
 
-const { PrismaLibSql } = require("@prisma/adapter-libsql");
-
-// Resolve DATABASE_URL to absolute path for libsql
-const rawUrl = process.env.DATABASE_URL ?? "file:./dev.db";
-const dbUrl = rawUrl.startsWith("file:./")
-  ? rawUrl.replace("file:./", "file:" + process.cwd() + "/")
-  : rawUrl;
-
-const adapter = new PrismaLibSql({ url: dbUrl });
-const prisma = new PrismaClient({ adapter });
+const prisma = new PrismaClient();
 
 async function main() {
   console.log("🌱 Seeding database...");

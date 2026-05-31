@@ -1,15 +1,7 @@
 // @ts-nocheck
 import { PrismaClient } from "../src/generated/prisma/client";
 
-const { PrismaLibSql } = require("@prisma/adapter-libsql");
-
-const rawUrl = process.env.DATABASE_URL ?? "file:./dev.db";
-const dbUrl = rawUrl.startsWith("file:./")
-  ? rawUrl.replace("file:./", "file:" + process.cwd() + "/")
-  : rawUrl;
-
-const adapter = new PrismaLibSql({ url: dbUrl });
-const prisma = new PrismaClient({ adapter });
+const prisma = new PrismaClient();
 
 const PROCESSES = [
   { id: "P001", name: "Leadgewinnung", category: "Vertrieb", description: "Gewinnung neuer potenzieller Kunden über Empfehlungen, Online-Kanäle, Netzwerke, Kaltakquise oder bezahlte Kampagnen." },

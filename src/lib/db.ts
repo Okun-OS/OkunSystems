@@ -1,20 +1,9 @@
 import { PrismaClient } from "@/generated/prisma";
-import { PrismaLibSql } from "@prisma/adapter-libsql";
-
-function resolveDbUrl() {
-  const raw = process.env.DATABASE_URL ?? "file:./dev.db";
-  if (typeof window === "undefined" && raw.startsWith("file:./")) {
-    return raw.replace("file:./", `file:${process.cwd()}/`);
-  }
-  return raw;
-}
+import { PrismaPg } from "@prisma/adapter-pg";
 
 function createPrismaClient() {
-  const url = resolveDbUrl();
-  const authToken = process.env.TURSO_AUTH_TOKEN;
-  const options = authToken ? { url, authToken } : { url };
-  const adapter = new PrismaLibSql(options) as any;
-  return new PrismaClient({ adapter } as any);
+  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
+  return new PrismaClient({ adapter } as never);
 }
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
