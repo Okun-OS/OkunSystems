@@ -9,15 +9,21 @@ const secret =
 export async function middleware(req: NextRequest) {
   const { nextUrl } = req;
   const isAuthPage = nextUrl.pathname === "/login";
-  const isApiAuth = nextUrl.pathname.startsWith("/api/auth");
+  const isApiRoute = nextUrl.pathname.startsWith("/api/");
 
-  if (isApiAuth) {
+  if (isApiRoute) {
     return NextResponse.next();
   }
+
+  // On HTTPS (Railway production), NextAuth uses __Secure- prefix
+  const isSecure =
+    nextUrl.protocol === "https:" ||
+    req.headers.get("x-forwarded-proto") === "https";
 
   const token = await getToken({
     req,
     secret,
+    secureCookie: isSecure,
   });
 
   const isLoggedIn = !!token;

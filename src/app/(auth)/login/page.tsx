@@ -1,21 +1,40 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { loginAction } from "./actions";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [isPending, startTransition] = useTransition();
+  const [loading, setLoading] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setLoading(true);
     setError("");
-    startTransition(async () => {
-      const err = await loginAction(email, password);
-      if (err) setError(err);
-    });
+
+    try {
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Ungültige E-Mail-Adresse oder falsches Passwort.");
+      } else {
+        router.push(data.redirectTo || "/dashboard");
+        router.refresh();
+      }
+    } catch {
+      setError("Verbindungsfehler – bitte erneut versuchen.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -67,10 +86,7 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-[#ccc] mb-1.5"
-            >
+            <label htmlFor="email" className="block text-sm font-medium text-[#ccc] mb-1.5">
               E-Mail-Adresse
             </label>
             <input
@@ -86,10 +102,7 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-[#ccc] mb-1.5"
-            >
+            <label htmlFor="password" className="block text-sm font-medium text-[#ccc] mb-1.5">
               Passwort
             </label>
             <input
@@ -112,10 +125,10 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            disabled={isPending}
+            disabled={loading}
             className="w-full bg-[#22c55e] hover:bg-[#16a34a] disabled:opacity-50 disabled:cursor-not-allowed text-black font-semibold rounded-lg px-4 py-2.5 text-sm transition-colors"
           >
-            {isPending ? "Wird angemeldet…" : "Anmelden"}
+            {loading ? "Wird angemeldet…" : "Anmelden"}
           </button>
         </form>
       </div>
