@@ -8,6 +8,7 @@ cmds = ["npm ci"]
 cmds = [
   "npx prisma generate",
   "node -e \"require('fs').writeFileSync('src/generated/prisma/index.ts', \\\"export * from './client';\\\\n\\\")\"",
+  "npx prisma db push --accept-data-loss",
   "npm run build"
 ]
 
