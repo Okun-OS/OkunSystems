@@ -96,6 +96,7 @@ export default function AdvisorChat({ initialSession }: { initialSession: Sessio
       ]);
       if (data.phase) setPhase(data.phase);
       if (data.currentArea) setCurrentArea(data.currentArea);
+      if (Array.isArray(data.completedAreas)) setCompletedAreas(data.completedAreas);
       if (data.analysisComplete) setIsComplete(true);
     } catch (err: unknown) {
       setMessages((prev) => [

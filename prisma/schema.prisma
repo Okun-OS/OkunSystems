@@ -248,24 +248,29 @@ model Recommendation {
 model AnalysisSession {
   id            String    @id @default(cuid())
   status        String    @default("ACTIVE") // ACTIVE | PAUSED | COMPLETED | ARCHIVED
-  phase         String    @default("INTRO")  // INTRO | PROFIL | PROZESSE | TIEFE | VALIDIERUNG | ABSCHLUSS
-  currentArea   String?   // current analysis area being discussed
-  completedAreas String   @default("[]")     // JSON array of completed area keys
-  hypotheses    String    @default("[]")     // JSON array of internal hypotheses
-  memorySnapshot String   @default("{}")     // JSON snapshot of current memory state
+  phase         String    @default("INTRO")  // INTRO | PROFIL | PROZESSE | TIEFE | SYSTEME | GESCHAEFTSFUEHRUNG | ABSCHLUSS
+  currentArea   String?
+  completedAreas String   @default("[]")
+  hypotheses    String    @default("[]")
+  memorySnapshot String   @default("{}")
   totalMessages Int       @default(0)
+  language      String    @default("de")
+  questionsAsked Int      @default(0)
+  lastActiveAt  DateTime?
   startedAt     DateTime  @default(now())
   resumedAt     DateTime?
   completedAt   DateTime?
   updatedAt     DateTime  @updatedAt
 
   companyId String
-  company   Company              @relation(fields: [companyId], references: [id])
+  company   Company               @relation(fields: [companyId], references: [id])
   messages  ConversationMessage[]
   processes ProcessProfile[]
   problems  DetectedProblem[]
   opportunities Opportunity[]
   score     OkunScore?
+  progress  SessionProgress[]
+  evidence  ScoringEvidence[]
 }
 
 model ConversationMessage {
@@ -338,9 +343,11 @@ model Opportunity {
   impact       String   @default("MEDIUM")  // LOW | MEDIUM | HIGH | VERY_HIGH
   effort       String   @default("MEDIUM")  // LOW | MEDIUM | HIGH
   priority     Int      @default(2)          // 1=high, 2=medium, 3=low
-  timeSaving   String?  // estimated time saving
-  okunSystem   String?  // internal: which OKUN system could address this (NOT shown to customer)
-  evidence     String   @default("[]")       // JSON evidence
+  timeSaving   String?
+  okunSystem   String?
+  solutionType String?  // existing_okun_solution | configurable_solution | custom_automation | consulting_recommendation
+  status       String   @default("identified") // identified | needs_review | recommended | accepted | rejected | converted_to_project
+  evidence     String   @default("[]")
   isInternal   Boolean  @default(true)
   createdAt    DateTime @default(now())
 
@@ -433,11 +440,59 @@ model CompanyMemory {
   id          String   @id @default(cuid())
   companyId   String   @unique
   company     Company  @relation(fields: [companyId], references: [id])
-  profile     String   @default("{}") // JSON: basic company profile (size, industry, locations)
-  roles       String   @default("[]") // JSON: identified roles/positions
-  systems     String   @default("[]") // JSON: tools and software in use
-  challenges  String   @default("[]") // JSON: expressed challenges
-  goals       String   @default("[]") // JSON: business goals
-  knowledgeDependencies String @default("[]") // JSON: who knows what
+  profile     String   @default("{}")
+  roles       String   @default("[]")
+  systems     String   @default("[]")
+  challenges  String   @default("[]")
+  goals       String   @default("[]")
+  knowledgeDependencies String @default("[]")
   updatedAt   DateTime @updatedAt
+}
+
+model QuestionTemplate {
+  id               String   @id @default(cuid())
+  externalId       String   @unique
+  area             String
+  phase            String
+  order            Int
+  isRequired       Boolean  @default(true)
+  intent           String
+  questionDe       String
+  questionEn       String
+  followUpTriggers String   @default("[]")
+  scoringCategory  String?
+  scoringSignal    String?
+  maxFollowUps     Int      @default(2)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+
+  progress         SessionProgress[]
+}
+
+model SessionProgress {
+  id            String   @id @default(cuid())
+  sessionId     String
+  session       AnalysisSession   @relation(fields: [sessionId], references: [id])
+  questionId    String
+  question      QuestionTemplate  @relation(fields: [questionId], references: [id])
+  askedAt       DateTime?
+  answeredAt    DateTime?
+  answerSummary String?
+  skipped       Boolean  @default(false)
+  followUpsUsed Int      @default(0)
+  createdAt     DateTime @default(now())
+
+  @@unique([sessionId, questionId])
+}
+
+model ScoringEvidence {
+  id          String   @id @default(cuid())
+  sessionId   String
+  session     AnalysisSession @relation(fields: [sessionId], references: [id])
+  category    String
+  signal      String
+  weight      Int
+  description String
+  messageId   String?
+  createdAt   DateTime @default(now())
 }

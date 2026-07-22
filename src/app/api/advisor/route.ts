@@ -2,10 +2,12 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { OKUN_ADVISOR_SYSTEM_PROMPT } from "@/lib/engines/advisor-prompt";
+import { buildSystemPrompt, buildLibrarySnippets } from "@/lib/engines/advisor-prompt";
 import { persistMemoryUpdates } from "@/lib/engines/memory-engine";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+const META_MARKER = "\n[META]\n";
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -22,31 +24,73 @@ export async function POST(req: NextRequest) {
 
   const companyId = user.companyId;
 
-  // Verify session belongs to company
+  // ── Load analysis session ────────────────────────────────────────────────
   const analysisSession = await db.analysisSession.findUnique({
     where: { id: sessionId },
-    include: { messages: { orderBy: { createdAt: "asc" }, take: 40 } },
+    include: {
+      messages: { orderBy: { createdAt: "asc" }, take: 60 },
+      progress: { include: { question: true }, orderBy: { createdAt: "asc" } },
+    },
   });
 
   if (!analysisSession || analysisSession.companyId !== companyId) {
     return NextResponse.json({ error: "Session not found" }, { status: 404 });
   }
-
   if (analysisSession.status === "COMPLETED") {
     return NextResponse.json({ error: "Session completed" }, { status: 400 });
   }
 
-  // Save user message
-  await db.conversationMessage.create({
+  // ── Save user message ────────────────────────────────────────────────────
+  const savedUserMsg = await db.conversationMessage.create({
     data: { sessionId, role: "user", content: message },
   });
 
-  // Build message history for Claude
+  // ── Load question bank ───────────────────────────────────────────────────
+  const allQuestions = await db.questionTemplate.findMany({
+    where: { isActive: true },
+    orderBy: { order: "asc" },
+  });
+
+  const askedQuestionIds = new Set(
+    analysisSession.progress.filter((p) => p.askedAt).map((p) => p.questionId)
+  );
+
+  // Current question (last asked, not yet fully followed up)
+  const lastProgress = analysisSession.progress
+    .filter((p) => p.askedAt)
+    .sort((a, b) => (b.askedAt?.getTime() ?? 0) - (a.askedAt?.getTime() ?? 0))[0];
+
+  let currentQuestion: (typeof allQuestions[0] & { followUpsUsed: number }) | null = null;
+  if (lastProgress && lastProgress.followUpsUsed < lastProgress.question.maxFollowUps) {
+    currentQuestion = { ...lastProgress.question, followUpsUsed: lastProgress.followUpsUsed };
+  }
+
+  // Next pending required question
+  const pendingQuestions = allQuestions.filter((q) => !askedQuestionIds.has(q.id));
+  const nextQuestion = pendingQuestions[0] ?? null;
+  const pendingUpcoming = pendingQuestions.slice(1, 4);
+
+  // ── Load libraries ────────────────────────────────────────────────────────
+  const [processLibrary, problemLibrary, company] = await Promise.all([
+    db.processLibraryItem.findMany({ where: { isActive: true } }),
+    db.problemLibraryItem.findMany({ where: { isActive: true } }),
+    db.company.findUnique({ where: { id: companyId }, select: { name: true, industry: true } }),
+  ]);
+
+  const { processSnippet, problemSnippet } = buildLibrarySnippets(
+    processLibrary,
+    problemLibrary,
+    analysisSession.currentArea
+  );
+
+  // ── Build conversation history ────────────────────────────────────────────
   const history = analysisSession.messages.map((m) => ({
     role: m.role as "user" | "assistant",
     content: m.role === "assistant"
       ? (() => {
-          // For assistant messages, extract only the visible message part
+          // Strip [META] section for history — only show visible message
+          const metaIdx = m.content.indexOf("\n[META]\n");
+          if (metaIdx !== -1) return m.content.slice(0, metaIdx).trim();
           try {
             const parsed = JSON.parse(m.content);
             return parsed.message ?? m.content;
@@ -58,77 +102,145 @@ export async function POST(req: NextRequest) {
   }));
   history.push({ role: "user", content: message });
 
-  // Add context about the company
-  const company = await db.company.findUnique({
-    where: { id: companyId },
-    select: { name: true, industry: true },
+  let completedAreas: string[] = [];
+  try {
+    completedAreas = JSON.parse(analysisSession.completedAreas);
+  } catch {}
+
+  // ── Build system prompt ───────────────────────────────────────────────────
+  const systemPrompt = buildSystemPrompt({
+    phase: analysisSession.phase,
+    currentArea: analysisSession.currentArea,
+    completedAreas,
+    questionsAsked: analysisSession.questionsAsked,
+    language: analysisSession.language,
+    totalMessages: analysisSession.totalMessages,
+    company: { name: company?.name ?? "Unbekannt", industry: company?.industry },
+    nextQuestion: nextQuestion
+      ? {
+          externalId: nextQuestion.externalId,
+          phase: nextQuestion.phase,
+          area: nextQuestion.area,
+          intent: nextQuestion.intent,
+          questionDe: nextQuestion.questionDe,
+          questionEn: nextQuestion.questionEn,
+          maxFollowUps: nextQuestion.maxFollowUps,
+        }
+      : null,
+    currentQuestion: currentQuestion
+      ? {
+          externalId: currentQuestion.externalId,
+          phase: currentQuestion.phase,
+          area: currentQuestion.area,
+          intent: currentQuestion.intent,
+          questionDe: currentQuestion.questionDe,
+          questionEn: currentQuestion.questionEn,
+          maxFollowUps: currentQuestion.maxFollowUps,
+          followUpsUsed: currentQuestion.followUpsUsed,
+        }
+      : null,
+    pendingUpcoming: pendingUpcoming.map((q) => ({
+      externalId: q.externalId,
+      phase: q.phase,
+      area: q.area,
+      intent: q.intent,
+      questionDe: q.questionDe,
+      questionEn: q.questionEn,
+      maxFollowUps: q.maxFollowUps,
+    })),
+    processLibrarySnippet: processSnippet,
+    problemLibrarySnippet: problemSnippet,
   });
 
-  const systemPromptWithContext = `${OKUN_ADVISOR_SYSTEM_PROMPT}
-
-AKTUELLER KONTEXT:
-- Unternehmensname: ${company?.name ?? "Unbekannt"}
-- Branche: ${company?.industry ?? "Unbekannt"}
-- Gesprächsphase: ${analysisSession.phase}
-- Analysierter Bereich: ${analysisSession.currentArea ?? "Noch nicht begonnen"}
-- Abgeschlossene Bereiche: ${analysisSession.completedAreas}
-- Nachrichten bisher: ${analysisSession.totalMessages}`;
-
+  // ── Call Claude ───────────────────────────────────────────────────────────
   let responseContent = "";
   try {
     const response = await anthropic.messages.create({
       model: "claude-opus-4-8",
       max_tokens: 2000,
-      system: systemPromptWithContext,
+      system: systemPrompt,
       messages: history,
     });
     responseContent = response.content[0].type === "text" ? response.content[0].text : "";
   } catch (err) {
-    console.error("Anthropic error:", err);
+    console.error("[/api/advisor] Anthropic error:", err);
     return NextResponse.json({ error: "AI service unavailable" }, { status: 503 });
   }
 
-  // Parse the JSON response from the advisor
-  let parsed: {
-    message: string;
-    internalNotes?: {
-      hypotheses?: string[];
-      detectedSignals?: string[];
-      phase?: string;
-      currentArea?: string;
-      completedAreas?: string[];
-      analysisComplete?: boolean;
-    };
-    memoryUpdates?: {
-      processes?: unknown[];
-      detectedProblems?: unknown[];
-      opportunities?: unknown[];
-      companyProfile?: Record<string, string>;
-      roles?: string[];
-      systems?: string[];
-      challenges?: string[];
-    };
-  };
+  // ── Parse [META] delimiter ────────────────────────────────────────────────
+  const metaIdx = responseContent.indexOf(META_MARKER);
 
-  try {
-    // Extract JSON from response (handle cases where model adds text before/after)
-    const jsonMatch = responseContent.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("No JSON in response");
-    parsed = JSON.parse(jsonMatch[0]);
-  } catch {
-    // Fallback: treat entire response as message
-    parsed = {
-      message: responseContent,
-      internalNotes: { phase: analysisSession.phase, currentArea: analysisSession.currentArea ?? undefined },
-      memoryUpdates: {},
-    };
+  let visibleMessage: string;
+  let internalNotes: Record<string, unknown> = {};
+  let memoryUpdates: Record<string, unknown> = {};
+
+  if (metaIdx !== -1) {
+    visibleMessage = responseContent.slice(0, metaIdx).trim();
+    const jsonStr = responseContent.slice(metaIdx + META_MARKER.length).trim();
+    try {
+      const parsed = JSON.parse(jsonStr);
+      internalNotes = parsed.internalNotes ?? {};
+      memoryUpdates = parsed.memoryUpdates ?? {};
+    } catch {
+      console.warn("[/api/advisor] Failed to parse [META] JSON");
+    }
+  } else {
+    // Fallback: try old JSON format
+    try {
+      const jsonMatch = responseContent.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        visibleMessage = parsed.message ?? responseContent;
+        internalNotes = parsed.internalNotes ?? {};
+        memoryUpdates = parsed.memoryUpdates ?? {};
+      } else {
+        visibleMessage = responseContent;
+      }
+    } catch {
+      visibleMessage = responseContent;
+    }
   }
 
-  const visibleMessage = parsed.message || responseContent;
-  const internalNotes = parsed.internalNotes ?? {};
-  const memoryUpdates = parsed.memoryUpdates ?? {};
+  const notes = internalNotes as {
+    phase?: string;
+    currentArea?: string;
+    completedAreas?: string[];
+    analysisComplete?: boolean;
+    lastQuestion?: string;
+    followUpsUsed?: number;
+    hypotheses?: string[];
+  };
 
-  // Save assistant message
+  // ── Update SessionProgress ────────────────────────────────────────────────
+  const wasFollowUp = (notes.followUpsUsed ?? 0) > 0 || !notes.lastQuestion;
+
+  if (notes.lastQuestion) {
+    // A required question was just asked
+    const qt = allQuestions.find((q) => q.externalId === notes.lastQuestion);
+    if (qt) {
+      await db.sessionProgress.upsert({
+        where: { sessionId_questionId: { sessionId, questionId: qt.id } },
+        create: { sessionId, questionId: qt.id, askedAt: new Date() },
+        update: { askedAt: new Date() },
+      });
+
+      // Mark previous question as answered (we moved on)
+      if (lastProgress && lastProgress.question.externalId !== notes.lastQuestion) {
+        await db.sessionProgress.update({
+          where: { id: lastProgress.id },
+          data: { answeredAt: new Date() },
+        });
+      }
+    }
+  } else if (wasFollowUp && lastProgress) {
+    // Increment follow-up counter on current question
+    await db.sessionProgress.update({
+      where: { id: lastProgress.id },
+      data: { followUpsUsed: { increment: 1 } },
+    });
+  }
+
+  // ── Save assistant message ────────────────────────────────────────────────
   await db.conversationMessage.create({
     data: {
       sessionId,
@@ -139,23 +251,24 @@ AKTUELLER KONTEXT:
     },
   });
 
-  // Persist structured memory updates
-  await persistMemoryUpdates(sessionId, companyId, memoryUpdates as Parameters<typeof persistMemoryUpdates>[2]);
+  // ── Persist memory updates ────────────────────────────────────────────────
+  await persistMemoryUpdates(
+    sessionId,
+    companyId,
+    memoryUpdates as Parameters<typeof persistMemoryUpdates>[2]
+  );
 
-  // Update session state
+  // ── Update session state ──────────────────────────────────────────────────
   const updateData: Record<string, unknown> = {
     totalMessages: { increment: 2 },
-    updatedAt: new Date(),
+    lastActiveAt: new Date(),
   };
-  if (internalNotes.phase) updateData.phase = internalNotes.phase;
-  if (internalNotes.currentArea) updateData.currentArea = internalNotes.currentArea;
-  if (internalNotes.completedAreas) {
-    updateData.completedAreas = JSON.stringify(internalNotes.completedAreas);
-  }
-  if (internalNotes.hypotheses) {
-    updateData.hypotheses = JSON.stringify(internalNotes.hypotheses);
-  }
-  if (internalNotes.analysisComplete) {
+  if (notes.phase) updateData.phase = notes.phase;
+  if (notes.currentArea) updateData.currentArea = notes.currentArea;
+  if (notes.completedAreas) updateData.completedAreas = JSON.stringify(notes.completedAreas);
+  if (notes.hypotheses) updateData.hypotheses = JSON.stringify(notes.hypotheses);
+  if (notes.lastQuestion) updateData.questionsAsked = { increment: 1 };
+  if (notes.analysisComplete) {
     updateData.status = "COMPLETED";
     updateData.completedAt = new Date();
   }
@@ -164,8 +277,9 @@ AKTUELLER KONTEXT:
 
   return NextResponse.json({
     message: visibleMessage,
-    phase: internalNotes.phase ?? analysisSession.phase,
-    currentArea: internalNotes.currentArea ?? analysisSession.currentArea,
-    analysisComplete: internalNotes.analysisComplete ?? false,
+    phase: notes.phase ?? analysisSession.phase,
+    currentArea: notes.currentArea ?? analysisSession.currentArea,
+    completedAreas: notes.completedAreas ?? completedAreas,
+    analysisComplete: notes.analysisComplete ?? false,
   });
 }

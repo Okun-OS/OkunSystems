@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 interface ProcessData {
   name: string;
   category: string;
+  libraryRef?: string;
   trigger?: string;
   goal?: string;
   roles?: string[];
@@ -25,6 +26,7 @@ interface ProblemData {
   severity?: string;
   confidence?: number;
   evidence?: string[];
+  libraryRef?: string;
   isNew?: boolean;
 }
 
@@ -37,6 +39,7 @@ interface OpportunityData {
   priority?: number;
   evidence?: string[];
   okunSystem?: string;
+  solutionType?: string;
 }
 
 interface MemoryUpdates {
@@ -59,43 +62,75 @@ export async function persistMemoryUpdates(
   if (updates.processes && updates.processes.length > 0) {
     for (const proc of updates.processes) {
       if (!proc.name || !proc.category) continue;
-      tasks.push(
-        db.processProfile.create({
-          data: {
-            sessionId,
-            companyId,
-            name: proc.name,
-            category: proc.category,
-            trigger: proc.trigger,
-            goal: proc.goal,
-            roles: JSON.stringify(proc.roles ?? []),
-            steps: JSON.stringify(proc.steps ?? []),
-            systems: JSON.stringify(proc.systems ?? []),
-            handoffs: JSON.stringify(proc.handoffs ?? []),
-            decisions: JSON.stringify(proc.decisions ?? []),
-            documentation: proc.documentation,
-            frequency: proc.frequency,
-            problems: JSON.stringify(proc.problems ?? []),
-            maturityScore: proc.maturityScore,
-            isNew: proc.isNew ?? false,
-          },
-        }).then(async (created) => {
-          if (proc.isNew) {
-            await db.learningProposal.create({
-              data: {
-                type: "NEW_PROCESS",
-                title: `Neuer Prozess: ${proc.name}`,
-                description: `Unbekannter Prozess erkannt in Kategorie "${proc.category}"`,
-                proposedData: JSON.stringify(proc),
-                sourceSessionId: sessionId,
-                sourceCompanyId: companyId,
-                evidence: JSON.stringify(proc.problems ?? []),
-              },
-            });
-          }
-          return created;
-        })
-      );
+
+      // Check for existing process with same name in this session
+      const existing = await db.processProfile.findFirst({
+        where: { sessionId, name: proc.name },
+      });
+
+      if (existing) {
+        // Update: merge new data into existing record
+        tasks.push(
+          db.processProfile.update({
+            where: { id: existing.id },
+            data: {
+              ...(proc.trigger && { trigger: proc.trigger }),
+              ...(proc.goal && { goal: proc.goal }),
+              ...(proc.roles?.length && { roles: JSON.stringify(proc.roles) }),
+              ...(proc.steps?.length && { steps: JSON.stringify(proc.steps) }),
+              ...(proc.systems?.length && { systems: JSON.stringify(proc.systems) }),
+              ...(proc.handoffs?.length && { handoffs: JSON.stringify(proc.handoffs) }),
+              ...(proc.decisions?.length && { decisions: JSON.stringify(proc.decisions) }),
+              ...(proc.documentation && { documentation: proc.documentation }),
+              ...(proc.frequency && { frequency: proc.frequency }),
+              ...(proc.problems?.length && { problems: JSON.stringify(proc.problems) }),
+              ...(proc.maturityScore !== undefined && { maturityScore: proc.maturityScore }),
+              ...(proc.libraryRef && { libraryRef: proc.libraryRef }),
+              updatedAt: new Date(),
+            },
+          })
+        );
+      } else {
+        // Create new process
+        tasks.push(
+          db.processProfile.create({
+            data: {
+              sessionId,
+              companyId,
+              name: proc.name,
+              category: proc.category,
+              libraryRef: proc.libraryRef,
+              trigger: proc.trigger,
+              goal: proc.goal,
+              roles: JSON.stringify(proc.roles ?? []),
+              steps: JSON.stringify(proc.steps ?? []),
+              systems: JSON.stringify(proc.systems ?? []),
+              handoffs: JSON.stringify(proc.handoffs ?? []),
+              decisions: JSON.stringify(proc.decisions ?? []),
+              documentation: proc.documentation,
+              frequency: proc.frequency,
+              problems: JSON.stringify(proc.problems ?? []),
+              maturityScore: proc.maturityScore,
+              isNew: proc.isNew ?? false,
+            },
+          }).then(async (created) => {
+            if (proc.isNew) {
+              await db.learningProposal.create({
+                data: {
+                  type: "NEW_PROCESS",
+                  title: `Neuer Prozess: ${proc.name}`,
+                  description: `Unbekannter Prozess erkannt in Kategorie "${proc.category}"`,
+                  proposedData: JSON.stringify(proc),
+                  sourceSessionId: sessionId,
+                  sourceCompanyId: companyId,
+                  evidence: JSON.stringify(proc.problems ?? []),
+                },
+              });
+            }
+            return created;
+          })
+        );
+      }
     }
   }
 
@@ -114,6 +149,7 @@ export async function persistMemoryUpdates(
             severity: prob.severity ?? "MEDIUM",
             confidence: prob.confidence ?? 50,
             evidence: JSON.stringify(prob.evidence ?? []),
+            libraryRef: prob.libraryRef,
             isNew: prob.isNew ?? false,
           },
         }).then(async (created) => {
@@ -122,7 +158,7 @@ export async function persistMemoryUpdates(
               data: {
                 type: "NEW_PROBLEM",
                 title: `Neues Muster: ${prob.operativeProblem}`,
-                description: `Unbekanntes Problemmuster erkannt`,
+                description: "Unbekanntes Problemmuster erkannt",
                 proposedData: JSON.stringify(prob),
                 sourceSessionId: sessionId,
                 sourceCompanyId: companyId,
@@ -152,27 +188,21 @@ export async function persistMemoryUpdates(
             priority: opp.priority ?? 2,
             evidence: JSON.stringify(opp.evidence ?? []),
             okunSystem: opp.okunSystem,
+            solutionType: opp.solutionType,
+            status: "identified",
           },
         })
       );
     }
   }
 
-  // Update or create company memory
+  // Update CompanyMemory
   const profileFields = updates.companyProfile ?? {};
   const memoryUpdate: Record<string, unknown> = { updatedAt: new Date() };
-  if (Object.keys(profileFields).length > 0) {
-    memoryUpdate.profile = JSON.stringify(profileFields);
-  }
-  if (updates.roles && updates.roles.length > 0) {
-    memoryUpdate.roles = JSON.stringify(updates.roles);
-  }
-  if (updates.systems && updates.systems.length > 0) {
-    memoryUpdate.systems = JSON.stringify(updates.systems);
-  }
-  if (updates.challenges && updates.challenges.length > 0) {
-    memoryUpdate.challenges = JSON.stringify(updates.challenges);
-  }
+  if (Object.keys(profileFields).length > 0) memoryUpdate.profile = JSON.stringify(profileFields);
+  if (updates.roles?.length) memoryUpdate.roles = JSON.stringify(updates.roles);
+  if (updates.systems?.length) memoryUpdate.systems = JSON.stringify(updates.systems);
+  if (updates.challenges?.length) memoryUpdate.challenges = JSON.stringify(updates.challenges);
 
   if (Object.keys(memoryUpdate).length > 1) {
     tasks.push(

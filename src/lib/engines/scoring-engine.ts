@@ -10,119 +10,184 @@ const WEIGHTS = {
   personal: 0.05,
 };
 
-function severityToScore(severity: string): number {
+const BASE_SCORE = 40;
+
+interface EvidenceInput {
+  category: string;
+  signal: "POSITIVE" | "NEGATIVE";
+  weight: number;
+  description: string;
+  messageId?: string;
+}
+
+function severityPenalty(severity: string): number {
   switch (severity) {
-    case "CRITICAL": return -20;
-    case "HIGH": return -12;
-    case "MEDIUM": return -6;
-    case "LOW": return -2;
-    default: return 0;
+    case "CRITICAL": return -15;
+    case "HIGH":     return -10;
+    case "MEDIUM":   return -5;
+    case "LOW":      return -2;
+    default:         return 0;
   }
 }
 
 function maturityLabel(score: number): { level: string; label: string } {
-  if (score >= 80) return { level: "OPTIMIZED", label: "Optimiert" };
-  if (score >= 65) return { level: "MANAGED", label: "Gesteuert" };
-  if (score >= 50) return { level: "DEFINED", label: "Definiert" };
-  if (score >= 35) return { level: "DEVELOPING", label: "In Entwicklung" };
-  return { level: "INITIAL", label: "Initial" };
+  if (score >= 80) return { level: "OPTIMIZED",   label: "Professionell strukturiert" };
+  if (score >= 65) return { level: "MANAGED",     label: "Gut geführt, Potenzial erkannt" };
+  if (score >= 50) return { level: "DEFINED",     label: "Grundstruktur vorhanden" };
+  if (score >= 35) return { level: "DEVELOPING",  label: "Im Aufbau, erhebliches Potenzial" };
+  return              { level: "INITIAL",      label: "Handlungsbedarf in Grundstrukturen" };
 }
 
 export async function calculateOkunScore(sessionId: string, companyId: string) {
-  const [processes, problems, opportunities] = await Promise.all([
+  const [processes, problems, opportunities, session] = await Promise.all([
     db.processProfile.findMany({ where: { sessionId } }),
     db.detectedProblem.findMany({ where: { sessionId } }),
     db.opportunity.findMany({ where: { sessionId } }),
+    db.analysisSession.findUnique({
+      where: { id: sessionId },
+      include: {
+        progress: { include: { question: { select: { isRequired: true } } } },
+      },
+    }),
   ]);
 
-  // Base score starts at 70 (average company)
-  let baseScore = 70;
-
-  // Category scores (0-100)
-  const scores: Record<string, number> = {
-    prozesse: 70,
-    vertrieb: 70,
-    geschaeftsfuehrung: 70,
-    automatisierung: 50,
-    struktur: 70,
-    kommunikation: 70,
-    personal: 70,
+  // ── Category scores (base = 40) ─────────────────────────────────────────
+  const categoryScores: Record<string, number> = {
+    prozesse: BASE_SCORE,
+    vertrieb: BASE_SCORE,
+    geschaeftsfuehrung: BASE_SCORE,
+    automatisierung: BASE_SCORE,
+    struktur: BASE_SCORE,
+    kommunikation: BASE_SCORE,
+    personal: BASE_SCORE,
   };
 
-  // Apply process maturity
-  if (processes.length > 0) {
-    const avgMaturity = processes.reduce((sum, p) => sum + (p.maturityScore ?? 50), 0) / processes.length;
-    scores.prozesse = Math.round(avgMaturity);
-  } else {
-    scores.prozesse = 40; // penalty for no documented processes
+  const evidenceToSave: EvidenceInput[] = [];
+
+  // ── Positive signals ─────────────────────────────────────────────────────
+  // Documented processes with structured data
+  const wellDocumentedCount = processes.filter(
+    (p) => p.trigger && p.roles !== "[]" && p.steps !== "[]"
+  ).length;
+  if (wellDocumentedCount > 0) {
+    const w = Math.min(wellDocumentedCount * 5, 20);
+    categoryScores.prozesse += w;
+    evidenceToSave.push({ category: "prozesse", signal: "POSITIVE", weight: w, description: `${wellDocumentedCount} gut dokumentierte Prozesse mit Auslöser, Rollen und Schritten` });
   }
 
-  // Apply problem penalties per category
+  // Process maturity average
+  const processesWithMaturity = processes.filter((p) => p.maturityScore !== null);
+  if (processesWithMaturity.length > 0) {
+    const avg = processesWithMaturity.reduce((s, p) => s + (p.maturityScore ?? 50), 0) / processesWithMaturity.length;
+    const boost = Math.round((avg - 50) / 5);
+    if (boost !== 0) {
+      categoryScores.prozesse = Math.max(0, Math.min(100, categoryScores.prozesse + boost));
+      evidenceToSave.push({ category: "prozesse", signal: boost > 0 ? "POSITIVE" : "NEGATIVE", weight: boost, description: `Durchschnittliche Prozessreife: ${Math.round(avg)}/100` });
+    }
+  }
+
+  // Systems / automation: penalize if no systems detected
+  if (processes.some((p) => p.systems !== "[]")) {
+    categoryScores.automatisierung += 10;
+    evidenceToSave.push({ category: "automatisierung", signal: "POSITIVE", weight: 10, description: "Systemnutzung in Prozessen dokumentiert" });
+  }
+
+  // ── Negative signals from problems ──────────────────────────────────────
   for (const prob of problems) {
-    const penalty = severityToScore(prob.severity);
+    const penalty = severityPenalty(prob.severity);
     const cat = prob.category;
-    if (cat === "process") scores.prozesse = Math.max(0, scores.prozesse + penalty);
-    else if (cat === "sales") scores.vertrieb = Math.max(0, scores.vertrieb + penalty);
-    else if (cat === "leadership") scores.geschaeftsfuehrung = Math.max(0, scores.geschaeftsfuehrung + penalty);
-    else if (cat === "automation") scores.automatisierung = Math.max(0, scores.automatisierung + penalty);
-    else if (cat === "structure") scores.struktur = Math.max(0, scores.struktur + penalty);
-    else if (cat === "communication") scores.kommunikation = Math.max(0, scores.kommunikation + penalty);
-    else if (cat === "hr") scores.personal = Math.max(0, scores.personal + penalty);
+    const catKey =
+      cat === "process" ? "prozesse" :
+      cat === "sales" ? "vertrieb" :
+      cat === "leadership" ? "geschaeftsfuehrung" :
+      cat === "automation" ? "automatisierung" :
+      cat === "structure" ? "struktur" :
+      cat === "communication" ? "kommunikation" :
+      cat === "hr" ? "personal" : null;
+
+    if (catKey && penalty !== 0) {
+      categoryScores[catKey] = Math.max(0, categoryScores[catKey] + penalty);
+      evidenceToSave.push({
+        category: catKey,
+        signal: "NEGATIVE",
+        weight: penalty,
+        description: `Problem (${prob.severity}): ${prob.operativeProblem}`,
+      });
+    }
   }
 
-  // Automation bonus for identified opportunities
-  const automationOpps = opportunities.filter((o) => o.type === "AUTOMATION").length;
-  scores.automatisierung = Math.max(20, Math.min(100, scores.automatisierung - automationOpps * 5));
+  // ── Clamp all to 0–100 ───────────────────────────────────────────────────
+  for (const k of Object.keys(categoryScores)) {
+    categoryScores[k] = Math.max(0, Math.min(100, categoryScores[k]));
+  }
 
-  // Calculate weighted total
-  const total = Math.round(
-    scores.prozesse * WEIGHTS.prozesse +
-    scores.vertrieb * WEIGHTS.vertrieb +
-    scores.geschaeftsfuehrung * WEIGHTS.geschaeftsfuehrung +
-    scores.automatisierung * WEIGHTS.automatisierung +
-    scores.struktur * WEIGHTS.struktur +
-    scores.kommunikation * WEIGHTS.kommunikation +
-    scores.personal * WEIGHTS.personal
+  // ── Weighted total ────────────────────────────────────────────────────────
+  let total = Math.round(
+    categoryScores.prozesse         * WEIGHTS.prozesse +
+    categoryScores.vertrieb         * WEIGHTS.vertrieb +
+    categoryScores.geschaeftsfuehrung * WEIGHTS.geschaeftsfuehrung +
+    categoryScores.automatisierung  * WEIGHTS.automatisierung +
+    categoryScores.struktur         * WEIGHTS.struktur +
+    categoryScores.kommunikation    * WEIGHTS.kommunikation +
+    categoryScores.personal         * WEIGHTS.personal
   );
+
+  // ── Bonuses ───────────────────────────────────────────────────────────────
+  const criticalHighCount = problems.filter((p) => ["CRITICAL", "HIGH"].includes(p.severity)).length;
+  if (criticalHighCount < 3) {
+    total = Math.min(100, total + 5);
+    evidenceToSave.push({ category: "prozesse", signal: "POSITIVE", weight: 5, description: "Weniger als 3 kritische/hohe Probleme erkannt" });
+  }
+
+  // Question coverage bonus
+  if (session) {
+    const requiredTotal = session.progress.filter((p) => p.question.isRequired).length;
+    const totalRequired = 17; // Q1–Q17 are required
+    const coverage = requiredTotal / totalRequired;
+    if (coverage >= 0.8) {
+      total = Math.min(100, total + 10);
+      evidenceToSave.push({ category: "struktur", signal: "POSITIVE", weight: 10, description: `${Math.round(coverage * 100)}% der Pflichtfragen beantwortet` });
+    }
+  }
+
+  total = Math.max(0, Math.min(100, total));
 
   const { level, label } = maturityLabel(total);
 
-  // Generate strengths and potentials
-  const strengths: string[] = [];
-  const potentials: string[] = [];
+  // ── Strengths and potentials ─────────────────────────────────────────────
+  const areaLabels: Record<string, string> = {
+    prozesse: "Prozessqualität",
+    vertrieb: "Vertriebsstruktur",
+    geschaeftsfuehrung: "Führungsstruktur",
+    automatisierung: "Automatisierungsgrad",
+    struktur: "Unternehmensstruktur",
+    kommunikation: "Kommunikation",
+    personal: "Personalmanagement",
+  };
 
-  const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
-  for (const [area, score] of sorted.slice(0, 3)) {
-    if (score >= 65) {
-      const areaLabel: Record<string, string> = {
-        prozesse: "Prozessqualität",
-        vertrieb: "Vertriebsstruktur",
-        geschaeftsfuehrung: "Führungsstruktur",
-        automatisierung: "Automatisierungsgrad",
-        struktur: "Unternehmensstruktur",
-        kommunikation: "Kommunikation",
-        personal: "Personalmanagement",
-      };
-      strengths.push(areaLabel[area] ?? area);
-    }
+  const potentialDescs: Record<string, string> = {
+    prozesse: "Prozessdokumentation und -standardisierung",
+    vertrieb: "Vertriebsautomatisierung und Pipeline",
+    geschaeftsfuehrung: "Delegation und Entscheidungsstrukturen",
+    automatisierung: "Automatisierung wiederkehrender Aufgaben",
+    struktur: "Rollenklarheit und Verantwortlichkeiten",
+    kommunikation: "Informationsfluss und Kommunikationskanäle",
+    personal: "Recruiting- und Onboarding-Prozesse",
+  };
+
+  const sorted = Object.entries(categoryScores).sort((a, b) => b[1] - a[1]);
+  const strengths = sorted.filter(([, s]) => s >= 65).slice(0, 3).map(([a]) => areaLabels[a] ?? a);
+  const potentials = sorted.filter(([, s]) => s < 60).slice(-3).reverse().map(([a]) => potentialDescs[a] ?? a);
+
+  // ── Persist evidence ─────────────────────────────────────────────────────
+  await db.scoringEvidence.deleteMany({ where: { sessionId } });
+  if (evidenceToSave.length > 0) {
+    await db.scoringEvidence.createMany({
+      data: evidenceToSave.map((e) => ({ ...e, sessionId })),
+    });
   }
 
-  for (const [area, score] of sorted.slice(-3).reverse()) {
-    if (score < 65) {
-      const potential: Record<string, string> = {
-        prozesse: "Prozessdokumentation und -standardisierung",
-        vertrieb: "Vertriebsautomatisierung und Pipeline",
-        geschaeftsfuehrung: "Delegation und Entscheidungsstrukturen",
-        automatisierung: "Automatisierung wiederkehrender Aufgaben",
-        struktur: "Rollenklarheit und Verantwortlichkeiten",
-        kommunikation: "Informationsfluss und Kommunikationskanäle",
-        personal: "Recruiting- und Onboarding-Prozesse",
-      };
-      potentials.push(potential[area] ?? area);
-    }
-  }
-
-  // Save score
+  // ── Save score ────────────────────────────────────────────────────────────
   await db.okunScore.upsert({
     where: { sessionId },
     create: {
@@ -131,35 +196,35 @@ export async function calculateOkunScore(sessionId: string, companyId: string) {
       totalScore: total,
       maturityLevel: level,
       maturityLabel: label,
-      scoreProcesses: scores.prozesse,
-      scoreSales: scores.vertrieb,
-      scoreLeadership: scores.geschaeftsfuehrung,
-      scoreAutomation: scores.automatisierung,
-      scoreStructure: scores.struktur,
-      scoreCommunication: scores.kommunikation,
-      scoreHr: scores.personal,
+      scoreProcesses: categoryScores.prozesse,
+      scoreSales: categoryScores.vertrieb,
+      scoreLeadership: categoryScores.geschaeftsfuehrung,
+      scoreAutomation: categoryScores.automatisierung,
+      scoreStructure: categoryScores.struktur,
+      scoreCommunication: categoryScores.kommunikation,
+      scoreHr: categoryScores.personal,
       strengths: JSON.stringify(strengths),
       potentials: JSON.stringify(potentials),
-      evidence: JSON.stringify(scores),
+      evidence: JSON.stringify(categoryScores),
     },
     update: {
       totalScore: total,
       maturityLevel: level,
       maturityLabel: label,
-      scoreProcesses: scores.prozesse,
-      scoreSales: scores.vertrieb,
-      scoreLeadership: scores.geschaeftsfuehrung,
-      scoreAutomation: scores.automatisierung,
-      scoreStructure: scores.struktur,
-      scoreCommunication: scores.kommunikation,
-      scoreHr: scores.personal,
+      scoreProcesses: categoryScores.prozesse,
+      scoreSales: categoryScores.vertrieb,
+      scoreLeadership: categoryScores.geschaeftsfuehrung,
+      scoreAutomation: categoryScores.automatisierung,
+      scoreStructure: categoryScores.struktur,
+      scoreCommunication: categoryScores.kommunikation,
+      scoreHr: categoryScores.personal,
       strengths: JSON.stringify(strengths),
       potentials: JSON.stringify(potentials),
-      evidence: JSON.stringify(scores),
+      evidence: JSON.stringify(categoryScores),
     },
   });
 
-  // Also update the company's assessment score
+  // Update company assessment
   const assessment = await db.assessment.findFirst({
     where: { companyId },
     orderBy: { createdAt: "desc" },
@@ -171,5 +236,5 @@ export async function calculateOkunScore(sessionId: string, companyId: string) {
     });
   }
 
-  return { total, level, label, scores, strengths, potentials };
+  return { total, level, label, scores: categoryScores, strengths, potentials };
 }
