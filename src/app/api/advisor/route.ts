@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { buildSystemPrompt, buildLibrarySnippets } from "@/lib/engines/advisor-prompt";
 import { persistMemoryUpdates } from "@/lib/engines/memory-engine";
+import { calculateOkunScore } from "@/lib/engines/scoring-engine";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -275,11 +276,23 @@ export async function POST(req: NextRequest) {
 
   await db.analysisSession.update({ where: { id: sessionId }, data: updateData as never });
 
+  // Auto-calculate score when analysis completes
+  let scoreResult: Awaited<ReturnType<typeof calculateOkunScore>> | null = null;
+  if (notes.analysisComplete) {
+    try {
+      scoreResult = await calculateOkunScore(sessionId, companyId);
+    } catch (err) {
+      console.error("[/api/advisor] Score calculation failed:", err);
+    }
+  }
+
   return NextResponse.json({
     message: visibleMessage,
     phase: notes.phase ?? analysisSession.phase,
     currentArea: notes.currentArea ?? analysisSession.currentArea,
     completedAreas: notes.completedAreas ?? completedAreas,
     analysisComplete: notes.analysisComplete ?? false,
+    scoreReady: !!scoreResult,
+    score: scoreResult ? { total: scoreResult.total, label: scoreResult.label } : null,
   });
 }

@@ -1,10 +1,9 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import {
   CheckCircle2,
-  Circle,
-  Clock,
   ChevronRight,
   Bell,
   HelpCircle,
@@ -16,18 +15,10 @@ import {
   FolderOpen,
   AlertCircle,
   RefreshCw,
-  Send,
 } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 
-const PROCESS_STEPS = [
-  { id: 1, label: "Onboarding", status: "DONE" },
-  { id: 2, label: "OKUN FirstScan", status: "IN_PROGRESS" },
-  { id: 3, label: "Analyse & Auswertung", status: "PENDING" },
-  { id: 4, label: "Strategiegespräch", status: "PENDING" },
-  { id: 5, label: "Umsetzung", status: "PENDING" },
-  { id: 6, label: "Betreuung & Optimierung", status: "PENDING" },
-];
+const TOTAL_QUESTIONS = 18;
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -64,6 +55,50 @@ export default async function DashboardPage() {
       isInternal: false,
     },
   });
+
+  const analysisSession = company?.id
+    ? await db.analysisSession.findFirst({
+        where: { companyId: company.id },
+        include: { score: true },
+        orderBy: { createdAt: "desc" },
+      })
+    : null;
+
+  let completedAreasCount = 0;
+  try {
+    const arr = JSON.parse(analysisSession?.completedAreas ?? "[]");
+    completedAreasCount = Array.isArray(arr) ? arr.length : 0;
+  } catch {}
+
+  const analysisProgress =
+    analysisSession?.status === "COMPLETED"
+      ? 100
+      : analysisSession
+      ? Math.min(
+          95,
+          Math.round(
+            ((analysisSession.questionsAsked ?? 0) / TOTAL_QUESTIONS) * 100
+          )
+        )
+      : 0;
+
+  const blueprintStatus =
+    !analysisSession ? "PENDING"
+    : analysisSession.status === "COMPLETED" ? "DONE"
+    : "IN_PROGRESS";
+
+  const auswertungStatus =
+    analysisSession?.score ? "IN_PROGRESS"
+    : "PENDING";
+
+  const processSteps = [
+    { id: 1, label: "Onboarding",                status: "DONE" },
+    { id: 2, label: "OKUN Blueprint™",            status: blueprintStatus },
+    { id: 3, label: "Analyse & Auswertung",       status: auswertungStatus },
+    { id: 4, label: "Strategiegespräch",          status: "PENDING" },
+    { id: 5, label: "Umsetzung",                  status: "PENDING" },
+    { id: 6, label: "Betreuung & Optimierung",    status: "PENDING" },
+  ];
 
   return (
     <div className="max-w-[1400px] mx-auto">
@@ -121,19 +156,22 @@ export default async function DashboardPage() {
                       <circle
                         cx="18" cy="18" r="15.9" fill="none"
                         stroke="#22c55e" strokeWidth="2.5"
-                        strokeDasharray={`${(assessment?.score ?? 65)} ${100 - (assessment?.score ?? 65)}`}
+                        strokeDasharray={`${analysisProgress} ${100 - analysisProgress}`}
                         strokeLinecap="round"
                       />
                     </svg>
                     <span className="absolute inset-0 flex items-center justify-center text-[#f0f0f0] text-xs font-bold">
-                      {assessment?.score ?? 65}%
+                      {analysisProgress}%
                     </span>
                   </div>
                   <div>
                     <p className="text-[#f0f0f0] text-sm font-medium">
-                      {assessment?.status === "IN_PROGRESS" ? "In Bearbeitung" : "Ausstehend"}
+                      {analysisSession?.status === "COMPLETED" ? "Abgeschlossen" :
+                       analysisSession ? "In Bearbeitung" : "Ausstehend"}
                     </p>
-                    <button className="text-[#22c55e] text-xs mt-1">Zur Analyse →</button>
+                    <Link href={analysisSession?.status === "COMPLETED" ? "/analyse/ergebnis" : "/analyse"} className="text-[#22c55e] text-xs mt-1 block">
+                      {analysisSession?.status === "COMPLETED" ? "Ergebnisse →" : "Zur Analyse →"}
+                    </Link>
                   </div>
                 </div>
               </div>
@@ -187,9 +225,9 @@ export default async function DashboardPage() {
           <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
             <h3 className="text-[#f0f0f0] font-semibold text-sm mb-5">Ihr aktueller Fortschritt</h3>
             <div className="space-y-1">
-              {PROCESS_STEPS.map((step, i) => (
+              {processSteps.map((step, i) => (
                 <div key={step.id} className="flex items-center gap-3 py-3 relative">
-                  {i < PROCESS_STEPS.length - 1 && (
+                  {i < processSteps.length - 1 && (
                     <div className="absolute left-[11px] top-[calc(50%+12px)] w-0.5 h-[calc(100%-4px)] bg-[#2a2a2a]" />
                   )}
                   <div className="relative z-10 flex-shrink-0">
@@ -239,16 +277,33 @@ export default async function DashboardPage() {
                 <BarChart3 size={16} className="text-[#22c55e]" />
               </div>
               <div>
-                <p className="text-[#f0f0f0] text-sm font-medium">OKUN FirstScan</p>
+                <p className="text-[#f0f0f0] text-sm font-medium">
+                  {analysisSession?.status === "COMPLETED"
+                    ? "Ihre Ergebnisse sind bereit"
+                    : analysisSession
+                    ? "OKUN Blueprint™ fortsetzen"
+                    : "OKUN Blueprint™ starten"}
+                </p>
                 <p className="text-[#888] text-xs mt-0.5">
-                  Bitte setzen Sie die OKUN FirstScan Analyse fort.
+                  {analysisSession?.status === "COMPLETED"
+                    ? "Sehen Sie Ihren OKUN Score und Optimierungspotenziale."
+                    : analysisSession
+                    ? "Ihre Analyse ist noch nicht abgeschlossen."
+                    : "Starten Sie jetzt die strukturierte Unternehmensanalyse."}
                 </p>
               </div>
             </div>
-            <button className="w-full bg-[#22c55e] hover:bg-[#16a34a] text-black font-semibold text-sm rounded-lg py-2.5 flex items-center justify-center gap-2 transition-colors">
-              Analyse fortsetzen
+            <Link
+              href={analysisSession?.status === "COMPLETED" ? "/analyse/ergebnis" : "/analyse"}
+              className="w-full bg-[#22c55e] hover:bg-[#16a34a] text-black font-semibold text-sm rounded-lg py-2.5 flex items-center justify-center gap-2 transition-colors"
+            >
+              {analysisSession?.status === "COMPLETED"
+                ? "Ergebnisse ansehen"
+                : analysisSession
+                ? "Analyse fortsetzen"
+                : "Analyse starten"}
               <ChevronRight size={15} />
-            </button>
+            </Link>
           </div>
 
           {/* Contact */}
@@ -293,82 +348,138 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* AI Chat (OKUN FirstScan) */}
+      {/* Blueprint Status */}
       <div className="mt-5 grid grid-cols-12 gap-5">
         <div className="col-span-12 lg:col-span-5 lg:col-start-9">
-          <AiChatWidget userName={user.name?.split(" ")[0] ?? "Kunde"} />
+          <BlueprintStatusCard session={analysisSession} progress={analysisProgress} />
         </div>
       </div>
     </div>
   );
 }
 
-function AiChatWidget({ userName }: { userName: string }) {
+type SessionWithScore = {
+  status: string;
+  questionsAsked: number;
+  totalMessages: number;
+  lastActiveAt: Date | null;
+  completedAt: Date | null;
+  score: { totalScore: number; maturityLabel: string } | null;
+} | null;
+
+function BlueprintStatusCard({
+  session,
+  progress,
+}: {
+  session: SessionWithScore;
+  progress: number;
+}) {
+  if (!session) {
+    return (
+      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-9 h-9 rounded-lg bg-[#22c55e]/10 border border-[#22c55e]/20 flex items-center justify-center flex-shrink-0">
+            <span className="text-[#22c55e] text-xs font-bold">OA</span>
+          </div>
+          <div>
+            <p className="text-[#f0f0f0] text-sm font-medium">OKUN Blueprint™</p>
+            <p className="text-[#888] text-xs">Noch nicht gestartet</p>
+          </div>
+        </div>
+        <p className="text-[#888] text-xs leading-relaxed mb-5">
+          Starten Sie jetzt Ihre strukturierte Unternehmensanalyse. Die KI führt Sie in ca.&nbsp;30&nbsp;Minuten durch alle wichtigen Bereiche Ihres Unternehmens.
+        </p>
+        <Link
+          href="/analyse"
+          className="w-full bg-[#22c55e] hover:bg-[#16a34a] text-black font-semibold text-sm rounded-lg py-2.5 flex items-center justify-center gap-2 transition-colors"
+        >
+          Blueprint starten
+          <ChevronRight size={15} />
+        </Link>
+      </div>
+    );
+  }
+
+  if (session.status === "COMPLETED" && session.score) {
+    return (
+      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-9 h-9 rounded-lg bg-[#22c55e]/10 border border-[#22c55e]/20 flex items-center justify-center flex-shrink-0">
+            <span className="text-[#22c55e] text-xs font-bold">OA</span>
+          </div>
+          <div>
+            <p className="text-[#f0f0f0] text-sm font-medium">OKUN Blueprint™</p>
+            <p className="text-[#22c55e] text-xs">Analyse abgeschlossen ✓</p>
+          </div>
+        </div>
+        <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg p-4 mb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[#888] text-xs mb-1">OKUN Score</p>
+              <p className="text-[#f0f0f0] text-2xl font-bold">{session.score.totalScore}</p>
+              <p className="text-[#888] text-xs mt-0.5">{session.score.maturityLabel}</p>
+            </div>
+            <div className="relative w-14 h-14 flex-shrink-0">
+              <svg viewBox="0 0 36 36" className="w-14 h-14 -rotate-90">
+                <circle cx="18" cy="18" r="15.9" fill="none" stroke="#1e1e1e" strokeWidth="2.5" />
+                <circle
+                  cx="18" cy="18" r="15.9" fill="none"
+                  stroke="#22c55e" strokeWidth="2.5"
+                  strokeDasharray={`${session.score.totalScore} ${100 - session.score.totalScore}`}
+                  strokeLinecap="round"
+                />
+              </svg>
+              <span className="absolute inset-0 flex items-center justify-center text-[#f0f0f0] text-xs font-bold">
+                {session.score.totalScore}
+              </span>
+            </div>
+          </div>
+        </div>
+        <Link
+          href="/analyse/ergebnis"
+          className="w-full bg-[#22c55e] hover:bg-[#16a34a] text-black font-semibold text-sm rounded-lg py-2.5 flex items-center justify-center gap-2 transition-colors"
+        >
+          Ergebnisse ansehen
+          <ChevronRight size={15} />
+        </Link>
+      </div>
+    );
+  }
+
+  // In progress
   return (
-    <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl overflow-hidden">
-      {/* Chat header */}
-      <div className="flex items-center gap-3 p-4 border-b border-[#2a2a2a]">
-        <div className="w-9 h-9 rounded-lg bg-[#22c55e]/10 border border-[#22c55e]/20 flex items-center justify-center">
-          <span className="text-[#22c55e] text-xs font-bold">AI</span>
+    <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-6">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-9 h-9 rounded-lg bg-[#22c55e]/10 border border-[#22c55e]/20 flex items-center justify-center flex-shrink-0">
+          <span className="text-[#22c55e] text-xs font-bold">OA</span>
         </div>
         <div>
-          <p className="text-[#f0f0f0] text-sm font-medium">OKUN FirstScan</p>
-          <p className="text-[#22c55e] text-xs">Ihr digitaler OKUN-Berater</p>
+          <p className="text-[#f0f0f0] text-sm font-medium">OKUN Blueprint™</p>
+          <p className="text-[#888] text-xs">Analyse läuft</p>
         </div>
+        <span className="ml-auto text-[#22c55e] text-xs font-semibold">{progress}%</span>
       </div>
-
-      {/* Messages */}
-      <div className="p-4 space-y-3 max-h-[280px] overflow-y-auto">
-        <div className="flex gap-2.5">
-          <div className="w-7 h-7 rounded-full bg-[#22c55e]/10 border border-[#22c55e]/20 flex-shrink-0 flex items-center justify-center">
-            <span className="text-[#22c55e] text-xs">AI</span>
-          </div>
-          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg rounded-tl-none px-3 py-2.5 max-w-[85%]">
-            <p className="text-[#f0f0f0] text-xs leading-relaxed">
-              Hallo {userName}, ich bin Ihr digitaler OKUN-Berater. Ich begleite Sie durch die Analyse, um Ihr Unternehmen bestmöglich zu verstehen.
-            </p>
-          </div>
+      <div className="mb-4">
+        <div className="h-1.5 bg-[#1e1e1e] rounded-full overflow-hidden mb-2">
+          <div
+            className="h-full bg-[#22c55e] rounded-full transition-all"
+            style={{ width: `${progress}%` }}
+          />
         </div>
-        <div className="flex gap-2.5">
-          <div className="w-7 h-7 rounded-full bg-[#22c55e]/10 border border-[#22c55e]/20 flex-shrink-0 flex items-center justify-center">
-            <span className="text-[#22c55e] text-xs">AI</span>
-          </div>
-          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg rounded-tl-none px-3 py-2.5 max-w-[85%]">
-            <p className="text-[#f0f0f0] text-xs leading-relaxed">
-              Erzählen Sie mir gerne kurz von Ihrem Unternehmen.
-            </p>
-          </div>
-        </div>
-        <div className="flex justify-end">
-          <div className="bg-[#22c55e]/15 border border-[#22c55e]/25 rounded-lg rounded-tr-none px-3 py-2.5 max-w-[85%]">
-            <p className="text-[#f0f0f0] text-xs leading-relaxed">
-              Wir sind ein ambulanter Pflegedienst mit 28 Mitarbeitern.
-            </p>
-          </div>
-        </div>
-        <div className="flex gap-2.5">
-          <div className="w-7 h-7 rounded-full bg-[#22c55e]/10 border border-[#22c55e]/20 flex-shrink-0 flex items-center justify-center">
-            <span className="text-[#22c55e] text-xs">AI</span>
-          </div>
-          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg rounded-tl-none px-3 py-2.5 max-w-[85%]">
-            <p className="text-[#f0f0f0] text-xs leading-relaxed">
-              Vielen Dank! Das ist ein guter Start. Wie organisieren Sie aktuell die Dienstplanung?
-            </p>
-          </div>
-        </div>
+        <p className="text-[#555] text-xs">
+          {session.questionsAsked} von {18} Fragen beantwortet
+          {session.lastActiveAt && (
+            <> · Zuletzt aktiv {new Date(session.lastActiveAt).toLocaleDateString("de-DE")}</>
+          )}
+        </p>
       </div>
-
-      {/* Input */}
-      <div className="p-3 border-t border-[#2a2a2a] flex gap-2">
-        <input
-          type="text"
-          placeholder="Ihre Nachricht..."
-          className="flex-1 bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs text-[#f0f0f0] placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50"
-        />
-        <button className="w-9 h-9 rounded-lg bg-[#22c55e] hover:bg-[#16a34a] flex items-center justify-center flex-shrink-0 transition-colors">
-          <Send size={14} className="text-black" />
-        </button>
-      </div>
+      <Link
+        href="/analyse"
+        className="w-full bg-[#22c55e] hover:bg-[#16a34a] text-black font-semibold text-sm rounded-lg py-2.5 flex items-center justify-center gap-2 transition-colors"
+      >
+        Analyse fortsetzen
+        <ChevronRight size={15} />
+      </Link>
     </div>
   );
 }

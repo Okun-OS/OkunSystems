@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Loader2, CheckCircle2, RotateCcw, Mic } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Send, Loader2, CheckCircle2 } from "lucide-react";
 
 interface Message {
   id: string;
@@ -41,6 +42,7 @@ const PHASE_LABELS: Record<string, string> = {
 };
 
 export default function AdvisorChat({ initialSession }: { initialSession: Session }) {
+  const router = useRouter();
   const [messages, setMessages] = useState<Message[]>(initialSession.messages);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -97,7 +99,12 @@ export default function AdvisorChat({ initialSession }: { initialSession: Sessio
       if (data.phase) setPhase(data.phase);
       if (data.currentArea) setCurrentArea(data.currentArea);
       if (Array.isArray(data.completedAreas)) setCompletedAreas(data.completedAreas);
-      if (data.analysisComplete) setIsComplete(true);
+      if (data.analysisComplete) {
+        setIsComplete(true);
+        if (data.scoreReady) {
+          setTimeout(() => router.push("/analyse/ergebnis"), 2500);
+        }
+      }
     } catch (err: unknown) {
       setMessages((prev) => [
         ...prev,
