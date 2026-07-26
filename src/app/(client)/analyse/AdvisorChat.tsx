@@ -68,9 +68,9 @@ export default function AdvisorChat({ initialSession }: { initialSession: Sessio
     }
   }, []);
 
-  const progressPercent = isComplete
-    ? 100
-    : Math.min(95, Math.round((questionsAsked / TOTAL_QUESTIONS) * 100));
+  const msgBasedProgress = Math.min(85, Math.round((messages.length / 50) * 100));
+  const qBasedProgress = Math.min(95, Math.round((questionsAsked / TOTAL_QUESTIONS) * 100));
+  const progressPercent = isComplete ? 100 : Math.max(msgBasedProgress, qBasedProgress);
 
   async function sendMessage() {
     if (!input.trim() || loading) return;
@@ -165,7 +165,7 @@ export default function AdvisorChat({ initialSession }: { initialSession: Sessio
     ta.style.height = Math.min(ta.scrollHeight, 120) + "px";
   }
 
-  const currentAreaLabel = AREA_LABELS[currentArea] ?? currentArea;
+  const currentAreaLabel = AREA_LABELS[currentArea] ?? "–";
 
   return (
     <div className="max-w-[900px] mx-auto flex flex-col h-[calc(100vh-120px)]">

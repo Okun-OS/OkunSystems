@@ -71,6 +71,8 @@ export function buildSystemPrompt(ctx: SessionContext): string {
       : `\nKOMMENDE FRAGEN (nur zur Orientierung, noch nicht stellen):\n${items}`;
   }
 
+  const validAreasList = `unternehmensstruktur | vertrieb | kommunikation | prozesse | systeme | personal | geschaeftsfuehrung`;
+
   if (isEn) {
     return `You are the OKUN Advisor™, a professional business analysis AI for OKUN Systems.
 
@@ -101,22 +103,32 @@ SESSION STATE:
 ${questionDirective}
 ${upcomingStr}
 
-OUTPUT FORMAT — STRICTLY FOLLOW THIS:
-Write the visible response/question to the customer as plain text.
-Then on a NEW LINE write exactly: [META]
-Then on the next line write the internal JSON (one line, valid JSON):
+═══════════════════════════════════════════════════════════
+OUTPUT FORMAT — MANDATORY FOR EVERY SINGLE RESPONSE:
+═══════════════════════════════════════════════════════════
+1. Write the visible response/question to the customer as plain text.
+2. On a NEW LINE write EXACTLY the word: [META]
+3. On the next line write a single-line valid JSON object.
+
+NEVER omit the [META] block. NEVER split it across multiple lines.
 
 Example:
-Thank you for that overview. I'd like to understand your sales process better.
+Thank you for that overview. I'd like to understand your sales process better. Which two or three services make up the largest portion of your revenue?
 
 [META]
-{"internalNotes":{"phase":"PROZESSE","currentArea":"vertrieb","completedAreas":["unternehmensstruktur"],"analysisComplete":false,"lastQuestion":"Q4","followUpsUsed":0,"hypotheses":[],"detectedSignals":[]},"memoryUpdates":{"processes":[],"detectedProblems":[],"opportunities":[],"companyProfile":{},"roles":[],"systems":[],"challenges":[]}}
+{"internalNotes":{"phase":"PROFIL","currentArea":"unternehmensstruktur","completedAreas":[],"analysisComplete":false,"lastQuestion":"Q3","followUpsUsed":0,"hypotheses":[]},"memoryUpdates":{"processes":[],"detectedProblems":[],"opportunities":[],"companyProfile":{},"roles":[],"systems":[],"challenges":[]}}
 
-JSON RULES:
-- "lastQuestion": externalId of the required question just asked (null if follow-up)
-- "followUpsUsed": 0 if you asked a required question, 1 if this was a follow-up turn
-- "completedAreas": areas where you have collected sufficient information
-- "analysisComplete": true only after all required questions AND closing summary given
+═══════════════════════════════════════════════════════════
+STRICT JSON RULES — READ CAREFULLY:
+═══════════════════════════════════════════════════════════
+"lastQuestion": REQUIRED when you ask a question from the question bank (Q1–Q21). Set to the externalId exactly (e.g. "Q5"). Set to null ONLY for a follow-up where you already set it in the previous turn.
+"followUpsUsed": 0 when you asked a new required question (and set lastQuestion). 1 when this was a follow-up turn.
+"phase": MUST be one of: INTRO | PROFIL | PROZESSE | TIEFE | SYSTEME | GESCHAEFTSFUEHRUNG | ABSCHLUSS
+"currentArea": MUST be exactly one of these 7 values (nothing else!):
+  ${validAreasList}
+  DO NOT write free text like "Dienstplanung" or "shift scheduling" — pick the closest key from the list above.
+"completedAreas": list of area keys (same 7 values) where you have enough information
+"analysisComplete": true ONLY after all required questions AND you gave the closing summary
 - Match processes to the Process Library — include "libraryRef" with the library ID if matched
 - Include detected problem patterns fully in "detectedProblems"`;
   }
@@ -150,22 +162,32 @@ SESSION-STATUS:
 ${questionDirective}
 ${upcomingStr}
 
-AUSGABEFORMAT — GENAU SO EINHALTEN:
-Schreibe die sichtbare Antwort/Frage an den Kunden als normalen Fließtext.
-Dann füge auf einer NEUEN Zeile exakt diesen Text ein: [META]
-Dann folgt in der nächsten Zeile das interne JSON-Objekt (eine Zeile, valides JSON):
+═══════════════════════════════════════════════════════════
+AUSGABEFORMAT — PFLICHT BEI JEDER EINZELNEN ANTWORT:
+═══════════════════════════════════════════════════════════
+1. Schreibe die sichtbare Antwort/Frage an den Kunden als normalen Fließtext.
+2. Füge auf einer NEUEN Zeile EXAKT diesen Text ein: [META]
+3. Dann folgt in der nächsten Zeile das JSON-Objekt (eine Zeile, valides JSON).
+
+[META] DARF NIE fehlen. [META] DARF NIE über mehrere Zeilen verteilt sein.
 
 Beispiel:
-Danke für diese Übersicht. Ich würde gerne verstehen, wie Ihr Vertriebsprozess abläuft.
+Danke für diese Übersicht. Welche zwei oder drei Leistungen machen den größten Teil Ihres Umsatzes aus?
 
 [META]
-{"internalNotes":{"phase":"PROZESSE","currentArea":"vertrieb","completedAreas":["unternehmensstruktur"],"analysisComplete":false,"lastQuestion":"Q4","followUpsUsed":0,"hypotheses":[],"detectedSignals":[]},"memoryUpdates":{"processes":[],"detectedProblems":[],"opportunities":[],"companyProfile":{},"roles":[],"systems":[],"challenges":[]}}
+{"internalNotes":{"phase":"PROFIL","currentArea":"unternehmensstruktur","completedAreas":[],"analysisComplete":false,"lastQuestion":"Q3","followUpsUsed":0,"hypotheses":[]},"memoryUpdates":{"processes":[],"detectedProblems":[],"opportunities":[],"companyProfile":{},"roles":[],"systems":[],"challenges":[]}}
 
-REGELN FÜR DAS JSON:
-- "lastQuestion": externalId der Pflichtfrage die du gerade gestellt hast (null wenn Follow-up)
-- "followUpsUsed": 0 wenn du eine Pflichtfrage gestellt hast, 1 wenn es ein Follow-up-Turn war
-- "completedAreas": alle Bereiche wo du ausreichend Informationen gesammelt hast
-- "analysisComplete": true nur wenn alle Pflichtfragen gestellt wurden UND du die Abschluss-Zusammenfassung gegeben hast
+═══════════════════════════════════════════════════════════
+STRIKTE JSON-REGELN — GENAU LESEN:
+═══════════════════════════════════════════════════════════
+"lastQuestion": PFLICHT wenn du eine Frage aus dem Fragenkatalog stellst (Q1–Q21). Setze die externalId exakt (z.B. "Q5"). Nur null wenn es ein reines Follow-up war (lastQuestion im vorherigen Turn bereits gesetzt).
+"followUpsUsed": 0 wenn du eine neue Pflichtfrage gestellt hast (und lastQuestion gesetzt hast). 1 wenn dieser Turn ein Follow-up war.
+"phase": MUSS eines dieser Werte sein: INTRO | PROFIL | PROZESSE | TIEFE | SYSTEME | GESCHAEFTSFUEHRUNG | ABSCHLUSS
+"currentArea": MUSS EXAKT einer dieser 7 Werte sein (nichts anderes!):
+  ${validAreasList}
+  KEIN Freitext wie "Dienstplanung" oder "Schichtplanung" — nimm den nächstpassenden Schlüssel aus der Liste.
+"completedAreas": Liste der Bereichsschlüssel (gleiche 7 Werte) wo du genug Informationen gesammelt hast
+"analysisComplete": true NUR wenn alle Pflichtfragen gestellt wurden UND du die Abschluss-Zusammenfassung gegeben hast
 - Erkannte Prozesse gegen die Prozessbibliothek abgleichen, "libraryRef" mit der Library-ID setzen
 - Erkannte Problemmuster vollständig in "detectedProblems" aufführen`;
 }

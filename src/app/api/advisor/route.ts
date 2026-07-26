@@ -10,6 +10,9 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const META_MARKER = "\n[META]\n";
 
+const PHASE_ORDER = ["INTRO", "PROFIL", "PROZESSE", "TIEFE", "SYSTEME", "GESCHAEFTSFUEHRUNG", "ABSCHLUSS"];
+const VALID_AREAS = new Set(["unternehmensstruktur", "vertrieb", "kommunikation", "prozesse", "systeme", "personal", "geschaeftsfuehrung"]);
+
 export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -66,8 +69,13 @@ export async function POST(req: NextRequest) {
     currentQuestion = { ...lastProgress.question, followUpsUsed: lastProgress.followUpsUsed };
   }
 
-  // Next pending required question
-  const pendingQuestions = allQuestions.filter((q) => !askedQuestionIds.has(q.id));
+  // Next pending required question — only from current phase or later (never go backwards)
+  const currentPhaseIdx = Math.max(0, PHASE_ORDER.indexOf(analysisSession.phase));
+  const pendingQuestions = allQuestions.filter((q) => {
+    if (askedQuestionIds.has(q.id)) return false;
+    const qPhaseIdx = PHASE_ORDER.indexOf(q.phase);
+    return qPhaseIdx >= currentPhaseIdx;
+  });
   const nextQuestion = pendingQuestions[0] ?? null;
   const pendingUpcoming = pendingQuestions.slice(1, 4);
 
@@ -264,8 +272,8 @@ export async function POST(req: NextRequest) {
     totalMessages: { increment: 2 },
     lastActiveAt: new Date(),
   };
-  if (notes.phase) updateData.phase = notes.phase;
-  if (notes.currentArea) updateData.currentArea = notes.currentArea;
+  if (notes.phase && PHASE_ORDER.includes(notes.phase)) updateData.phase = notes.phase;
+  if (notes.currentArea && VALID_AREAS.has(notes.currentArea)) updateData.currentArea = notes.currentArea;
   if (notes.completedAreas) updateData.completedAreas = JSON.stringify(notes.completedAreas);
   if (notes.hypotheses) updateData.hypotheses = JSON.stringify(notes.hypotheses);
   if (notes.lastQuestion) updateData.questionsAsked = { increment: 1 };
