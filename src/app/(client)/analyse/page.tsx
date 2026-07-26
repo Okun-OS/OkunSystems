@@ -14,6 +14,13 @@ export default async function AnalysePage() {
 
   const companyId = user.companyId;
 
+  // If already completed, redirect to results
+  const completedSession = await db.analysisSession.findFirst({
+    where: { companyId, status: "COMPLETED" },
+    select: { id: true },
+  });
+  if (completedSession) redirect("/analyse/ergebnis");
+
   // Find or create active analysis session
   let analysisSession = await db.analysisSession.findFirst({
     where: { companyId, status: { in: ["ACTIVE", "PAUSED"] } },
@@ -47,6 +54,7 @@ export default async function AnalysePage() {
     currentArea: analysisSession.currentArea,
     status: analysisSession.status,
     totalMessages: analysisSession.totalMessages,
+    questionsAsked: analysisSession.questionsAsked ?? 0,
     messages: analysisSession.messages.map((m) => ({
       id: m.id,
       role: m.role as "user" | "assistant",

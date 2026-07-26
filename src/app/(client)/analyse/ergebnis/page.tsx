@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { CalendarDays } from "lucide-react";
 
 const AREA_LABELS: Record<string, { label: string; key: string }> = {
   scoreProcesses:      { label: "Prozessqualität",        key: "prozesse" },
@@ -166,14 +167,15 @@ export default async function ErgebnisPage() {
             </h2>
             <p className="text-[#888] text-sm mt-2">
               In einem kostenlosen Gespräch besprechen wir Ihre Ergebnisse und zeigen konkrete
-              Maßnahmen mit echtem ROI.
+              Maßnahmen mit echtem ROI. Frühester Termin: 3 Werktage ab heute.
             </p>
           </div>
           <Link
             href="/termine"
-            className="mt-4 inline-block bg-[#22c55e] hover:bg-[#16a34a] text-black font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors text-center"
+            className="mt-4 inline-flex items-center justify-center gap-2 bg-[#22c55e] hover:bg-[#16a34a] text-black font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors"
           >
-            Termin vereinbaren
+            <CalendarDays size={15} />
+            Termin buchen
           </Link>
         </div>
       </div>

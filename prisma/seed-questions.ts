@@ -283,6 +283,55 @@ const QUESTIONS = [
     scoringSignal: "NEGATIVE",
     maxFollowUps: 1,
   },
+  // ── OKUN SYSTEME (Dienstplanung / Zeiterfassung / Lohnabrechnung) ─────────
+  {
+    externalId: "Q19",
+    area: "systeme",
+    phase: "SYSTEME",
+    order: 19,
+    isRequired: true,
+    intent: "Dienstplanung erfassen: Wie wird der Dienstplan erstellt? Manuell, Excel, Software?",
+    questionDe:
+      "Wie erstellen Sie aktuell Ihre Dienstpläne oder Schichtpläne – nutzen Sie dafür spezielle Software, Excel oder läuft das noch manuell?",
+    questionEn:
+      "How do you currently create your duty rosters or shift plans – do you use specific software, Excel, or is it still manual?",
+    followUpTriggers: JSON.stringify(["excel", "papier", "manuell", "per hand", "handschriftlich"]),
+    scoringCategory: "automatisierung",
+    scoringSignal: "POSITIVE",
+    maxFollowUps: 1,
+  },
+  {
+    externalId: "Q20",
+    area: "systeme",
+    phase: "SYSTEME",
+    order: 20,
+    isRequired: true,
+    intent: "Zeiterfassung und Lohnabrechnung verstehen: digital oder manuell?",
+    questionDe:
+      "Wie erfassen Ihre Mitarbeiter ihre Arbeitszeiten – digital per App, über ein Stechuhrsystem oder auf Papier? Und wie läuft die Lohnabrechnung ab – intern mit Software oder extern über einen Steuerberater?",
+    questionEn:
+      "How do your employees record their working hours – digitally via app, through a time-clock system, or on paper? And how is payroll handled – internally with software or externally through an accountant?",
+    followUpTriggers: JSON.stringify(["papier", "excel", "steuerberater", "extern", "manuell"]),
+    scoringCategory: "automatisierung",
+    scoringSignal: "POSITIVE",
+    maxFollowUps: 1,
+  },
+  {
+    externalId: "Q21",
+    area: "systeme",
+    phase: "SYSTEME",
+    order: 21,
+    isRequired: true,
+    intent: "Einsatzplanung für Mitarbeiter im Feld verstehen: Wie wird koordiniert wer wann wo ist?",
+    questionDe:
+      "Wie koordinieren Sie die Einsätze Ihrer Mitarbeiter – also wer geht wann zu welchem Kunden oder Einsatzort? Gibt es da ein System, oder läuft das über Telefon und WhatsApp?",
+    questionEn:
+      "How do you coordinate your employees' assignments – who goes when to which client or location? Is there a system for that, or does it happen via phone and WhatsApp?",
+    followUpTriggers: JSON.stringify(["whatsapp", "telefon", "zettel", "manuell", "per nachricht"]),
+    scoringCategory: "automatisierung",
+    scoringSignal: "POSITIVE",
+    maxFollowUps: 1,
+  },
   // ── ABSCHLUSS ─────────────────────────────────────────────────────────────
   {
     externalId: "Q18",

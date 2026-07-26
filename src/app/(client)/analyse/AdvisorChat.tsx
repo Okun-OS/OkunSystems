@@ -17,6 +17,7 @@ interface Session {
   currentArea: string | null;
   status: string;
   totalMessages: number;
+  questionsAsked: number;
   messages: Message[];
 }
 
@@ -30,8 +31,6 @@ const AREA_LABELS: Record<string, string> = {
   geschaeftsfuehrung: "Geschäftsführung",
 };
 
-const AREAS = Object.keys(AREA_LABELS);
-
 const PHASE_LABELS: Record<string, string> = {
   INTRO: "Einführung",
   PROFIL: "Unternehmensprofil",
@@ -41,6 +40,8 @@ const PHASE_LABELS: Record<string, string> = {
   ABSCHLUSS: "Abschluss",
 };
 
+const TOTAL_QUESTIONS = 21;
+
 export default function AdvisorChat({ initialSession }: { initialSession: Session }) {
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>(initialSession.messages);
@@ -49,7 +50,9 @@ export default function AdvisorChat({ initialSession }: { initialSession: Sessio
   const [phase, setPhase] = useState(initialSession.phase);
   const [currentArea, setCurrentArea] = useState(initialSession.currentArea ?? "unternehmensstruktur");
   const [isComplete, setIsComplete] = useState(initialSession.status === "COMPLETED");
+  const [questionsAsked, setQuestionsAsked] = useState(initialSession.questionsAsked ?? 0);
   const [completedAreas, setCompletedAreas] = useState<string[]>([]);
+  const [redirecting, setRedirecting] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -57,13 +60,27 @@ export default function AdvisorChat({ initialSession }: { initialSession: Sessio
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const progressPercent = Math.min(
-    Math.round((completedAreas.length / AREAS.length) * 100),
-    isComplete ? 100 : 95
-  );
+  // If already complete on load, redirect
+  useEffect(() => {
+    if (initialSession.status === "COMPLETED") {
+      setRedirecting(true);
+      setTimeout(() => router.push("/analyse/ergebnis"), 1500);
+    }
+  }, []);
+
+  const progressPercent = isComplete
+    ? 100
+    : Math.min(95, Math.round((questionsAsked / TOTAL_QUESTIONS) * 100));
 
   async function sendMessage() {
-    if (!input.trim() || loading || isComplete) return;
+    if (!input.trim() || loading) return;
+
+    // If already complete, redirect instead of sending
+    if (isComplete) {
+      router.push("/analyse/ergebnis");
+      return;
+    }
+
     const userMsg = input.trim();
     setInput("");
 
@@ -80,6 +97,18 @@ export default function AdvisorChat({ initialSession }: { initialSession: Sessio
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: userMsg, sessionId: initialSession.id }),
       });
+
+      if (res.status === 400) {
+        const err = await res.json();
+        if (err.error === "Session completed") {
+          // Session already complete on server — redirect
+          setIsComplete(true);
+          setRedirecting(true);
+          setTimeout(() => router.push("/analyse/ergebnis"), 1500);
+          return;
+        }
+        throw new Error(err.error ?? "Fehler");
+      }
 
       if (!res.ok) {
         const err = await res.json();
@@ -99,11 +128,13 @@ export default function AdvisorChat({ initialSession }: { initialSession: Sessio
       if (data.phase) setPhase(data.phase);
       if (data.currentArea) setCurrentArea(data.currentArea);
       if (Array.isArray(data.completedAreas)) setCompletedAreas(data.completedAreas);
+      if (typeof data.questionsAsked === "number") setQuestionsAsked(data.questionsAsked);
+
       if (data.analysisComplete) {
         setIsComplete(true);
-        if (data.scoreReady) {
-          setTimeout(() => router.push("/analyse/ergebnis"), 2500);
-        }
+        setRedirecting(true);
+        // Redirect after brief pause so user sees the completion message
+        setTimeout(() => router.push("/analyse/ergebnis"), 3000);
       }
     } catch (err: unknown) {
       setMessages((prev) => [
@@ -170,16 +201,11 @@ export default function AdvisorChat({ initialSession }: { initialSession: Sessio
           />
         </div>
         <div className="flex gap-1 mt-3">
-          {AREAS.map((area) => (
+          {Array.from({ length: TOTAL_QUESTIONS }).map((_, i) => (
             <div
-              key={area}
-              title={AREA_LABELS[area]}
+              key={i}
               className={`flex-1 h-1 rounded-full transition-colors ${
-                completedAreas.includes(area)
-                  ? "bg-[#22c55e]"
-                  : area === currentArea
-                  ? "bg-[#22c55e]/40"
-                  : "bg-[#2a2a2a]"
+                i < questionsAsked ? "bg-[#22c55e]" : "bg-[#2a2a2a]"
               }`}
             />
           ))}
@@ -230,8 +256,13 @@ export default function AdvisorChat({ initialSession }: { initialSession: Sessio
               <CheckCircle2 size={20} className="text-[#22c55e]" />
               <div>
                 <p className="text-[#f0f0f0] font-semibold text-sm">Analyse abgeschlossen</p>
-                <p className="text-[#888] text-xs mt-0.5">Ihr OKUN Score wird berechnet. Die Ergebnisse folgen im Strategiegespräch.</p>
+                <p className="text-[#888] text-xs mt-0.5">
+                  {redirecting
+                    ? "Ihr OKUN Score wird geladen…"
+                    : "Ihr Score wird berechnet."}
+                </p>
               </div>
+              {redirecting && <Loader2 size={16} className="text-[#22c55e] animate-spin ml-2" />}
             </div>
           </div>
         )}
@@ -239,7 +270,7 @@ export default function AdvisorChat({ initialSession }: { initialSession: Sessio
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
+      {/* Input — hidden when complete */}
       {!isComplete && (
         <div className="mt-4 bg-[#141414] border border-[#2a2a2a] rounded-xl p-3 flex items-end gap-3">
           <textarea
@@ -247,7 +278,7 @@ export default function AdvisorChat({ initialSession }: { initialSession: Sessio
             value={input}
             onChange={autoResize}
             onKeyDown={handleKeyDown}
-            placeholder="Ihre Antwort eingeben... (Enter zum Senden)"
+            placeholder="Ihre Antwort eingeben… (Enter zum Senden)"
             rows={1}
             disabled={loading}
             className="flex-1 bg-transparent text-[#f0f0f0] text-sm placeholder-[#555] resize-none focus:outline-none min-h-[24px] max-h-[120px] leading-relaxed"

@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { requireBlueprintComplete } from "@/lib/require-blueprint";
 import {
   CheckCircle2,
   ChevronRight,
@@ -18,7 +19,7 @@ import {
 } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 
-const TOTAL_QUESTIONS = 18;
+const TOTAL_QUESTIONS = 21;
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -44,6 +45,10 @@ export default async function DashboardPage() {
   if (!user) redirect("/login");
 
   const company = user.company;
+
+  // Gate: require completed Blueprint before showing dashboard
+  if (company?.id) await requireBlueprintComplete(company.id);
+
   const project = company?.projects[0];
   const nextAppointment = company?.appointments[0];
   const assessment = company?.assessments[0];
@@ -319,14 +324,20 @@ export default async function DashboardPage() {
               </div>
             </div>
             <div className="flex gap-2">
-              <button className="flex-1 flex items-center justify-center gap-2 bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#22c55e]/30 text-[#888] hover:text-[#f0f0f0] text-xs rounded-lg py-2 transition-colors">
+              <a
+                href={`mailto:${process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "info@okun-systems.de"}`}
+                className="flex-1 flex items-center justify-center gap-2 bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#22c55e]/30 text-[#888] hover:text-[#f0f0f0] text-xs rounded-lg py-2 transition-colors"
+              >
                 <Mail size={13} />
                 E-Mail
-              </button>
-              <button className="flex-1 flex items-center justify-center gap-2 bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#22c55e]/30 text-[#888] hover:text-[#f0f0f0] text-xs rounded-lg py-2 transition-colors">
+              </a>
+              <a
+                href={`tel:${process.env.NEXT_PUBLIC_CONTACT_PHONE ?? "+4900000000000"}`}
+                className="flex-1 flex items-center justify-center gap-2 bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#22c55e]/30 text-[#888] hover:text-[#f0f0f0] text-xs rounded-lg py-2 transition-colors"
+              >
                 <Phone size={13} />
                 Anrufen
-              </button>
+              </a>
             </div>
           </div>
 
@@ -341,9 +352,12 @@ export default async function DashboardPage() {
                 Buchen Sie hier Ihren Wunschtermin für das Strategiegespräch.
               </p>
             </div>
-            <button className="w-full bg-[#1a1a1a] hover:bg-[#22c55e]/10 border border-[#2a2a2a] hover:border-[#22c55e]/40 text-[#f0f0f0] font-medium text-sm rounded-lg py-2.5 transition-colors">
+            <Link
+              href="/termine"
+              className="w-full block text-center bg-[#1a1a1a] hover:bg-[#22c55e]/10 border border-[#2a2a2a] hover:border-[#22c55e]/40 text-[#f0f0f0] font-medium text-sm rounded-lg py-2.5 transition-colors"
+            >
               Termin buchen
-            </button>
+            </Link>
           </div>
         </div>
       </div>

@@ -112,12 +112,16 @@ model Appointment {
   meetingUrl  String?
   status      String   @default("SCHEDULED")
   notes       String?
+  bookedByName  String?
+  bookedByEmail String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  companyId String
-  company   Company @relation(fields: [companyId], references: [id])
-  attendees User[]
+  companyId         String
+  company           Company          @relation(fields: [companyId], references: [id])
+  attendees         User[]
+  analysisSessionId String?
+  analysisSession   AnalysisSession? @relation(fields: [analysisSessionId], references: [id])
 }
 
 model Document {
@@ -270,7 +274,8 @@ model AnalysisSession {
   opportunities Opportunity[]
   score     OkunScore?
   progress  SessionProgress[]
-  evidence  ScoringEvidence[]
+  evidence      ScoringEvidence[]
+  appointments  Appointment[]
 }
 
 model ConversationMessage {

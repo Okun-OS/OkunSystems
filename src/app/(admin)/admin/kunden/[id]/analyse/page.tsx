@@ -4,7 +4,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, Brain, AlertTriangle, Lightbulb, Target,
-  BarChart3, ChevronRight, Layers, Eye, EyeOff,
+  BarChart3, ChevronRight, Layers, Eye, EyeOff, Printer, CalendarDays,
 } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 
@@ -26,6 +26,9 @@ export default async function KundeAnalysePage({ params }: { params: Promise<{ i
           score: true,
         },
         orderBy: { updatedAt: "desc" },
+      },
+      appointments: {
+        orderBy: { startTime: "asc" },
       },
     },
   });
@@ -70,6 +73,16 @@ export default async function KundeAnalysePage({ params }: { params: Promise<{ i
             <span className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 px-3 py-1.5 rounded-lg font-medium">
               Nur intern sichtbar
             </span>
+            {score && (
+              <Link
+                href={`/admin/kunden/${id}/analyse/bericht`}
+                target="_blank"
+                className="flex items-center gap-2 bg-[#141414] border border-[#2a2a2a] hover:border-[#22c55e]/30 text-[#888] hover:text-[#f0f0f0] text-xs rounded-lg px-3 py-1.5 transition-colors"
+              >
+                <Printer size={13} />
+                Bericht drucken
+              </Link>
+            )}
           </div>
         </div>
       </div>
@@ -309,6 +322,43 @@ export default async function KundeAnalysePage({ params }: { params: Promise<{ i
                 })}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Gebuchte Termine */}
+      {company.appointments && company.appointments.length > 0 && (
+        <div className="mt-6 bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+          <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4 flex items-center gap-2">
+            <CalendarDays size={15} className="text-[#22c55e]" />
+            Gebuchte Termine
+          </h2>
+          <div className="space-y-3">
+            {company.appointments.map((appt) => (
+              <div key={appt.id} className="flex items-center justify-between p-3 bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg">
+                <div>
+                  <p className="text-[#f0f0f0] text-sm font-medium">{appt.title}</p>
+                  <p className="text-[#888] text-xs mt-0.5">
+                    {appt.startTime.toLocaleDateString("de-DE", {
+                      weekday: "long", day: "2-digit", month: "long", year: "numeric",
+                    })}{" "}
+                    · {appt.startTime.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr
+                  </p>
+                  {appt.bookedByName && (
+                    <p className="text-[#555] text-xs mt-0.5">Gebucht von: {appt.bookedByName} ({appt.bookedByEmail})</p>
+                  )}
+                </div>
+                <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+                  appt.status === "SCHEDULED" ? "bg-blue-500/10 text-blue-400"
+                  : appt.status === "COMPLETED" ? "bg-[#22c55e]/10 text-[#22c55e]"
+                  : "bg-red-500/10 text-red-400"
+                }`}>
+                  {appt.status === "SCHEDULED" ? "Geplant"
+                   : appt.status === "COMPLETED" ? "Abgeschlossen"
+                   : "Abgesagt"}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       )}

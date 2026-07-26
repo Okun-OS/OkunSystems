@@ -286,11 +286,16 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  const updatedQuestionsAsked = notes.lastQuestion
+    ? (analysisSession.questionsAsked ?? 0) + 1
+    : (analysisSession.questionsAsked ?? 0);
+
   return NextResponse.json({
     message: visibleMessage,
     phase: notes.phase ?? analysisSession.phase,
     currentArea: notes.currentArea ?? analysisSession.currentArea,
     completedAreas: notes.completedAreas ?? completedAreas,
+    questionsAsked: updatedQuestionsAsked,
     analysisComplete: notes.analysisComplete ?? false,
     scoreReady: !!scoreResult,
     score: scoreResult ? { total: scoreResult.total, label: scoreResult.label } : null,
