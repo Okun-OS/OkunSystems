@@ -65,7 +65,7 @@ export default async function DashboardPage() {
     ? await db.analysisSession.findFirst({
         where: { companyId: company.id },
         include: { score: true },
-        orderBy: { createdAt: "desc" },
+        orderBy: { startedAt: "desc" },
       })
     : null;
 
