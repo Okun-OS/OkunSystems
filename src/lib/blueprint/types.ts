@@ -23,6 +23,7 @@ export interface AnswerOptionInput {
   id: string;
   externalId: string;
   questionId: string;
+  textDe: string;
   points: number;
   isExclusive: boolean;
   signalCategory: string | null;
