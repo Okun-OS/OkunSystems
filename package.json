@@ -9,6 +9,7 @@
     "lint": "eslint",
     "seed": "tsx prisma/seed.ts",
     "seed:library": "tsx prisma/seed-library.ts",
+    "seed:blueprint": "tsx prisma/seed-blueprint.ts",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "postgenerate": "node -e \"require('fs').writeFileSync('src/generated/prisma/index.ts', \\\"export * from './client';\\\\n\\\")\"",

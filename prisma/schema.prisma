@@ -266,6 +266,12 @@ model AnalysisSession {
   completedAt   DateTime?
   updatedAt     DateTime  @updatedAt
 
+  // Blueprint 2.0 fields
+  blueprintVersion   String  @default("1.0")
+  packageType        String?
+  activeGroupWeights String  @default("{}")
+  pendingReviewCount Int     @default(0)
+
   companyId String
   company   Company               @relation(fields: [companyId], references: [id])
   messages  ConversationMessage[]
@@ -276,6 +282,7 @@ model AnalysisSession {
   progress  SessionProgress[]
   evidence      ScoringEvidence[]
   appointments  Appointment[]
+  sessionAnswers SessionAnswer[]
 }
 
 model ConversationMessage {
@@ -471,7 +478,79 @@ model QuestionTemplate {
   isActive         Boolean  @default(true)
   createdAt        DateTime @default(now())
 
+  // Blueprint 2.0 fields
+  moduleNumber     Int?
+  groupCode        String?
+  questionType     String   @default("B")
+  isGating         Boolean  @default(false)
+  isFollowUp       Boolean  @default(false)
+  parentExternalId String?
+  internalWeight   Float?
+  activationConds  String   @default("[]")
+
   progress         SessionProgress[]
+  answerOptions    AnswerOption[]
+  sessionAnswers   SessionAnswer[]
+  branchingFrom    BranchingRule[]  @relation("BranchingSource")
+  branchingTo      BranchingRule[]  @relation("BranchingTarget")
+}
+
+model AnswerOption {
+  id             String          @id @default(cuid())
+  externalId     String          @unique
+  questionId     String
+  question       QuestionTemplate @relation(fields: [questionId], references: [id])
+  textDe         String
+  points         Int             @default(0)
+  isExclusive    Boolean         @default(false)
+  signalCategory String?
+  signalValue    Int             @default(0)
+  order          Int             @default(0)
+  isActive       Boolean         @default(true)
+}
+
+model BranchingRule {
+  id               String          @id @default(cuid())
+  sourceQuestionId String
+  sourceQuestion   QuestionTemplate @relation("BranchingSource", fields: [sourceQuestionId], references: [id])
+  targetQuestionId String
+  targetQuestion   QuestionTemplate @relation("BranchingTarget", fields: [targetQuestionId], references: [id])
+  conditionType    String
+  conditionValue   String          @default("{}")
+  action           String
+  priority         Int             @default(0)
+  description      String?
+  createdAt        DateTime        @default(now())
+}
+
+model SessionAnswer {
+  id                String          @id @default(cuid())
+  sessionId         String
+  session           AnalysisSession @relation(fields: [sessionId], references: [id])
+  questionId        String
+  question          QuestionTemplate @relation(fields: [questionId], references: [id])
+  selectedOptionIds String          @default("[]")
+  freeText          String?
+  computedScore     Int?
+  computedSignals   String          @default("{}")
+  status            String          @default("ANSWERED")
+  pendingReview     Boolean         @default(false)
+  answeredAt        DateTime        @default(now())
+
+  @@unique([sessionId, questionId])
+}
+
+model SolutionLibrary {
+  id                   String   @id @default(cuid())
+  externalId           String   @unique
+  name                 String
+  category             String
+  description          String
+  packageTypes         String   @default("[]")
+  activationConditions String   @default("[]")
+  exclusionConditions  String   @default("[]")
+  isActive             Boolean  @default(true)
+  createdAt            DateTime @default(now())
 }
 
 model SessionProgress {
