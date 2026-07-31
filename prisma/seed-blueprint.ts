@@ -581,7 +581,6 @@ const QUESTIONS: QuestionDef[] = [
       { externalId: "M4.5-OPT-5", textDe: "Kaum — vollständig dokumentiert, mehrere können vertreten", points: 50, order: 5 },
     ],
   },
-];
 
   // ═══════════════════════════════════════════════════════════════════════════
   // MODUL 5 – Automatisierungsgrad (15% Gesamtgewicht)
