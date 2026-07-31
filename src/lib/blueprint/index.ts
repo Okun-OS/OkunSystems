@@ -4,3 +4,8 @@ export * from "./scoring-engine";
 export * from "./recommendation-engine";
 export * from "./roadmap-engine";
 export * from "./loader";
+export * from "./report-assembler";
+export * from "./report-text-engine";
+export * from "./report-html";
+export * from "./pdf-generator";
+export * from "./storage";

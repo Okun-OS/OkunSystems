@@ -271,6 +271,7 @@ model AnalysisSession {
   packageType        String?
   activeGroupWeights String  @default("{}")
   pendingReviewCount Int     @default(0)
+  reportUrl          String?
 
   companyId String
   company   Company               @relation(fields: [companyId], references: [id])
