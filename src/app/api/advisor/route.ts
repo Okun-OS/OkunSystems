@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
   const analysisSession = await db.analysisSession.findUnique({
     where: { id: sessionId },
     include: {
-      messages: { orderBy: { createdAt: "asc" }, take: 60 },
+      messages: { orderBy: { createdAt: "asc" }, take: 80 },
       progress: { include: { question: true }, orderBy: { createdAt: "asc" } },
     },
   });
@@ -55,9 +55,28 @@ export async function POST(req: NextRequest) {
     orderBy: { order: "asc" },
   });
 
+  // Build askedQuestionIds from SessionProgress AND internalNotes of past messages
+  // (fallback: AI may not have set lastQuestion, but internalNotes may still have it)
   const askedQuestionIds = new Set(
     analysisSession.progress.filter((p) => p.askedAt).map((p) => p.questionId)
   );
+
+  // Reconstruct asked questions from stored internalNotes of assistant messages
+  const historicalAskedExternalIds = new Set<string>();
+  for (const msg of analysisSession.messages) {
+    if (msg.role === "assistant" && msg.internalNotes) {
+      try {
+        const parsed = JSON.parse(msg.internalNotes);
+        if (parsed.lastQuestion && typeof parsed.lastQuestion === "string") {
+          historicalAskedExternalIds.add(parsed.lastQuestion);
+        }
+      } catch {}
+    }
+  }
+  for (const extId of historicalAskedExternalIds) {
+    const qt = allQuestions.find((q) => q.externalId === extId);
+    if (qt) askedQuestionIds.add(qt.id);
+  }
 
   // Current question (last asked, not yet fully followed up)
   const lastProgress = analysisSession.progress
@@ -92,8 +111,10 @@ export async function POST(req: NextRequest) {
     analysisSession.currentArea
   );
 
-  // ── Build conversation history ────────────────────────────────────────────
-  const history = analysisSession.messages.map((m) => ({
+  // ── Build conversation history (last 24 messages = 12 exchanges) ───────────
+  // Older context lives in memory engine; keeping history short prevents looping
+  const recentMessages = analysisSession.messages.slice(-24);
+  const history = recentMessages.map((m) => ({
     role: m.role as "user" | "assistant",
     content: m.role === "assistant"
       ? (() => {
@@ -157,6 +178,9 @@ export async function POST(req: NextRequest) {
       questionEn: q.questionEn,
       maxFollowUps: q.maxFollowUps,
     })),
+    askedQuestions: allQuestions
+      .filter((q) => askedQuestionIds.has(q.id))
+      .map((q) => ({ externalId: q.externalId, area: q.area })),
     processLibrarySnippet: processSnippet,
     problemLibrarySnippet: problemSnippet,
   });

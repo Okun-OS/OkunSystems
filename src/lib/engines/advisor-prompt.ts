@@ -19,6 +19,7 @@ export interface SessionContext {
   nextQuestion: QuestionContext | null;
   currentQuestion: (QuestionContext & { followUpsUsed: number }) | null;
   pendingUpcoming: QuestionContext[];
+  askedQuestions: Array<{ externalId: string; area: string }>;
   processLibrarySnippet: string;
   problemLibrarySnippet: string;
 }
@@ -71,6 +72,13 @@ export function buildSystemPrompt(ctx: SessionContext): string {
       : `\nKOMMENDE FRAGEN (nur zur Orientierung, noch nicht stellen):\n${items}`;
   }
 
+  // ── Already-asked questions ──────────────────────────────────────────────
+  const askedStr = ctx.askedQuestions.length > 0
+    ? (isEn
+        ? `\nALREADY ASKED (do NOT revisit): ${ctx.askedQuestions.map((q) => q.externalId).join(", ")}`
+        : `\nBEREITS GESTELLT (NICHT wiederholen): ${ctx.askedQuestions.map((q) => q.externalId).join(", ")}`)
+    : "";
+
   const validAreasList = `unternehmensstruktur | vertrieb | kommunikation | prozesse | systeme | personal | geschaeftsfuehrung`;
 
   if (isEn) {
@@ -87,6 +95,13 @@ BEHAVIOR:
 - If an answer is too vague, ask for a concrete example
 - When the client describes manual processes (especially duty rosters, time tracking, payroll, scheduling), note this signal — these are areas OKUN Systems can cover with its own solutions, but do NOT pitch them. Just collect the information neutrally.
 
+STRICT RULES — ANTI-LOOP:
+- ONLY ask questions from the question bank (Q1–Q21). NEVER invent your own questions about specific documents, certificates, or company-specific topics that are not in the bank.
+- Each required question gets at most 1 follow-up. After that, move on IMMEDIATELY without commenting on the previous topic.
+- If the customer says "let's move on" or "that topic is done", jump to the next required question WITHOUT any reference to the previous topic.
+- Do NOT repeat a question you already asked in the same session. Do NOT circle back to topics already covered.
+- Do NOT say "as we discussed" or reference specific details from past topics — just move forward.
+
 PROCESS LIBRARY (match detected processes against these):
 ${ctx.processLibrarySnippet || "No library loaded"}
 
@@ -99,6 +114,7 @@ SESSION STATE:
 - Current area: ${AREA_LABELS[ctx.currentArea ?? ""] ?? ctx.currentArea ?? "Not started"}
 - Completed areas: ${ctx.completedAreas.map((a) => AREA_LABELS[a] ?? a).join(", ") || "None"}
 - Messages so far: ${ctx.totalMessages}
+${askedStr}
 
 ${questionDirective}
 ${upcomingStr}
@@ -146,6 +162,14 @@ VERHALTEN:
 - Wenn eine Antwort zu allgemein ist, bitte um ein konkretes Beispiel
 - Wenn der Kunde manuelle Abläufe bei Dienstplanung, Zeiterfassung, Einsatzplanung oder Lohnabrechnung beschreibt, notiere das als Signal in memoryUpdates — aber mache keine Produktempfehlung. OKUN kann diese Bereiche abdecken, aber das kommt erst im Strategiegespräch.
 
+STRIKTE REGELN — ANTI-LOOP:
+- Stelle AUSSCHLIESSLICH Fragen aus dem Fragenkatalog (Q1–Q21). ERFINDE NIEMALS eigene Fragen zu spezifischen Dokumenten, Zertifikaten oder unternehmensspezifischen Themen, die nicht im Katalog stehen.
+- Jede Pflichtfrage bekommt maximal 1 Follow-up. Danach SOFORT zur nächsten Pflichtfrage übergehen — ohne Kommentar zum alten Thema.
+- Wenn der Kunde sagt "das Thema ist abgeschlossen" oder "weiter", springe zur nächsten Pflichtfrage OHNE Bezug auf das vorherige Thema.
+- Wiederhole NIEMALS eine Frage, die du bereits gestellt hast. Kehre NIEMALS zu bereits abgeschlossenen Themen zurück.
+- Beginne NICHT mit "wie wir besprochen haben" oder Bezügen auf vergangene Details — einfach vorwärts.
+- Frage NICHT mehrfach nach demselben Dokument oder demselben Prozessdetail. Wenn du es einmal erfasst hast, ist es erfasst.
+
 PROZESSBIBLIOTHEK (erkannte Prozesse damit abgleichen):
 ${ctx.processLibrarySnippet || "Keine Bibliothek geladen"}
 
@@ -158,6 +182,7 @@ SESSION-STATUS:
 - Aktueller Bereich: ${AREA_LABELS[ctx.currentArea ?? ""] ?? ctx.currentArea ?? "Noch nicht begonnen"}
 - Abgeschlossene Bereiche: ${ctx.completedAreas.map((a) => AREA_LABELS[a] ?? a).join(", ") || "Keine"}
 - Nachrichten bisher: ${ctx.totalMessages}
+${askedStr}
 
 ${questionDirective}
 ${upcomingStr}
