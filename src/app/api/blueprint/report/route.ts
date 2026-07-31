@@ -6,6 +6,7 @@ import { generateReportTexts } from "@/lib/blueprint/report-text-engine";
 import { renderReportHtml } from "@/lib/blueprint/report-html";
 import { renderHtmlToPdf } from "@/lib/blueprint/pdf-generator";
 import { uploadPdfToR2, buildReportKey } from "@/lib/blueprint/storage";
+import { sendBlueprintReportReady } from "@/lib/email";
 
 // Force Node.js runtime — Puppeteer cannot run in the Edge runtime
 export const runtime = "nodejs";
@@ -42,7 +43,7 @@ export async function POST(req: NextRequest) {
   // Verify session exists and is a completed Blueprint 2.0 session
   const analysisSession = await db.analysisSession.findUnique({
     where: { id: sessionId },
-    select: { status: true, blueprintVersion: true, reportUrl: true },
+    select: { status: true, blueprintVersion: true, reportUrl: true, companyId: true },
   });
 
   if (!analysisSession) {
@@ -85,6 +86,24 @@ export async function POST(req: NextRequest) {
       where: { id: sessionId },
       data: { reportUrl },
     });
+
+    // Step 7: Notify client by email (non-fatal)
+    try {
+      const primaryUser = await db.user.findFirst({
+        where: { companyId: analysisSession.companyId, role: "CLIENT" },
+        select: { email: true, name: true },
+      });
+      if (primaryUser) {
+        await sendBlueprintReportReady({
+          toEmail: primaryUser.email,
+          toName: primaryUser.name ?? "Kund:in",
+          companyName: reportData.company.name,
+          reportUrl,
+        });
+      }
+    } catch (emailErr) {
+      console.error("[blueprint/report] Email send failed:", emailErr);
+    }
 
     return NextResponse.json({ reportUrl });
   } catch (err) {

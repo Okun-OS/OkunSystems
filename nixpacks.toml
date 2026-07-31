@@ -12,4 +12,4 @@ cmds = [
 ]
 
 [start]
-cmd = "npx prisma db push --accept-data-loss && npx tsx prisma/seed.ts && npx tsx prisma/seed-library.ts && npx tsx prisma/seed-questions.ts && npm start"
+cmd = "npx prisma db push --accept-data-loss && npx tsx prisma/seed.ts && npx tsx prisma/seed-library.ts && npx tsx prisma/seed-questions.ts && npx tsx prisma/seed-blueprint.ts && npm start"

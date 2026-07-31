@@ -56,10 +56,10 @@ export default async function BlueprintCompletePage({
 
         <div className="flex flex-col gap-3">
           <Link
-            href="/dashboard"
+            href={`/blueprint/${sessionId}/ergebnis`}
             className="w-full bg-[#22c55e] hover:bg-[#16a34a] text-black font-semibold text-sm rounded-xl py-3 flex items-center justify-center gap-2 transition-colors"
           >
-            Zum Dashboard
+            Meine Ergebnisse anzeigen
             <ChevronRight size={16} />
           </Link>
           <Link
@@ -67,6 +67,12 @@ export default async function BlueprintCompletePage({
             className="w-full bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-[#ccc] hover:text-[#f0f0f0] font-medium text-sm rounded-xl py-3 flex items-center justify-center gap-2 transition-colors"
           >
             Strategiegespräch buchen
+          </Link>
+          <Link
+            href="/dashboard"
+            className="w-full text-[#555] hover:text-[#888] text-sm py-2 flex items-center justify-center transition-colors"
+          >
+            Zum Dashboard
           </Link>
         </div>
       </div>

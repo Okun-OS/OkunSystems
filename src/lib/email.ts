@@ -66,6 +66,49 @@ export async function sendAppointmentConfirmation({
   });
 }
 
+export async function sendBlueprintReportReady({
+  toEmail,
+  toName,
+  companyName,
+  reportUrl,
+}: {
+  toEmail: string;
+  toName: string;
+  companyName: string;
+  reportUrl: string;
+}) {
+  if (!resend) {
+    console.warn("[email] RESEND_API_KEY not set — skipping email");
+    return;
+  }
+
+  await resend.emails.send({
+    from: FROM_ADDRESS,
+    to: toEmail,
+    subject: `Ihr OKUN Blueprint™ Bericht ist fertig`,
+    html: `
+      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#0a0a0a;color:#f0f0f0;padding:32px;border-radius:12px;">
+        <h1 style="font-size:20px;font-weight:700;color:#f0f0f0;margin:0 0 8px;">Ihr Blueprint-Bericht ist fertig</h1>
+        <p style="color:#888;font-size:14px;margin:0 0 24px;">Hallo ${toName}, Ihr persönlicher OKUN Blueprint™ Bericht für <strong style="color:#f0f0f0;">${companyName}</strong> wurde erstellt.</p>
+        <div style="background:#141414;border:1px solid #2a2a2a;border-radius:8px;padding:20px;margin-bottom:24px;">
+          <p style="margin:0 0 12px;color:#888;font-size:14px;line-height:1.6;">
+            Der Bericht enthält eine detaillierte Analyse Ihrer Automatisierungspotenziale, individuelle Lösungsempfehlungen und eine priorisierte Roadmap für Ihr Unternehmen.
+          </p>
+          <a href="${reportUrl}" style="display:inline-block;background:#22c55e;color:#000;font-weight:700;font-size:14px;text-decoration:none;padding:12px 24px;border-radius:8px;">
+            Bericht herunterladen (PDF)
+          </a>
+        </div>
+        <p style="color:#555;font-size:12px;line-height:1.6;">
+          Für Fragen oder zur Besprechung der Ergebnisse können Sie jederzeit einen Strategietermin vereinbaren.
+        </p>
+        <div style="margin-top:24px;padding-top:16px;border-top:1px solid #1e1e1e;">
+          <p style="color:#444;font-size:11px;margin:0;">OKUN Systems · <a href="https://okun-systems.de" style="color:#444;">okun-systems.de</a></p>
+        </div>
+      </div>
+    `,
+  });
+}
+
 export async function sendAppointmentNotificationToAdmin({
   clientName,
   clientEmail,
