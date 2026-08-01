@@ -7,6 +7,7 @@ import {
   publishChapter,
   archiveChapter,
 } from "@/lib/learning/actions";
+import { SIGNAL_TAG_MAP } from "@/lib/learning/constants";
 import {
   BookOpen,
   FolderOpen,
@@ -41,6 +42,22 @@ export default async function LearningLibraryPage() {
     (sum, c) => sum + c.chapters.filter((ch) => ch.status === "PUBLISHED").length,
     0
   );
+
+  // Compute which Blueprint signal categories have no published learning content
+  const coveredTags = await db.learningTag.findMany({
+    where: {
+      chapters: {
+        some: {
+          chapter: { status: "PUBLISHED", isActive: true },
+        },
+      },
+    },
+    select: { name: true },
+  });
+  const coveredTagNames = new Set(coveredTags.map((t) => t.name));
+  const uncoveredSignals = Object.entries(SIGNAL_TAG_MAP)
+    .filter(([, tags]) => !tags.some((tag) => coveredTagNames.has(tag)))
+    .map(([signal]) => signal);
 
   async function handleCreateCategory(formData: FormData) {
     "use server";
@@ -106,6 +123,41 @@ export default async function LearningLibraryPage() {
           </button>
         </form>
       </div>
+
+      {/* Missing content warning */}
+      {uncoveredSignals.length > 0 && (
+        <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-xl p-4 mb-6 flex items-start gap-3">
+          <span className="text-yellow-400 text-sm mt-0.5 flex-shrink-0">⚠</span>
+          <div className="min-w-0">
+            <p className="text-yellow-400 text-sm font-medium mb-1.5">
+              Fehlende Lerninhalte für {uncoveredSignals.length} Blueprint-Signal
+              {uncoveredSignals.length !== 1 ? "e" : ""}
+            </p>
+            <p className="text-[#888] text-xs mb-2">
+              Für folgende Blueprint-Signalkategorien existieren noch keine veröffentlichten Kapitel
+              mit passenden Tags. Neue Empfehlungen können für diese Bereiche nicht automatisch
+              ausgesprochen werden.
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {uncoveredSignals.map((signal) => (
+                <span
+                  key={signal}
+                  className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-400"
+                >
+                  {signal}
+                </span>
+              ))}
+            </div>
+            <p className="text-[#555] text-xs mt-2">
+              Tags laut Mapping:{" "}
+              {uncoveredSignals
+                .flatMap((s) => SIGNAL_TAG_MAP[s] ?? [])
+                .filter((v, i, a) => a.indexOf(v) === i)
+                .join(", ")}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Categories */}
       {categories.length === 0 ? (

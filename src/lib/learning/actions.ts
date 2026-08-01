@@ -9,6 +9,7 @@ import {
 } from "@/lib/storage";
 import { logActivity } from "@/lib/activity/log";
 import { sendLearningAssignmentEmail } from "@/lib/email";
+import { SIGNAL_TAG_MAP } from "./constants";
 
 // ─── Categories ──────────────────────────────────────────────────────────────
 
@@ -309,18 +310,6 @@ export async function updateLessonProgress(params: {
 }
 
 // ─── Blueprint → Learning suggestions ────────────────────────────────────────
-
-// Signal categories from Blueprint catalog that map to learning tags
-const SIGNAL_TAG_MAP: Record<string, string[]> = {
-  AUTOMATION: ["Automatisierung", "Prozessoptimierung"],
-  DELEGATION: ["Delegation", "Führung", "Teamstruktur"],
-  COMMUNICATION: ["Kommunikation", "Meetings"],
-  SALES: ["Vertrieb", "Kundengewinnung"],
-  HR: ["Personal", "Onboarding"],
-  PROCESSES: ["Prozesse", "Standardisierung"],
-  LEADERSHIP: ["Führung", "Strategie"],
-  STRUCTURE: ["Struktur", "Organisation"],
-};
 
 export async function getSuggestedChaptersForSession(
   sessionId: string,
