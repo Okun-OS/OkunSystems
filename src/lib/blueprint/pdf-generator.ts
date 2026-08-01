@@ -1,14 +1,33 @@
 import type { Browser } from "puppeteer";
+import { execFileSync } from "child_process";
 
 let _browser: Browser | null = null;
+
+function resolveChromiumPath(): string | undefined {
+  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+    return process.env.PUPPETEER_EXECUTABLE_PATH;
+  }
+  // Locate system chromium installed via nixpkgs at runtime
+  for (const bin of ["chromium", "chromium-browser", "google-chrome-stable"]) {
+    try {
+      const p = execFileSync("which", [bin], { encoding: "utf8" }).trim();
+      if (p) return p;
+    } catch {
+      // not found, try next
+    }
+  }
+  return undefined;
+}
 
 async function getBrowser(): Promise<Browser> {
   if (_browser) return _browser;
 
   const puppeteer = await import("puppeteer");
+  const executablePath = resolveChromiumPath();
 
   _browser = await puppeteer.default.launch({
     headless: true,
+    executablePath,
     args: [
       "--no-sandbox",
       "--disable-setuid-sandbox",
@@ -17,7 +36,6 @@ async function getBrowser(): Promise<Browser> {
     ],
   });
 
-  // Clean up on process exit
   process.once("exit", () => { _browser?.close(); });
 
   return _browser;
