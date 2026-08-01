@@ -16,10 +16,20 @@ export async function GET() {
       }),
     ]);
 
+    // Check if Blueprint 2.0 columns exist in the actual DB schema
+    const columns = await db.$queryRaw<{ column_name: string }[]>`
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_name = 'QuestionTemplate'
+        AND column_name IN ('moduleNumber','groupCode','questionType','isGating','activationConds')
+      ORDER BY column_name
+    `;
+
     return NextResponse.json({
       blueprintQuestions: blueprintCount,
       totalQuestions: allCount,
       sampleRows: sample,
+      blueprint20Columns: columns.map((c) => c.column_name),
     });
   } catch (err) {
     return NextResponse.json(
