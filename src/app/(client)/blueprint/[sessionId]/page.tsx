@@ -51,6 +51,11 @@ export default async function BlueprintSessionPage({
     loadSessionAnswers(sessionId),
   ]);
 
+  // Guard: seed not yet run — don't auto-complete an unanswered session
+  if (questions.length === 0) {
+    redirect("/blueprint");
+  }
+
   const evaluated = evaluateSession(questions, sessionAnswers);
   const next = getNextPendingQuestion(evaluated);
 

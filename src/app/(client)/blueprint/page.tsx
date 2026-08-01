@@ -27,12 +27,15 @@ export default async function BlueprintStartPage() {
   });
   if (activeSession) redirect(`/blueprint/${activeSession.id}`);
 
-  // Redirect if already completed
+  // Redirect if already completed — only when the session has actual answers
+  // (sessions falsely completed with 0 answers due to missing seed are ignored)
   const completedSession = await db.analysisSession.findFirst({
     where: { companyId, blueprintVersion: "2.0", status: "COMPLETED" },
-    select: { id: true },
+    select: { id: true, _count: { select: { sessionAnswers: true } } },
   });
-  if (completedSession) redirect(`/blueprint/${completedSession.id}/abgeschlossen`);
+  if (completedSession && completedSession._count.sessionAnswers > 0) {
+    redirect(`/blueprint/${completedSession.id}/abgeschlossen`);
+  }
 
   return (
     <div className="max-w-2xl mx-auto pt-8">
