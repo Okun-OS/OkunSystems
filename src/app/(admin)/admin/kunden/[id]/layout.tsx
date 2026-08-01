@@ -2,16 +2,8 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Building2 } from "lucide-react";
-
-const TABS = [
-  { label: "Übersicht", href: "" },
-  { label: "Portal", href: "/portal" },
-  { label: "Dokumente", href: "/dokumente" },
-  { label: "Lernen", href: "/lernen" },
-  { label: "Analyse", href: "/analyse" },
-  { label: "Strategie", href: "/strategy" },
-];
+import { ArrowLeft } from "lucide-react";
+import { WorkspaceTabsClient } from "./WorkspaceTabsClient";
 
 export default async function CustomerWorkspaceLayout({
   children,
@@ -70,35 +62,10 @@ export default async function CustomerWorkspaceLayout({
           </div>
         </div>
 
-        <WorkspaceTabs companyId={id} />
+        <WorkspaceTabsClient companyId={id} />
       </div>
 
       {children}
     </div>
-  );
-}
-
-function WorkspaceTabs({ companyId }: { companyId: string }) {
-  return (
-    <div className="flex items-center gap-1 border-b border-[#2a2a2a] -mb-px">
-      {TABS.map((tab) => (
-        <TabLink
-          key={tab.href}
-          href={`/admin/kunden/${companyId}${tab.href}`}
-          label={tab.label}
-        />
-      ))}
-    </div>
-  );
-}
-
-function TabLink({ href, label }: { href: string; label: string }) {
-  return (
-    <Link
-      href={href}
-      className="px-4 py-2.5 text-sm text-[#888] hover:text-[#f0f0f0] border-b-2 border-transparent hover:border-[#22c55e]/50 transition-colors whitespace-nowrap"
-    >
-      {label}
-    </Link>
   );
 }
