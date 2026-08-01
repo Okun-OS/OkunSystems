@@ -51,9 +51,23 @@ export default async function BlueprintSessionPage({
     loadSessionAnswers(sessionId),
   ]);
 
-  // Guard: seed not yet run — don't auto-complete an unanswered session
+  // Guard: seed not yet run — render error instead of redirecting
+  // (redirecting to /blueprint causes a loop because the start page
+  // redirects back here as long as this session is ACTIVE)
   if (questions.length === 0) {
-    redirect("/blueprint");
+    return (
+      <div className="max-w-2xl mx-auto pt-8">
+        <div className="bg-[#141414] border border-[#2a2a2a] rounded-2xl p-8 text-center">
+          <p className="text-[#f0f0f0] text-sm font-medium mb-2">
+            Fragebogen wird eingerichtet
+          </p>
+          <p className="text-[#888] text-sm leading-relaxed">
+            Die Fragen werden gerade in das System geladen. Bitte laden Sie
+            diese Seite in wenigen Minuten neu.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   const evaluated = evaluateSession(questions, sessionAnswers);
