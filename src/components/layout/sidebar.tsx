@@ -26,6 +26,7 @@ const navItems = [
   { href: "/portal/lernen", icon: BookOpen, label: "Lernbereich" },
   { href: "/portal/dokumente", icon: FileText, label: "Dokumente" },
   { href: "/portal/projekt", icon: Layers, label: "Projektstatus" },
+  { href: "/portal/blueprint", icon: Brain, label: "Blueprint-Bericht" },
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/blueprint", icon: Brain, label: "OKUN Blueprint™" },
   { href: "/projektstatus", icon: FolderKanban, label: "Projektstatus" },
