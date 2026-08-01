@@ -12,6 +12,7 @@ const TABS = [
   { label: "Analyse", href: "/analyse" },
   { label: "Strategie", href: "/strategy" },
   { label: "Aktivität", href: "/aktivitaet" },
+  { label: "Einstellungen", href: "/bearbeiten" },
 ];
 
 export function WorkspaceTabsClient({ companyId }: { companyId: string }) {

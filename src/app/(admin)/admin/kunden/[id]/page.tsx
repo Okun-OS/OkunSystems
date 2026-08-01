@@ -18,7 +18,7 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
   const company = await db.company.findUnique({
     where: { id },
     include: {
-      users: { where: { role: "CLIENT" } },
+      users: { where: { role: "CLIENT" }, select: { id: true, name: true, email: true } },
       projects: { include: { milestones: true, tasks: true }, orderBy: { updatedAt: "desc" } },
       appointments: { orderBy: { startTime: "desc" } },
       documents: { orderBy: { createdAt: "desc" } },
@@ -72,6 +72,25 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
           <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
             <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4">Kundendaten</h2>
             <div className="space-y-3">
+              {company.contactPerson && (
+                <div className="flex items-start gap-3">
+                  <Mail size={14} className="text-[#555] mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-[#555] text-xs">Ansprechpartner</p>
+                    <p className="text-[#f0f0f0] text-sm">{company.contactPerson}</p>
+                  </div>
+                </div>
+              )}
+              {!company.contactPerson && company.users.map(u => (
+                <div key={u.id} className="flex items-start gap-3">
+                  <Mail size={14} className="text-[#555] mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-[#555] text-xs">Ansprechpartner</p>
+                    <p className="text-[#f0f0f0] text-sm">{u.name ?? u.email}</p>
+                    <p className="text-[#888] text-xs">{u.email}</p>
+                  </div>
+                </div>
+              ))}
               {company.industry && (
                 <div className="flex items-start gap-3">
                   <Building2 size={14} className="text-[#555] mt-0.5 flex-shrink-0" />
@@ -90,16 +109,24 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
                   </div>
                 </div>
               )}
-              {company.users.map(u => (
-                <div key={u.id} className="flex items-start gap-3">
-                  <Mail size={14} className="text-[#555] mt-0.5 flex-shrink-0" />
+              {company.plan && (
+                <div className="flex items-start gap-3">
+                  <FolderOpen size={14} className="text-[#555] mt-0.5 flex-shrink-0" />
                   <div>
-                    <p className="text-[#555] text-xs">Ansprechpartner</p>
-                    <p className="text-[#f0f0f0] text-sm">{u.name ?? u.email}</p>
-                    <p className="text-[#888] text-xs">{u.email}</p>
+                    <p className="text-[#555] text-xs">Gebuchtes Paket</p>
+                    <p className="text-[#f0f0f0] text-sm">{company.plan}</p>
                   </div>
                 </div>
-              ))}
+              )}
+              {(company as any).projectPhase && (
+                <div className="flex items-start gap-3">
+                  <Target size={14} className="text-[#555] mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-[#555] text-xs">Projektphase</p>
+                    <p className="text-[#f0f0f0] text-sm capitalize">{(company as any).projectPhase.replace(/_/g, " ")}</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

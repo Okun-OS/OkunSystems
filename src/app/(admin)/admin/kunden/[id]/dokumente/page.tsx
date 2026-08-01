@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { redirect, notFound } from "next/navigation";
 import { setDocumentVisibility, deleteDocument } from "@/lib/documents/actions";
+import { sendDocumentReleasedEmail } from "@/lib/email";
 import { FileText, Lock, Globe, Trash2, Upload, Eye, EyeOff } from "lucide-react";
 import { DocumentUploadButton } from "./DocumentUploadButton";
 
@@ -33,6 +34,29 @@ export default async function CustomerDocumentsPage({
     const current = formData.get("visibility") as string;
     const next = current === "customer" ? "internal" : "customer";
     await setDocumentVisibility(docId, next as "internal" | "customer", adminId);
+
+    if (next === "customer") {
+      const [doc, portalUsers] = await Promise.all([
+        db.document.findUnique({ where: { id: docId }, select: { title: true } }),
+        db.user.findMany({
+          where: { companyId: id, role: "CLIENT" },
+          select: { email: true, name: true },
+        }),
+      ]);
+      if (doc) {
+        await Promise.allSettled(
+          portalUsers.map((u) =>
+            sendDocumentReleasedEmail({
+              toEmail: u.email,
+              toName: u.name ?? u.email,
+              companyName: company!.name,
+              documentTitle: doc.title,
+            })
+          )
+        );
+      }
+    }
+
     redirect(`/admin/kunden/${id}/dokumente`);
   }
 

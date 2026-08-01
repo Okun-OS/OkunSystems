@@ -28,6 +28,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const adminUserId = (session.user as any).id as string;
   const role = (session.user as { role?: string }).role;
   if (role !== "ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -86,6 +87,31 @@ export async function POST(req: NextRequest) {
       where: { id: sessionId },
       data: { reportUrl },
     });
+
+    // Step 6b: Save PDF as internal Document record (non-fatal)
+    try {
+      const existingDoc = await db.document.findFirst({
+        where: { r2Key: key, companyId: analysisSession.companyId },
+      });
+      if (existingDoc) {
+        await db.document.update({ where: { id: existingDoc.id }, data: { fileUrl: reportUrl } });
+      } else {
+        await db.document.create({
+          data: {
+            title: "Blueprint-Bericht",
+            category: "BLUEPRINT",
+            fileUrl: reportUrl,
+            r2Key: key,
+            mimeType: "application/pdf",
+            visibility: "internal",
+            companyId: analysisSession.companyId,
+            uploadedById: adminUserId,
+          },
+        });
+      }
+    } catch (docErr) {
+      console.error("[blueprint/report] Document record save failed:", docErr);
+    }
 
     // Step 7: Notify client by email (non-fatal)
     try {

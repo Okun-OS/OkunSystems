@@ -130,6 +130,12 @@ export default function LoginPage() {
           >
             {loading ? "Wird angemeldet…" : "Anmelden"}
           </button>
+
+          <p className="text-center text-[#555] text-sm">
+            <a href="/passwort-vergessen" className="hover:text-[#888] transition-colors">
+              Passwort vergessen?
+            </a>
+          </p>
         </form>
       </div>
 

@@ -155,6 +155,13 @@ export default async function LearningLibraryPage() {
                 .filter((v, i, a) => a.indexOf(v) === i)
                 .join(", ")}
             </p>
+            <Link
+              href="/admin/lernen"
+              className="inline-flex items-center gap-1.5 mt-3 text-xs text-yellow-400 hover:text-yellow-300 transition-colors"
+            >
+              <Plus size={12} />
+              Lerninhalt erstellen
+            </Link>
           </div>
         </div>
       )}

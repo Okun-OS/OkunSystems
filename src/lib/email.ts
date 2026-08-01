@@ -238,3 +238,72 @@ export async function sendLearningAssignmentEmail({
     `,
   });
 }
+
+export async function sendDocumentReleasedEmail({
+  toEmail,
+  toName,
+  companyName,
+  documentTitle,
+}: {
+  toEmail: string;
+  toName: string;
+  companyName: string;
+  documentTitle: string;
+}) {
+  if (!resend) return;
+  const portalUrl = process.env.NEXTAUTH_URL ?? process.env.APP_URL ?? "https://okun-systems.de";
+  await resend.emails.send({
+    from: FROM_ADDRESS,
+    to: toEmail,
+    subject: `Neues Dokument verfügbar: ${documentTitle}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#0a0a0a;color:#f0f0f0;padding:32px;border-radius:12px;">
+        <h1 style="font-size:20px;font-weight:700;color:#f0f0f0;margin:0 0 8px;">Neues Dokument verfügbar</h1>
+        <p style="color:#888;font-size:14px;margin:0 0 24px;">Hallo ${toName}, für <strong style="color:#f0f0f0;">${companyName}</strong> wurde ein neues Dokument freigegeben.</p>
+        <div style="background:#141414;border:1px solid #2a2a2a;border-radius:8px;padding:20px;margin-bottom:24px;">
+          <p style="margin:0 0 4px;font-weight:600;color:#f0f0f0;">${documentTitle}</p>
+          <p style="margin:4px 0 16px;color:#888;font-size:13px;">Jetzt im Dokumentenbereich Ihres Portals abrufbar.</p>
+          <a href="${portalUrl}/portal/dokumente" style="display:inline-block;background:#22c55e;color:#000;font-weight:700;font-size:14px;text-decoration:none;padding:12px 24px;border-radius:8px;">Zum Dokumentenbereich</a>
+        </div>
+        <div style="margin-top:24px;padding-top:16px;border-top:1px solid #1e1e1e;">
+          <p style="color:#444;font-size:11px;margin:0;">OKUN Systems · <a href="https://okun-systems.de" style="color:#444;">okun-systems.de</a></p>
+        </div>
+      </div>
+    `,
+  });
+}
+
+export async function sendPasswordResetEmail({
+  toEmail,
+  resetUrl,
+}: {
+  toEmail: string;
+  resetUrl: string;
+}) {
+  if (!resend) {
+    console.warn("[email] RESEND_API_KEY not set — skipping password reset email");
+    return;
+  }
+  await resend.emails.send({
+    from: FROM_ADDRESS,
+    to: toEmail,
+    subject: "Passwort zurücksetzen – OKUN Systems",
+    html: `
+      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#0a0a0a;color:#f0f0f0;padding:32px;border-radius:12px;">
+        <h1 style="font-size:20px;font-weight:700;color:#f0f0f0;margin:0 0 8px;">Passwort zurücksetzen</h1>
+        <p style="color:#888;font-size:14px;margin:0 0 24px;">Sie haben eine Anfrage zum Zurücksetzen Ihres Passworts gestellt.</p>
+        <div style="background:#141414;border:1px solid #2a2a2a;border-radius:8px;padding:20px;margin-bottom:24px;">
+          <p style="color:#888;font-size:14px;margin:0 0 16px;line-height:1.6;">
+            Klicken Sie auf den Button, um ein neues Passwort zu vergeben.<br>
+            Der Link ist <strong style="color:#f0f0f0;">2 Stunden</strong> gültig.
+          </p>
+          <a href="${resetUrl}" style="display:inline-block;background:#22c55e;color:#000;font-weight:700;font-size:14px;text-decoration:none;padding:12px 24px;border-radius:8px;">Neues Passwort vergeben</a>
+        </div>
+        <p style="color:#555;font-size:12px;">Falls Sie keine Zurücksetzung beantragt haben, ignorieren Sie diese E-Mail.</p>
+        <div style="margin-top:24px;padding-top:16px;border-top:1px solid #1e1e1e;">
+          <p style="color:#444;font-size:11px;margin:0;">OKUN Systems · <a href="https://okun-systems.de" style="color:#444;">okun-systems.de</a></p>
+        </div>
+      </div>
+    `,
+  });
+}

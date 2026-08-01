@@ -2,8 +2,19 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { BookOpen, FileText, ChevronRight, CheckCircle, Clock, BarChart3 } from "lucide-react";
+import { BookOpen, FileText, ChevronRight, CheckCircle, Clock, BarChart3, Circle } from "lucide-react";
 import { logActivity } from "@/lib/activity/log";
+
+const PROJECT_PHASES = [
+  { value: "onboarding",       label: "Onboarding" },
+  { value: "blueprint",        label: "Blueprint Analyse" },
+  { value: "internal_review",  label: "Auswertung" },
+  { value: "strategy_session", label: "Strategiegespräch" },
+  { value: "learning",         label: "Lernphase" },
+  { value: "implementation",   label: "Implementierung" },
+  { value: "stabilization",    label: "Stabilisierung" },
+  { value: "completed",        label: "Abgeschlossen" },
+];
 
 export default async function PortalDashboard() {
   const session = await auth();
@@ -15,7 +26,7 @@ export default async function PortalDashboard() {
   const [company, assignments, documents] = await Promise.all([
     db.company.findUnique({
       where: { id: user.companyId },
-      select: { name: true, status: true },
+      select: { name: true, status: true, projectPhase: true },
     }),
     db.customerLearningAssignment.findMany({
       where: { companyId: user.companyId, status: "active" },
@@ -66,6 +77,51 @@ export default async function PortalDashboard() {
         </h1>
         <p className="text-[#888] text-sm mt-1">{company?.name}</p>
       </div>
+
+      {/* Project phase timeline */}
+      {company?.projectPhase && (
+        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5 mb-6">
+          <h2 className="text-[#888] text-xs font-medium uppercase tracking-wide mb-4">Projektstatus</h2>
+          <div className="flex items-center gap-0 overflow-x-auto pb-1">
+            {PROJECT_PHASES.map((phase, idx) => {
+              const currentIdx = PROJECT_PHASES.findIndex(p => p.value === company.projectPhase);
+              const isDone = idx < currentIdx;
+              const isCurrent = idx === currentIdx;
+              const isUpcoming = idx > currentIdx;
+              return (
+                <div key={phase.value} className="flex items-center flex-shrink-0">
+                  <div className="flex flex-col items-center">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center border-2 transition-colors ${
+                      isDone ? "bg-[#22c55e] border-[#22c55e]" :
+                      isCurrent ? "border-[#22c55e] bg-[#22c55e]/10" :
+                      "border-[#2a2a2a] bg-[#0d0d0d]"
+                    }`}>
+                      {isDone ? (
+                        <CheckCircle size={14} className="text-black" />
+                      ) : isCurrent ? (
+                        <div className="w-2.5 h-2.5 rounded-full bg-[#22c55e]" />
+                      ) : (
+                        <Circle size={14} className="text-[#333]" />
+                      )}
+                    </div>
+                    <p className={`text-xs mt-1.5 whitespace-nowrap ${
+                      isCurrent ? "text-[#22c55e] font-semibold" :
+                      isDone ? "text-[#555]" : "text-[#333]"
+                    }`}>
+                      {phase.label}
+                    </p>
+                  </div>
+                  {idx < PROJECT_PHASES.length - 1 && (
+                    <div className={`h-px w-6 sm:w-8 mx-1 flex-shrink-0 ${
+                      idx < currentIdx ? "bg-[#22c55e]" : "bg-[#2a2a2a]"
+                    }`} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

@@ -17,6 +17,8 @@ import {
   BookOpen,
   Home,
   Layers,
+  User,
+  LifeBuoy,
 } from "lucide-react";
 import { OkunLogo } from "./okun-logo";
 import { cn } from "@/lib/utils";
@@ -27,6 +29,8 @@ const navItems = [
   { href: "/portal/dokumente", icon: FileText, label: "Dokumente" },
   { href: "/portal/projekt", icon: Layers, label: "Projektstatus" },
   { href: "/portal/blueprint", icon: Brain, label: "Blueprint-Bericht" },
+  { href: "/portal/profil", icon: User, label: "Profil" },
+  { href: "/portal/hilfe", icon: LifeBuoy, label: "Hilfe" },
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/blueprint", icon: Brain, label: "OKUN Blueprint™" },
   { href: "/projektstatus", icon: FolderKanban, label: "Projektstatus" },

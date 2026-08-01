@@ -28,7 +28,18 @@ export default async function CustomerLearningPage({
         chapter: {
           include: {
             category: { select: { title: true } },
-            lessons: { select: { id: true, status: true } },
+            lessons: {
+              select: {
+                id: true,
+                status: true,
+                progress: {
+                  where: { user: { companyId: id } },
+                  select: { updatedAt: true, status: true },
+                  orderBy: { updatedAt: "desc" as const },
+                  take: 1,
+                },
+              },
+            },
             tags: { include: { tag: { select: { name: true } } } },
           },
         },
@@ -152,7 +163,14 @@ export default async function CustomerLearningPage({
           <p className="text-[#555] text-sm">Noch keine Lerninhalte freigegeben.</p>
         ) : (
           <div className="space-y-2">
-            {active.map((a) => (
+            {active.map((a) => {
+              const lastActivity = a.chapter.lessons
+                .flatMap((l) => l.progress)
+                .sort((x, y) => y.updatedAt.getTime() - x.updatedAt.getTime())[0]?.updatedAt;
+              const completedLessons = a.chapter.lessons.filter(
+                (l) => l.progress[0]?.status === "completed"
+              ).length;
+              return (
               <div
                 key={a.id}
                 className="flex items-center justify-between p-3 bg-[#0d0d0d] rounded-lg"
@@ -163,9 +181,12 @@ export default async function CustomerLearningPage({
                     <p className="text-[#f0f0f0] text-sm font-medium">{a.chapter.title}</p>
                   </div>
                   <p className="text-[#555] text-xs mt-0.5 ml-5">
-                    {a.chapter.category.title} · {a.chapter.lessons.length} Lektionen
+                    {a.chapter.category.title} · {completedLessons}/{a.chapter.lessons.length} Lektionen
                     {a.activatedAt && (
                       <> · Freigegeben {a.activatedAt.toLocaleDateString("de-DE")}</>
+                    )}
+                    {lastActivity && (
+                      <> · Letzte Aktivität {lastActivity.toLocaleDateString("de-DE")}</>
                     )}
                   </p>
                 </div>
@@ -180,7 +201,8 @@ export default async function CustomerLearningPage({
                   ))}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
