@@ -14,16 +14,21 @@ import {
   Settings,
   LogOut,
   ChevronDown,
+  BookOpen,
+  Home,
 } from "lucide-react";
 import { OkunLogo } from "./okun-logo";
 import { cn } from "@/lib/utils";
 
 const navItems = [
+  { href: "/portal", icon: Home, label: "Portal", exact: true },
+  { href: "/portal/lernen", icon: BookOpen, label: "Lernbereich" },
+  { href: "/portal/dokumente", icon: FileText, label: "Dokumente" },
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/blueprint", icon: Brain, label: "OKUN Blueprint™" },
   { href: "/projektstatus", icon: FolderKanban, label: "Projektstatus" },
   { href: "/termine", icon: Calendar, label: "Termine" },
-  { href: "/dokumente", icon: FileText, label: "Dokumente" },
+  { href: "/dokumente", icon: FileText, label: "Alle Dokumente" },
   { href: "/retainer", icon: Headphones, label: "Retainer & Betreuung" },
   { href: "/nachrichten", icon: MessageSquare, label: "Nachrichten" },
   { href: "/einstellungen", icon: Settings, label: "Einstellungen" },

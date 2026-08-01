@@ -152,3 +152,89 @@ export async function sendAppointmentNotificationToAdmin({
     `,
   });
 }
+
+export async function sendInvitationEmail({
+  toEmail,
+  companyName,
+  inviteUrl,
+  expiryHours,
+}: {
+  toEmail: string;
+  companyName: string;
+  inviteUrl: string;
+  expiryHours: number;
+}) {
+  if (!resend) {
+    console.warn("[email] RESEND_API_KEY not set — skipping invitation email");
+    return;
+  }
+
+  await resend.emails.send({
+    from: FROM_ADDRESS,
+    to: toEmail,
+    subject: `Einladung zum ${companyName} Kundenportal`,
+    html: `
+      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#0a0a0a;color:#f0f0f0;padding:32px;border-radius:12px;">
+        <h1 style="font-size:20px;font-weight:700;color:#f0f0f0;margin:0 0 8px;">Sie wurden eingeladen</h1>
+        <p style="color:#888;font-size:14px;margin:0 0 24px;">
+          OKUN Systems hat Ihnen Zugang zum Kundenportal für <strong style="color:#f0f0f0;">${companyName}</strong> gewährt.
+        </p>
+        <div style="background:#141414;border:1px solid #2a2a2a;border-radius:8px;padding:20px;margin-bottom:24px;">
+          <p style="color:#888;font-size:14px;margin:0 0 16px;line-height:1.6;">
+            Klicken Sie auf den Button, um Ihr Konto zu erstellen und das Portal zu nutzen.<br>
+            Die Einladung ist <strong style="color:#f0f0f0;">${expiryHours} Stunden</strong> gültig.
+          </p>
+          <a href="${inviteUrl}" style="display:inline-block;background:#22c55e;color:#000;font-weight:700;font-size:14px;text-decoration:none;padding:12px 24px;border-radius:8px;">
+            Konto erstellen
+          </a>
+        </div>
+        <p style="color:#555;font-size:12px;line-height:1.6;">
+          Falls Sie diese Einladung nicht erwartet haben, können Sie diese E-Mail ignorieren.
+        </p>
+        <div style="margin-top:24px;padding-top:16px;border-top:1px solid #1e1e1e;">
+          <p style="color:#444;font-size:11px;margin:0;">OKUN Systems · <a href="https://okun-systems.de" style="color:#444;">okun-systems.de</a></p>
+        </div>
+      </div>
+    `,
+  });
+}
+
+export async function sendLearningAssignmentEmail({
+  toEmail,
+  toName,
+  companyName,
+  chapterTitle,
+}: {
+  toEmail: string;
+  toName: string;
+  companyName: string;
+  chapterTitle: string;
+}) {
+  if (!resend) return;
+
+  const portalUrl = process.env.NEXTAUTH_URL ?? process.env.APP_URL ?? "https://okun-systems.de";
+
+  await resend.emails.send({
+    from: FROM_ADDRESS,
+    to: toEmail,
+    subject: `Neuer Lerninhalt verfügbar: ${chapterTitle}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#0a0a0a;color:#f0f0f0;padding:32px;border-radius:12px;">
+        <h1 style="font-size:20px;font-weight:700;color:#f0f0f0;margin:0 0 8px;">Neuer Lerninhalt verfügbar</h1>
+        <p style="color:#888;font-size:14px;margin:0 0 24px;">
+          Hallo ${toName}, für <strong style="color:#f0f0f0;">${companyName}</strong> wurde ein neues Lernkapitel freigeschaltet.
+        </p>
+        <div style="background:#141414;border:1px solid #2a2a2a;border-radius:8px;padding:20px;margin-bottom:24px;">
+          <p style="margin:0 0 4px;font-weight:600;color:#f0f0f0;">${chapterTitle}</p>
+          <p style="margin:4px 0 16px;color:#888;font-size:13px;">Jetzt im Lernbereich Ihres Portals verfügbar.</p>
+          <a href="${portalUrl}/portal/lernen" style="display:inline-block;background:#22c55e;color:#000;font-weight:700;font-size:14px;text-decoration:none;padding:12px 24px;border-radius:8px;">
+            Zum Lernbereich
+          </a>
+        </div>
+        <div style="margin-top:24px;padding-top:16px;border-top:1px solid #1e1e1e;">
+          <p style="color:#444;font-size:11px;margin:0;">OKUN Systems · <a href="https://okun-systems.de" style="color:#444;">okun-systems.de</a></p>
+        </div>
+      </div>
+    `,
+  });
+}

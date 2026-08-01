@@ -13,6 +13,7 @@ model User {
   name       String?
   password   String
   role       String   @default("CLIENT")
+  portalRole String?  // CLIENT_ADMIN for portal admin users
   image      String?
   firstLogin Boolean  @default(true)
   createdAt  DateTime @default(now())
@@ -21,10 +22,15 @@ model User {
   companyId String?
   company   Company? @relation(fields: [companyId], references: [id])
 
-  appointments     Appointment[]
-  notes            Note[]
-  tickets          RetainerTicket[]
-  learningReviews  LearningProposal[]
+  appointments        Appointment[]
+  notes               Note[]
+  tickets             RetainerTicket[]
+  learningReviews     LearningProposal[]
+  createdInvitations  Invitation[]
+  managedAssignments  CustomerLearningAssignment[]
+  uploadedDocuments   Document[]
+  lessonProgress      LessonProgress[]
+  activityLogs        ActivityLog[]
 }
 
 model Company {
@@ -39,19 +45,22 @@ model Company {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users           User[]
-  projects        Project[]
-  appointments    Appointment[]
-  documents       Document[]
-  retainers       Retainer[]
-  assessments     Assessment[]
-  notes           Note[]
-  analysisSessions AnalysisSession[]
-  processes       ProcessProfile[]
-  detectedProblems DetectedProblem[]
-  opportunities   Opportunity[]
-  okunScores      OkunScore[]
-  memory          CompanyMemory?
+  users               User[]
+  projects            Project[]
+  appointments        Appointment[]
+  documents           Document[]
+  retainers           Retainer[]
+  assessments         Assessment[]
+  notes               Note[]
+  analysisSessions    AnalysisSession[]
+  processes           ProcessProfile[]
+  detectedProblems    DetectedProblem[]
+  opportunities       Opportunity[]
+  okunScores          OkunScore[]
+  memory              CompanyMemory?
+  invitations         Invitation[]
+  learningAssignments CustomerLearningAssignment[]
+  activityLogs        ActivityLog[]
 }
 
 model Project {
@@ -64,7 +73,8 @@ model Project {
   endDate     DateTime?
   progress    Int       @default(0)
   createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  updatedAt         DateTime  @updatedAt
+  isVisibleToClient Boolean   @default(false)
 
   companyId  String
   company    Company     @relation(fields: [companyId], references: [id])
@@ -136,11 +146,15 @@ model Document {
   isPublished Boolean  @default(false)
   isInternal  Boolean  @default(false)
   version     String?
+  r2Key       String?  // R2 object key for signed-URL generation
+  visibility  String   @default("internal") // internal | customer
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  companyId String
-  company   Company @relation(fields: [companyId], references: [id])
+  companyId    String
+  company      Company @relation(fields: [companyId], references: [id])
+  uploadedById String?
+  uploadedBy   User?   @relation(fields: [uploadedById], references: [id])
 }
 
 model Retainer {
@@ -580,4 +594,138 @@ model ScoringEvidence {
   description String
   messageId   String?
   createdAt   DateTime @default(now())
+}
+
+// ─── OKUN Client Platform Models ─────────────────────────────────────────────
+
+model Invitation {
+  id          String    @id @default(cuid())
+  token       String    @unique @default(uuid())
+  email       String
+  role        String    @default("CLIENT")
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  companyId   String
+  company     Company   @relation(fields: [companyId], references: [id])
+  createdById String
+  createdBy   User      @relation(fields: [createdById], references: [id])
+}
+
+model LearningCategory {
+  id          String            @id @default(cuid())
+  title       String
+  description String?
+  order       Int               @default(0)
+  isActive    Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  chapters    LearningChapter[]
+}
+
+model LearningChapter {
+  id               String                       @id @default(cuid())
+  title            String
+  description      String?
+  contentType      String                       @default("mixed") // video | text | pdf | mixed
+  thumbnailR2Key   String?
+  order            Int                          @default(0)
+  estimatedMinutes Int?
+  status           String                       @default("DRAFT") // DRAFT | PUBLISHED | ARCHIVED
+  isActive         Boolean                      @default(true)
+  createdAt        DateTime                     @default(now())
+  updatedAt        DateTime                     @updatedAt
+
+  categoryId  String
+  category    LearningCategory             @relation(fields: [categoryId], references: [id])
+  lessons     LearningLesson[]
+  tags        LearningChapterTag[]
+  assignments CustomerLearningAssignment[]
+}
+
+model LearningLesson {
+  id               String           @id @default(cuid())
+  title            String
+  description      String?
+  contentType      String           @default("video") // video | text | pdf
+  r2Key            String?
+  externalUrl      String?
+  order            Int              @default(0)
+  estimatedMinutes Int?
+  status           String           @default("DRAFT") // DRAFT | PUBLISHED | ARCHIVED
+  isActive         Boolean          @default(true)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  chapterId String
+  chapter   LearningChapter  @relation(fields: [chapterId], references: [id])
+  progress  LessonProgress[]
+}
+
+model LearningTag {
+  id             String               @id @default(cuid())
+  name           String               @unique
+  signalCategory String?
+
+  chapters LearningChapterTag[]
+}
+
+model LearningChapterTag {
+  chapterId String
+  chapter   LearningChapter @relation(fields: [chapterId], references: [id])
+  tagId     String
+  tag       LearningTag     @relation(fields: [tagId], references: [id])
+
+  @@id([chapterId, tagId])
+}
+
+model CustomerLearningAssignment {
+  id            String    @id @default(cuid())
+  status        String    @default("suggested") // suggested | active | rejected
+  assignedAt    DateTime  @default(now())
+  activatedAt   DateTime?
+  rejectedAt    DateTime?
+  rejectionNote String?
+  sessionId     String?   // Blueprint session that triggered the suggestion
+
+  companyId    String
+  company      Company         @relation(fields: [companyId], references: [id])
+  chapterId    String
+  chapter      LearningChapter @relation(fields: [chapterId], references: [id])
+  assignedById String
+  assignedBy   User            @relation(fields: [assignedById], references: [id])
+
+  @@unique([companyId, chapterId])
+}
+
+model LessonProgress {
+  id          String    @id @default(cuid())
+  status      String    @default("not_started") // not_started | in_progress | completed
+  progressPct Int       @default(0)
+  startedAt   DateTime?
+  completedAt DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  userId   String
+  user     User           @relation(fields: [userId], references: [id])
+  lessonId String
+  lesson   LearningLesson @relation(fields: [lessonId], references: [id])
+
+  @@unique([userId, lessonId])
+}
+
+model ActivityLog {
+  id         String   @id @default(cuid())
+  action     String
+  entityType String?
+  entityId   String?
+  metadata   String   @default("{}")
+  createdAt  DateTime @default(now())
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+  userId    String?
+  user      User?   @relation(fields: [userId], references: [id])
 }

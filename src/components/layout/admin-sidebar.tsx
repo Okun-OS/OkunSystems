@@ -25,7 +25,8 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { href: "/admin/dashboard", icon: LayoutDashboard, label: "Übersicht" },
   { href: "/admin/kunden", icon: Users, label: "Kundenübersicht" },
-  { href: "/admin/methodik", icon: BookOpen, label: "Methodik & Library" },
+  { href: "/admin/lernen", icon: BookOpen, label: "Learning Library" },
+  { href: "/admin/methodik", icon: Brain, label: "Methodik" },
   { href: "/admin/analysen", icon: BarChart2, label: "Analysen" },
   { href: "/admin/strategy", icon: Target, label: "Strategy Sessions" },
   { href: "/admin/empfehlungen", icon: Lightbulb, label: "Empfehlungen" },
