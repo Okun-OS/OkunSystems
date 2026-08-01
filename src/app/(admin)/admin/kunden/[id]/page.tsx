@@ -3,10 +3,10 @@ import { db } from "@/lib/db";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import {
-  ArrowLeft, Building2, Mail, Phone,
-  FolderOpen, BarChart3, Lightbulb, MessageSquare, FileText, CalendarDays, Brain, Target,
+  Building2, Mail, Phone,
+  FolderOpen, Lightbulb, MessageSquare, FileText, CalendarDays, Brain, Target,
 } from "lucide-react";
-import { formatDate, formatDateTime } from "@/lib/utils";
+import { formatDateTime } from "@/lib/utils";
 import { BlueprintReportButton } from "./BlueprintReportButton";
 
 export default async function KundeDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -35,43 +35,35 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
   const project = company.projects[0];
   const activeSession = company.analysisSessions[0];
 
+  async function handleSaveNote(formData: FormData) {
+    "use server";
+    const content = formData.get("content") as string;
+    if (!content?.trim()) return;
+    const authorId = (session!.user as any).id as string;
+    await db.note.create({
+      data: { content: content.trim(), companyId: id, authorId, isInternal: true },
+    });
+    redirect(`/admin/kunden/${id}`);
+  }
+
   return (
-    <div className="max-w-[1400px] mx-auto">
-      <div className="mb-6">
-        <Link href="/admin/kunden" className="flex items-center gap-2 text-[#888] hover:text-[#f0f0f0] text-sm mb-4 transition-colors">
-          <ArrowLeft size={15} />
-          Zurück zur Übersicht
+    <div>
+      {/* Action bar */}
+      <div className="flex items-center gap-2 mb-6">
+        <Link href={`/admin/kunden/${id}/strategy`}
+          className="bg-[#22c55e] hover:bg-[#16a34a] text-black text-sm font-semibold rounded-lg px-4 py-2.5 transition-colors flex items-center gap-2">
+          <Target size={14} />
+          Strategy Session
         </Link>
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-[#22c55e]/10 border border-[#22c55e]/20 flex items-center justify-center">
-              <span className="text-[#22c55e] text-xl font-bold">{company.name.charAt(0)}</span>
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-[#f0f0f0]">{company.name}</h1>
-              <div className="flex items-center gap-3 mt-1">
-                {company.industry && <span className="text-[#888] text-sm">{company.industry}</span>}
-                <StatusBadge status={company.status} />
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link href={`/admin/kunden/${id}/strategy`}
-              className="bg-[#22c55e] hover:bg-[#16a34a] text-black text-sm font-semibold rounded-lg px-4 py-2.5 transition-colors flex items-center gap-2">
-              <Target size={14} />
-              Strategy Session
-            </Link>
-            <Link href={`/admin/kunden/${id}/analyse`}
-              className="bg-[#22c55e]/10 hover:bg-[#22c55e]/20 border border-[#22c55e]/20 text-[#22c55e] text-sm font-medium rounded-lg px-4 py-2.5 transition-colors flex items-center gap-2">
-              <Brain size={14} />
-              Analyse
-            </Link>
-            <Link href={`/admin/kunden/${id}/bearbeiten`}
-              className="bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-[#f0f0f0] text-sm font-medium rounded-lg px-4 py-2.5 transition-colors">
-              Bearbeiten
-            </Link>
-          </div>
-        </div>
+        <Link href={`/admin/kunden/${id}/analyse`}
+          className="bg-[#22c55e]/10 hover:bg-[#22c55e]/20 border border-[#22c55e]/20 text-[#22c55e] text-sm font-medium rounded-lg px-4 py-2.5 transition-colors flex items-center gap-2">
+          <Brain size={14} />
+          Analyse
+        </Link>
+        <Link href={`/admin/kunden/${id}/bearbeiten`}
+          className="bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-[#f0f0f0] text-sm font-medium rounded-lg px-4 py-2.5 transition-colors">
+          Bearbeiten
+        </Link>
       </div>
 
       <div className="grid grid-cols-12 gap-5">
@@ -303,11 +295,13 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
                 ))}
               </div>
             )}
-            <textarea placeholder="Neue interne Notiz..." rows={2}
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50 resize-none" />
-            <button className="mt-2 bg-[#22c55e] hover:bg-[#16a34a] text-black font-semibold text-sm rounded-lg px-4 py-2 transition-colors">
-              Notiz speichern
-            </button>
+            <form action={handleSaveNote}>
+              <textarea name="content" placeholder="Neue interne Notiz..." rows={2}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50 resize-none" />
+              <button type="submit" className="mt-2 bg-[#22c55e] hover:bg-[#16a34a] text-black font-semibold text-sm rounded-lg px-4 py-2 transition-colors">
+                Notiz speichern
+              </button>
+            </form>
           </div>
         </div>
       </div>
@@ -315,6 +309,7 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
   );
 }
 
+// StatusBadge kept for internal reference only (layout provides the visible one)
 function StatusBadge({ status }: { status: string }) {
   const cfg: Record<string, { label: string; cls: string }> = {
     ACTIVE: { label: "Aktiv", cls: "bg-[#22c55e]/10 text-[#22c55e] border-[#22c55e]/20" },

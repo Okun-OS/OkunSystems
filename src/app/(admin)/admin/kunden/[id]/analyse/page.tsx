@@ -60,10 +60,6 @@ export default async function KundeAnalysePage({ params }: { params: Promise<{ i
   return (
     <div className="max-w-[1400px] mx-auto">
       <div className="mb-6">
-        <Link href={`/admin/kunden/${id}`} className="flex items-center gap-2 text-[#888] hover:text-[#f0f0f0] text-sm mb-4 transition-colors">
-          <ArrowLeft size={15} />
-          Zurück zu {company.name}
-        </Link>
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-2xl font-bold text-[#f0f0f0]">OKUN Blueprint™ Analyse</h1>
