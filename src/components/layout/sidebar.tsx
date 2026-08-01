@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/analyse", icon: Brain, label: "OKUN Blueprint™" },
+  { href: "/blueprint", icon: Brain, label: "OKUN Blueprint™" },
   { href: "/projektstatus", icon: FolderKanban, label: "Projektstatus" },
   { href: "/termine", icon: Calendar, label: "Termine" },
   { href: "/dokumente", icon: FileText, label: "Dokumente" },

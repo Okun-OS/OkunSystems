@@ -7,6 +7,7 @@ import {
   FolderOpen, BarChart3, Lightbulb, MessageSquare, FileText, CalendarDays, Brain, Target,
 } from "lucide-react";
 import { formatDate, formatDateTime } from "@/lib/utils";
+import { BlueprintReportButton } from "./BlueprintReportButton";
 
 export default async function KundeDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -121,6 +122,33 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
             </div>
             {!activeSession ? (
               <p className="text-[#555] text-sm">Noch nicht gestartet</p>
+            ) : activeSession.blueprintVersion === "2.0" ? (
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#888]">Version</span>
+                  <span className="text-[#22c55e] text-xs font-semibold">Blueprint 2.0</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#888]">Status</span>
+                  <span className={activeSession.status === "COMPLETED" ? "text-[#22c55e]" : "text-yellow-400"}>
+                    {activeSession.status === "COMPLETED" ? "Abgeschlossen" : "In Bearbeitung"}
+                  </span>
+                </div>
+                {activeSession.status === "COMPLETED" && (
+                  <>
+                    <Link
+                      href={`/blueprint/${activeSession.id}/ergebnis`}
+                      className="flex items-center justify-between text-xs text-[#888] hover:text-[#22c55e] transition-colors pt-1"
+                    >
+                      Ergebnisse anzeigen <span>→</span>
+                    </Link>
+                    <BlueprintReportButton
+                      sessionId={activeSession.id}
+                      initialReportUrl={activeSession.reportUrl}
+                    />
+                  </>
+                )}
+              </div>
             ) : (
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
