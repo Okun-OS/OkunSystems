@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getSuggestedChaptersForSession, suggestAssignment } from "@/lib/learning/actions";
 
 // ─── Start or resume Blueprint 2.0 session ────────────────────────────────────
 
@@ -151,6 +152,17 @@ export async function completeBlueprintSession(sessionId: string): Promise<void>
     where: { id: sessionId, companyId: user.companyId },
     data: { status: "COMPLETED", completedAt: new Date() },
   });
+
+  try {
+    const chapterIds = await getSuggestedChaptersForSession(sessionId, user.companyId);
+    await Promise.allSettled(
+      chapterIds.map((chapterId) =>
+        suggestAssignment({ companyId: user.companyId!, chapterId, assignedById: userId, sessionId })
+      )
+    );
+  } catch {
+    // Auto-suggest failures must not prevent session completion
+  }
 
   redirect(`/blueprint/${sessionId}/abgeschlossen`);
 }

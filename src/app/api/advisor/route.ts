@@ -5,6 +5,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { buildSystemPrompt, buildLibrarySnippets } from "@/lib/engines/advisor-prompt";
 import { persistMemoryUpdates } from "@/lib/engines/memory-engine";
 import { calculateOkunScore } from "@/lib/engines/scoring-engine";
+import { getSuggestedChaptersForSession, suggestAssignment } from "@/lib/learning/actions";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -308,13 +309,23 @@ export async function POST(req: NextRequest) {
 
   await db.analysisSession.update({ where: { id: sessionId }, data: updateData as never });
 
-  // Auto-calculate score when analysis completes
+  // Auto-calculate score and auto-suggest learning when analysis completes
   let scoreResult: Awaited<ReturnType<typeof calculateOkunScore>> | null = null;
   if (notes.analysisComplete) {
     try {
       scoreResult = await calculateOkunScore(sessionId, companyId);
     } catch (err) {
       console.error("[/api/advisor] Score calculation failed:", err);
+    }
+    try {
+      const chapterIds = await getSuggestedChaptersForSession(sessionId, companyId);
+      await Promise.allSettled(
+        chapterIds.map((chapterId) =>
+          suggestAssignment({ companyId, chapterId, assignedById: userId, sessionId })
+        )
+      );
+    } catch (err) {
+      console.error("[/api/advisor] Auto-suggest learning failed:", err);
     }
   }
 
