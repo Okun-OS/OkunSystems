@@ -216,27 +216,37 @@ export default async function CustomerLearningPage({
           </h2>
 
           <div className="space-y-2 max-h-72 overflow-y-auto">
-            {availableChapters.map((chapter) => (
-              <div
-                key={chapter.id}
-                className="flex items-center justify-between p-3 bg-[#0d0d0d] rounded-lg"
-              >
-                <div>
-                  <p className="text-[#f0f0f0] text-sm">{chapter.title}</p>
-                  <p className="text-[#555] text-xs mt-0.5">{chapter.category.title}</p>
+            {availableChapters.map((chapter) => {
+              const isImmediate = (chapter as any).availability === "immediate";
+              return (
+                <div
+                  key={chapter.id}
+                  className="flex items-center justify-between p-3 bg-[#0d0d0d] rounded-lg"
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-[#f0f0f0] text-sm">{chapter.title}</p>
+                      {isImmediate && (
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-[#22c55e]/10 border border-[#22c55e]/20 text-[#22c55e]">
+                          Sofort aktiv
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[#555] text-xs mt-0.5">{chapter.category.title}</p>
+                  </div>
+                  <form action={handleSuggest}>
+                    <input type="hidden" name="chapterId" value={chapter.id} />
+                    <button
+                      type="submit"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-[#888] hover:text-[#f0f0f0] text-xs rounded-lg transition-colors"
+                    >
+                      <Plus size={11} />
+                      {isImmediate ? "Zuweisen" : "Vorschlagen"}
+                    </button>
+                  </form>
                 </div>
-                <form action={handleSuggest}>
-                  <input type="hidden" name="chapterId" value={chapter.id} />
-                  <button
-                    type="submit"
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-[#888] hover:text-[#f0f0f0] text-xs rounded-lg transition-colors"
-                  >
-                    <Plus size={11} />
-                    Vorschlagen
-                  </button>
-                </form>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

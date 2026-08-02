@@ -58,19 +58,19 @@ export default async function AdminEinstellungenPage() {
           </div>
         )}
 
-        <form action={saveSetting} className="space-y-3">
-          <input type="hidden" name="key" value="welcome_video_url" />
-          <div>
-            <label className="block text-xs font-medium text-[#888] mb-1.5">Video-URL</label>
-            <input
-              name="value"
-              type="url"
-              defaultValue={settingMap["welcome_video_url"] ?? ""}
-              placeholder="https://..."
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50"
-            />
-          </div>
-          <div className="flex gap-3">
+        <div className="space-y-3">
+          <form action={saveSetting} className="space-y-3">
+            <input type="hidden" name="key" value="welcome_video_url" />
+            <div>
+              <label className="block text-xs font-medium text-[#888] mb-1.5">Video-URL</label>
+              <input
+                name="value"
+                type="url"
+                defaultValue={settingMap["welcome_video_url"] ?? ""}
+                placeholder="https://..."
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50"
+              />
+            </div>
             <button
               type="submit"
               className="flex items-center gap-2 px-4 py-2 bg-[#22c55e] hover:bg-[#16a34a] text-black text-sm font-semibold rounded-lg transition-colors"
@@ -78,20 +78,20 @@ export default async function AdminEinstellungenPage() {
               <Upload size={13} />
               Speichern
             </button>
-            {settingMap["welcome_video_url"] && (
-              <form action={deleteSetting}>
-                <input type="hidden" name="key" value="welcome_video_url" />
-                <button
-                  type="submit"
-                  className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 text-sm rounded-lg transition-colors"
-                >
-                  <Trash2 size={13} />
-                  Entfernen
-                </button>
-              </form>
-            )}
-          </div>
-        </form>
+          </form>
+          {settingMap["welcome_video_url"] && (
+            <form action={deleteSetting}>
+              <input type="hidden" name="key" value="welcome_video_url" />
+              <button
+                type="submit"
+                className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 text-sm rounded-lg transition-colors"
+              >
+                <Trash2 size={13} />
+                Entfernen
+              </button>
+            </form>
+          )}
+        </div>
       </div>
 
       {/* Solution Library */}
