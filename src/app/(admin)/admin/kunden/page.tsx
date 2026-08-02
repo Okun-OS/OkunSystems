@@ -193,9 +193,13 @@ export default async function KundenPage({
                             <p className="text-sm font-medium text-[#f0f0f0] whitespace-nowrap">
                               {company.name}
                             </p>
-                            <p className="text-xs text-[#888]">
-                              {company.website ?? "—"}
-                            </p>
+                            {company.plan ? (
+                              <span className="text-xs px-1.5 py-0.5 rounded bg-[#22c55e]/10 border border-[#22c55e]/20 text-[#22c55e] capitalize">
+                                {company.plan}
+                              </span>
+                            ) : (
+                              <p className="text-xs text-[#888]">{company.website ?? "—"}</p>
+                            )}
                           </div>
                         </div>
                       </td>

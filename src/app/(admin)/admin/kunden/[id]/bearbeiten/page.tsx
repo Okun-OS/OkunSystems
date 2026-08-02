@@ -112,12 +112,16 @@ export default async function KundeBearbeitenPage({
 
             <div>
               <label className="text-[#888] text-xs block mb-1.5">Gebuchtes Paket</label>
-              <input
+              <select
                 name="plan"
                 defaultValue={company.plan ?? ""}
-                placeholder="z.B. OKUN Starter"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50"
-              />
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-[#f0f0f0] focus:outline-none focus:border-[#22c55e]/50"
+              >
+                <option value="">— kein Paket —</option>
+                <option value="foundation">OKUN Foundation (ab 5.900 €)</option>
+                <option value="operations">OKUN Operations (ab 7.500 €)</option>
+                <option value="custom">OKUN Custom (ab 20.000 €)</option>
+              </select>
             </div>
 
             <div>
