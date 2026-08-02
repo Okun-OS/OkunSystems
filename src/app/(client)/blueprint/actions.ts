@@ -4,7 +4,13 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { getSuggestedChaptersForSession, suggestAssignment } from "@/lib/learning/actions";
+import { assembleBlueprintReport } from "@/lib/blueprint/report-assembler";
+import { generateReportTexts } from "@/lib/blueprint/report-text-engine";
+import { renderReportHtml } from "@/lib/blueprint/report-html";
+import { renderHtmlToPdf } from "@/lib/blueprint/pdf-generator";
+import { uploadPdfToR2, buildReportKey } from "@/lib/blueprint/storage";
 
 // ─── Start or resume Blueprint 2.0 session ────────────────────────────────────
 
@@ -166,6 +172,51 @@ export async function completeBlueprintSession(sessionId: string): Promise<void>
   } catch {
     // Auto-suggest failures must not prevent session completion
   }
+
+  // Auto-generate Blueprint PDF report in background after response is sent
+  const capturedCompanyId = user.companyId!;
+  const capturedUserId = userId;
+  after(async () => {
+    try {
+      const reportData = await assembleBlueprintReport(sessionId);
+      const texts = await generateReportTexts(reportData);
+      const html = renderReportHtml(reportData, texts);
+      const pdfBuffer = await renderHtmlToPdf(html);
+      const key = buildReportKey(sessionId);
+      const reportUrl = await uploadPdfToR2(pdfBuffer, key);
+
+      await db.analysisSession.update({
+        where: { id: sessionId },
+        data: { reportUrl },
+      });
+
+      try {
+        const existingDoc = await db.document.findFirst({
+          where: { r2Key: key, companyId: capturedCompanyId },
+        });
+        if (existingDoc) {
+          await db.document.update({ where: { id: existingDoc.id }, data: { fileUrl: reportUrl } });
+        } else {
+          await db.document.create({
+            data: {
+              title: "Blueprint-Bericht",
+              category: "BLUEPRINT",
+              fileUrl: reportUrl,
+              r2Key: key,
+              mimeType: "application/pdf",
+              visibility: "internal",
+              companyId: capturedCompanyId,
+              uploadedById: capturedUserId,
+            },
+          });
+        }
+      } catch (docErr) {
+        console.error("[completeBlueprintSession] Document record failed:", docErr);
+      }
+    } catch (err) {
+      console.error("[completeBlueprintSession] PDF auto-generation failed:", err);
+    }
+  });
 
   redirect(`/blueprint/${sessionId}/abgeschlossen`);
 }

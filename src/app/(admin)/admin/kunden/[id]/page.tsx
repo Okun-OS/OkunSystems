@@ -1,10 +1,11 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { redirect, notFound } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import Link from "next/link";
 import {
   Building2, Mail, Phone,
-  FolderOpen, Lightbulb, MessageSquare, FileText, CalendarDays, Brain, Target,
+  FolderOpen, Lightbulb, MessageSquare, FileText, CalendarDays, Brain, Target, CheckCircle2, Clock,
 } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 import { BlueprintReportButton } from "./BlueprintReportButton";
@@ -43,7 +44,7 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
     await db.note.create({
       data: { content: content.trim(), companyId: id, authorId, isInternal: true },
     });
-    redirect(`/admin/kunden/${id}`);
+    revalidatePath(`/admin/kunden/${id}`);
   }
 
   return (
@@ -65,6 +66,21 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
           Bearbeiten
         </Link>
       </div>
+
+      {activeSession?.blueprintVersion === "2.0" && activeSession.status === "COMPLETED" && !activeSession.reportUrl && (
+        <div className="mb-5 flex items-center gap-3 bg-yellow-500/5 border border-yellow-500/20 rounded-xl px-4 py-3 text-sm">
+          <Clock size={14} className="text-yellow-400 shrink-0" />
+          <span className="text-yellow-300">Blueprint abgeschlossen — PDF-Bericht wird generiert oder muss manuell ausgelöst werden.</span>
+          <Link href={`/admin/kunden/${id}/ergebnisse`} className="ml-auto text-yellow-400 hover:underline text-xs shrink-0">Ergebnisse →</Link>
+        </div>
+      )}
+      {activeSession?.blueprintVersion === "2.0" && activeSession.status === "COMPLETED" && activeSession.reportUrl && (
+        <div className="mb-5 flex items-center gap-3 bg-[#22c55e]/5 border border-[#22c55e]/20 rounded-xl px-4 py-3 text-sm">
+          <CheckCircle2 size={14} className="text-[#22c55e] shrink-0" />
+          <span className="text-[#22c55e]">Blueprint abgeschlossen — PDF-Bericht verfügbar.</span>
+          <Link href={`/admin/kunden/${id}/ergebnisse`} className="ml-auto text-[#22c55e] hover:underline text-xs shrink-0">Ergebnisse →</Link>
+        </div>
+      )}
 
       <div className="grid grid-cols-12 gap-5">
         {/* Left */}
@@ -288,6 +304,7 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
             <div className="flex items-center gap-2 mb-4">
               <FileText size={15} className="text-[#22c55e]" />
               <h2 className="text-[#f0f0f0] font-semibold text-sm">Dokumente ({company.documents.length})</h2>
+              <Link href={`/admin/kunden/${id}/dokumente`} className="ml-auto text-[#555] text-xs hover:text-[#22c55e] transition-colors">Alle →</Link>
             </div>
             {company.documents.length === 0 ? (
               <p className="text-[#555] text-sm">Noch keine Dokumente.</p>
@@ -295,10 +312,15 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
               <div className="space-y-2">
                 {company.documents.slice(0, 5).map((doc) => (
                   <div key={doc.id} className="flex items-center gap-3 p-3 bg-[#0d0d0d] rounded-lg">
-                    <FileText size={14} className="text-[#888] flex-shrink-0" />
-                    <p className="text-[#f0f0f0] text-sm flex-1 truncate">{doc.title}</p>
-                    <span className={`text-xs px-2 py-0.5 rounded ${doc.isPublished ? "text-[#22c55e] bg-[#22c55e]/10" : "text-[#888] bg-[#1a1a1a]"}`}>
-                      {doc.isPublished ? "Freigegeben" : "Intern"}
+                    <FileText size={14} className={doc.category === "BLUEPRINT" ? "text-[#22c55e]" : "text-[#888]"} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[#f0f0f0] text-sm truncate">{doc.title}</p>
+                      {doc.category === "BLUEPRINT" && (
+                        <p className="text-[#555] text-xs">Blueprint PDF · automatisch generiert</p>
+                      )}
+                    </div>
+                    <span className={`text-xs px-2 py-0.5 rounded shrink-0 ${doc.visibility === "customer" ? "text-[#22c55e] bg-[#22c55e]/10" : "text-[#888] bg-[#1a1a1a]"}`}>
+                      {doc.visibility === "customer" ? "Für Kunden" : "Intern"}
                     </span>
                   </div>
                 ))}
