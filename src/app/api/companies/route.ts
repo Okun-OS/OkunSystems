@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { companyName, industry, website, phone, address, contactName, contactEmail, contactPassword } = body;
+    const { companyName, industry, website, phone, address, contactName, contactEmail, contactPassword, plan } = body;
 
     if (!companyName || !contactEmail || !contactPassword || !contactName) {
       return NextResponse.json({ error: "Pflichtfelder fehlen" }, { status: 400 });
@@ -31,6 +31,7 @@ export async function POST(req: NextRequest) {
         website: website || null,
         phone: phone || null,
         address: address || null,
+        plan: plan || null,
         status: "ONBOARDING",
         users: {
           create: {

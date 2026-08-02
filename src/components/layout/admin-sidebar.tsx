@@ -6,15 +6,9 @@ import { signOut } from "next-auth/react";
 import {
   LayoutDashboard,
   Users,
-  Brain,
   BookOpen,
-  Target,
-  BarChart2,
-  Lightbulb,
-  CheckSquare,
   Calendar,
   FileText,
-  Headphones,
   Settings,
   LogOut,
   ChevronDown,
@@ -24,16 +18,10 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/admin/dashboard", icon: LayoutDashboard, label: "Übersicht" },
-  { href: "/admin/kunden", icon: Users, label: "Kundenübersicht" },
+  { href: "/admin/kunden", icon: Users, label: "Kunden" },
   { href: "/admin/lernen", icon: BookOpen, label: "Learning Library" },
-  { href: "/admin/methodik", icon: Brain, label: "Methodik" },
-  { href: "/admin/analysen", icon: BarChart2, label: "Analysen" },
-  { href: "/admin/strategy", icon: Target, label: "Strategy Sessions" },
-  { href: "/admin/empfehlungen", icon: Lightbulb, label: "Empfehlungen" },
-  { href: "/admin/aufgaben", icon: CheckSquare, label: "Aufgaben" },
   { href: "/admin/termine", icon: Calendar, label: "Termine" },
   { href: "/admin/dokumente", icon: FileText, label: "Dokumente" },
-  { href: "/admin/retainer", icon: Headphones, label: "Retainer" },
   { href: "/admin/einstellungen", icon: Settings, label: "Einstellungen" },
 ];
 
@@ -49,15 +37,16 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
 
   return (
     <aside className="fixed left-0 top-0 h-full w-[240px] bg-[#0d0d0d] border-r border-[#1e1e1e] flex flex-col z-40">
-      {/* Logo */}
       <div className="p-6 pb-4 border-b border-[#1e1e1e]">
         <OkunLogo size="md" />
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-3">
         {navItems.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+          const isActive =
+            item.href === "/admin/kunden"
+              ? pathname === item.href || pathname.startsWith(item.href + "/")
+              : pathname === item.href || pathname.startsWith(item.href + "/");
           return (
             <Link
               key={item.href}
@@ -76,7 +65,6 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
         })}
       </nav>
 
-      {/* User section */}
       <div className="p-3 border-t border-[#1e1e1e]">
         <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-[#141414]">
           <div className="w-8 h-8 rounded-full bg-[#22c55e]/20 border border-[#22c55e]/30 flex items-center justify-center flex-shrink-0">

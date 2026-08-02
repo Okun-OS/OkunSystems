@@ -5,13 +5,11 @@ import { usePathname } from "next/navigation";
 
 const TABS = [
   { label: "Übersicht", href: "", exact: true },
-  { label: "Portal", href: "/portal" },
-  { label: "Dokumente", href: "/dokumente" },
-  { label: "Lernen", href: "/lernen" },
   { label: "Blueprint", href: "/blueprint-portal" },
-  { label: "Analyse", href: "/analyse" },
-  { label: "Strategie", href: "/strategy" },
-  { label: "Aktivität", href: "/aktivitaet" },
+  { label: "Dokumente", href: "/dokumente" },
+  { label: "Termine", href: "/termine" },
+  { label: "Lernen", href: "/lernen" },
+  { label: "Benutzer", href: "/benutzer" },
   { label: "Einstellungen", href: "/bearbeiten" },
 ];
 

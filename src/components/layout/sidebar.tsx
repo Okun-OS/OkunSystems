@@ -6,39 +6,25 @@ import { signOut } from "next-auth/react";
 import {
   LayoutDashboard,
   Brain,
-  FolderKanban,
+  BookOpen,
   Calendar,
   FileText,
-  Headphones,
-  MessageSquare,
   Settings,
   LogOut,
   ChevronDown,
-  BookOpen,
-  Home,
-  Layers,
-  User,
-  LifeBuoy,
+  HeartHandshake,
 } from "lucide-react";
 import { OkunLogo } from "./okun-logo";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/portal", icon: Home, label: "Portal", exact: true },
-  { href: "/portal/lernen", icon: BookOpen, label: "Lernbereich" },
-  { href: "/portal/dokumente", icon: FileText, label: "Dokumente" },
-  { href: "/portal/projekt", icon: Layers, label: "Projektstatus" },
-  { href: "/portal/blueprint", icon: Brain, label: "Blueprint-Bericht" },
-  { href: "/portal/profil", icon: User, label: "Profil" },
-  { href: "/portal/hilfe", icon: LifeBuoy, label: "Hilfe" },
-  { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+  { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", exact: true },
   { href: "/blueprint", icon: Brain, label: "OKUN Blueprint™" },
-  { href: "/projektstatus", icon: FolderKanban, label: "Projektstatus" },
+  { href: "/portal/lernen", icon: BookOpen, label: "Lernen" },
   { href: "/termine", icon: Calendar, label: "Termine" },
-  { href: "/dokumente", icon: FileText, label: "Alle Dokumente" },
-  { href: "/retainer", icon: Headphones, label: "Retainer & Betreuung" },
-  { href: "/nachrichten", icon: MessageSquare, label: "Nachrichten" },
-  { href: "/einstellungen", icon: Settings, label: "Einstellungen" },
+  { href: "/portal/dokumente", icon: FileText, label: "Dokumente" },
+  { href: "/okun-care", icon: HeartHandshake, label: "OKUN Care" },
+  { href: "/portal/einstellungen", icon: Settings, label: "Einstellungen" },
 ];
 
 interface SidebarProps {
@@ -54,15 +40,15 @@ export function Sidebar({ user }: SidebarProps) {
 
   return (
     <aside className="fixed left-0 top-0 h-full w-[240px] bg-[#0d0d0d] border-r border-[#1e1e1e] flex flex-col z-40">
-      {/* Logo */}
       <div className="p-6 pb-4 border-b border-[#1e1e1e]">
         <OkunLogo size="md" />
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-3">
         {navItems.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+          const isActive = item.exact
+            ? pathname === item.href
+            : pathname === item.href || pathname.startsWith(item.href + "/");
           return (
             <Link
               key={item.href}
@@ -81,7 +67,6 @@ export function Sidebar({ user }: SidebarProps) {
         })}
       </nav>
 
-      {/* User section */}
       <div className="p-3 border-t border-[#1e1e1e]">
         <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-[#141414] cursor-pointer group">
           <div className="w-8 h-8 rounded-full bg-[#22c55e]/20 border border-[#22c55e]/30 flex items-center justify-center flex-shrink-0">

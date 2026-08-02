@@ -124,6 +124,7 @@ export default async function BlueprintSessionPage({
           id: next.questionId,
           externalId: next.externalId,
           questionDe: fullQuestion?.questionDe ?? "",
+          questionType: questionRow.questionType,
           isMultiSelect,
           maxSelections,
           options: questionRow.answerOptions.map((opt) => ({

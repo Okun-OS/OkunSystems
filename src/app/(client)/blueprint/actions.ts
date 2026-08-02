@@ -53,7 +53,8 @@ export async function startBlueprintSession(): Promise<void> {
 export async function submitBlueprintAnswer(
   sessionId: string,
   questionId: string,
-  selectedOptionIds: string[]
+  selectedOptionIds: string[],
+  freeText?: string
 ): Promise<void> {
   const session = await auth();
   if (!session?.user) redirect("/login");
@@ -122,12 +123,14 @@ export async function submitBlueprintAnswer(
       sessionId,
       questionId,
       selectedOptionIds: JSON.stringify(selectedOptionIds),
+      freeText: freeText ?? null,
       computedScore,
       computedSignals: JSON.stringify(signals),
       status: "ANSWERED",
     },
     update: {
       selectedOptionIds: JSON.stringify(selectedOptionIds),
+      freeText: freeText ?? null,
       computedScore,
       computedSignals: JSON.stringify(signals),
       status: "ANSWERED",

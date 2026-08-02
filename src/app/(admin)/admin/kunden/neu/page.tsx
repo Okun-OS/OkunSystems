@@ -13,6 +13,7 @@ export default function NeuerKundePage() {
   const [form, setForm] = useState({
     companyName: "", industry: "", website: "", phone: "", address: "",
     contactName: "", contactEmail: "", contactPassword: "",
+    plan: "",
   });
 
   function update(field: string, value: string) {
@@ -28,7 +29,7 @@ export default function NeuerKundePage() {
       const res = await fetch("/api/companies", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Fehler beim Anlegen");
@@ -61,7 +62,7 @@ export default function NeuerKundePage() {
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
               <label className="block text-xs font-medium text-[#888] mb-1.5">Unternehmensname *</label>
-              <input required value={form.companyName} onChange={e => update("companyName", e.target.value)}
+              <input required value={form.companyName} onChange={(e) => update("companyName", e.target.value)}
                 placeholder="Muster GmbH"
                 className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50" />
             </div>
@@ -96,6 +97,30 @@ export default function NeuerKundePage() {
                 <input value={form.address} onChange={e => update("address", e.target.value)}
                   placeholder="Musterstraße 1, 12345 Stadt"
                   className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg pl-9 pr-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50" />
+              </div>
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-[#888] mb-2">Paket</label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { value: "foundation", label: "OKUN Foundation", price: "ab 5.900 €" },
+                  { value: "operations", label: "OKUN Operations", price: "ab 7.500 €" },
+                  { value: "custom", label: "OKUN Custom", price: "ab 20.000 €" },
+                ].map((pkg) => (
+                  <button
+                    key={pkg.value}
+                    type="button"
+                    onClick={() => update("plan", pkg.value)}
+                    className={`text-left p-3 rounded-lg border transition-all ${
+                      form.plan === pkg.value
+                        ? "border-[#22c55e]/50 bg-[#22c55e]/8 text-[#f0f0f0]"
+                        : "border-[#2a2a2a] bg-[#0d0d0d] text-[#888] hover:border-[#3a3a3a]"
+                    }`}
+                  >
+                    <p className="text-xs font-semibold">{pkg.label}</p>
+                    <p className="text-xs mt-0.5 text-[#555]">{pkg.price}</p>
+                  </button>
+                ))}
               </div>
             </div>
           </div>

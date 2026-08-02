@@ -144,6 +144,7 @@ export default async function PortalLearningPage() {
                                   id: lesson.id,
                                   title: lesson.title,
                                   contentType: lesson.contentType,
+                                  r2Key: lesson.r2Key,
                                   externalUrl: lesson.externalUrl,
                                   estimatedMinutes: lesson.estimatedMinutes,
                                   order: idx,

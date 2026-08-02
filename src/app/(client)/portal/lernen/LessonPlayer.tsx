@@ -10,12 +10,14 @@ import {
   ChevronRight,
   ExternalLink,
   Loader2,
+  X,
 } from "lucide-react";
 
 type Lesson = {
   id: string;
   title: string;
   contentType: string;
+  r2Key: string | null;
   externalUrl: string | null;
   estimatedMinutes: number | null;
   order: number;
@@ -34,6 +36,11 @@ export function LessonPlayer({
   const [marking, setMarking] = useState(false);
   const [currentStatus, setCurrentStatus] = useState(status);
   const [currentPct, setCurrentPct] = useState(progressPct);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoLoading, setVideoLoading] = useState(false);
+
+  const hasR2Content = !!lesson.r2Key;
+  const hasExternalUrl = !!lesson.externalUrl;
 
   const typeIcon =
     lesson.contentType === "video" ? (
@@ -51,14 +58,18 @@ export function LessonPlayer({
       <Circle size={16} className="text-[#444] flex-shrink-0" />
     );
 
+  async function markProgress(pct: number) {
+    await fetch("/api/portal/progress", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lessonId: lesson.id, progressPct: pct }),
+    });
+  }
+
   async function markCompleted() {
     setMarking(true);
     try {
-      await fetch("/api/portal/progress", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lessonId: lesson.id, progressPct: 100 }),
-      });
+      await markProgress(100);
       setCurrentStatus("completed");
       setCurrentPct(100);
     } finally {
@@ -66,20 +77,36 @@ export function LessonPlayer({
     }
   }
 
-  async function openContent() {
-    if (!lesson.externalUrl) return;
-
-    // Mark as in-progress when opening
+  async function openR2Video() {
     if (currentStatus === "not_started") {
-      await fetch("/api/portal/progress", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lessonId: lesson.id, progressPct: 10 }),
-      });
+      await markProgress(10);
       setCurrentStatus("in_progress");
       setCurrentPct(10);
     }
 
+    if (videoUrl) {
+      setVideoUrl(null);
+      return;
+    }
+
+    setVideoLoading(true);
+    try {
+      const res = await fetch(`/api/learning/lesson-read-url?lessonId=${lesson.id}`);
+      if (!res.ok) throw new Error("Fehler");
+      const data = await res.json();
+      setVideoUrl(data.url);
+    } finally {
+      setVideoLoading(false);
+    }
+  }
+
+  async function openExternal() {
+    if (!lesson.externalUrl) return;
+    if (currentStatus === "not_started") {
+      await markProgress(10);
+      setCurrentStatus("in_progress");
+      setCurrentPct(10);
+    }
     window.open(lesson.externalUrl, "_blank", "noopener,noreferrer");
   }
 
@@ -120,37 +147,69 @@ export function LessonPlayer({
       </button>
 
       {expanded && (
-        <div className="px-5 pb-4 bg-[#0d0d0d] flex items-center gap-3 flex-wrap">
-          {lesson.externalUrl && (
-            <button
-              onClick={openContent}
-              className="flex items-center gap-1.5 px-4 py-2 bg-[#22c55e]/10 hover:bg-[#22c55e]/20 border border-[#22c55e]/20 text-[#22c55e] text-sm font-medium rounded-lg transition-colors"
-            >
-              <ExternalLink size={13} />
-              Inhalt öffnen
-            </button>
-          )}
+        <div className="px-5 pb-4 bg-[#0d0d0d]">
+          <div className="flex items-center gap-3 flex-wrap pt-3">
+            {hasR2Content && lesson.contentType === "video" && (
+              <button
+                onClick={openR2Video}
+                disabled={videoLoading}
+                className="flex items-center gap-1.5 px-4 py-2 bg-[#22c55e]/10 hover:bg-[#22c55e]/20 border border-[#22c55e]/20 text-[#22c55e] text-sm font-medium rounded-lg transition-colors"
+              >
+                {videoLoading ? (
+                  <Loader2 size={13} className="animate-spin" />
+                ) : videoUrl ? (
+                  <X size={13} />
+                ) : (
+                  <Video size={13} />
+                )}
+                {videoUrl ? "Video schließen" : "Video abspielen"}
+              </button>
+            )}
 
-          {currentStatus !== "completed" && (
-            <button
-              onClick={markCompleted}
-              disabled={marking}
-              className="flex items-center gap-1.5 px-4 py-2 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-[#888] hover:text-[#22c55e] text-sm rounded-lg transition-colors disabled:opacity-50"
-            >
-              {marking ? (
-                <Loader2 size={13} className="animate-spin" />
-              ) : (
+            {hasExternalUrl && (
+              <button
+                onClick={openExternal}
+                className="flex items-center gap-1.5 px-4 py-2 bg-[#22c55e]/10 hover:bg-[#22c55e]/20 border border-[#22c55e]/20 text-[#22c55e] text-sm font-medium rounded-lg transition-colors"
+              >
+                <ExternalLink size={13} />
+                Inhalt öffnen
+              </button>
+            )}
+
+            {currentStatus !== "completed" && (
+              <button
+                onClick={markCompleted}
+                disabled={marking}
+                className="flex items-center gap-1.5 px-4 py-2 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-[#888] hover:text-[#22c55e] text-sm rounded-lg transition-colors disabled:opacity-50"
+              >
+                {marking ? (
+                  <Loader2 size={13} className="animate-spin" />
+                ) : (
+                  <CheckCircle size={13} />
+                )}
+                Als abgeschlossen markieren
+              </button>
+            )}
+
+            {currentStatus === "completed" && (
+              <span className="flex items-center gap-1.5 text-[#22c55e] text-sm">
                 <CheckCircle size={13} />
-              )}
-              Als abgeschlossen markieren
-            </button>
-          )}
+                Abgeschlossen
+              </span>
+            )}
+          </div>
 
-          {currentStatus === "completed" && (
-            <span className="flex items-center gap-1.5 text-[#22c55e] text-sm">
-              <CheckCircle size={13} />
-              Abgeschlossen
-            </span>
+          {/* Inline video player */}
+          {videoUrl && (
+            <div className="mt-4 rounded-xl overflow-hidden bg-black" style={{ aspectRatio: "16/9" }}>
+              <video
+                src={videoUrl}
+                controls
+                autoPlay
+                className="w-full h-full"
+                onEnded={markCompleted}
+              />
+            </div>
           )}
         </div>
       )}

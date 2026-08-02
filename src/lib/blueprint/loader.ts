@@ -36,6 +36,7 @@ export async function loadSessionAnswers(
     select: {
       questionId: true,
       selectedOptionIds: true,
+      freeText: true,
       computedScore: true,
       status: true,
     },

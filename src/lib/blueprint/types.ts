@@ -48,6 +48,7 @@ export interface QuestionInput {
 export interface SessionAnswerInput {
   questionId: string;        // DB id of the question
   selectedOptionIds: string; // JSON string of AnswerOption DB ids
+  freeText: string | null;
   computedScore: number | null;
   status: string;
 }

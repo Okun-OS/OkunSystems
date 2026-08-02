@@ -52,6 +52,12 @@ export default async function BlueprintErgebnisPage({
 
   const userId = (session.user as { id: string }).id;
   const role = (session.user as { role?: string }).role;
+
+  // Clients must not see Blueprint results before the strategy session
+  if (role !== "ADMIN") {
+    redirect(`/blueprint/${sessionId}/abgeschlossen`);
+  }
+
   const user = await db.user.findUnique({ where: { id: userId } });
 
   const analysisSession = await db.analysisSession.findUnique({
