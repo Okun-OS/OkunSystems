@@ -2,7 +2,8 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { Settings, Video, Upload, Trash2 } from "lucide-react";
+import { Settings, Video, Upload, Trash2, Package, ArrowRight } from "lucide-react";
+import Link from "next/link";
 
 export default async function AdminEinstellungenPage() {
   const session = await auth();
@@ -91,6 +92,26 @@ export default async function AdminEinstellungenPage() {
             )}
           </div>
         </form>
+      </div>
+
+      {/* Solution Library */}
+      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-6 mb-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Package size={16} className="text-[#888]" />
+            <h2 className="text-[#f0f0f0] font-semibold text-sm">Lösungskatalog</h2>
+          </div>
+          <Link
+            href="/admin/einstellungen/loesungen"
+            className="flex items-center gap-1.5 text-[#22c55e] text-sm hover:underline"
+          >
+            Verwalten
+            <ArrowRight size={14} />
+          </Link>
+        </div>
+        <p className="text-[#888] text-xs mt-2 leading-relaxed">
+          Lösungen im Katalog pflegen – Kategorien, Pakete und Beschreibungen.
+        </p>
       </div>
 
       {/* Other settings */}

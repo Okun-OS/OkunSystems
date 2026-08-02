@@ -39,6 +39,7 @@ export default async function ChapterEditorPage({
       title: formData.get("title") as string,
       description: (formData.get("description") as string) || undefined,
       contentType: formData.get("contentType") as string,
+      availability: formData.get("availability") as string,
       estimatedMinutes: formData.get("estimatedMinutes")
         ? parseInt(formData.get("estimatedMinutes") as string)
         : undefined,
@@ -206,6 +207,21 @@ export default async function ChapterEditorPage({
                   placeholder="Automatisierung, Prozesse, …"
                   className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50"
                 />
+              </div>
+
+              <div>
+                <label className="text-[#888] text-xs block mb-1.5">Verfügbarkeit</label>
+                <select
+                  name="availability"
+                  defaultValue={chapter.availability ?? "strategy_session"}
+                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-[#f0f0f0] focus:outline-none focus:border-[#22c55e]/50"
+                >
+                  <option value="strategy_session">Nach Strategiegespräch (Standard)</option>
+                  <option value="immediate">Sofort nach Zuweisung</option>
+                </select>
+                <p className="text-[#555] text-xs mt-1">
+                  Steuert, ob der Inhalt direkt aktiviert oder erst per Strategiegespräch freigegeben wird.
+                </p>
               </div>
 
               <button

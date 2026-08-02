@@ -67,6 +67,7 @@ export async function updateLearningChapter(
     order?: number;
     status?: string;
     isActive?: boolean;
+    availability?: string;
   }
 ) {
   return db.learningChapter.update({ where: { id }, data: params });
@@ -184,23 +185,46 @@ export async function suggestAssignment(params: {
   });
   if (existing) return { ok: false, error: "Dieses Kapitel ist bereits zugewiesen." };
 
-  await db.customerLearningAssignment.create({
+  const chapter = await db.learningChapter.findUnique({
+    where: { id: params.chapterId },
+    select: { availability: true, title: true },
+  });
+
+  const isImmediate = chapter?.availability === "immediate";
+
+  const assignment = await db.customerLearningAssignment.create({
     data: {
       companyId: params.companyId,
       chapterId: params.chapterId,
       assignedById: params.assignedById,
       sessionId: params.sessionId ?? null,
-      status: "suggested",
+      status: isImmediate ? "active" : "suggested",
+      activatedAt: isImmediate ? new Date() : null,
+    },
+    include: {
+      company: { include: { users: { where: { role: "CLIENT" }, take: 1 } } },
     },
   });
 
   await logActivity({
     companyId: params.companyId,
     userId: params.assignedById,
-    action: "assignment.suggested",
+    action: isImmediate ? "assignment.activated" : "assignment.suggested",
     entityType: "LearningChapter",
     entityId: params.chapterId,
   });
+
+  if (isImmediate && chapter?.title) {
+    const primaryUser = assignment.company.users[0];
+    if (primaryUser) {
+      await sendLearningAssignmentEmail({
+        toEmail: primaryUser.email,
+        toName: primaryUser.name ?? primaryUser.email,
+        companyName: assignment.company.name,
+        chapterTitle: chapter.title,
+      });
+    }
+  }
 
   return { ok: true };
 }

@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { HeartHandshake, Check, ArrowRight, Phone } from "lucide-react";
 import Link from "next/link";
+import { SubscribeButton } from "./SubscribeButton";
 
 const FEATURES = [
   "Laufende Optimierung Ihrer implementierten Systeme",
@@ -13,9 +14,16 @@ const FEATURES = [
   "Monatlich kündbar – keine Mindestlaufzeit",
 ];
 
-export default async function OkunCarePage() {
+export default async function OkunCarePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ success?: string }>;
+}) {
   const session = await auth();
   if (!session?.user) redirect("/login");
+
+  const { success } = await searchParams;
+  const justSubscribed = success === "1";
 
   const userId = (session.user as any).id as string;
   const user = await db.user.findUnique({
@@ -98,21 +106,31 @@ export default async function OkunCarePage() {
         </div>
       ) : (
         <div className="bg-[#141414] border border-[#2a2a2a] rounded-2xl p-6 text-center">
+          {justSubscribed && (
+            <div className="mb-4 px-4 py-3 bg-[#22c55e]/10 border border-[#22c55e]/20 rounded-xl">
+              <p className="text-[#22c55e] text-sm font-medium">
+                Vielen Dank! Ihr Abonnement wird in Kürze aktiviert.
+              </p>
+            </div>
+          )}
           <p className="text-[#888] text-sm leading-relaxed mb-6">
-            Sie möchten OKUN Care aktivieren? Sprechen Sie mit Ihrem OKUN-Berater —
-            wir richten alles gemeinsam mit Ihnen ein.
+            Jetzt direkt online abonnieren oder zuerst ein Beratungsgespräch buchen.
           </p>
           <div className="flex flex-col gap-3">
+            <SubscribeButton />
+            <p className="text-[#555] text-xs">Sichere Zahlung via Stripe · monatlich kündbar</p>
+            <div className="flex items-center gap-3 my-1">
+              <div className="flex-1 border-t border-[#2a2a2a]" />
+              <span className="text-[#444] text-xs">oder</span>
+              <div className="flex-1 border-t border-[#2a2a2a]" />
+            </div>
             <Link
               href="/termine"
-              className="w-full bg-[#22c55e] hover:bg-[#16a34a] text-black font-semibold text-sm rounded-xl py-3 flex items-center justify-center gap-2 transition-colors"
+              className="w-full border border-[#2a2a2a] hover:border-[#3a3a3a] hover:bg-[#1a1a1a] text-[#888] hover:text-[#f0f0f0] font-medium text-sm rounded-xl py-3 flex items-center justify-center gap-2 transition-colors"
             >
               <Phone size={15} />
               Beratungsgespräch buchen
             </Link>
-            <p className="text-[#555] text-xs">
-              Online-Zahlung via Stripe wird demnächst verfügbar.
-            </p>
           </div>
         </div>
       )}
