@@ -1,8 +1,8 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useState } from "react";
-import { User, Mail, Building2, Lock, Save } from "lucide-react";
+import { useState, useEffect } from "react";
+import { User, Mail, Building2, Lock, Shield } from "lucide-react";
 
 export default function EinstellungenPage() {
   const { data: session } = useSession();
@@ -11,6 +11,37 @@ export default function EinstellungenPage() {
   const [pwForm, setPwForm] = useState({ current: "", next: "", confirm: "" });
   const [pwLoading, setPwLoading] = useState(false);
   const [pwMessage, setPwMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
+
+  const [twoFAEnabled, setTwoFAEnabled] = useState<boolean | null>(null);
+  const [twoFALoading, setTwoFALoading] = useState(false);
+  const [twoFAMessage, setTwoFAMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/auth/2fa/settings")
+      .then((r) => r.json())
+      .then((d) => setTwoFAEnabled(d.twoFactorEnabled ?? false))
+      .catch(() => {});
+  }, []);
+
+  async function handleToggle2FA() {
+    setTwoFALoading(true);
+    setTwoFAMessage(null);
+    try {
+      const res = await fetch("/api/auth/2fa/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: !twoFAEnabled }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error ?? "Fehler");
+      setTwoFAEnabled(d.twoFactorEnabled);
+      setTwoFAMessage({ type: "ok", text: d.twoFactorEnabled ? "2FA aktiviert." : "2FA deaktiviert." });
+    } catch (err) {
+      setTwoFAMessage({ type: "error", text: err instanceof Error ? err.message : "Fehler" });
+    } finally {
+      setTwoFALoading(false);
+    }
+  }
 
   async function handlePasswordChange(e: React.FormEvent) {
     e.preventDefault();
@@ -136,6 +167,42 @@ export default function EinstellungenPage() {
             {pwLoading ? "Wird gespeichert…" : "Passwort ändern"}
           </button>
         </form>
+      </div>
+
+      {/* 2FA */}
+      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-6">
+        <h2 className="text-[#888] text-xs font-medium uppercase tracking-wide mb-4">
+          Zwei-Faktor-Authentifizierung (2FA)
+        </h2>
+        <p className="text-[#888] text-sm leading-relaxed mb-4">
+          Bei aktivierter 2FA erhalten Sie nach der Passworteingabe einen 6-stelligen Code per E-Mail, den Sie zur Anmeldung benötigen.
+        </p>
+        <div className="flex items-center justify-between p-3 bg-[#0d0d0d] rounded-lg mb-3">
+          <div className="flex items-center gap-2">
+            <Shield size={14} className={twoFAEnabled ? "text-[#22c55e]" : "text-[#555]"} />
+            <span className="text-sm text-[#f0f0f0]">2FA per E-Mail</span>
+          </div>
+          <span className={`text-xs px-2 py-0.5 rounded-full border ${twoFAEnabled ? "text-[#22c55e] bg-[#22c55e]/10 border-[#22c55e]/20" : "text-[#888] bg-[#1a1a1a] border-[#2a2a2a]"}`}>
+            {twoFAEnabled === null ? "…" : twoFAEnabled ? "Aktiv" : "Inaktiv"}
+          </span>
+        </div>
+        {twoFAMessage && (
+          <p className={`text-xs mb-3 ${twoFAMessage.type === "ok" ? "text-[#22c55e]" : "text-red-400"}`}>
+            {twoFAMessage.text}
+          </p>
+        )}
+        <button
+          onClick={handleToggle2FA}
+          disabled={twoFALoading || twoFAEnabled === null}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 ${
+            twoFAEnabled
+              ? "bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400"
+              : "bg-[#22c55e] hover:bg-[#16a34a] text-black"
+          }`}
+        >
+          <Shield size={13} />
+          {twoFALoading ? "Wird gespeichert…" : twoFAEnabled ? "2FA deaktivieren" : "2FA aktivieren"}
+        </button>
       </div>
     </div>
   );

@@ -2,8 +2,9 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { Settings, Video, Upload, Trash2, Package, ArrowRight } from "lucide-react";
+import { Settings, Video, Upload, Trash2, Package, ArrowRight, Link2 } from "lucide-react";
 import Link from "next/link";
+import { WelcomeVideoUpload } from "./WelcomeVideoUpload";
 
 export default async function AdminEinstellungenPage() {
   const session = await auth();
@@ -58,11 +59,28 @@ export default async function AdminEinstellungenPage() {
           </div>
         )}
 
-        <div className="space-y-3">
+        <div className="space-y-4">
+          <div>
+            <p className="text-xs font-medium text-[#888] mb-2 flex items-center gap-1.5">
+              <Upload size={11} />
+              Datei hochladen (R2)
+            </p>
+            <WelcomeVideoUpload />
+          </div>
+
+          <div className="flex items-center gap-3 my-1">
+            <div className="flex-1 h-px bg-[#2a2a2a]" />
+            <span className="text-[#555] text-xs">oder URL manuell eingeben</span>
+            <div className="flex-1 h-px bg-[#2a2a2a]" />
+          </div>
+
           <form action={saveSetting} className="space-y-3">
             <input type="hidden" name="key" value="welcome_video_url" />
             <div>
-              <label className="block text-xs font-medium text-[#888] mb-1.5">Video-URL</label>
+              <label className="block text-xs font-medium text-[#888] mb-1.5 flex items-center gap-1.5">
+                <Link2 size={11} />
+                Video-URL
+              </label>
               <input
                 name="value"
                 type="url"
@@ -76,7 +94,7 @@ export default async function AdminEinstellungenPage() {
               className="flex items-center gap-2 px-4 py-2 bg-[#22c55e] hover:bg-[#16a34a] text-black text-sm font-semibold rounded-lg transition-colors"
             >
               <Upload size={13} />
-              Speichern
+              URL speichern
             </button>
           </form>
           {settingMap["welcome_video_url"] && (
@@ -111,6 +129,26 @@ export default async function AdminEinstellungenPage() {
         </div>
         <p className="text-[#888] text-xs mt-2 leading-relaxed">
           Lösungen im Katalog pflegen – Kategorien, Pakete und Beschreibungen.
+        </p>
+      </div>
+
+      {/* Integrations */}
+      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-6 mb-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Settings size={16} className="text-[#22c55e]" />
+            <h2 className="text-[#f0f0f0] font-semibold text-sm">Integrationen &amp; Status</h2>
+          </div>
+          <Link
+            href="/admin/einstellungen/integrationen"
+            className="flex items-center gap-1.5 text-[#22c55e] text-sm hover:underline"
+          >
+            Überprüfen
+            <ArrowRight size={14} />
+          </Link>
+        </div>
+        <p className="text-[#888] text-xs mt-2 leading-relaxed">
+          Verbundene Dienste prüfen – R2, Stripe, Resend, Daily.co, Auth und mehr.
         </p>
       </div>
 

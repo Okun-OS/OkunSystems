@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const TABS = [
   { label: "Übersicht", href: "", exact: true },
   { label: "Blueprint", href: "/blueprint-portal" },
+  { label: "Ergebnisse & Analyse", href: "/ergebnisse" },
   { label: "Dokumente", href: "/dokumente" },
   { label: "Termine", href: "/termine" },
   { label: "Lernen", href: "/lernen" },

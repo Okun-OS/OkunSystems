@@ -60,11 +60,12 @@ export function LessonUploadRow({
       if (!res.ok) throw new Error(await res.text());
       const { uploadUrl } = await res.json();
 
-      await fetch(uploadUrl, {
+      const putRes = await fetch(uploadUrl, {
         method: "PUT",
         body: file,
         headers: { "Content-Type": file.type },
       });
+      if (!putRes.ok) throw new Error(`Upload zu R2 fehlgeschlagen (${putRes.status})`);
 
       setUploaded(true);
     } catch (err: unknown) {

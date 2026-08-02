@@ -52,11 +52,12 @@ export function DocumentUploadButton({
       if (!res.ok) throw new Error(await res.text());
       const { uploadUrl, r2Key } = await res.json();
 
-      await fetch(uploadUrl, {
+      const putRes = await fetch(uploadUrl, {
         method: "PUT",
         body: file,
         headers: { "Content-Type": file.type || "application/octet-stream" },
       });
+      if (!putRes.ok) throw new Error(`Upload zu R2 fehlgeschlagen (${putRes.status})`);
 
       await fetch("/api/documents/save", {
         method: "POST",

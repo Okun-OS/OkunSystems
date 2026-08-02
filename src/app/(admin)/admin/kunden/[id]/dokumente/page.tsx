@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { redirect, notFound } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { setDocumentVisibility, deleteDocument } from "@/lib/documents/actions";
 import { sendDocumentReleasedEmail } from "@/lib/email";
 import { FileText, Lock, Globe, Trash2, Upload, Eye, EyeOff } from "lucide-react";
@@ -57,14 +58,14 @@ export default async function CustomerDocumentsPage({
       }
     }
 
-    redirect(`/admin/kunden/${id}/dokumente`);
+    revalidatePath(`/admin/kunden/${id}/dokumente`);
   }
 
   async function handleDelete(formData: FormData) {
     "use server";
     const docId = formData.get("documentId") as string;
     await deleteDocument(docId, adminId);
-    redirect(`/admin/kunden/${id}/dokumente`);
+    revalidatePath(`/admin/kunden/${id}/dokumente`);
   }
 
   const customerDocs = documents.filter((d) => d.visibility === "customer");

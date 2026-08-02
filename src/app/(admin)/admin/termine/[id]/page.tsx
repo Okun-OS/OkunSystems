@@ -171,36 +171,34 @@ export default async function TerminDetailPage({
         </div>
       </div>
 
-      <div className="grid grid-cols-12 gap-6">
-        {/* Left column */}
-        <div className="col-span-12 lg:col-span-7 space-y-6">
-          {/* Video room */}
-          <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
-            <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4 flex items-center gap-2">
-              <Video size={15} className="text-blue-400" />
-              Videokonferenz (Daily.co)
-            </h2>
-            <CreateRoomButton
-              appointmentId={id}
-              initialUrl={appointment.meetingUrl}
-            />
-            {!appointment.meetingUrl && (
+      {/* Split view: workspace left, video right (sticky when active) */}
+      <div className="grid grid-cols-12 gap-6 items-start">
+
+        {/* Left column — workspace tools (scrollable) */}
+        <div className="col-span-12 lg:col-span-5 space-y-5">
+          {/* Video room control — only show create button when no URL yet */}
+          {!appointment.meetingUrl && (
+            <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+              <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4 flex items-center gap-2">
+                <Video size={15} className="text-blue-400" />
+                Videokonferenz
+              </h2>
+              <CreateRoomButton appointmentId={id} initialUrl={null} />
               <p className="text-[#555] text-xs mt-3">
-                Ein Daily.co-Raum wird für diesen Termin erstellt und der Link wird gespeichert.
-                Der Raum läuft automatisch 1 Stunde nach dem geplanten Ende ab.
+                Ein Videoraum wird erstellt und der Link wird gespeichert.
+                Er läuft automatisch 1 Stunde nach dem geplanten Ende ab.
               </p>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Blueprint context */}
-          {reportData && (
+          {reportData ? (
             <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
               <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4 flex items-center gap-2">
                 <TrendingUp size={15} className="text-[#22c55e]" />
                 Blueprint 2.0 — Ergebnis
               </h2>
 
-              {/* Overall score */}
               <div className="flex items-center justify-between mb-4 p-3 bg-[#0d0d0d] rounded-lg">
                 <span className="text-[#888] text-sm">Gesamtergebnis</span>
                 <span className="text-[#22c55e] text-2xl font-bold">
@@ -213,14 +211,11 @@ export default async function TerminDetailPage({
                 </span>
               </div>
 
-              {/* Module scores */}
               <div className="space-y-2 mb-4">
                 {reportData.moduleScores.map((m) => (
                   <div key={m.moduleNumber}>
                     <div className="flex justify-between mb-1">
-                      <span className="text-xs text-[#888]">
-                        M{m.moduleNumber} · {m.label}
-                      </span>
+                      <span className="text-xs text-[#888]">M{m.moduleNumber} · {m.label}</span>
                       <span className="text-xs text-[#f0f0f0] font-semibold">{Math.round(m.score)}%</span>
                     </div>
                     <div className="h-1.5 bg-[#1e1e1e] rounded-full overflow-hidden">
@@ -236,7 +231,6 @@ export default async function TerminDetailPage({
                 ))}
               </div>
 
-              {/* Signals */}
               <div className="grid grid-cols-3 gap-2 mb-4">
                 {(["WORKFORCE", "BEWAEHRTE_LOESUNG", "CUSTOM_DEVELOPMENT"] as const).map((cat) => {
                   const labels: Record<string, string> = {
@@ -253,14 +247,10 @@ export default async function TerminDetailPage({
                 })}
               </div>
 
-              {/* Package */}
               {reportData.packageType && (
                 <div className="p-3 bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg">
                   <p className="text-[#888] text-xs mb-1">Empfohlenes Paket</p>
-                  <p
-                    className="text-sm font-semibold"
-                    style={{ color: TIER_COLORS[reportData.packageType] ?? "#f0f0f0" }}
-                  >
+                  <p className="text-sm font-semibold" style={{ color: TIER_COLORS[reportData.packageType] ?? "#f0f0f0" }}>
                     {TIER_LABELS[reportData.packageType] ?? reportData.packageType}
                   </p>
                 </div>
@@ -274,9 +264,7 @@ export default async function TerminDetailPage({
                 Vollständige Ergebnisse ansehen →
               </Link>
             </div>
-          )}
-
-          {!reportData && (
+          ) : (
             <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
               <h2 className="text-[#f0f0f0] font-semibold text-sm mb-3 flex items-center gap-2">
                 <TrendingUp size={15} className="text-[#555]" />
@@ -287,18 +275,13 @@ export default async function TerminDetailPage({
                   ? "Ergebnisse werden noch aufbereitet."
                   : "Kein abgeschlossener Blueprint 2.0 vorhanden."}
               </p>
-              <Link
-                href={`/admin/kunden/${company.id}/blueprint-portal`}
-                className="text-[#22c55e] text-xs hover:underline mt-2 inline-block"
-              >
+              <Link href={`/admin/kunden/${company.id}/blueprint-portal`}
+                className="text-[#22c55e] text-xs hover:underline mt-2 inline-block">
                 Blueprint-Portal öffnen →
               </Link>
             </div>
           )}
-        </div>
 
-        {/* Right column */}
-        <div className="col-span-12 lg:col-span-5 space-y-6">
           {/* Lernfreigabe */}
           <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
@@ -306,14 +289,10 @@ export default async function TerminDetailPage({
                 <BookOpen size={15} className="text-[#22c55e]" />
                 Lernfreigabe
               </h2>
-              <Link
-                href={`/admin/kunden/${company.id}/lernen`}
-                className="text-[#22c55e] text-xs hover:underline"
-              >
+              <Link href={`/admin/kunden/${company.id}/lernen`} className="text-[#22c55e] text-xs hover:underline">
                 Verwalten →
               </Link>
             </div>
-
             {learningAssignments.length === 0 ? (
               <p className="text-[#555] text-sm">Noch keine Lerninhalte freigegeben.</p>
             ) : (
@@ -350,33 +329,37 @@ export default async function TerminDetailPage({
 
           {/* Quick links */}
           <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
-            <h2 className="text-[#888] text-xs font-semibold uppercase tracking-wide mb-3">
-              Kundenlinks
-            </h2>
+            <h2 className="text-[#888] text-xs font-semibold uppercase tracking-wide mb-3">Kundenlinks</h2>
             <div className="space-y-1.5">
-              <Link
-                href={`/admin/kunden/${company.id}`}
-                className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-[#1a1a1a] text-sm text-[#888] hover:text-[#f0f0f0] transition-colors"
-              >
-                Kundenübersicht
-                <span className="text-[#555] text-xs">→</span>
-              </Link>
-              <Link
-                href={`/admin/kunden/${company.id}/lernen`}
-                className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-[#1a1a1a] text-sm text-[#888] hover:text-[#f0f0f0] transition-colors"
-              >
-                Lernverwaltung
-                <span className="text-[#555] text-xs">→</span>
-              </Link>
-              <Link
-                href={`/admin/kunden/${company.id}/dokumente`}
-                className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-[#1a1a1a] text-sm text-[#888] hover:text-[#f0f0f0] transition-colors"
-              >
-                Dokumente
-                <span className="text-[#555] text-xs">→</span>
-              </Link>
+              {[
+                { href: `/admin/kunden/${company.id}`, label: "Kundenübersicht" },
+                { href: `/admin/kunden/${company.id}/ergebnisse`, label: "Ergebnisse & Analyse" },
+                { href: `/admin/kunden/${company.id}/lernen`, label: "Lernverwaltung" },
+                { href: `/admin/kunden/${company.id}/dokumente`, label: "Dokumente" },
+              ].map(({ href, label }) => (
+                <Link key={href} href={href}
+                  className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-[#1a1a1a] text-sm text-[#888] hover:text-[#f0f0f0] transition-colors">
+                  {label}
+                  <span className="text-[#555] text-xs">→</span>
+                </Link>
+              ))}
             </div>
           </div>
+        </div>
+
+        {/* Right column — video (sticky when URL is set, create button otherwise) */}
+        <div className="col-span-12 lg:col-span-7 lg:sticky lg:top-6">
+          {appointment.meetingUrl ? (
+            <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-4">
+              <CreateRoomButton appointmentId={id} initialUrl={appointment.meetingUrl} />
+            </div>
+          ) : (
+            <div className="bg-[#0d0d0d] border border-dashed border-[#2a2a2a] rounded-xl p-8 flex flex-col items-center justify-center text-center" style={{ aspectRatio: "16/9" }}>
+              <Video size={32} className="text-[#333] mb-3" />
+              <p className="text-[#555] text-sm">Kein Videoraum aktiv</p>
+              <p className="text-[#444] text-xs mt-1">Erstellen Sie links einen Videoraum für diesen Termin.</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

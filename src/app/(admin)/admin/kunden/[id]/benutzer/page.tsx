@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { redirect, notFound } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { Users, Mail, User } from "lucide-react";
+import { Users, Mail, User, Shield } from "lucide-react";
 import bcryptjs from "bcryptjs";
 
 export default async function CustomerBenutzerPage({
@@ -20,12 +20,28 @@ export default async function CustomerBenutzerPage({
     include: {
       users: {
         where: { role: "CLIENT" },
-        select: { id: true, name: true, email: true, createdAt: true, firstLogin: true },
+        select: { id: true, name: true, email: true, createdAt: true, firstLogin: true, twoFactorEnabled: true },
         orderBy: { createdAt: "asc" },
       },
     },
   });
   if (!company) notFound();
+
+  async function toggle2FA(formData: FormData) {
+    "use server";
+    const userId = formData.get("userId") as string;
+    const current = formData.get("current") === "true";
+    await db.user.update({
+      where: { id: userId },
+      data: {
+        twoFactorEnabled: !current,
+        twoFactorCode: null,
+        twoFactorExpiry: null,
+        twoFactorSentAt: null,
+      },
+    });
+    revalidatePath(`/admin/kunden/${id}/benutzer`);
+  }
 
   async function addUser(formData: FormData) {
     "use server";
@@ -88,6 +104,22 @@ export default async function CustomerBenutzerPage({
                       Noch nicht eingeloggt
                     </span>
                   )}
+                  <form action={toggle2FA}>
+                    <input type="hidden" name="userId" value={u.id} />
+                    <input type="hidden" name="current" value={String(u.twoFactorEnabled)} />
+                    <button
+                      type="submit"
+                      title={u.twoFactorEnabled ? "2FA deaktivieren" : "2FA aktivieren"}
+                      className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border transition-colors ${
+                        u.twoFactorEnabled
+                          ? "text-[#22c55e] bg-[#22c55e]/10 border-[#22c55e]/20 hover:bg-[#22c55e]/20"
+                          : "text-[#555] bg-[#1a1a1a] border-[#2a2a2a] hover:border-[#555]"
+                      }`}
+                    >
+                      <Shield size={10} />
+                      2FA
+                    </button>
+                  </form>
                   <span className="text-[#555] text-xs">
                     {new Date(u.createdAt).toLocaleDateString("de-DE")}
                   </span>

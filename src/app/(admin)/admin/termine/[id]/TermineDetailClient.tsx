@@ -75,7 +75,7 @@ export function CreateRoomButton({
         ) : (
           <Video size={14} />
         )}
-        {loading ? "Erstelle Videoraum…" : "Daily.co Videoraum erstellen"}
+        {loading ? "Erstelle Videoraum…" : "Videoraum erstellen"}
       </button>
       {error && <p className="text-red-400 text-xs">{error}</p>}
     </div>
