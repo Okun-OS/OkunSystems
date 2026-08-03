@@ -19,8 +19,8 @@ export const metadata: Metadata = {
   title: "OKUN Systems – Client Portal",
   description: "OKUN Systems B2B Client Portal",
   icons: {
-    icon: "/okun-icon.svg",
-    apple: "/okun-icon.svg",
+    icon: "/okun-icon.png",
+    apple: "/okun-icon.png",
   },
 };
 
