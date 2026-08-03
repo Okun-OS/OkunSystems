@@ -100,6 +100,60 @@ export async function archiveChapter(id: string) {
   });
 }
 
+// Directly release a chapter to a company as active (for strategy sessions)
+export async function releaseChapterToCompany(params: {
+  companyId: string;
+  chapterId: string;
+  assignedById: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const existing = await db.customerLearningAssignment.findUnique({
+    where: { companyId_chapterId: { companyId: params.companyId, chapterId: params.chapterId } },
+  });
+
+  if (existing) {
+    if (existing.status === "active") {
+      return { ok: false, error: "Kapitel bereits freigegeben." };
+    }
+    await db.customerLearningAssignment.update({
+      where: { id: existing.id },
+      data: { status: "active", activatedAt: new Date() },
+    });
+    return { ok: true };
+  }
+
+  const chapter = await db.learningChapter.findUnique({
+    where: { id: params.chapterId },
+    select: { title: true },
+  });
+
+  const assignment = await db.customerLearningAssignment.create({
+    data: {
+      companyId: params.companyId,
+      chapterId: params.chapterId,
+      assignedById: params.assignedById,
+      status: "active",
+      activatedAt: new Date(),
+    },
+    include: {
+      company: { include: { users: { where: { role: "CLIENT" }, take: 1 } } },
+    },
+  });
+
+  if (chapter?.title) {
+    const primaryUser = assignment.company.users[0];
+    if (primaryUser) {
+      await sendLearningAssignmentEmail({
+        toEmail: primaryUser.email,
+        toName: primaryUser.name ?? primaryUser.email,
+        companyName: assignment.company.name,
+        chapterTitle: chapter.title,
+      });
+    }
+  }
+
+  return { ok: true };
+}
+
 export async function publishLesson(id: string) {
   return db.learningLesson.update({
     where: { id },

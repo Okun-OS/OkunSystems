@@ -3,11 +3,12 @@ import { db } from "@/lib/db";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import {
-  ArrowLeft, CalendarDays, User, Mail, MapPin, FileText,
-  Video, BookOpen, TrendingUp, CheckCircle, Clock,
+  ArrowLeft, User, Mail, MapPin, FileText,
+  Video, TrendingUp,
 } from "lucide-react";
 import { assembleBlueprintReport } from "@/lib/blueprint/report-assembler";
 import { CreateRoomButton } from "./TermineDetailClient";
+import { AppointmentLearningRelease } from "./AppointmentLearningRelease";
 
 function statusLabel(s: string) {
   switch (s) {
@@ -97,6 +98,19 @@ export default async function TerminDetailPage({
     },
     orderBy: { activatedAt: "desc" },
   });
+
+  // Load PUBLISHED chapters not yet active for this company
+  const assignedChapterIds = new Set(
+    learningAssignments.map((a) => a.chapterId)
+  );
+  const allPublishedChapters = await db.learningChapter.findMany({
+    where: { status: "PUBLISHED", isActive: true },
+    select: { id: true, title: true, estimatedMinutes: true, order: true },
+    orderBy: [{ order: "asc" }, { title: "asc" }],
+  });
+  const availableChapters = allPublishedChapters.filter(
+    (c) => !assignedChapterIds.has(c.id)
+  );
 
   return (
     <div className="max-w-[1100px] mx-auto">
@@ -283,41 +297,11 @@ export default async function TerminDetailPage({
           )}
 
           {/* Lernfreigabe */}
-          <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-[#f0f0f0] font-semibold text-sm flex items-center gap-2">
-                <BookOpen size={15} className="text-[#22c55e]" />
-                Lernfreigabe
-              </h2>
-              <Link href={`/admin/kunden/${company.id}/lernen`} className="text-[#22c55e] text-xs hover:underline">
-                Verwalten →
-              </Link>
-            </div>
-            {learningAssignments.length === 0 ? (
-              <p className="text-[#555] text-sm">Noch keine Lerninhalte freigegeben.</p>
-            ) : (
-              <div className="space-y-2">
-                {learningAssignments.map((a) => {
-                  const total = a.chapter.lessons.length;
-                  const done = a.chapter.lessons.filter((l) => l.progress[0]?.status === "completed").length;
-                  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-                  return (
-                    <div key={a.id} className="flex items-center gap-3 p-2.5 bg-[#0d0d0d] rounded-lg">
-                      {pct === 100 ? (
-                        <CheckCircle size={13} className="text-[#22c55e] flex-shrink-0" />
-                      ) : (
-                        <Clock size={13} className="text-[#555] flex-shrink-0" />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[#f0f0f0] text-xs font-medium truncate">{a.chapter.title}</p>
-                        <p className="text-[#555] text-xs">{done}/{total} Lektionen · {pct}%</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          <AppointmentLearningRelease
+            companyId={company.id}
+            availableChapters={availableChapters}
+            activeAssignments={learningAssignments}
+          />
 
           {/* Notes */}
           {appointment.notes && (
