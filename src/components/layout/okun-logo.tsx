@@ -2,23 +2,28 @@
 
 import Image from "next/image";
 
-// Native PNG ratio: 1039 × 356 ≈ 2.92 : 1 (transparent background, no padding)
-const sizes = {
-  sm: { width: 180, height: 62 },
-  md: { width: 220, height: 75 },
-  lg: { width: 280, height: 96 },
-};
+// Clip height shows icon + ÖKUN + SYSTEMS, removes the tagline below the separator.
+// PNG native: 1039 × 356, main logo occupies top ~76% (≈271px).
+// At 200px display width: full height = 68.5px, 76% = 52px visible.
+const clipHeights = { sm: 52, md: 64, lg: 84 };
 
 export function OkunLogo({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
-  const { width, height } = sizes[size];
   return (
-    <Image
-      src="/okun-logo.png"
-      alt="ÖKUN Systems"
-      width={width}
-      height={height}
-      priority
-      style={{ objectFit: "contain", display: "block" }}
-    />
+    <div
+      style={{
+        overflow: "hidden",
+        lineHeight: 0,
+        maxHeight: clipHeights[size],
+      }}
+    >
+      <Image
+        src="/okun-logo.png"
+        alt="ÖKUN Systems"
+        width={1039}
+        height={356}
+        priority
+        style={{ width: "100%", height: "auto", display: "block" }}
+      />
+    </div>
   );
 }

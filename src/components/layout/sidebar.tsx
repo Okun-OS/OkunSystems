@@ -40,7 +40,7 @@ export function Sidebar({ user }: SidebarProps) {
 
   return (
     <aside className="fixed left-0 top-0 h-full w-[240px] bg-[#060a10] border-r border-[#111e30] flex flex-col z-40">
-      <div className="p-5 pb-4 border-b border-[#111e30]">
+      <div className="px-5 py-2 border-b border-[#111e30]">
         <OkunLogo size="sm" />
       </div>
 
