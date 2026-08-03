@@ -123,8 +123,25 @@ export async function releaseChapterToCompany(params: {
 
   const chapter = await db.learningChapter.findUnique({
     where: { id: params.chapterId },
-    select: { title: true },
+    select: { title: true, status: true },
   });
+
+  // Publish the chapter and its content-bearing lessons if not already published,
+  // so the client can immediately see the lessons after release.
+  if (chapter && chapter.status !== "PUBLISHED") {
+    await db.learningChapter.update({
+      where: { id: params.chapterId },
+      data: { status: "PUBLISHED" },
+    });
+    await db.learningLesson.updateMany({
+      where: {
+        chapterId: params.chapterId,
+        isActive: true,
+        OR: [{ r2Key: { not: null } }, { externalUrl: { not: null } }],
+      },
+      data: { status: "PUBLISHED" },
+    });
+  }
 
   const assignment = await db.customerLearningAssignment.create({
     data: {
@@ -147,6 +164,8 @@ export async function releaseChapterToCompany(params: {
         toName: primaryUser.name ?? primaryUser.email,
         companyName: assignment.company.name,
         chapterTitle: chapter.title,
+      }).catch(() => {
+        // Email failure must not block the release — assignment is already persisted
       });
     }
   }

@@ -27,40 +27,47 @@ export default async function ErgebnissePage({
 
   const { id } = await params;
 
-  const company = await db.company.findUnique({
-    where: { id },
-    select: {
-      id: true,
-      name: true,
-      industry: true,
-      analysisSessions: {
-        where: { blueprintVersion: "2.0" },
-        orderBy: { updatedAt: "desc" },
-        take: 1,
-        select: {
-          id: true,
-          status: true,
-          completedAt: true,
-          reportUrl: true,
-          packageType: true,
-          totalMessages: true,
+  const [company, anyCompletedSession] = await Promise.all([
+    db.company.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        industry: true,
+        analysisSessions: {
+          where: { blueprintVersion: "2.0" },
+          orderBy: { updatedAt: "desc" },
+          take: 1,
+          select: {
+            id: true,
+            status: true,
+            completedAt: true,
+            reportUrl: true,
+            packageType: true,
+            totalMessages: true,
+          },
+        },
+        okunScores: {
+          orderBy: { calculatedAt: "desc" },
+          take: 1,
+        },
+        documents: {
+          where: { category: "REPORT" },
+          orderBy: { createdAt: "desc" },
+          select: { id: true, title: true, r2Key: true, createdAt: true, visibility: true },
         },
       },
-      okunScores: {
-        orderBy: { calculatedAt: "desc" },
-        take: 1,
-      },
-      documents: {
-        where: { category: "REPORT" },
-        orderBy: { createdAt: "desc" },
-        select: { id: true, title: true, r2Key: true, createdAt: true, visibility: true },
-      },
-    },
-  });
+    }),
+    db.analysisSession.findFirst({
+      where: { companyId: id, status: "COMPLETED" },
+      select: { id: true },
+    }),
+  ]);
 
   if (!company) notFound();
 
   const analysisSession = company.analysisSessions[0] ?? null;
+  const hasAnyCompletedSession = anyCompletedSession !== null;
   const okunScore = company.okunScores[0] ?? null;
 
   let reportData: Awaited<ReturnType<typeof assembleBlueprintReport>> | null = null;
@@ -88,14 +95,20 @@ export default async function ErgebnissePage({
           <AlertCircle size={18} className="text-[#555]" />
           <div>
             <p className="text-[#888] text-sm font-medium">Kein Blueprint 2.0 vorhanden</p>
-            <p className="text-[#555] text-xs mt-0.5">Der Kunde hat noch keine Blueprint-Analyse gestartet.</p>
+            <p className="text-[#555] text-xs mt-0.5">
+              {hasAnyCompletedSession
+                ? "Der Kunde hat eine ältere Blueprint-Analyse (1.x) abgeschlossen. Ergebnisse sind im Blueprint-Tab verfügbar."
+                : "Der Kunde hat noch keine Blueprint-Analyse gestartet."}
+            </p>
           </div>
-          <Link
-            href={`/admin/kunden/${id}/blueprint-portal`}
-            className="ml-auto text-[#00b8ff] text-xs hover:underline"
-          >
-            Blueprint starten →
-          </Link>
+          {!hasAnyCompletedSession && (
+            <Link
+              href={`/admin/kunden/${id}/blueprint-portal`}
+              className="ml-auto text-[#00b8ff] text-xs hover:underline flex-shrink-0"
+            >
+              Blueprint-Portal →
+            </Link>
+          )}
         </div>
       ) : (
         <div
@@ -126,18 +139,12 @@ export default async function ErgebnissePage({
             <p className="text-[#555] text-xs mt-0.5">
               {reportData
                 ? `${reportData.totalAnswered}/${reportData.totalActive} Fragen beantwortet`
-                : `${analysisSession.totalMessages} Nachrichten`}
+                : null}
               {analysisSession.completedAt && (
                 <> · Abgeschlossen {new Date(analysisSession.completedAt).toLocaleDateString("de-DE")}</>
               )}
             </p>
           </div>
-          <Link
-            href={`/admin/kunden/${id}/analyse`}
-            className="text-[#00b8ff] text-xs hover:underline flex-shrink-0"
-          >
-            Analyse öffnen →
-          </Link>
         </div>
       )}
 

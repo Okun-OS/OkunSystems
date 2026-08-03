@@ -4,8 +4,9 @@ import { redirect, notFound } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { setDocumentVisibility, deleteDocument } from "@/lib/documents/actions";
 import { sendDocumentReleasedEmail } from "@/lib/email";
-import { FileText, Lock, Globe, Trash2, Upload, Eye, EyeOff } from "lucide-react";
+import { FileText, Lock, Globe } from "lucide-react";
 import { DocumentUploadButton } from "./DocumentUploadButton";
+import { DeleteDocumentButton } from "./DeleteDocumentButton";
 
 export default async function CustomerDocumentsPage({
   params,
@@ -151,15 +152,7 @@ export default async function CustomerDocumentsPage({
                   <td className="px-4 py-3.5">
                     <form action={handleDelete}>
                       <input type="hidden" name="documentId" value={doc.id} />
-                      <button
-                        type="submit"
-                        className="w-7 h-7 rounded-md flex items-center justify-center text-[#555] hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
-                        onClick={(e) => {
-                          if (!confirm("Dokument wirklich löschen?")) e.preventDefault();
-                        }}
-                      >
-                        <Trash2 size={13} />
-                      </button>
+                      <DeleteDocumentButton />
                     </form>
                   </td>
                 </tr>

@@ -26,20 +26,26 @@ export default async function BlueprintPortalPage({
 
   const { id } = await params;
 
-  const company = await db.company.findUnique({
-    where: { id },
-    include: {
-      analysisSessions: {
-        where: { status: "COMPLETED" },
-        include: { score: true },
-        orderBy: { completedAt: "desc" },
+  const [company, bp2Session] = await Promise.all([
+    db.company.findUnique({
+      where: { id },
+      include: {
+        analysisSessions: {
+          where: { status: "COMPLETED" },
+          include: { score: true },
+          orderBy: { completedAt: "desc" },
+        },
+        users: {
+          where: { role: { not: "ADMIN" } },
+          select: { id: true, name: true, email: true },
+        },
       },
-      users: {
-        where: { role: { not: "ADMIN" } },
-        select: { id: true, name: true, email: true },
-      },
-    },
-  });
+    }),
+    db.analysisSession.findFirst({
+      where: { companyId: id, blueprintVersion: "2.0", status: "COMPLETED" },
+      select: { id: true, completedAt: true },
+    }),
+  ]);
 
   if (!company) notFound();
 
@@ -95,10 +101,32 @@ export default async function BlueprintPortalPage({
 
   const sessions = company.analysisSessions;
   const portalUserCount = company.users.length;
+  // Sessions with no OkunScore are Blueprint 2.0 — their results live on the Ergebnisse tab
+  const sessionsWithScore = sessions.filter((s) => s.score != null);
+  const hasBp2Only = bp2Session !== null && sessionsWithScore.length === 0;
 
   return (
     <div className="space-y-6">
-      {sessions.length === 0 ? (
+      {hasBp2Only ? (
+        <div className="bg-[#0c1520] border border-[#00b8ff]/30 rounded-xl p-8 text-center">
+          <CheckCircle size={32} className="text-[#00b8ff] mx-auto mb-3" />
+          <p className="text-[#f0f0f0] text-sm font-semibold">Blueprint 2.0 abgeschlossen</p>
+          <p className="text-[#888] text-xs mt-1 mb-4">
+            Abgeschlossen am{" "}
+            {bp2Session.completedAt
+              ? new Date(bp2Session.completedAt).toLocaleDateString("de-DE", {
+                  day: "2-digit", month: "long", year: "numeric",
+                })
+              : "—"}
+          </p>
+          <p className="text-[#555] text-xs">
+            Ergebnisse und Freigabe für den Kunden befinden sich im{" "}
+            <a href={`/admin/kunden/${id}/ergebnisse`} className="text-[#00b8ff] hover:underline">
+              Ergebnisse-Tab
+            </a>.
+          </p>
+        </div>
+      ) : sessions.length === 0 ? (
         <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-8 text-center">
           <FileText size={32} className="text-[#333] mx-auto mb-3" />
           <p className="text-[#888] text-sm">Keine abgeschlossene Analyse vorhanden.</p>
@@ -108,7 +136,7 @@ export default async function BlueprintPortalPage({
         </div>
       ) : (
         <div className="space-y-4">
-          {sessions.map((sess) => {
+          {sessionsWithScore.map((sess) => {
             const score = sess.score;
             if (!score) return null;
 
@@ -256,7 +284,7 @@ export default async function BlueprintPortalPage({
         </div>
       )}
 
-      {portalUserCount === 0 && sessions.length > 0 && (
+      {portalUserCount === 0 && sessionsWithScore.length > 0 && (
         <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-xl p-4 flex items-start gap-3">
           <span className="text-yellow-400 text-xs mt-0.5">⚠</span>
           <div>

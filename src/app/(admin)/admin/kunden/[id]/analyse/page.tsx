@@ -290,7 +290,8 @@ export default async function KundeAnalysePage({ params }: { params: Promise<{ i
               </div>
             )}
 
-            {/* Conversation */}
+            {/* Conversation — only shown when there are actual messages (Blueprint 1.x chat) */}
+            {activeSession.messages.length > 0 && (
             <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
               <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4 flex items-center gap-2">
                 <Target size={14} className="text-[#888]" />
@@ -318,6 +319,7 @@ export default async function KundeAnalysePage({ params }: { params: Promise<{ i
                 })}
               </div>
             </div>
+            )}
           </div>
         </div>
       )}

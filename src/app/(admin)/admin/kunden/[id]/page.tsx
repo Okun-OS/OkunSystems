@@ -206,22 +206,22 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
             )}
           </div>
 
-          {assessment && (
+          {activeSession?.score && (
             <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
-              <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4">Score Übersicht</h2>
+              <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4">OKUN Score™</h2>
               <div className="flex items-center justify-center my-4">
                 <div className="relative">
                   <svg viewBox="0 0 120 120" className="w-32 h-32 -rotate-90">
                     <circle cx="60" cy="60" r="50" fill="none" stroke="#111e30" strokeWidth="8" />
                     <circle cx="60" cy="60" r="50" fill="none"
-                      stroke={assessment.score && assessment.score >= 70 ? "#00b8ff" : "#f59e0b"}
+                      stroke={activeSession.score.totalScore >= 70 ? "#00b8ff" : "#f59e0b"}
                       strokeWidth="8"
-                      strokeDasharray={`${((assessment.score ?? 0) / 100) * 314.16} ${314.16 - ((assessment.score ?? 0) / 100) * 314.16}`}
+                      strokeDasharray={`${(activeSession.score.totalScore / 100) * 314.16} ${314.16 - (activeSession.score.totalScore / 100) * 314.16}`}
                       strokeLinecap="round"
                     />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-[#f0f0f0] text-3xl font-bold">{assessment.score ?? "—"}</span>
+                    <span className="text-[#f0f0f0] text-3xl font-bold">{activeSession.score.totalScore}</span>
                     <span className="text-[#888] text-xs">/100 Gesamt</span>
                   </div>
                 </div>
