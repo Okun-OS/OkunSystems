@@ -13,14 +13,14 @@ import { AppointmentLearningRelease } from "./AppointmentLearningRelease";
 function statusLabel(s: string) {
   switch (s) {
     case "SCHEDULED": return { label: "Geplant", cls: "text-blue-400 bg-blue-500/10 border-blue-500/20" };
-    case "COMPLETED": return { label: "Durchgeführt", cls: "text-[#22c55e] bg-[#22c55e]/10 border-[#22c55e]/20" };
+    case "COMPLETED": return { label: "Durchgeführt", cls: "text-[#00b8ff] bg-[#00b8ff]/10 border-[#00b8ff]/20" };
     case "CANCELLED": return { label: "Abgesagt", cls: "text-red-400 bg-red-500/10 border-red-500/20" };
-    default: return { label: s, cls: "text-[#888] bg-[#1a1a1a] border-[#2a2a2a]" };
+    default: return { label: s, cls: "text-[#888] bg-[#101c2e] border-[#1a2840]" };
   }
 }
 
 const TIER_COLORS: Record<string, string> = {
-  foundation: "#22c55e",
+  foundation: "#00b8ff",
   operations: "#3b82f6",
   custom: "#a855f7",
 };
@@ -124,7 +124,7 @@ export default async function TerminDetailPage({
       </Link>
 
       {/* Header */}
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-6 mb-6">
+      <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6 mb-6">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -138,7 +138,7 @@ export default async function TerminDetailPage({
             <h1 className="text-xl font-bold text-[#f0f0f0] mt-1">{appointment.title}</h1>
             <Link
               href={`/admin/kunden/${company.id}`}
-              className="text-[#22c55e] text-sm hover:underline mt-0.5 inline-block"
+              className="text-[#00b8ff] text-sm hover:underline mt-0.5 inline-block"
             >
               {company.name}
             </Link>
@@ -192,7 +192,7 @@ export default async function TerminDetailPage({
         <div className="col-span-12 lg:col-span-5 space-y-5">
           {/* Video room control — only show create button when no URL yet */}
           {!appointment.meetingUrl && (
-            <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+            <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
               <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4 flex items-center gap-2">
                 <Video size={15} className="text-blue-400" />
                 Videokonferenz
@@ -207,15 +207,15 @@ export default async function TerminDetailPage({
 
           {/* Blueprint context */}
           {reportData ? (
-            <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+            <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
               <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4 flex items-center gap-2">
-                <TrendingUp size={15} className="text-[#22c55e]" />
+                <TrendingUp size={15} className="text-[#00b8ff]" />
                 Blueprint 2.0 — Ergebnis
               </h2>
 
-              <div className="flex items-center justify-between mb-4 p-3 bg-[#0d0d0d] rounded-lg">
+              <div className="flex items-center justify-between mb-4 p-3 bg-[#060a10] rounded-lg">
                 <span className="text-[#888] text-sm">Gesamtergebnis</span>
-                <span className="text-[#22c55e] text-2xl font-bold">
+                <span className="text-[#00b8ff] text-2xl font-bold">
                   {reportData.moduleScores.length > 0
                     ? Math.round(
                         reportData.moduleScores.reduce((s, m) => s + m.score, 0) /
@@ -232,12 +232,12 @@ export default async function TerminDetailPage({
                       <span className="text-xs text-[#888]">M{m.moduleNumber} · {m.label}</span>
                       <span className="text-xs text-[#f0f0f0] font-semibold">{Math.round(m.score)}%</span>
                     </div>
-                    <div className="h-1.5 bg-[#1e1e1e] rounded-full overflow-hidden">
+                    <div className="h-1.5 bg-[#111e30] rounded-full overflow-hidden">
                       <div
                         className="h-full rounded-full"
                         style={{
                           width: `${Math.round(m.score)}%`,
-                          backgroundColor: m.moduleNumber === 5 ? "#3b82f6" : "#22c55e",
+                          backgroundColor: m.moduleNumber === 5 ? "#3b82f6" : "#00b8ff",
                         }}
                       />
                     </div>
@@ -253,7 +253,7 @@ export default async function TerminDetailPage({
                     CUSTOM_DEVELOPMENT: "Custom Dev.",
                   };
                   return (
-                    <div key={cat} className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg p-3 text-center">
+                    <div key={cat} className="bg-[#060a10] border border-[#101c2e] rounded-lg p-3 text-center">
                       <p className="text-[#f0f0f0] text-xl font-bold">{reportData!.signals[cat]}</p>
                       <p className="text-[#555] text-xs mt-0.5 leading-tight">{labels[cat]}</p>
                     </div>
@@ -262,7 +262,7 @@ export default async function TerminDetailPage({
               </div>
 
               {reportData.packageType && (
-                <div className="p-3 bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg">
+                <div className="p-3 bg-[#060a10] border border-[#101c2e] rounded-lg">
                   <p className="text-[#888] text-xs mb-1">Empfohlenes Paket</p>
                   <p className="text-sm font-semibold" style={{ color: TIER_COLORS[reportData.packageType] ?? "#f0f0f0" }}>
                     {TIER_LABELS[reportData.packageType] ?? reportData.packageType}
@@ -272,14 +272,14 @@ export default async function TerminDetailPage({
 
               <Link
                 href={`/blueprint/${blueprintSession!.id}/ergebnis`}
-                className="flex items-center gap-1.5 text-xs text-[#22c55e] hover:underline mt-3"
+                className="flex items-center gap-1.5 text-xs text-[#00b8ff] hover:underline mt-3"
                 target="_blank"
               >
                 Vollständige Ergebnisse ansehen →
               </Link>
             </div>
           ) : (
-            <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+            <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
               <h2 className="text-[#f0f0f0] font-semibold text-sm mb-3 flex items-center gap-2">
                 <TrendingUp size={15} className="text-[#555]" />
                 Blueprint 2.0 — Kontext
@@ -290,7 +290,7 @@ export default async function TerminDetailPage({
                   : "Kein abgeschlossener Blueprint 2.0 vorhanden."}
               </p>
               <Link href={`/admin/kunden/${company.id}/blueprint-portal`}
-                className="text-[#22c55e] text-xs hover:underline mt-2 inline-block">
+                className="text-[#00b8ff] text-xs hover:underline mt-2 inline-block">
                 Blueprint-Portal öffnen →
               </Link>
             </div>
@@ -305,14 +305,14 @@ export default async function TerminDetailPage({
 
           {/* Notes */}
           {appointment.notes && (
-            <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+            <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
               <h2 className="text-[#f0f0f0] font-semibold text-sm mb-3">Notizen</h2>
               <p className="text-[#888] text-sm leading-relaxed whitespace-pre-wrap">{appointment.notes}</p>
             </div>
           )}
 
           {/* Quick links */}
-          <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+          <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
             <h2 className="text-[#888] text-xs font-semibold uppercase tracking-wide mb-3">Kundenlinks</h2>
             <div className="space-y-1.5">
               {[
@@ -322,7 +322,7 @@ export default async function TerminDetailPage({
                 { href: `/admin/kunden/${company.id}/dokumente`, label: "Dokumente" },
               ].map(({ href, label }) => (
                 <Link key={href} href={href}
-                  className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-[#1a1a1a] text-sm text-[#888] hover:text-[#f0f0f0] transition-colors">
+                  className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-[#101c2e] text-sm text-[#888] hover:text-[#f0f0f0] transition-colors">
                   {label}
                   <span className="text-[#555] text-xs">→</span>
                 </Link>
@@ -334,11 +334,11 @@ export default async function TerminDetailPage({
         {/* Right column — video (sticky when URL is set, create button otherwise) */}
         <div className="col-span-12 lg:col-span-7 lg:sticky lg:top-6">
           {appointment.meetingUrl ? (
-            <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-4">
+            <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-4">
               <CreateRoomButton appointmentId={id} initialUrl={appointment.meetingUrl} />
             </div>
           ) : (
-            <div className="bg-[#0d0d0d] border border-dashed border-[#2a2a2a] rounded-xl p-8 flex flex-col items-center justify-center text-center" style={{ aspectRatio: "16/9" }}>
+            <div className="bg-[#060a10] border border-dashed border-[#1a2840] rounded-xl p-8 flex flex-col items-center justify-center text-center" style={{ aspectRatio: "16/9" }}>
               <Video size={32} className="text-[#333] mb-3" />
               <p className="text-[#555] text-sm">Kein Videoraum aktiv</p>
               <p className="text-[#444] text-xs mt-1">Erstellen Sie links einen Videoraum für diesen Termin.</p>

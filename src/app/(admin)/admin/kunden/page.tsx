@@ -82,7 +82,7 @@ export default async function KundenPage({
         </div>
         <a
           href="/admin/kunden/neu"
-          className="flex items-center gap-2 px-4 py-2.5 bg-[#22c55e] hover:bg-[#16a34a] text-black text-sm font-semibold rounded-lg transition-colors"
+          className="flex items-center gap-2 px-4 py-2.5 bg-[#00b8ff] hover:bg-[#0099d6] text-white text-sm font-semibold rounded-lg transition-colors"
         >
           <Plus size={15} />
           Kunde hinzufügen
@@ -101,14 +101,14 @@ export default async function KundenPage({
             name="q"
             defaultValue={q}
             placeholder="Kunden suchen…"
-            className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg pl-9 pr-4 py-2.5 text-sm text-[#f0f0f0] placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50"
+            className="w-full bg-[#0c1520] border border-[#1a2840] rounded-lg pl-9 pr-4 py-2.5 text-sm text-[#f0f0f0] placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/50"
           />
         </div>
 
         <select
           name="branche"
           defaultValue={brancheFilter}
-          className="bg-[#141414] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-[#888] focus:outline-none focus:border-[#22c55e]/50 cursor-pointer"
+          className="bg-[#0c1520] border border-[#1a2840] rounded-lg px-3 py-2.5 text-sm text-[#888] focus:outline-none focus:border-[#00b8ff]/50 cursor-pointer"
         >
           <option value="">Alle Branchen</option>
           {industries.map((ind) => (
@@ -121,7 +121,7 @@ export default async function KundenPage({
         <select
           name="status"
           defaultValue={statusFilter}
-          className="bg-[#141414] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-[#888] focus:outline-none focus:border-[#22c55e]/50 cursor-pointer"
+          className="bg-[#0c1520] border border-[#1a2840] rounded-lg px-3 py-2.5 text-sm text-[#888] focus:outline-none focus:border-[#00b8ff]/50 cursor-pointer"
         >
           <option value="">Alle Status</option>
           <option value="ACTIVE">Aktiv</option>
@@ -132,18 +132,18 @@ export default async function KundenPage({
 
         <button
           type="submit"
-          className="px-4 py-2.5 bg-[#1a1a1a] border border-[#2a2a2a] hover:bg-[#222] text-sm text-[#f0f0f0] rounded-lg transition-colors"
+          className="px-4 py-2.5 bg-[#101c2e] border border-[#1a2840] hover:bg-[#222] text-sm text-[#f0f0f0] rounded-lg transition-colors"
         >
           Filtern
         </button>
       </form>
 
       {/* Table */}
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl overflow-hidden">
+      <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-[#2a2a2a]">
+              <tr className="border-b border-[#1a2840]">
                 {[
                   "Kunde",
                   "Branche",
@@ -164,7 +164,7 @@ export default async function KundenPage({
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#1e1e1e]">
+            <tbody className="divide-y divide-[#111e30]">
               {companies.length === 0 ? (
                 <tr>
                   <td
@@ -188,13 +188,13 @@ export default async function KundenPage({
                   return (
                     <tr
                       key={company.id}
-                      className="hover:bg-[#1a1a1a] transition-colors group"
+                      className="hover:bg-[#101c2e] transition-colors group"
                     >
                       {/* Kunde */}
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-[#22c55e]/10 border border-[#22c55e]/20 flex items-center justify-center flex-shrink-0">
-                            <span className="text-[#22c55e] text-xs font-bold">
+                          <div className="w-8 h-8 rounded-lg bg-[#00b8ff]/10 border border-[#00b8ff]/20 flex items-center justify-center flex-shrink-0">
+                            <span className="text-[#00b8ff] text-xs font-bold">
                               {company.name.charAt(0)}
                             </span>
                           </div>
@@ -203,7 +203,7 @@ export default async function KundenPage({
                               {company.name}
                             </p>
                             {company.plan ? (
-                              <span className="text-xs px-1.5 py-0.5 rounded bg-[#22c55e]/10 border border-[#22c55e]/20 text-[#22c55e] capitalize">
+                              <span className="text-xs px-1.5 py-0.5 rounded bg-[#00b8ff]/10 border border-[#00b8ff]/20 text-[#00b8ff] capitalize">
                                 {company.plan}
                               </span>
                             ) : (
@@ -242,7 +242,7 @@ export default async function KundenPage({
                       {/* Blueprint / Projektphase */}
                       <td className="px-4 py-3.5 whitespace-nowrap">
                         {blueprintStatus === "COMPLETED" ? (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-[#22c55e]/10 text-[#22c55e] border border-[#22c55e]/20">Abgeschlossen</span>
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-[#00b8ff]/10 text-[#00b8ff] border border-[#00b8ff]/20">Abgeschlossen</span>
                         ) : blueprintStatus === "ACTIVE" || blueprintStatus === "PAUSED" ? (
                           <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">In Bearbeitung</span>
                         ) : (
@@ -256,7 +256,7 @@ export default async function KundenPage({
                           <span
                             className={`text-sm font-semibold ${
                               score >= 75
-                                ? "text-[#22c55e]"
+                                ? "text-[#00b8ff]"
                                 : score >= 50
                                 ? "text-yellow-400"
                                 : "text-red-400"
@@ -337,7 +337,7 @@ export default async function KundenPage({
           <div className="flex items-center gap-4">
             <span>
               Aktiv:{" "}
-              <span className="text-[#22c55e]">
+              <span className="text-[#00b8ff]">
                 {companies.filter((c) => c.status === "ACTIVE").length}
               </span>
             </span>
@@ -364,7 +364,7 @@ function StatusPill({ status }: { status: string }) {
   const configs: Record<string, { label: string; cls: string }> = {
     ACTIVE: {
       label: "Aktiv",
-      cls: "bg-[#22c55e]/10 text-[#22c55e] border-[#22c55e]/20",
+      cls: "bg-[#00b8ff]/10 text-[#00b8ff] border-[#00b8ff]/20",
     },
     ONBOARDING: {
       label: "Onboarding",

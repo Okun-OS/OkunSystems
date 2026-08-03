@@ -38,7 +38,7 @@ export function LessonUploadRow({
 
   const isPublished = lesson.status === "PUBLISHED";
   const statusCls = isPublished
-    ? "bg-[#22c55e]/10 text-[#22c55e] border-[#22c55e]/20"
+    ? "bg-[#00b8ff]/10 text-[#00b8ff] border-[#00b8ff]/20"
     : "bg-[#888]/10 text-[#888] border-[#888]/20";
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -78,9 +78,9 @@ export function LessonUploadRow({
   }
 
   return (
-    <div className="border-b border-[#1a1a1a] last:border-0">
+    <div className="border-b border-[#101c2e] last:border-0">
       <div
-        className="flex items-center gap-3 px-5 py-3 cursor-pointer hover:bg-[#1a1a1a] transition-colors"
+        className="flex items-center gap-3 px-5 py-3 cursor-pointer hover:bg-[#101c2e] transition-colors"
         onClick={() => setExpanded((v) => !v)}
       >
         <span className="text-[#555] text-xs w-5 text-right">{index + 1}</span>
@@ -89,7 +89,7 @@ export function LessonUploadRow({
         {lesson.estimatedMinutes && (
           <span className="text-[#555] text-xs">{lesson.estimatedMinutes} min</span>
         )}
-        {uploaded && <CheckCircle size={13} className="text-[#22c55e]" />}
+        {uploaded && <CheckCircle size={13} className="text-[#00b8ff]" />}
         <span className={`text-xs px-2 py-0.5 rounded-full border ${statusCls}`}>
           {isPublished ? "Aktiv" : "Entwurf"}
         </span>
@@ -101,7 +101,7 @@ export function LessonUploadRow({
       </div>
 
       {expanded && (
-        <div className="px-5 pb-4 bg-[#0d0d0d]">
+        <div className="px-5 pb-4 bg-[#060a10]">
           <div className="pt-3 space-y-3">
             {/* Publish toggle */}
             <form action={toggleStatusAction} onClick={(e) => e.stopPropagation()}>
@@ -112,7 +112,7 @@ export function LessonUploadRow({
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border transition-colors ${
                   isPublished
                     ? "bg-[#888]/10 border-[#888]/20 text-[#888] hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20"
-                    : "bg-[#22c55e]/10 border-[#22c55e]/20 text-[#22c55e] hover:bg-[#22c55e]/20"
+                    : "bg-[#00b8ff]/10 border-[#00b8ff]/20 text-[#00b8ff] hover:bg-[#00b8ff]/20"
                 }`}
               >
                 {isPublished ? <EyeOff size={11} /> : <Eye size={11} />}
@@ -133,11 +133,11 @@ export function LessonUploadRow({
                   name="externalUrl"
                   defaultValue={lesson.externalUrl ?? ""}
                   placeholder="https://…"
-                  className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-3 py-2 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50"
+                  className="w-full bg-[#0c1520] border border-[#1a2840] rounded-lg px-3 py-2 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/50"
                 />
                 <button
                   type="submit"
-                  className="mt-2 px-3 py-1.5 text-xs bg-[#1a1a1a] border border-[#2a2a2a] hover:bg-[#222] text-[#888] hover:text-[#f0f0f0] rounded-lg transition-colors"
+                  className="mt-2 px-3 py-1.5 text-xs bg-[#101c2e] border border-[#1a2840] hover:bg-[#222] text-[#888] hover:text-[#f0f0f0] rounded-lg transition-colors"
                 >
                   Speichern
                 </button>
@@ -151,11 +151,11 @@ export function LessonUploadRow({
                   <Upload size={11} /> Datei hochladen (R2)
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <span className="px-3 py-1.5 bg-[#1a1a1a] border border-[#2a2a2a] hover:bg-[#222] text-[#888] hover:text-[#f0f0f0] text-xs rounded-lg transition-colors flex items-center gap-1.5">
+                  <span className="px-3 py-1.5 bg-[#101c2e] border border-[#1a2840] hover:bg-[#222] text-[#888] hover:text-[#f0f0f0] text-xs rounded-lg transition-colors flex items-center gap-1.5">
                     {uploading ? (
                       <Loader2 size={11} className="animate-spin" />
                     ) : uploaded ? (
-                      <CheckCircle size={11} className="text-[#22c55e]" />
+                      <CheckCircle size={11} className="text-[#00b8ff]" />
                     ) : (
                       <Upload size={11} />
                     )}

@@ -64,11 +64,11 @@ export function AdminTwoFASection({ initialEnabled }: { initialEnabled: boolean 
   }
 
   return (
-    <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-6 mb-6">
+    <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6 mb-6">
       <div className="flex items-center gap-2 mb-4">
-        <Shield size={16} className="text-[#22c55e]" />
+        <Shield size={16} className="text-[#00b8ff]" />
         <h2 className="text-[#f0f0f0] font-semibold text-sm">Zwei-Faktor-Authentifizierung (Admin)</h2>
-        <span className={`ml-auto text-xs px-2 py-0.5 rounded-full border ${enabled ? "bg-[#22c55e]/10 text-[#22c55e] border-[#22c55e]/20" : "bg-[#888]/10 text-[#888] border-[#888]/20"}`}>
+        <span className={`ml-auto text-xs px-2 py-0.5 rounded-full border ${enabled ? "bg-[#00b8ff]/10 text-[#00b8ff] border-[#00b8ff]/20" : "bg-[#888]/10 text-[#888] border-[#888]/20"}`}>
           {enabled ? "Aktiv" : "Deaktiviert"}
         </span>
       </div>
@@ -79,7 +79,7 @@ export function AdminTwoFASection({ initialEnabled }: { initialEnabled: boolean 
       </p>
 
       {msg && (
-        <div className={`flex items-start gap-2 p-3 rounded-lg mb-4 text-xs ${isError ? "bg-red-500/10 border border-red-500/20 text-red-400" : "bg-[#22c55e]/10 border border-[#22c55e]/20 text-[#22c55e]"}`}>
+        <div className={`flex items-start gap-2 p-3 rounded-lg mb-4 text-xs ${isError ? "bg-red-500/10 border border-red-500/20 text-red-400" : "bg-[#00b8ff]/10 border border-[#00b8ff]/20 text-[#00b8ff]"}`}>
           {isError ? <AlertTriangle size={13} className="mt-0.5 shrink-0" /> : <CheckCircle size={13} className="mt-0.5 shrink-0" />}
           {msg}
         </div>
@@ -92,7 +92,7 @@ export function AdminTwoFASection({ initialEnabled }: { initialEnabled: boolean 
           className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${
             enabled
               ? "bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20"
-              : "bg-[#22c55e] hover:bg-[#16a34a] text-black"
+              : "bg-[#00b8ff] hover:bg-[#0099d6] text-white"
           }`}
         >
           {loading ? <Loader2 size={13} className="animate-spin" /> : <Shield size={13} />}
@@ -103,7 +103,7 @@ export function AdminTwoFASection({ initialEnabled }: { initialEnabled: boolean 
           <button
             onClick={sendTestCode}
             disabled={sending}
-            className="flex items-center gap-2 px-4 py-2 text-sm border border-[#2a2a2a] bg-[#1a1a1a] hover:bg-[#222] text-[#888] hover:text-[#f0f0f0] rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2 text-sm border border-[#1a2840] bg-[#101c2e] hover:bg-[#222] text-[#888] hover:text-[#f0f0f0] rounded-lg transition-colors"
           >
             {sending ? <Loader2 size={13} className="animate-spin" /> : null}
             Testcode senden

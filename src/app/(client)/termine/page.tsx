@@ -52,7 +52,7 @@ export default async function TerminePage() {
       {/* Booking section */}
       {!hasUpcoming ? (
         <section className="mb-10">
-          <div className="bg-[#22c55e]/5 border border-[#22c55e]/20 rounded-xl p-5 mb-6">
+          <div className="bg-[#00b8ff]/5 border border-[#00b8ff]/20 rounded-xl p-5 mb-6">
             <h2 className="text-[#f0f0f0] font-semibold text-sm mb-1">
               Auswertungsgespräch vereinbaren
             </h2>
@@ -69,9 +69,9 @@ export default async function TerminePage() {
         </section>
       ) : (
         <section className="mb-10">
-          <div className="bg-[#141414] border border-[#22c55e]/20 rounded-xl p-5 mb-5">
+          <div className="bg-[#0c1520] border border-[#00b8ff]/20 rounded-xl p-5 mb-5">
             <div className="flex items-center gap-2 mb-1">
-              <CalendarDays size={16} className="text-[#22c55e]" />
+              <CalendarDays size={16} className="text-[#00b8ff]" />
               <p className="text-[#f0f0f0] font-semibold text-sm">Sie haben bereits einen Termin</p>
             </div>
             <p className="text-[#888] text-xs">
@@ -133,18 +133,18 @@ function AppointmentCard({
   const typeLabel = TYPE_LABELS[appointment.type] ?? appointment.type;
   return (
     <div
-      className={`bg-[#141414] border rounded-xl p-5 ${
-        isPast ? "border-[#1e1e1e]" : "border-[#2a2a2a] hover:border-[#22c55e]/20"
+      className={`bg-[#0c1520] border rounded-xl p-5 ${
+        isPast ? "border-[#111e30]" : "border-[#1a2840] hover:border-[#00b8ff]/20"
       } transition-colors`}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-4">
           <div
             className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-              isPast ? "bg-[#1a1a1a]" : "bg-[#22c55e]/10"
+              isPast ? "bg-[#101c2e]" : "bg-[#00b8ff]/10"
             }`}
           >
-            <CalendarDays size={17} className={isPast ? "text-[#555]" : "text-[#22c55e]"} />
+            <CalendarDays size={17} className={isPast ? "text-[#555]" : "text-[#00b8ff]"} />
           </div>
           <div>
             <p className="text-[#f0f0f0] font-medium text-sm">{appointment.title}</p>
@@ -164,7 +164,7 @@ function AppointmentCard({
                 </div>
               )}
               {appointment.meetingUrl && (
-                <div className="flex items-center gap-1.5 text-[#22c55e] text-xs">
+                <div className="flex items-center gap-1.5 text-[#00b8ff] text-xs">
                   <Video size={12} />
                   <a
                     href={appointment.meetingUrl}
@@ -188,13 +188,13 @@ function AppointmentCard({
 function AppointmentStatusBadge({ status, isPast }: { status: string; isPast: boolean }) {
   if (isPast)
     return (
-      <span className="text-xs text-[#555] px-2 py-0.5 rounded-full bg-[#1a1a1a]">
+      <span className="text-xs text-[#555] px-2 py-0.5 rounded-full bg-[#101c2e]">
         Abgeschlossen
       </span>
     );
   const cfg: Record<string, { label: string; cls: string }> = {
     SCHEDULED: { label: "Geplant", cls: "bg-blue-500/10 text-blue-400" },
-    COMPLETED: { label: "Fertig", cls: "bg-[#22c55e]/10 text-[#22c55e]" },
+    COMPLETED: { label: "Fertig", cls: "bg-[#00b8ff]/10 text-[#00b8ff]" },
     CANCELLED: { label: "Abgesagt", cls: "bg-red-500/10 text-red-400" },
   };
   const c = cfg[status] ?? { label: status, cls: "bg-[#888]/10 text-[#888]" };

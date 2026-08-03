@@ -8,9 +8,9 @@ import { CalendarDays, Video, Plus, ArrowRight } from "lucide-react";
 function statusLabel(s: string) {
   switch (s) {
     case "SCHEDULED": return { label: "Geplant", cls: "text-blue-400 bg-blue-500/10 border-blue-500/20" };
-    case "COMPLETED": return { label: "Durchgeführt", cls: "text-[#22c55e] bg-[#22c55e]/10 border-[#22c55e]/20" };
+    case "COMPLETED": return { label: "Durchgeführt", cls: "text-[#00b8ff] bg-[#00b8ff]/10 border-[#00b8ff]/20" };
     case "CANCELLED": return { label: "Abgesagt", cls: "text-red-400 bg-red-500/10 border-red-500/20" };
-    default: return { label: s, cls: "text-[#888] bg-[#1a1a1a] border-[#2a2a2a]" };
+    default: return { label: s, cls: "text-[#888] bg-[#101c2e] border-[#1a2840]" };
   }
 }
 
@@ -67,9 +67,9 @@ export default async function CustomerTerminePage({
   return (
     <div className="space-y-6">
       {/* New appointment form */}
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+      <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
         <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4 flex items-center gap-2">
-          <Plus size={15} className="text-[#22c55e]" />
+          <Plus size={15} className="text-[#00b8ff]" />
           Neuen Termin anlegen
         </h2>
         <form action={createAppointment} className="grid grid-cols-2 gap-3">
@@ -79,7 +79,7 @@ export default async function CustomerTerminePage({
               name="title"
               required
               defaultValue="Strategiegespräch"
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50"
+              className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/50"
             />
           </div>
           <div>
@@ -88,7 +88,7 @@ export default async function CustomerTerminePage({
               name="startDate"
               type="date"
               required
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm focus:outline-none focus:border-[#22c55e]/50"
+              className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm focus:outline-none focus:border-[#00b8ff]/50"
             />
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -99,7 +99,7 @@ export default async function CustomerTerminePage({
                 type="time"
                 required
                 defaultValue="10:00"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm focus:outline-none focus:border-[#22c55e]/50"
+                className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm focus:outline-none focus:border-[#00b8ff]/50"
               />
             </div>
             <div>
@@ -109,7 +109,7 @@ export default async function CustomerTerminePage({
                 type="time"
                 required
                 defaultValue="11:00"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm focus:outline-none focus:border-[#22c55e]/50"
+                className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm focus:outline-none focus:border-[#00b8ff]/50"
               />
             </div>
           </div>
@@ -119,13 +119,13 @@ export default async function CustomerTerminePage({
               name="notes"
               rows={2}
               placeholder="Interne Notizen zum Termin…"
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50 resize-none"
+              className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/50 resize-none"
             />
           </div>
           <div className="col-span-2">
             <button
               type="submit"
-              className="flex items-center gap-2 px-4 py-2 bg-[#22c55e] hover:bg-[#16a34a] text-black font-semibold text-sm rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-[#00b8ff] hover:bg-[#0099d6] text-white font-semibold text-sm rounded-lg transition-colors"
             >
               <Plus size={14} />
               Termin anlegen
@@ -135,10 +135,10 @@ export default async function CustomerTerminePage({
       </div>
 
       {/* Appointment list */}
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#2a2a2a]">
+      <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-[#1a2840]">
           <h2 className="text-[#f0f0f0] font-semibold text-sm flex items-center gap-2">
-            <CalendarDays size={15} className="text-[#22c55e]" />
+            <CalendarDays size={15} className="text-[#00b8ff]" />
             Termine ({appointments.length})
           </h2>
         </div>
@@ -149,14 +149,14 @@ export default async function CustomerTerminePage({
             <p className="text-[#555] text-sm">Noch keine Termine für diesen Kunden.</p>
           </div>
         ) : (
-          <div className="divide-y divide-[#2a2a2a]">
+          <div className="divide-y divide-[#1a2840]">
             {appointments.map((appt) => {
               const sc = statusLabel(appt.status);
               return (
                 <Link
                   key={appt.id}
                   href={`/admin/termine/${appt.id}`}
-                  className="flex items-center gap-4 px-5 py-3.5 hover:bg-[#1a1a1a] transition-colors"
+                  className="flex items-center gap-4 px-5 py-3.5 hover:bg-[#101c2e] transition-colors"
                 >
                   <CalendarDays size={14} className="text-[#555] flex-shrink-0" />
                   <div className="flex-1 min-w-0">

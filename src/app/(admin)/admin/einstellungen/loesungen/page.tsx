@@ -98,7 +98,7 @@ export default async function LoesungenPage({
               name="name"
               required
               defaultValue={initial?.name}
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50"
+              className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/50"
             />
           </div>
           <div>
@@ -108,7 +108,7 @@ export default async function LoesungenPage({
               required
               defaultValue={initial?.category}
               placeholder="z.B. CRM, HR, Buchhaltung"
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50"
+              className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/50"
             />
           </div>
         </div>
@@ -120,7 +120,7 @@ export default async function LoesungenPage({
               name="externalId"
               required
               placeholder="z.B. SOL_CRM_001"
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50"
+              className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/50"
             />
           </div>
         )}
@@ -132,7 +132,7 @@ export default async function LoesungenPage({
             required
             defaultValue={initial?.description}
             rows={3}
-            className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50 resize-none"
+            className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/50 resize-none"
           />
         </div>
 
@@ -160,7 +160,7 @@ export default async function LoesungenPage({
             <select
               name="isActive"
               defaultValue={initial.isActive ? "true" : "false"}
-              className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-[#f0f0f0] focus:outline-none"
+              className="bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-sm text-[#f0f0f0] focus:outline-none"
             >
               <option value="true">Aktiv</option>
               <option value="false">Inaktiv</option>
@@ -171,14 +171,14 @@ export default async function LoesungenPage({
         <div className="flex gap-3">
           <button
             type="submit"
-            className="flex items-center gap-2 px-4 py-2.5 bg-[#22c55e] hover:bg-[#16a34a] text-black font-semibold text-sm rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2.5 bg-[#00b8ff] hover:bg-[#0099d6] text-white font-semibold text-sm rounded-lg transition-colors"
           >
             {initial ? "Speichern" : "Hinzufügen"}
           </button>
           {initial && (
             <Link
               href="/admin/einstellungen/loesungen"
-              className="px-4 py-2.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-[#888] text-sm rounded-lg transition-colors"
+              className="px-4 py-2.5 bg-[#101c2e] hover:bg-[#222] border border-[#1a2840] text-[#888] text-sm rounded-lg transition-colors"
             >
               Abbrechen
             </Link>
@@ -209,9 +209,9 @@ export default async function LoesungenPage({
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Edit / Create form */}
         <div className="lg:col-span-2">
-          <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5 sticky top-6">
+          <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5 sticky top-6">
             <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4 flex items-center gap-2">
-              <Plus size={14} className="text-[#22c55e]" />
+              <Plus size={14} className="text-[#00b8ff]" />
               {editTarget ? "Lösung bearbeiten" : "Neue Lösung"}
             </h2>
             {editTarget ? (
@@ -225,7 +225,7 @@ export default async function LoesungenPage({
         {/* Solution list */}
         <div className="lg:col-span-3 space-y-6">
           {Object.keys(byCategory).length === 0 && (
-            <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-12 text-center">
+            <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-12 text-center">
               <Package size={32} className="text-[#333] mx-auto mb-3" />
               <p className="text-[#555] text-sm">Noch keine Lösungen im Katalog.</p>
             </div>
@@ -236,15 +236,15 @@ export default async function LoesungenPage({
               <h2 className="text-[#888] text-xs font-semibold uppercase tracking-wider mb-2">
                 {cat}
               </h2>
-              <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl overflow-hidden">
-                <div className="divide-y divide-[#2a2a2a]">
+              <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl overflow-hidden">
+                <div className="divide-y divide-[#1a2840]">
                   {items.map((sol) => {
                     const pkgs: string[] = JSON.parse(sol.packageTypes || "[]");
                     return (
                       <div key={sol.id} className="flex items-start gap-3 px-5 py-4">
                         <div className="flex-shrink-0 mt-0.5">
                           {sol.isActive ? (
-                            <CheckCircle size={15} className="text-[#22c55e]" />
+                            <CheckCircle size={15} className="text-[#00b8ff]" />
                           ) : (
                             <Circle size={15} className="text-[#555]" />
                           )}
@@ -259,7 +259,7 @@ export default async function LoesungenPage({
                               {pkgs.map((p) => (
                                 <span
                                   key={p}
-                                  className="text-xs px-1.5 py-0.5 rounded bg-[#1a1a1a] border border-[#2a2a2a] text-[#888] capitalize"
+                                  className="text-xs px-1.5 py-0.5 rounded bg-[#101c2e] border border-[#1a2840] text-[#888] capitalize"
                                 >
                                   {p}
                                 </span>
@@ -270,7 +270,7 @@ export default async function LoesungenPage({
                         <div className="flex items-center gap-1 flex-shrink-0">
                           <Link
                             href={`/admin/einstellungen/loesungen?edit=${sol.id}`}
-                            className="p-1.5 rounded-lg hover:bg-[#1a1a1a] text-[#555] hover:text-[#888] transition-colors"
+                            className="p-1.5 rounded-lg hover:bg-[#101c2e] text-[#555] hover:text-[#888] transition-colors"
                           >
                             <Pencil size={13} />
                           </Link>

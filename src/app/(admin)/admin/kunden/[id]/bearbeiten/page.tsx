@@ -65,7 +65,7 @@ export default async function KundeBearbeitenPage({
 
   return (
     <div className="max-w-[640px] space-y-6">
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-6">
+      <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6">
         <h2 className="text-[#f0f0f0] font-semibold text-sm mb-5">Stammdaten</h2>
 
         <form action={handleSave} className="space-y-4">
@@ -76,7 +76,7 @@ export default async function KundeBearbeitenPage({
                 name="name"
                 required
                 defaultValue={company.name}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm focus:outline-none focus:border-[#22c55e]/50"
+                className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm focus:outline-none focus:border-[#00b8ff]/50"
               />
             </div>
 
@@ -86,7 +86,7 @@ export default async function KundeBearbeitenPage({
                 name="contactPerson"
                 defaultValue={company.contactPerson ?? ""}
                 placeholder="Max Mustermann"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50"
+                className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/50"
               />
             </div>
 
@@ -96,7 +96,7 @@ export default async function KundeBearbeitenPage({
                 name="phone"
                 defaultValue={company.phone ?? ""}
                 placeholder="+49 ..."
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50"
+                className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/50"
               />
             </div>
 
@@ -106,7 +106,7 @@ export default async function KundeBearbeitenPage({
                 name="industry"
                 defaultValue={company.industry ?? ""}
                 placeholder="z.B. Gastronomie"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50"
+                className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/50"
               />
             </div>
 
@@ -115,7 +115,7 @@ export default async function KundeBearbeitenPage({
               <select
                 name="plan"
                 defaultValue={company.plan ?? ""}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-[#f0f0f0] focus:outline-none focus:border-[#22c55e]/50"
+                className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-sm text-[#f0f0f0] focus:outline-none focus:border-[#00b8ff]/50"
               >
                 <option value="">— kein Paket —</option>
                 <option value="foundation">OKUN Foundation (ab 5.900 €)</option>
@@ -130,7 +130,7 @@ export default async function KundeBearbeitenPage({
                 name="website"
                 defaultValue={company.website ?? ""}
                 placeholder="https://..."
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50"
+                className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/50"
               />
             </div>
 
@@ -140,12 +140,12 @@ export default async function KundeBearbeitenPage({
                 name="address"
                 defaultValue={company.address ?? ""}
                 placeholder="Musterstraße 1, 12345 Musterstadt"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50"
+                className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/50"
               />
             </div>
           </div>
 
-          <hr className="border-[#2a2a2a]" />
+          <hr className="border-[#1a2840]" />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -153,7 +153,7 @@ export default async function KundeBearbeitenPage({
               <select
                 name="status"
                 defaultValue={company.status}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-[#f0f0f0] focus:outline-none focus:border-[#22c55e]/50"
+                className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-sm text-[#f0f0f0] focus:outline-none focus:border-[#00b8ff]/50"
               >
                 {STATUS_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
@@ -163,7 +163,7 @@ export default async function KundeBearbeitenPage({
 
             <div>
               <label className="text-[#888] text-xs block mb-1.5">Projektphase</label>
-              <div className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-[#888] flex items-center justify-between">
+              <div className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-sm text-[#888] flex items-center justify-between">
                 <span>{PROJECT_PHASES.find((p) => p.value === company.projectPhase)?.label ?? company.projectPhase}</span>
                 <span className="text-xs text-[#555]">automatisch</span>
               </div>
@@ -174,7 +174,7 @@ export default async function KundeBearbeitenPage({
           <div className="flex justify-end pt-2">
             <button
               type="submit"
-              className="flex items-center gap-2 px-5 py-2.5 bg-[#22c55e] hover:bg-[#16a34a] text-black text-sm font-semibold rounded-lg transition-colors"
+              className="flex items-center gap-2 px-5 py-2.5 bg-[#00b8ff] hover:bg-[#0099d6] text-white text-sm font-semibold rounded-lg transition-colors"
             >
               <Save size={13} />
               Speichern

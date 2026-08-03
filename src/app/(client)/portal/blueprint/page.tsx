@@ -23,7 +23,7 @@ const MATURITY_CFG: Record<string, { cls: string }> = {
   DEVELOPING: { cls: "bg-orange-500/10 text-orange-400 border-orange-500/20" },
   DEFINED:    { cls: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" },
   MANAGED:    { cls: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
-  OPTIMIZED:  { cls: "bg-[#22c55e]/10 text-[#22c55e] border-[#22c55e]/20" },
+  OPTIMIZED:  { cls: "bg-[#00b8ff]/10 text-[#00b8ff] border-[#00b8ff]/20" },
 };
 
 export default async function PortalBlueprintPage() {
@@ -50,7 +50,7 @@ export default async function PortalBlueprintPage() {
   if (!score) {
     return (
       <div className="max-w-[700px] mx-auto py-12 px-4">
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-10 text-center">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-10 text-center">
           <FileText size={36} className="text-[#333] mx-auto mb-4" />
           <p className="text-[#f0f0f0] font-semibold mb-2">Noch kein Bericht verfügbar</p>
           <p className="text-[#888] text-sm leading-relaxed">
@@ -86,9 +86,9 @@ export default async function PortalBlueprintPage() {
       </div>
 
       {/* Score hero */}
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-6 flex items-center gap-6">
-        <div className="w-20 h-20 rounded-2xl bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0">
-          <span className="text-[#22c55e] text-3xl font-black tabular-nums">
+      <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6 flex items-center gap-6">
+        <div className="w-20 h-20 rounded-2xl bg-[#101c2e] border border-[#1a2840] flex items-center justify-center flex-shrink-0">
+          <span className="text-[#00b8ff] text-3xl font-black tabular-nums">
             {score.totalScore}
           </span>
         </div>
@@ -108,13 +108,13 @@ export default async function PortalBlueprintPage() {
       </div>
 
       {/* Score breakdown */}
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+      <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
         <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4">Score nach Bereichen</h2>
         <div className="space-y-3">
           {AREA_LABELS.map(({ key, label, weight }) => {
             const val = scoreMap[key] as number | null;
             if (val == null) return null;
-            const color = val >= 65 ? "#22c55e" : val >= 50 ? "#f59e0b" : "#ef4444";
+            const color = val >= 65 ? "#00b8ff" : val >= 50 ? "#f59e0b" : "#ef4444";
             return (
               <div key={key}>
                 <div className="flex items-center justify-between mb-1">
@@ -126,7 +126,7 @@ export default async function PortalBlueprintPage() {
                     </span>
                   </div>
                 </div>
-                <div className="h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
+                <div className="h-1.5 bg-[#101c2e] rounded-full overflow-hidden">
                   <div
                     className="h-full rounded-full"
                     style={{ width: `${val}%`, backgroundColor: color }}
@@ -142,12 +142,12 @@ export default async function PortalBlueprintPage() {
       {(strengths.length > 0 || potentials.length > 0) && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {strengths.length > 0 && (
-            <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+            <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
               <h2 className="text-[#f0f0f0] font-semibold text-sm mb-3">Ihre Stärken</h2>
               <ul className="space-y-2">
                 {strengths.map((s, i) => (
                   <li key={i} className="flex items-start gap-2 text-sm text-[#888]">
-                    <span className="text-[#22c55e] flex-shrink-0 mt-0.5">✓</span>
+                    <span className="text-[#00b8ff] flex-shrink-0 mt-0.5">✓</span>
                     {s}
                   </li>
                 ))}
@@ -155,7 +155,7 @@ export default async function PortalBlueprintPage() {
             </div>
           )}
           {potentials.length > 0 && (
-            <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+            <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
               <h2 className="text-[#f0f0f0] font-semibold text-sm mb-3">Erkannte Potenziale</h2>
               <ul className="space-y-2">
                 {potentials.map((p, i) => (

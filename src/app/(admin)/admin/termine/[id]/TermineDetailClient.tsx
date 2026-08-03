@@ -36,22 +36,22 @@ export function CreateRoomButton({
   if (url) {
     return (
       <div className="space-y-3">
-        <div className="bg-[#0d0d0d] border border-[#22c55e]/30 rounded-lg px-4 py-3 flex items-center justify-between gap-3">
+        <div className="bg-[#060a10] border border-[#00b8ff]/30 rounded-lg px-4 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
-            <Video size={14} className="text-[#22c55e] flex-shrink-0" />
-            <span className="text-[#22c55e] text-xs font-mono truncate">{url}</span>
+            <Video size={14} className="text-[#00b8ff] flex-shrink-0" />
+            <span className="text-[#00b8ff] text-xs font-mono truncate">{url}</span>
           </div>
           <a
             href={url}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#22c55e] hover:bg-[#16a34a] text-black text-xs font-semibold rounded-lg transition-colors flex-shrink-0"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#00b8ff] hover:bg-[#0099d6] text-white text-xs font-semibold rounded-lg transition-colors flex-shrink-0"
           >
             <ExternalLink size={11} />
             Beitreten
           </a>
         </div>
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl overflow-hidden" style={{ aspectRatio: "16/9" }}>
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl overflow-hidden" style={{ aspectRatio: "16/9" }}>
           <iframe
             src={url}
             allow="camera; microphone; fullscreen; speaker; display-capture"
@@ -68,7 +68,7 @@ export function CreateRoomButton({
       <button
         onClick={handleCreate}
         disabled={loading}
-        className="flex items-center gap-2 px-4 py-2.5 bg-[#22c55e] hover:bg-[#16a34a] disabled:opacity-50 text-black font-semibold text-sm rounded-lg transition-colors"
+        className="flex items-center gap-2 px-4 py-2.5 bg-[#00b8ff] hover:bg-[#0099d6] disabled:opacity-50 text-white font-semibold text-sm rounded-lg transition-colors"
       >
         {loading ? (
           <Loader2 size={14} className="animate-spin" />

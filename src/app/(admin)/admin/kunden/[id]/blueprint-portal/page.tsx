@@ -12,7 +12,7 @@ const MATURITY_CFG: Record<string, { cls: string }> = {
   DEVELOPING: { cls: "bg-orange-500/10 text-orange-400 border-orange-500/20" },
   DEFINED:    { cls: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" },
   MANAGED:    { cls: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
-  OPTIMIZED:  { cls: "bg-[#22c55e]/10 text-[#22c55e] border-[#22c55e]/20" },
+  OPTIMIZED:  { cls: "bg-[#00b8ff]/10 text-[#00b8ff] border-[#00b8ff]/20" },
 };
 
 export default async function BlueprintPortalPage({
@@ -99,7 +99,7 @@ export default async function BlueprintPortalPage({
   return (
     <div className="space-y-6">
       {sessions.length === 0 ? (
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-8 text-center">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-8 text-center">
           <FileText size={32} className="text-[#333] mx-auto mb-3" />
           <p className="text-[#888] text-sm">Keine abgeschlossene Analyse vorhanden.</p>
           <p className="text-[#555] text-xs mt-1">
@@ -131,12 +131,12 @@ export default async function BlueprintPortalPage({
             return (
               <div
                 key={sess.id}
-                className="bg-[#141414] border border-[#2a2a2a] rounded-xl overflow-hidden"
+                className="bg-[#0c1520] border border-[#1a2840] rounded-xl overflow-hidden"
               >
                 <div className="px-6 py-5 flex items-start justify-between gap-4">
                   <div className="flex items-start gap-4">
-                    <div className="w-14 h-14 rounded-xl bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0">
-                      <span className="text-[#22c55e] text-xl font-black">
+                    <div className="w-14 h-14 rounded-xl bg-[#101c2e] border border-[#1a2840] flex items-center justify-center flex-shrink-0">
+                      <span className="text-[#00b8ff] text-xl font-black">
                         {score.totalScore}
                       </span>
                     </div>
@@ -155,7 +155,7 @@ export default async function BlueprintPortalPage({
                         Abgeschlossen: {completedDate}
                       </p>
                       {score.isPublished && publishedDate && (
-                        <p className="text-[#22c55e] text-xs mt-0.5 flex items-center gap-1">
+                        <p className="text-[#00b8ff] text-xs mt-0.5 flex items-center gap-1">
                           <CheckCircle size={11} />
                           Freigegeben am {publishedDate}
                         </p>
@@ -172,7 +172,7 @@ export default async function BlueprintPortalPage({
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <Link
                       href={`/admin/kunden/${id}/analyse/bericht`}
-                      className="flex items-center gap-1.5 px-3 py-2 text-xs text-[#888] hover:text-[#f0f0f0] border border-[#2a2a2a] hover:border-[#3a3a3a] rounded-lg transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-2 text-xs text-[#888] hover:text-[#f0f0f0] border border-[#1a2840] hover:border-[#3a3a3a] rounded-lg transition-colors"
                     >
                       <FileText size={13} />
                       Bericht ansehen
@@ -184,7 +184,7 @@ export default async function BlueprintPortalPage({
                         <input type="hidden" name="companyId" value={id} />
                         <button
                           type="submit"
-                          className="flex items-center gap-1.5 px-3 py-2 bg-[#22c55e] hover:bg-[#16a34a] text-black text-xs font-semibold rounded-lg transition-colors"
+                          className="flex items-center gap-1.5 px-3 py-2 bg-[#00b8ff] hover:bg-[#0099d6] text-white text-xs font-semibold rounded-lg transition-colors"
                         >
                           <Send size={13} />
                           Für Kunden freigeben
@@ -213,14 +213,14 @@ export default async function BlueprintPortalPage({
                     if (area.val == null) return null;
                     const color =
                       area.val >= 65
-                        ? "#22c55e"
+                        ? "#00b8ff"
                         : area.val >= 50
                         ? "#f59e0b"
                         : "#ef4444";
                     return (
                       <div
                         key={area.label}
-                        className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg p-3"
+                        className="bg-[#060a10] border border-[#101c2e] rounded-lg p-3"
                       >
                         <p className="text-[#555] text-xs mb-1.5">{area.label}</p>
                         <p
@@ -229,7 +229,7 @@ export default async function BlueprintPortalPage({
                         >
                           {area.val}
                         </p>
-                        <div className="h-1 bg-[#1a1a1a] rounded-full mt-1.5 overflow-hidden">
+                        <div className="h-1 bg-[#101c2e] rounded-full mt-1.5 overflow-hidden">
                           <div
                             className="h-full rounded-full"
                             style={{ width: `${area.val}%`, backgroundColor: color }}
@@ -242,7 +242,7 @@ export default async function BlueprintPortalPage({
 
                 {score.customerSummary && (
                   <div className="px-6 pb-5">
-                    <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg p-4">
+                    <div className="bg-[#060a10] border border-[#101c2e] rounded-lg p-4">
                       <p className="text-[#555] text-xs mb-1.5">Kunden-Zusammenfassung</p>
                       <p className="text-[#888] text-sm leading-relaxed">
                         {score.customerSummary}

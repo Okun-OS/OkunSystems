@@ -117,7 +117,7 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         {/* Welcome Video */}
         <div className="lg:col-span-2">
-          <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl overflow-hidden">
+          <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl overflow-hidden">
             {welcomeVideo?.value ? (
               <div className="relative aspect-video">
                 <video
@@ -128,10 +128,10 @@ export default async function DashboardPage() {
                 />
               </div>
             ) : (
-              <div className="relative aspect-video bg-gradient-to-br from-[#1a1a1a] to-[#0d0d0d] flex items-center justify-center">
+              <div className="relative aspect-video bg-gradient-to-br from-[#101c2e] to-[#060a10] flex items-center justify-center">
                 <div className="text-center">
-                  <div className="w-14 h-14 rounded-full bg-[#22c55e]/10 border border-[#22c55e]/20 flex items-center justify-center mx-auto mb-3">
-                    <Play size={20} className="text-[#22c55e] ml-0.5" />
+                  <div className="w-14 h-14 rounded-full bg-[#00b8ff]/10 border border-[#00b8ff]/20 flex items-center justify-center mx-auto mb-3">
+                    <Play size={20} className="text-[#00b8ff] ml-0.5" />
                   </div>
                   <p className="text-[#f0f0f0] font-semibold text-sm">Willkommensvideo</p>
                   <p className="text-[#555] text-xs mt-1">von OKUN Systems</p>
@@ -144,9 +144,9 @@ export default async function DashboardPage() {
         {/* Next action + appointment */}
         <div className="space-y-4">
           {/* Blueprint status */}
-          <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+          <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
             <div className="flex items-center gap-2 mb-3">
-              <Brain size={15} className="text-[#22c55e]" />
+              <Brain size={15} className="text-[#00b8ff]" />
               <h3 className="text-[#f0f0f0] font-semibold text-sm">OKUN Blueprint™</h3>
             </div>
             {blueprintStatus === "none" && (
@@ -156,7 +156,7 @@ export default async function DashboardPage() {
                 </p>
                 <Link
                   href="/blueprint"
-                  className="block w-full bg-[#22c55e] hover:bg-[#16a34a] text-black font-semibold text-xs rounded-lg py-2.5 text-center transition-colors"
+                  className="block w-full bg-[#00b8ff] hover:bg-[#0099d6] text-white font-semibold text-xs rounded-lg py-2.5 text-center transition-colors"
                 >
                   Blueprint starten
                 </Link>
@@ -169,7 +169,7 @@ export default async function DashboardPage() {
                 </p>
                 <Link
                   href={`/blueprint/${analysisSession!.id}`}
-                  className="block w-full bg-[#22c55e] hover:bg-[#16a34a] text-black font-semibold text-xs rounded-lg py-2.5 text-center transition-colors"
+                  className="block w-full bg-[#00b8ff] hover:bg-[#0099d6] text-white font-semibold text-xs rounded-lg py-2.5 text-center transition-colors"
                 >
                   Fortsetzen
                 </Link>
@@ -178,15 +178,15 @@ export default async function DashboardPage() {
             {blueprintStatus === "completed" && (
               <>
                 <div className="flex items-center gap-2 mb-3">
-                  <CheckCircle size={13} className="text-[#22c55e]" />
-                  <p className="text-[#22c55e] text-xs font-medium">Abgeschlossen</p>
+                  <CheckCircle size={13} className="text-[#00b8ff]" />
+                  <p className="text-[#00b8ff] text-xs font-medium">Abgeschlossen</p>
                 </div>
                 <p className="text-[#888] text-xs leading-relaxed">
                   OKUN wertet Ihre Ergebnisse intern aus. Buchen Sie jetzt Ihr Strategiegespräch.
                 </p>
                 <Link
                   href="/termine"
-                  className="block w-full mt-3 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-[#f0f0f0] font-medium text-xs rounded-lg py-2.5 text-center transition-colors"
+                  className="block w-full mt-3 bg-[#101c2e] hover:bg-[#222] border border-[#1a2840] text-[#f0f0f0] font-medium text-xs rounded-lg py-2.5 text-center transition-colors"
                 >
                   Strategiegespräch buchen
                 </Link>
@@ -196,9 +196,9 @@ export default async function DashboardPage() {
 
           {/* Next appointment */}
           {nextAppointment && (
-            <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+            <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
               <div className="flex items-center gap-2 mb-3">
-                <Calendar size={15} className="text-[#22c55e]" />
+                <Calendar size={15} className="text-[#00b8ff]" />
                 <h3 className="text-[#f0f0f0] font-semibold text-sm">Nächster Termin</h3>
               </div>
               <p className="text-[#f0f0f0] text-sm font-medium truncate">{nextAppointment.title}</p>
@@ -221,7 +221,7 @@ export default async function DashboardPage() {
                   href={nextAppointment.meetingUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block w-full mt-3 bg-[#22c55e] hover:bg-[#16a34a] text-black font-semibold text-xs rounded-lg py-2.5 text-center transition-colors"
+                  className="block w-full mt-3 bg-[#00b8ff] hover:bg-[#0099d6] text-white font-semibold text-xs rounded-lg py-2.5 text-center transition-colors"
                 >
                   Gespräch beitreten
                 </a>
@@ -233,7 +233,7 @@ export default async function DashboardPage() {
 
       {/* Project phase timeline */}
       {company.projectPhase && (
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5 mb-6">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5 mb-6">
           <h2 className="text-[#888] text-xs font-medium uppercase tracking-wide mb-4">
             Projektstatus
           </h2>
@@ -247,16 +247,16 @@ export default async function DashboardPage() {
                     <div
                       className={`w-7 h-7 rounded-full flex items-center justify-center border-2 transition-colors ${
                         isDone
-                          ? "bg-[#22c55e] border-[#22c55e]"
+                          ? "bg-[#00b8ff] border-[#00b8ff]"
                           : isCurrent
-                          ? "border-[#22c55e] bg-[#22c55e]/10"
-                          : "border-[#2a2a2a] bg-[#0d0d0d]"
+                          ? "border-[#00b8ff] bg-[#00b8ff]/10"
+                          : "border-[#1a2840] bg-[#060a10]"
                       }`}
                     >
                       {isDone ? (
                         <CheckCircle size={14} className="text-black" />
                       ) : isCurrent ? (
-                        <div className="w-2.5 h-2.5 rounded-full bg-[#22c55e]" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-[#00b8ff]" />
                       ) : (
                         <Circle size={14} className="text-[#333]" />
                       )}
@@ -264,7 +264,7 @@ export default async function DashboardPage() {
                     <p
                       className={`text-xs mt-1.5 whitespace-nowrap ${
                         isCurrent
-                          ? "text-[#22c55e] font-semibold"
+                          ? "text-[#00b8ff] font-semibold"
                           : isDone
                           ? "text-[#555]"
                           : "text-[#333]"
@@ -276,7 +276,7 @@ export default async function DashboardPage() {
                   {idx < PROJECT_PHASES.length - 1 && (
                     <div
                       className={`h-px w-6 sm:w-8 mx-1 flex-shrink-0 ${
-                        idx < currentPhaseIdx ? "bg-[#22c55e]" : "bg-[#2a2a2a]"
+                        idx < currentPhaseIdx ? "bg-[#00b8ff]" : "bg-[#1a2840]"
                       }`}
                     />
                   )}
@@ -294,14 +294,14 @@ export default async function DashboardPage() {
             label: "Lerninhalte",
             value: assignments.length,
             sub: "freigeschaltet",
-            icon: <BookOpen size={16} className="text-[#22c55e]" />,
+            icon: <BookOpen size={16} className="text-[#00b8ff]" />,
             href: "/portal/lernen",
           },
           {
             label: "Abgeschlossen",
             value: completedChapters,
             sub: "Kapitel",
-            icon: <CheckCircle size={16} className="text-[#22c55e]" />,
+            icon: <CheckCircle size={16} className="text-[#00b8ff]" />,
             href: "/portal/lernen",
           },
           {
@@ -322,7 +322,7 @@ export default async function DashboardPage() {
           <Link
             key={stat.label}
             href={stat.href}
-            className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5 hover:border-[#22c55e]/30 transition-colors"
+            className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5 hover:border-[#00b8ff]/30 transition-colors"
           >
             <div className="flex items-center justify-between mb-3">
               {stat.icon}
@@ -336,15 +336,15 @@ export default async function DashboardPage() {
 
       {/* Learning + Docs */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-[#f0f0f0] font-semibold text-sm flex items-center gap-2">
-              <BookOpen size={15} className="text-[#22c55e]" />
+              <BookOpen size={15} className="text-[#00b8ff]" />
               Ihre Lerninhalte
             </h2>
             <Link
               href="/portal/lernen"
-              className="text-[#22c55e] text-xs hover:underline flex items-center gap-1"
+              className="text-[#00b8ff] text-xs hover:underline flex items-center gap-1"
             >
               Alle anzeigen <ChevronRight size={12} />
             </Link>
@@ -358,19 +358,19 @@ export default async function DashboardPage() {
                 <Link
                   key={cp.assignment.id}
                   href="/portal/lernen"
-                  className="flex items-center gap-3 p-3 bg-[#0d0d0d] rounded-lg hover:bg-[#111] transition-colors"
+                  className="flex items-center gap-3 p-3 bg-[#060a10] rounded-lg hover:bg-[#111] transition-colors"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-[#22c55e]/10 border border-[#22c55e]/20 flex items-center justify-center flex-shrink-0">
-                    <BookOpen size={13} className="text-[#22c55e]" />
+                  <div className="w-8 h-8 rounded-lg bg-[#00b8ff]/10 border border-[#00b8ff]/20 flex items-center justify-center flex-shrink-0">
+                    <BookOpen size={13} className="text-[#00b8ff]" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[#f0f0f0] text-sm font-medium truncate">
                       {cp.assignment.chapter.title}
                     </p>
                     <div className="flex items-center gap-2 mt-1">
-                      <div className="flex-1 h-1 bg-[#1e1e1e] rounded-full overflow-hidden">
+                      <div className="flex-1 h-1 bg-[#111e30] rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-[#22c55e] rounded-full"
+                          className="h-full bg-[#00b8ff] rounded-full"
                           style={{ width: `${cp.pct}%` }}
                         />
                       </div>
@@ -380,7 +380,7 @@ export default async function DashboardPage() {
                     </div>
                   </div>
                   {cp.pct === 100 && (
-                    <CheckCircle size={14} className="text-[#22c55e] flex-shrink-0" />
+                    <CheckCircle size={14} className="text-[#00b8ff] flex-shrink-0" />
                   )}
                 </Link>
               ))}
@@ -388,15 +388,15 @@ export default async function DashboardPage() {
           )}
         </div>
 
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-[#f0f0f0] font-semibold text-sm flex items-center gap-2">
-              <FileText size={15} className="text-[#22c55e]" />
+              <FileText size={15} className="text-[#00b8ff]" />
               Aktuelle Dokumente
             </h2>
             <Link
               href="/portal/dokumente"
-              className="text-[#22c55e] text-xs hover:underline flex items-center gap-1"
+              className="text-[#00b8ff] text-xs hover:underline flex items-center gap-1"
             >
               Alle anzeigen <ChevronRight size={12} />
             </Link>
@@ -409,7 +409,7 @@ export default async function DashboardPage() {
               {documents.map((doc) => (
                 <div
                   key={doc.id}
-                  className="flex items-center gap-3 p-3 bg-[#0d0d0d] rounded-lg"
+                  className="flex items-center gap-3 p-3 bg-[#060a10] rounded-lg"
                 >
                   <FileText size={13} className="text-[#888] flex-shrink-0" />
                   <div className="flex-1 min-w-0">

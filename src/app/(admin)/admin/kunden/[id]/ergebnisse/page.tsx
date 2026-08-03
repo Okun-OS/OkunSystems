@@ -7,7 +7,7 @@ import { assembleBlueprintReport } from "@/lib/blueprint/report-assembler";
 import { BlueprintReportButton } from "../BlueprintReportButton";
 
 const PACKAGE_COLORS: Record<string, string> = {
-  foundation: "#22c55e",
+  foundation: "#00b8ff",
   operations: "#3b82f6",
   custom: "#a855f7",
 };
@@ -84,7 +84,7 @@ export default async function ErgebnissePage({
     <div className="space-y-6">
       {/* Status bar */}
       {!analysisSession ? (
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5 flex items-center gap-3">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5 flex items-center gap-3">
           <AlertCircle size={18} className="text-[#555]" />
           <div>
             <p className="text-[#888] text-sm font-medium">Kein Blueprint 2.0 vorhanden</p>
@@ -92,21 +92,21 @@ export default async function ErgebnissePage({
           </div>
           <Link
             href={`/admin/kunden/${id}/blueprint-portal`}
-            className="ml-auto text-[#22c55e] text-xs hover:underline"
+            className="ml-auto text-[#00b8ff] text-xs hover:underline"
           >
             Blueprint starten →
           </Link>
         </div>
       ) : (
         <div
-          className={`bg-[#141414] border rounded-xl p-5 flex items-center gap-4 ${
+          className={`bg-[#0c1520] border rounded-xl p-5 flex items-center gap-4 ${
             analysisSession.status === "COMPLETED"
-              ? "border-[#22c55e]/30"
+              ? "border-[#00b8ff]/30"
               : "border-yellow-500/20"
           }`}
         >
           {analysisSession.status === "COMPLETED" ? (
-            <CheckCircle2 size={18} className="text-[#22c55e] flex-shrink-0" />
+            <CheckCircle2 size={18} className="text-[#00b8ff] flex-shrink-0" />
           ) : (
             <Clock size={18} className="text-yellow-400 flex-shrink-0" />
           )}
@@ -116,7 +116,7 @@ export default async function ErgebnissePage({
               <span
                 className={
                   analysisSession.status === "COMPLETED"
-                    ? "text-[#22c55e]"
+                    ? "text-[#00b8ff]"
                     : "text-yellow-400"
                 }
               >
@@ -134,7 +134,7 @@ export default async function ErgebnissePage({
           </div>
           <Link
             href={`/admin/kunden/${id}/analyse`}
-            className="text-[#22c55e] text-xs hover:underline flex-shrink-0"
+            className="text-[#00b8ff] text-xs hover:underline flex-shrink-0"
           >
             Analyse öffnen →
           </Link>
@@ -145,14 +145,14 @@ export default async function ErgebnissePage({
         <>
           {/* Score + Package row */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5 flex flex-col items-center justify-center">
+            <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5 flex flex-col items-center justify-center">
               <p className="text-[#888] text-xs mb-2">Gesamtergebnis Blueprint</p>
               <p
                 className="text-5xl font-bold"
                 style={{
                   color:
                     overallScore !== null && overallScore >= 70
-                      ? "#22c55e"
+                      ? "#00b8ff"
                       : overallScore !== null && overallScore >= 50
                       ? "#f59e0b"
                       : "#ef4444",
@@ -162,7 +162,7 @@ export default async function ErgebnissePage({
               </p>
             </div>
 
-            <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5 flex flex-col items-center justify-center">
+            <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5 flex flex-col items-center justify-center">
               <p className="text-[#888] text-xs mb-2">Empfohlenes Paket</p>
               {reportData.packageType ? (
                 <p
@@ -176,7 +176,7 @@ export default async function ErgebnissePage({
               )}
             </div>
 
-            <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+            <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
               <p className="text-[#888] text-xs mb-3">Signale</p>
               <div className="space-y-2">
                 {(
@@ -198,9 +198,9 @@ export default async function ErgebnissePage({
           </div>
 
           {/* Module scores */}
-          <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+          <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
             <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4 flex items-center gap-2">
-              <TrendingUp size={15} className="text-[#22c55e]" />
+              <TrendingUp size={15} className="text-[#00b8ff]" />
               Modul-Ergebnisse
             </h2>
             <div className="space-y-3">
@@ -215,7 +215,7 @@ export default async function ErgebnissePage({
                       style={{
                         color:
                           m.score >= 70
-                            ? "#22c55e"
+                            ? "#00b8ff"
                             : m.score >= 50
                             ? "#f59e0b"
                             : "#ef4444",
@@ -224,14 +224,14 @@ export default async function ErgebnissePage({
                       {Math.round(m.score)}%
                     </span>
                   </div>
-                  <div className="h-1.5 bg-[#1e1e1e] rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-[#111e30] rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all"
                       style={{
                         width: `${Math.round(m.score)}%`,
                         backgroundColor:
                           m.score >= 70
-                            ? "#22c55e"
+                            ? "#00b8ff"
                             : m.score >= 50
                             ? "#f59e0b"
                             : "#ef4444",
@@ -245,16 +245,16 @@ export default async function ErgebnissePage({
 
           {/* Recommendations */}
           {reportData.recommendations.length > 0 && (
-            <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+            <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
               <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4 flex items-center gap-2">
-                <Zap size={15} className="text-[#22c55e]" />
+                <Zap size={15} className="text-[#00b8ff]" />
                 Lösungsempfehlungen ({reportData.recommendations.length})
               </h2>
               <div className="space-y-2">
                 {reportData.recommendations.map((rec, i) => (
                   <div
                     key={i}
-                    className="flex items-start gap-3 p-3 bg-[#0d0d0d] rounded-lg"
+                    className="flex items-start gap-3 p-3 bg-[#060a10] rounded-lg"
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-[#f0f0f0] text-sm font-medium">{rec.name}</p>
@@ -268,20 +268,20 @@ export default async function ErgebnissePage({
 
           {/* Roadmap */}
           {reportData.roadmap.length > 0 && (
-            <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+            <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
               <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4 flex items-center gap-2">
-                <Target size={15} className="text-[#22c55e]" />
+                <Target size={15} className="text-[#00b8ff]" />
                 Roadmap
               </h2>
               <div className="space-y-3">
                 {reportData.roadmap.map((phase, i) => (
                   <div key={i} className="flex gap-4">
                     <div className="flex flex-col items-center gap-1">
-                      <div className="w-7 h-7 rounded-full bg-[#22c55e]/10 border border-[#22c55e]/30 flex items-center justify-center flex-shrink-0">
-                        <span className="text-[#22c55e] text-xs font-bold">{i + 1}</span>
+                      <div className="w-7 h-7 rounded-full bg-[#00b8ff]/10 border border-[#00b8ff]/30 flex items-center justify-center flex-shrink-0">
+                        <span className="text-[#00b8ff] text-xs font-bold">{i + 1}</span>
                       </div>
                       {i < reportData!.roadmap.length - 1 && (
-                        <div className="w-px flex-1 bg-[#2a2a2a]" />
+                        <div className="w-px flex-1 bg-[#1a2840]" />
                       )}
                     </div>
                     <div className="pb-4">
@@ -294,7 +294,7 @@ export default async function ErgebnissePage({
                           {phase.solutions.map((s, j) => (
                             <span
                               key={j}
-                              className="text-xs px-2 py-0.5 rounded bg-[#22c55e]/10 border border-[#22c55e]/20 text-[#22c55e]"
+                              className="text-xs px-2 py-0.5 rounded bg-[#00b8ff]/10 border border-[#00b8ff]/20 text-[#00b8ff]"
                             >
                               {s.name}
                             </span>
@@ -309,9 +309,9 @@ export default async function ErgebnissePage({
           )}
 
           {/* PDF actions */}
-          <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+          <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
             <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4 flex items-center gap-2">
-              <FileDown size={15} className="text-[#22c55e]" />
+              <FileDown size={15} className="text-[#00b8ff]" />
               Blueprint-PDF
             </h2>
             <BlueprintReportButton
@@ -321,7 +321,7 @@ export default async function ErgebnissePage({
             <Link
               href={`/blueprint/${analysisSession!.id}/ergebnis`}
               target="_blank"
-              className="mt-3 flex items-center gap-1.5 text-xs text-[#22c55e] hover:underline"
+              className="mt-3 flex items-center gap-1.5 text-xs text-[#00b8ff] hover:underline"
             >
               Kundenseitige Ergebnisseite öffnen →
             </Link>
@@ -331,14 +331,14 @@ export default async function ErgebnissePage({
 
       {/* OKUN Score (Blueprint 1.x) */}
       {okunScore && !reportData && (
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
           <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4 flex items-center gap-2">
-            <Brain size={15} className="text-[#22c55e]" />
+            <Brain size={15} className="text-[#00b8ff]" />
             OKUN Score™
           </h2>
           <div className="flex items-center gap-6">
             <div className="text-center">
-              <p className="text-4xl font-bold text-[#22c55e]">{okunScore.totalScore}</p>
+              <p className="text-4xl font-bold text-[#00b8ff]">{okunScore.totalScore}</p>
               <p className="text-[#555] text-xs mt-1">/100</p>
             </div>
             <div>
@@ -347,7 +347,7 @@ export default async function ErgebnissePage({
             </div>
           </div>
           {okunScore.customerSummary && (
-            <p className="text-[#888] text-xs leading-relaxed mt-4 p-3 bg-[#0d0d0d] rounded-lg">
+            <p className="text-[#888] text-xs leading-relaxed mt-4 p-3 bg-[#060a10] rounded-lg">
               {okunScore.customerSummary}
             </p>
           )}
@@ -356,7 +356,7 @@ export default async function ErgebnissePage({
 
       {/* No data at all */}
       {!analysisSession && !okunScore && (
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
           <p className="text-[#555] text-sm text-center py-8">
             Noch keine Analyseergebnisse verfügbar.
           </p>

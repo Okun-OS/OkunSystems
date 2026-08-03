@@ -53,20 +53,20 @@ export default async function PortalDocumentsPage() {
       ) : (
         <div className="space-y-6">
           {(Object.entries(byCategory) as [string, typeof documents][]).map(([category, docs]) => (
-            <div key={category} className="bg-[#141414] border border-[#2a2a2a] rounded-xl overflow-hidden">
-              <div className="px-5 py-3.5 border-b border-[#2a2a2a]">
+            <div key={category} className="bg-[#0c1520] border border-[#1a2840] rounded-xl overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-[#1a2840]">
                 <h2 className="text-[#888] text-xs font-semibold uppercase tracking-wider">
                   {CATEGORY_LABELS[category] ?? category}
                 </h2>
               </div>
 
-              <div className="divide-y divide-[#1a1a1a]">
+              <div className="divide-y divide-[#101c2e]">
                 {docs.map((doc) => (
                   <div
                     key={doc.id}
-                    className="flex items-center gap-4 px-5 py-4 hover:bg-[#1a1a1a] transition-colors"
+                    className="flex items-center gap-4 px-5 py-4 hover:bg-[#101c2e] transition-colors"
                   >
-                    <div className="w-9 h-9 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0">
+                    <div className="w-9 h-9 rounded-lg bg-[#101c2e] border border-[#1a2840] flex items-center justify-center flex-shrink-0">
                       <FileText size={15} className="text-[#888]" />
                     </div>
 

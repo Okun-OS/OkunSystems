@@ -5,7 +5,7 @@ import { CheckCircle, Circle, Clock, Layers } from "lucide-react";
 
 const STATUS_CFG: Record<string, { label: string; cls: string }> = {
   PLANNING:    { label: "Planung",      cls: "bg-[#888]/10 text-[#888] border-[#888]/20" },
-  ACTIVE:      { label: "Aktiv",        cls: "bg-[#22c55e]/10 text-[#22c55e] border-[#22c55e]/20" },
+  ACTIVE:      { label: "Aktiv",        cls: "bg-[#00b8ff]/10 text-[#00b8ff] border-[#00b8ff]/20" },
   ON_HOLD:     { label: "Pausiert",     cls: "bg-orange-500/10 text-orange-400 border-orange-500/20" },
   COMPLETED:   { label: "Abgeschlossen",cls: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
   CANCELLED:   { label: "Abgebrochen",  cls: "bg-red-500/10 text-red-400 border-red-500/20" },
@@ -42,7 +42,7 @@ export default async function PortalProjektPage() {
       </div>
 
       {projects.length === 0 ? (
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-8 text-center">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-8 text-center">
           <Layers size={32} className="text-[#333] mx-auto mb-3" />
           <p className="text-[#888] text-sm">Noch keine Projekte freigegeben.</p>
         </div>
@@ -66,10 +66,10 @@ export default async function PortalProjektPage() {
             return (
               <div
                 key={project.id}
-                className="bg-[#141414] border border-[#2a2a2a] rounded-xl overflow-hidden"
+                className="bg-[#0c1520] border border-[#1a2840] rounded-xl overflow-hidden"
               >
                 {/* Header */}
-                <div className="px-6 py-5 border-b border-[#2a2a2a]">
+                <div className="px-6 py-5 border-b border-[#1a2840]">
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
@@ -95,7 +95,7 @@ export default async function PortalProjektPage() {
 
                     {project.progress > 0 && (
                       <div className="text-right flex-shrink-0">
-                        <p className="text-2xl font-black text-[#22c55e] tabular-nums">
+                        <p className="text-2xl font-black text-[#00b8ff] tabular-nums">
                           {project.progress}%
                         </p>
                         <p className="text-[#555] text-xs">Fortschritt</p>
@@ -104,9 +104,9 @@ export default async function PortalProjektPage() {
                   </div>
 
                   {project.progress > 0 && (
-                    <div className="h-1.5 bg-[#1a1a1a] rounded-full mt-4 overflow-hidden">
+                    <div className="h-1.5 bg-[#101c2e] rounded-full mt-4 overflow-hidden">
                       <div
-                        className="h-full bg-[#22c55e] rounded-full transition-all"
+                        className="h-full bg-[#00b8ff] rounded-full transition-all"
                         style={{ width: `${Math.min(100, project.progress)}%` }}
                       />
                     </div>
@@ -115,7 +115,7 @@ export default async function PortalProjektPage() {
 
                 {/* Milestones */}
                 {project.milestones.length > 0 && (
-                  <div className="px-6 py-4 border-b border-[#2a2a2a]">
+                  <div className="px-6 py-4 border-b border-[#1a2840]">
                     <div className="flex items-center justify-between mb-3">
                       <p className="text-[#888] text-xs font-medium uppercase tracking-wide">
                         Meilensteine
@@ -135,7 +135,7 @@ export default async function PortalProjektPage() {
                           <div key={ms.id} className="flex items-start gap-3">
                             <div className="mt-0.5 flex-shrink-0">
                               {ms.completed ? (
-                                <CheckCircle size={15} className="text-[#22c55e]" />
+                                <CheckCircle size={15} className="text-[#00b8ff]" />
                               ) : (
                                 <Circle size={15} className="text-[#333]" />
                               )}
@@ -179,11 +179,11 @@ export default async function PortalProjektPage() {
                         return (
                           <div
                             key={task.id}
-                            className="flex items-center gap-3 py-1.5 border-b border-[#1a1a1a] last:border-0"
+                            className="flex items-center gap-3 py-1.5 border-b border-[#101c2e] last:border-0"
                           >
                             <div className="flex-shrink-0">
                               {isDone ? (
-                                <CheckCircle size={13} className="text-[#22c55e]" />
+                                <CheckCircle size={13} className="text-[#00b8ff]" />
                               ) : (
                                 <Circle size={13} className="text-[#333]" />
                               )}

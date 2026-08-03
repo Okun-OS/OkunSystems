@@ -91,11 +91,11 @@ export default async function CustomerLearningPage({
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: "Freigegeben", value: active.length, color: "text-[#22c55e]" },
+          { label: "Freigegeben", value: active.length, color: "text-[#00b8ff]" },
           { label: "Vorgeschlagen", value: suggested.length, color: "text-yellow-400" },
           { label: "Abgelehnt", value: rejected.length, color: "text-[#888]" },
         ].map((s) => (
-          <div key={s.label} className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-4">
+          <div key={s.label} className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-4">
             <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
             <p className="text-[#888] text-xs mt-0.5">{s.label}</p>
           </div>
@@ -104,7 +104,7 @@ export default async function CustomerLearningPage({
 
       {/* Suggested — awaiting admin decision */}
       {suggested.length > 0 && (
-        <div className="bg-[#141414] border border-yellow-500/20 rounded-xl p-5">
+        <div className="bg-[#0c1520] border border-yellow-500/20 rounded-xl p-5">
           <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4 flex items-center gap-2">
             <Clock size={15} className="text-yellow-400" />
             Vorgeschlagen — Freigabe ausstehend ({suggested.length})
@@ -113,7 +113,7 @@ export default async function CustomerLearningPage({
             {suggested.map((a) => (
               <div
                 key={a.id}
-                className="flex items-center justify-between p-3 bg-[#0d0d0d] rounded-lg"
+                className="flex items-center justify-between p-3 bg-[#060a10] rounded-lg"
               >
                 <div>
                   <div className="flex items-center gap-2">
@@ -129,7 +129,7 @@ export default async function CustomerLearningPage({
                     <input type="hidden" name="assignmentId" value={a.id} />
                     <button
                       type="submit"
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-[#22c55e]/10 hover:bg-[#22c55e]/20 border border-[#22c55e]/20 text-[#22c55e] text-xs font-medium rounded-lg transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-[#00b8ff]/10 hover:bg-[#00b8ff]/20 border border-[#00b8ff]/20 text-[#00b8ff] text-xs font-medium rounded-lg transition-colors"
                     >
                       <CheckCircle size={12} />
                       Freigeben
@@ -153,9 +153,9 @@ export default async function CustomerLearningPage({
       )}
 
       {/* Active */}
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+      <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
         <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4 flex items-center gap-2">
-          <CheckCircle size={15} className="text-[#22c55e]" />
+          <CheckCircle size={15} className="text-[#00b8ff]" />
           Freigegebene Lerninhalte ({active.length})
         </h2>
 
@@ -173,11 +173,11 @@ export default async function CustomerLearningPage({
               return (
               <div
                 key={a.id}
-                className="flex items-center justify-between p-3 bg-[#0d0d0d] rounded-lg"
+                className="flex items-center justify-between p-3 bg-[#060a10] rounded-lg"
               >
                 <div>
                   <div className="flex items-center gap-2">
-                    <BookOpen size={13} className="text-[#22c55e]" />
+                    <BookOpen size={13} className="text-[#00b8ff]" />
                     <p className="text-[#f0f0f0] text-sm font-medium">{a.chapter.title}</p>
                   </div>
                   <p className="text-[#555] text-xs mt-0.5 ml-5">
@@ -194,7 +194,7 @@ export default async function CustomerLearningPage({
                   {a.chapter.tags.slice(0, 2).map((ct) => (
                     <span
                       key={ct.tag.name}
-                      className="text-xs px-2 py-0.5 rounded-full bg-[#22c55e]/10 text-[#22c55e] border border-[#22c55e]/20"
+                      className="text-xs px-2 py-0.5 rounded-full bg-[#00b8ff]/10 text-[#00b8ff] border border-[#00b8ff]/20"
                     >
                       {ct.tag.name}
                     </span>
@@ -209,9 +209,9 @@ export default async function CustomerLearningPage({
 
       {/* Add more */}
       {availableChapters.length > 0 && (
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
           <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4 flex items-center gap-2">
-            <Plus size={15} className="text-[#22c55e]" />
+            <Plus size={15} className="text-[#00b8ff]" />
             Weitere Lerninhalte hinzufügen
           </h2>
 
@@ -221,13 +221,13 @@ export default async function CustomerLearningPage({
               return (
                 <div
                   key={chapter.id}
-                  className="flex items-center justify-between p-3 bg-[#0d0d0d] rounded-lg"
+                  className="flex items-center justify-between p-3 bg-[#060a10] rounded-lg"
                 >
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="text-[#f0f0f0] text-sm">{chapter.title}</p>
                       {isImmediate && (
-                        <span className="text-xs px-1.5 py-0.5 rounded bg-[#22c55e]/10 border border-[#22c55e]/20 text-[#22c55e]">
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-[#00b8ff]/10 border border-[#00b8ff]/20 text-[#00b8ff]">
                           Sofort aktiv
                         </span>
                       )}
@@ -238,7 +238,7 @@ export default async function CustomerLearningPage({
                     <input type="hidden" name="chapterId" value={chapter.id} />
                     <button
                       type="submit"
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-[#888] hover:text-[#f0f0f0] text-xs rounded-lg transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-[#101c2e] hover:bg-[#222] border border-[#1a2840] text-[#888] hover:text-[#f0f0f0] text-xs rounded-lg transition-colors"
                     >
                       <Plus size={11} />
                       {isImmediate ? "Zuweisen" : "Vorschlagen"}
@@ -254,7 +254,7 @@ export default async function CustomerLearningPage({
       <div className="flex justify-end">
         <Link
           href="/admin/lernen"
-          className="flex items-center gap-2 text-sm text-[#888] hover:text-[#22c55e] transition-colors"
+          className="flex items-center gap-2 text-sm text-[#888] hover:text-[#00b8ff] transition-colors"
         >
           Learning Library verwalten
           <ChevronRight size={14} />

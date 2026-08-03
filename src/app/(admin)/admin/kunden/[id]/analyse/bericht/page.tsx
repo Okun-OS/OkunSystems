@@ -135,7 +135,7 @@ export default async function BerichtPage({ params }: { params: Promise<{ id: st
             </thead>
             <tbody>
               {categoryScores.map((c) => {
-                const color = c.val >= 65 ? "#16a34a" : c.val >= 50 ? "#d97706" : "#dc2626";
+                const color = c.val >= 65 ? "#0099d6" : c.val >= 50 ? "#d97706" : "#dc2626";
                 return (
                   <tr key={c.label} className="border-b border-gray-100">
                     <td className="py-3 text-sm text-gray-800 font-medium">{c.label}</td>

@@ -56,7 +56,7 @@ export default async function PortalManagementPage({
   return (
     <div className="space-y-6">
       {sp.success === "invited" && (
-        <div className="flex items-center gap-3 p-4 bg-[#22c55e]/10 border border-[#22c55e]/20 rounded-xl text-[#22c55e] text-sm">
+        <div className="flex items-center gap-3 p-4 bg-[#00b8ff]/10 border border-[#00b8ff]/20 rounded-xl text-[#00b8ff] text-sm">
           <CheckCircle size={16} />
           Einladung erfolgreich versendet.
         </div>
@@ -70,9 +70,9 @@ export default async function PortalManagementPage({
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Portal Users */}
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
           <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4 flex items-center gap-2">
-            <UserPlus size={15} className="text-[#22c55e]" />
+            <UserPlus size={15} className="text-[#00b8ff]" />
             Portal-Benutzer ({portalUsers.length})
           </h2>
 
@@ -83,7 +83,7 @@ export default async function PortalManagementPage({
               {portalUsers.map((user) => (
                 <div
                   key={user.id}
-                  className="flex items-center justify-between p-3 bg-[#0d0d0d] rounded-lg"
+                  className="flex items-center justify-between p-3 bg-[#060a10] rounded-lg"
                 >
                   <div>
                     <div className="flex items-center gap-2">
@@ -100,7 +100,7 @@ export default async function PortalManagementPage({
                     className={`text-xs px-2 py-0.5 rounded-full border ${
                       user.portalRole === "CLIENT_ADMIN"
                         ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
-                        : "bg-[#22c55e]/10 text-[#22c55e] border-[#22c55e]/20"
+                        : "bg-[#00b8ff]/10 text-[#00b8ff] border-[#00b8ff]/20"
                     }`}
                   >
                     {user.portalRole === "CLIENT_ADMIN" ? "Admin" : "Benutzer"}
@@ -112,9 +112,9 @@ export default async function PortalManagementPage({
         </div>
 
         {/* Invite Form */}
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
           <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4 flex items-center gap-2">
-            <Mail size={15} className="text-[#22c55e]" />
+            <Mail size={15} className="text-[#00b8ff]" />
             Benutzer einladen
           </h2>
 
@@ -126,7 +126,7 @@ export default async function PortalManagementPage({
                 name="email"
                 required
                 placeholder="max.muster@unternehmen.de"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50"
+                className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/50"
               />
             </div>
 
@@ -134,7 +134,7 @@ export default async function PortalManagementPage({
               <label className="text-[#888] text-xs block mb-1.5">Rolle</label>
               <select
                 name="role"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-[#f0f0f0] focus:outline-none focus:border-[#22c55e]/50"
+                className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-sm text-[#f0f0f0] focus:outline-none focus:border-[#00b8ff]/50"
               >
                 <option value="CLIENT">Benutzer</option>
                 <option value="CLIENT_ADMIN">Portal-Admin</option>
@@ -143,7 +143,7 @@ export default async function PortalManagementPage({
 
             <button
               type="submit"
-              className="w-full bg-[#22c55e] hover:bg-[#16a34a] text-black font-semibold text-sm rounded-lg py-2.5 transition-colors"
+              className="w-full bg-[#00b8ff] hover:bg-[#0099d6] text-white font-semibold text-sm rounded-lg py-2.5 transition-colors"
             >
               Einladung versenden
             </button>
@@ -157,16 +157,16 @@ export default async function PortalManagementPage({
 
       {/* Pending Invitations */}
       {invitations.length > 0 && (
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
           <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4 flex items-center gap-2">
-            <Clock size={15} className="text-[#22c55e]" />
+            <Clock size={15} className="text-[#00b8ff]" />
             Offene Einladungen
           </h2>
 
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-[#2a2a2a]">
+                <tr className="border-b border-[#1a2840]">
                   {["E-Mail", "Rolle", "Eingeladen von", "Läuft ab", "Status", ""].map((h) => (
                     <th key={h} className="text-left text-xs text-[#888] font-medium px-3 py-2">
                       {h}
@@ -174,13 +174,13 @@ export default async function PortalManagementPage({
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#1e1e1e]">
+              <tbody className="divide-y divide-[#111e30]">
                 {invitations.map((inv) => {
                   const expired = inv.expiresAt < now;
                   const used = !!inv.usedAt;
 
                   return (
-                    <tr key={inv.id} className="hover:bg-[#1a1a1a] transition-colors">
+                    <tr key={inv.id} className="hover:bg-[#101c2e] transition-colors">
                       <td className="px-3 py-3 text-sm text-[#f0f0f0]">{inv.email}</td>
                       <td className="px-3 py-3 text-sm text-[#888]">
                         {inv.role === "CLIENT_ADMIN" ? "Portal-Admin" : "Benutzer"}
@@ -193,7 +193,7 @@ export default async function PortalManagementPage({
                       </td>
                       <td className="px-3 py-3">
                         {used ? (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-[#22c55e]/10 text-[#22c55e] border border-[#22c55e]/20">
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-[#00b8ff]/10 text-[#00b8ff] border border-[#00b8ff]/20">
                             Akzeptiert
                           </span>
                         ) : expired ? (

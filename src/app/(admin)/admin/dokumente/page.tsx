@@ -40,15 +40,15 @@ export default async function AdminDokumentePage({
       </div>
 
       {/* Filters */}
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-4 mb-6 flex items-center gap-3 flex-wrap">
+      <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-4 mb-6 flex items-center gap-3 flex-wrap">
         <span className="text-[#888] text-xs font-medium">Filter:</span>
 
         <Link
           href="/admin/dokumente"
           className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
             !companyId && !visibility
-              ? "text-[#22c55e] bg-[#22c55e]/10 border-[#22c55e]/20"
-              : "text-[#888] bg-[#1a1a1a] border-[#2a2a2a] hover:border-[#3a3a3a]"
+              ? "text-[#00b8ff] bg-[#00b8ff]/10 border-[#00b8ff]/20"
+              : "text-[#888] bg-[#101c2e] border-[#1a2840] hover:border-[#3a3a3a]"
           }`}
         >
           Alle
@@ -58,8 +58,8 @@ export default async function AdminDokumentePage({
           href="/admin/dokumente?visibility=customer"
           className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
             visibility === "customer"
-              ? "text-[#22c55e] bg-[#22c55e]/10 border-[#22c55e]/20"
-              : "text-[#888] bg-[#1a1a1a] border-[#2a2a2a] hover:border-[#3a3a3a]"
+              ? "text-[#00b8ff] bg-[#00b8ff]/10 border-[#00b8ff]/20"
+              : "text-[#888] bg-[#101c2e] border-[#1a2840] hover:border-[#3a3a3a]"
           }`}
         >
           Für Kunden freigegeben
@@ -69,8 +69,8 @@ export default async function AdminDokumentePage({
           href="/admin/dokumente?visibility=internal"
           className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
             visibility === "internal"
-              ? "text-[#22c55e] bg-[#22c55e]/10 border-[#22c55e]/20"
-              : "text-[#888] bg-[#1a1a1a] border-[#2a2a2a] hover:border-[#3a3a3a]"
+              ? "text-[#00b8ff] bg-[#00b8ff]/10 border-[#00b8ff]/20"
+              : "text-[#888] bg-[#101c2e] border-[#1a2840] hover:border-[#3a3a3a]"
           }`}
         >
           Intern
@@ -82,7 +82,7 @@ export default async function AdminDokumentePage({
             <select
               name="companyId"
               defaultValue={companyId ?? ""}
-              className="text-xs bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-1.5 text-[#888] focus:outline-none focus:border-[#22c55e]/50"
+              className="text-xs bg-[#101c2e] border border-[#1a2840] rounded-lg px-3 py-1.5 text-[#888] focus:outline-none focus:border-[#00b8ff]/50"
             >
               <option value="">Alle Kunden</option>
               {companies.map((c) => (
@@ -93,7 +93,7 @@ export default async function AdminDokumentePage({
             </select>
             <button
               type="submit"
-              className="text-xs px-3 py-1.5 bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#3a3a3a] text-[#888] hover:text-[#f0f0f0] rounded-lg transition-colors"
+              className="text-xs px-3 py-1.5 bg-[#101c2e] border border-[#1a2840] hover:border-[#3a3a3a] text-[#888] hover:text-[#f0f0f0] rounded-lg transition-colors"
             >
               Filtern
             </button>
@@ -105,17 +105,17 @@ export default async function AdminDokumentePage({
 
       {/* Document list */}
       {documents.length === 0 ? (
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-16 text-center">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-16 text-center">
           <FileText size={40} className="text-[#333] mx-auto mb-4" />
           <p className="text-[#888] text-sm">Keine Dokumente gefunden.</p>
         </div>
       ) : (
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl overflow-hidden">
-          <div className="divide-y divide-[#2a2a2a]">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl overflow-hidden">
+          <div className="divide-y divide-[#1a2840]">
             {documents.map((doc) => (
               <div
                 key={doc.id}
-                className="flex items-center gap-4 px-5 py-3.5 hover:bg-[#1a1a1a] transition-colors"
+                className="flex items-center gap-4 px-5 py-3.5 hover:bg-[#101c2e] transition-colors"
               >
                 <FileText size={15} className="text-[#555] flex-shrink-0" />
                 <div className="flex-1 min-w-0">
@@ -123,7 +123,7 @@ export default async function AdminDokumentePage({
                   <div className="flex items-center gap-2 mt-0.5">
                     <Link
                       href={`/admin/kunden/${doc.company.id}/dokumente`}
-                      className="text-[#22c55e] text-xs hover:underline"
+                      className="text-[#00b8ff] text-xs hover:underline"
                     >
                       {doc.company.name}
                     </Link>
@@ -149,12 +149,12 @@ export default async function AdminDokumentePage({
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">
                   {doc.visibility === "customer" ? (
-                    <span className="flex items-center gap-1 text-xs text-[#22c55e] bg-[#22c55e]/10 border border-[#22c55e]/20 px-2 py-0.5 rounded-full">
+                    <span className="flex items-center gap-1 text-xs text-[#00b8ff] bg-[#00b8ff]/10 border border-[#00b8ff]/20 px-2 py-0.5 rounded-full">
                       <Eye size={10} />
                       Freigegeben
                     </span>
                   ) : (
-                    <span className="flex items-center gap-1 text-xs text-[#888] bg-[#1a1a1a] border border-[#2a2a2a] px-2 py-0.5 rounded-full">
+                    <span className="flex items-center gap-1 text-xs text-[#888] bg-[#101c2e] border border-[#1a2840] px-2 py-0.5 rounded-full">
                       <EyeOff size={10} />
                       Intern
                     </span>

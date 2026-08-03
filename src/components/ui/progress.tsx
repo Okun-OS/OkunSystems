@@ -18,9 +18,9 @@ export function LinearProgress({
   const clamped = Math.min(100, Math.max(0, value));
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      <div className="flex-1 h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
+      <div className="flex-1 h-1.5 bg-[#101c2e] rounded-full overflow-hidden">
         <div
-          className={cn("h-full rounded-full bg-[#22c55e] transition-all duration-500", barClassName)}
+          className={cn("h-full rounded-full bg-[#00b8ff] transition-all duration-500", barClassName)}
           style={{ width: `${clamped}%` }}
         />
       </div>
@@ -47,7 +47,7 @@ export function CircularProgress({
   strokeWidth = 5,
   className,
   label,
-  color = "#22c55e",
+  color = "#00b8ff",
 }: CircularProgressProps) {
   const clamped = Math.min(100, Math.max(0, value));
   const radius = (size - strokeWidth) / 2;
@@ -71,7 +71,7 @@ export function CircularProgress({
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="#1a1a1a"
+          stroke="#101c2e"
           strokeWidth={strokeWidth}
         />
         {/* Progress */}

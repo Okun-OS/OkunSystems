@@ -39,9 +39,9 @@ export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed left-0 top-0 h-full w-[240px] bg-[#0d0d0d] border-r border-[#1e1e1e] flex flex-col z-40">
-      <div className="p-6 pb-4 border-b border-[#1e1e1e]">
-        <OkunLogo size="md" />
+    <aside className="fixed left-0 top-0 h-full w-[240px] bg-[#060a10] border-r border-[#111e30] flex flex-col z-40">
+      <div className="p-5 pb-4 border-b border-[#111e30]">
+        <OkunLogo size="sm" />
       </div>
 
       <nav className="flex-1 overflow-y-auto py-4 px-3">
@@ -56,8 +56,8 @@ export function Sidebar({ user }: SidebarProps) {
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg mb-0.5 text-sm font-medium transition-all duration-150",
                 isActive
-                  ? "bg-[rgba(34,197,94,0.12)] text-[#22c55e]"
-                  : "text-[#888] hover:text-[#f0f0f0] hover:bg-[#1a1a1a]"
+                  ? "bg-[rgba(0,184,255,0.12)] text-[#00b8ff]"
+                  : "text-[#8899b4] hover:text-[#eef2f7] hover:bg-[#101c2e]"
               )}
             >
               <item.icon size={17} />
@@ -67,22 +67,22 @@ export function Sidebar({ user }: SidebarProps) {
         })}
       </nav>
 
-      <div className="p-3 border-t border-[#1e1e1e]">
-        <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-[#141414] cursor-pointer group">
-          <div className="w-8 h-8 rounded-full bg-[#22c55e]/20 border border-[#22c55e]/30 flex items-center justify-center flex-shrink-0">
-            <span className="text-[#22c55e] text-xs font-bold">
+      <div className="p-3 border-t border-[#111e30]">
+        <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-[#0c1520] cursor-pointer group">
+          <div className="w-8 h-8 rounded-full bg-[#00b8ff]/15 border border-[#00b8ff]/25 flex items-center justify-center flex-shrink-0">
+            <span className="text-[#00b8ff] text-xs font-bold">
               {user.name?.charAt(0)?.toUpperCase() ?? "?"}
             </span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[#f0f0f0] text-xs font-medium truncate">{user.name}</p>
-            <p className="text-[#555] text-xs truncate">{user.companyName ?? user.email}</p>
+            <p className="text-[#eef2f7] text-xs font-medium truncate">{user.name}</p>
+            <p className="text-[#8899b4] text-xs truncate">{user.companyName ?? user.email}</p>
           </div>
-          <ChevronDown size={14} className="text-[#555] flex-shrink-0" />
+          <ChevronDown size={14} className="text-[#8899b4] flex-shrink-0" />
         </div>
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg mt-1 text-[#666] hover:text-red-400 hover:bg-[#1a1a1a] text-sm w-full transition-colors"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg mt-1 text-[#8899b4] hover:text-red-400 hover:bg-[#101c2e] text-sm w-full transition-colors"
         >
           <LogOut size={15} />
           <span>Abmelden</span>

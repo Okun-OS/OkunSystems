@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Space_Grotesk } from "next/font/google";
+import { Geist_Mono } from "next/font/google";
 import { SessionProvider } from "next-auth/react";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-space-grotesk",
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
 });
 
 const geistMono = Geist_Mono({
@@ -16,6 +18,10 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "OKUN Systems – Client Portal",
   description: "OKUN Systems B2B Client Portal",
+  icons: {
+    icon: "/okun-icon.svg",
+    apple: "/okun-icon.svg",
+  },
 };
 
 export default function RootLayout({
@@ -26,9 +32,9 @@ export default function RootLayout({
   return (
     <html
       lang="de"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${spaceGrotesk.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[#0a0a0a] text-[#f0f0f0]">
+      <body className="min-h-full flex flex-col bg-[#080c14] text-[#eef2f7]">
         <SessionProvider>{children}</SessionProvider>
       </body>
     </html>

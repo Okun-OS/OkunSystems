@@ -180,7 +180,7 @@ export default function AdvisorChat({ initialSession }: { initialSession: Sessio
             <p className="text-[#888] text-xs">Phase</p>
             <p className="text-[#f0f0f0] text-sm font-medium">{PHASE_LABELS[phase] ?? phase}</p>
           </div>
-          <div className="h-8 w-px bg-[#2a2a2a]" />
+          <div className="h-8 w-px bg-[#1a2840]" />
           <div className="text-right">
             <p className="text-[#888] text-xs">Bereich</p>
             <p className="text-[#f0f0f0] text-sm font-medium">{currentAreaLabel}</p>
@@ -189,14 +189,14 @@ export default function AdvisorChat({ initialSession }: { initialSession: Sessio
       </div>
 
       {/* Progress bar */}
-      <div className="mb-5 bg-[#141414] border border-[#2a2a2a] rounded-xl p-4">
+      <div className="mb-5 bg-[#0c1520] border border-[#1a2840] rounded-xl p-4">
         <div className="flex items-center justify-between mb-2">
           <span className="text-[#888] text-xs">Analysefortschritt</span>
           <span className="text-[#f0f0f0] text-xs font-semibold">{progressPercent}%</span>
         </div>
-        <div className="h-1.5 bg-[#1e1e1e] rounded-full overflow-hidden">
+        <div className="h-1.5 bg-[#111e30] rounded-full overflow-hidden">
           <div
-            className="h-full bg-[#22c55e] rounded-full transition-all duration-500"
+            className="h-full bg-[#00b8ff] rounded-full transition-all duration-500"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
@@ -205,7 +205,7 @@ export default function AdvisorChat({ initialSession }: { initialSession: Sessio
             <div
               key={i}
               className={`flex-1 h-1 rounded-full transition-colors ${
-                i < questionsAsked ? "bg-[#22c55e]" : "bg-[#2a2a2a]"
+                i < questionsAsked ? "bg-[#00b8ff]" : "bg-[#1a2840]"
               }`}
             />
           ))}
@@ -217,15 +217,15 @@ export default function AdvisorChat({ initialSession }: { initialSession: Sessio
         {messages.map((msg) => (
           <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
             {msg.role === "assistant" && (
-              <div className="w-8 h-8 rounded-full bg-[#22c55e]/10 border border-[#22c55e]/20 flex items-center justify-center flex-shrink-0 mr-3 mt-1">
-                <span className="text-[#22c55e] text-xs font-bold">OA</span>
+              <div className="w-8 h-8 rounded-full bg-[#00b8ff]/10 border border-[#00b8ff]/20 flex items-center justify-center flex-shrink-0 mr-3 mt-1">
+                <span className="text-[#00b8ff] text-xs font-bold">OA</span>
               </div>
             )}
             <div
               className={`max-w-[75%] rounded-2xl px-4 py-3 ${
                 msg.role === "user"
-                  ? "bg-[#22c55e]/10 border border-[#22c55e]/20 text-[#f0f0f0]"
-                  : "bg-[#141414] border border-[#2a2a2a] text-[#f0f0f0]"
+                  ? "bg-[#00b8ff]/10 border border-[#00b8ff]/20 text-[#f0f0f0]"
+                  : "bg-[#0c1520] border border-[#1a2840] text-[#f0f0f0]"
               }`}
             >
               <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
@@ -238,10 +238,10 @@ export default function AdvisorChat({ initialSession }: { initialSession: Sessio
 
         {loading && (
           <div className="flex justify-start">
-            <div className="w-8 h-8 rounded-full bg-[#22c55e]/10 border border-[#22c55e]/20 flex items-center justify-center flex-shrink-0 mr-3 mt-1">
-              <span className="text-[#22c55e] text-xs font-bold">OA</span>
+            <div className="w-8 h-8 rounded-full bg-[#00b8ff]/10 border border-[#00b8ff]/20 flex items-center justify-center flex-shrink-0 mr-3 mt-1">
+              <span className="text-[#00b8ff] text-xs font-bold">OA</span>
             </div>
-            <div className="bg-[#141414] border border-[#2a2a2a] rounded-2xl px-4 py-3">
+            <div className="bg-[#0c1520] border border-[#1a2840] rounded-2xl px-4 py-3">
               <div className="flex items-center gap-2 text-[#888] text-sm">
                 <Loader2 size={14} className="animate-spin" />
                 <span>Analysiert...</span>
@@ -252,8 +252,8 @@ export default function AdvisorChat({ initialSession }: { initialSession: Sessio
 
         {isComplete && (
           <div className="flex justify-center py-4">
-            <div className="bg-[#22c55e]/10 border border-[#22c55e]/20 rounded-xl px-6 py-4 flex items-center gap-3">
-              <CheckCircle2 size={20} className="text-[#22c55e]" />
+            <div className="bg-[#00b8ff]/10 border border-[#00b8ff]/20 rounded-xl px-6 py-4 flex items-center gap-3">
+              <CheckCircle2 size={20} className="text-[#00b8ff]" />
               <div>
                 <p className="text-[#f0f0f0] font-semibold text-sm">Analyse abgeschlossen</p>
                 <p className="text-[#888] text-xs mt-0.5">
@@ -262,7 +262,7 @@ export default function AdvisorChat({ initialSession }: { initialSession: Sessio
                     : "Ihr Score wird berechnet."}
                 </p>
               </div>
-              {redirecting && <Loader2 size={16} className="text-[#22c55e] animate-spin ml-2" />}
+              {redirecting && <Loader2 size={16} className="text-[#00b8ff] animate-spin ml-2" />}
             </div>
           </div>
         )}
@@ -272,7 +272,7 @@ export default function AdvisorChat({ initialSession }: { initialSession: Sessio
 
       {/* Input — hidden when complete */}
       {!isComplete && (
-        <div className="mt-4 bg-[#141414] border border-[#2a2a2a] rounded-xl p-3 flex items-end gap-3">
+        <div className="mt-4 bg-[#0c1520] border border-[#1a2840] rounded-xl p-3 flex items-end gap-3">
           <textarea
             ref={textareaRef}
             value={input}
@@ -286,7 +286,7 @@ export default function AdvisorChat({ initialSession }: { initialSession: Sessio
           <button
             onClick={sendMessage}
             disabled={loading || !input.trim()}
-            className="w-9 h-9 rounded-lg bg-[#22c55e] hover:bg-[#16a34a] disabled:bg-[#1e1e1e] disabled:text-[#444] text-black flex items-center justify-center transition-colors flex-shrink-0"
+            className="w-9 h-9 rounded-lg bg-[#00b8ff] hover:bg-[#0099d6] disabled:bg-[#111e30] disabled:text-[#444] text-white flex items-center justify-center transition-colors flex-shrink-0"
           >
             {loading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
           </button>

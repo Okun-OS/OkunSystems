@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { OkunLogo } from "@/components/layout/okun-logo";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -80,24 +81,12 @@ export default function LoginPage() {
     <div className="w-full max-w-md">
       {/* Logo */}
       <div className="flex flex-col items-center mb-10">
-        <div className="mb-4">
-          <svg width="120" height="48" viewBox="0 0 120 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <text x="0" y="36" fontFamily="Arial, sans-serif" fontSize="38" fontWeight="700" letterSpacing="4" fill="url(#metalGradient)">OKUN</text>
-            <text x="2" y="48" fontFamily="Arial, sans-serif" fontSize="11" fontWeight="400" letterSpacing="8" fill="#888888">SYSTEMS</text>
-            <defs>
-              <linearGradient id="metalGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#f0f0f0" />
-                <stop offset="40%" stopColor="#22c55e" />
-                <stop offset="100%" stopColor="#16a34a" />
-              </linearGradient>
-            </defs>
-          </svg>
-        </div>
-        <p className="text-[#888] text-sm mt-1">Client Portal</p>
+        <OkunLogo size="lg" />
+        <p className="text-[#8899b4] text-sm mt-3 tracking-wide">Client Portal</p>
       </div>
 
       {/* Card */}
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-8">
+      <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-8">
         {!requires2FA ? (
           <>
             <h1 className="text-xl font-semibold text-[#f0f0f0] mb-2">Anmelden</h1>
@@ -114,7 +103,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="ihre@email.de"
-                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-4 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e] focus:ring-1 focus:ring-[#22c55e] transition-colors"
+                  className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-4 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#00b8ff] focus:ring-1 focus:ring-[#00b8ff] transition-colors"
                 />
               </div>
 
@@ -128,7 +117,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-4 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e] focus:ring-1 focus:ring-[#22c55e] transition-colors"
+                  className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-4 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#00b8ff] focus:ring-1 focus:ring-[#00b8ff] transition-colors"
                 />
               </div>
 
@@ -141,7 +130,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[#22c55e] hover:bg-[#16a34a] disabled:opacity-50 disabled:cursor-not-allowed text-black font-semibold rounded-lg px-4 py-2.5 text-sm transition-colors"
+                className="w-full bg-[#00b8ff] hover:bg-[#0099d6] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg px-4 py-2.5 text-sm transition-colors"
               >
                 {loading ? "Wird angemeldet…" : "Anmelden"}
               </button>
@@ -172,7 +161,7 @@ export default function LoginPage() {
                   value={twoFactorCode}
                   onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, ""))}
                   placeholder="000000"
-                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-4 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e] focus:ring-1 focus:ring-[#22c55e] transition-colors text-center tracking-[0.4em] font-mono text-lg"
+                  className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-4 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#00b8ff] focus:ring-1 focus:ring-[#00b8ff] transition-colors text-center tracking-[0.4em] font-mono text-lg"
                 />
               </div>
 
@@ -183,13 +172,13 @@ export default function LoginPage() {
               )}
 
               {resendMsg && (
-                <p className="text-[#22c55e] text-xs text-center">{resendMsg}</p>
+                <p className="text-[#00b8ff] text-xs text-center">{resendMsg}</p>
               )}
 
               <button
                 type="submit"
                 disabled={loading || twoFactorCode.length !== 6}
-                className="w-full bg-[#22c55e] hover:bg-[#16a34a] disabled:opacity-50 disabled:cursor-not-allowed text-black font-semibold rounded-lg px-4 py-2.5 text-sm transition-colors"
+                className="w-full bg-[#00b8ff] hover:bg-[#0099d6] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg px-4 py-2.5 text-sm transition-colors"
               >
                 {loading ? "Wird geprüft…" : "Bestätigen"}
               </button>
@@ -206,7 +195,7 @@ export default function LoginPage() {
                   type="button"
                   onClick={handleResendCode}
                   disabled={resending}
-                  className="text-[#22c55e] hover:underline text-sm disabled:opacity-50"
+                  className="text-[#00b8ff] hover:underline text-sm disabled:opacity-50"
                 >
                   {resending ? "Sendet…" : "Code erneut senden"}
                 </button>

@@ -47,8 +47,8 @@ export default async function InvitationPage({
   return (
     <div className="w-full max-w-md">
       <div className="flex flex-col items-center mb-8">
-        <div className="w-14 h-14 rounded-xl bg-[#22c55e]/10 border border-[#22c55e]/20 flex items-center justify-center mb-4">
-          <span className="text-[#22c55e] text-xl font-bold">
+        <div className="w-14 h-14 rounded-xl bg-[#00b8ff]/10 border border-[#00b8ff]/20 flex items-center justify-center mb-4">
+          <span className="text-[#00b8ff] text-xl font-bold">
             {invitation.company.name.charAt(0)}
           </span>
         </div>
@@ -83,13 +83,13 @@ function InvitationStatus({
 }) {
   return (
     <div className="w-full max-w-md">
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-8 flex flex-col items-center text-center">
+      <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-8 flex flex-col items-center text-center">
         <div className="mb-4">{icon}</div>
         <h1 className="text-lg font-bold text-[#f0f0f0] mb-2">{title}</h1>
         <p className="text-[#888] text-sm leading-relaxed mb-6">{message}</p>
         <a
           href={linkHref}
-          className="px-6 py-2.5 bg-[#22c55e] hover:bg-[#16a34a] text-black font-semibold text-sm rounded-lg transition-colors"
+          className="px-6 py-2.5 bg-[#00b8ff] hover:bg-[#0099d6] text-white font-semibold text-sm rounded-lg transition-colors"
         >
           {linkLabel}
         </a>

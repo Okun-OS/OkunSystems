@@ -41,7 +41,7 @@ export function DocumentDownloadButton({
       <button
         onClick={handleDownload}
         disabled={loading}
-        className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-[#888] hover:text-[#f0f0f0] text-xs rounded-lg transition-colors disabled:opacity-50"
+        className="flex items-center gap-1.5 px-3 py-1.5 bg-[#101c2e] hover:bg-[#222] border border-[#1a2840] text-[#888] hover:text-[#f0f0f0] text-xs rounded-lg transition-colors disabled:opacity-50"
       >
         {loading ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
         {loading ? "Lädt…" : "Herunterladen"}

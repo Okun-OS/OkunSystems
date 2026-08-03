@@ -43,7 +43,7 @@ export default function PasswortResetPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-4">
+    <div className="min-h-screen bg-[#080c14] flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-bold text-[#f0f0f0]">Neues Passwort</h1>
@@ -51,8 +51,8 @@ export default function PasswortResetPage() {
         </div>
 
         {done ? (
-          <div className="bg-[#22c55e]/10 border border-[#22c55e]/20 rounded-xl p-6 text-center">
-            <p className="text-[#22c55e] font-semibold mb-1">Passwort geändert</p>
+          <div className="bg-[#00b8ff]/10 border border-[#00b8ff]/20 rounded-xl p-6 text-center">
+            <p className="text-[#00b8ff] font-semibold mb-1">Passwort geändert</p>
             <p className="text-[#888] text-sm">Sie werden zum Login weitergeleitet …</p>
           </div>
         ) : (
@@ -66,7 +66,7 @@ export default function PasswortResetPage() {
                 required
                 minLength={8}
                 placeholder="Mindestens 8 Zeichen"
-                className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50"
+                className="w-full bg-[#0c1520] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/50"
               />
             </div>
             <div>
@@ -77,7 +77,7 @@ export default function PasswortResetPage() {
                 onChange={(e) => setConfirm(e.target.value)}
                 required
                 placeholder="Passwort wiederholen"
-                className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50"
+                className="w-full bg-[#0c1520] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/50"
               />
             </div>
 
@@ -86,7 +86,7 @@ export default function PasswortResetPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 bg-[#22c55e] hover:bg-[#16a34a] disabled:opacity-50 text-black font-semibold text-sm rounded-lg transition-colors"
+              className="w-full py-2.5 bg-[#00b8ff] hover:bg-[#0099d6] disabled:opacity-50 text-white font-semibold text-sm rounded-lg transition-colors"
             >
               {loading ? "Wird gespeichert …" : "Passwort speichern"}
             </button>

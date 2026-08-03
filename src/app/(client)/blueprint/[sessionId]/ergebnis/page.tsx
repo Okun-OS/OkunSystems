@@ -18,16 +18,16 @@ const TIER_LABELS: Record<string, string> = {
 };
 
 const TIER_COLORS: Record<string, string> = {
-  foundation: "#22c55e",
+  foundation: "#00b8ff",
   operations: "#3b82f6",
   custom: "#a855f7",
 };
 
-function ScoreBar({ score, color = "#22c55e" }: { score: number; color?: string }) {
+function ScoreBar({ score, color = "#00b8ff" }: { score: number; color?: string }) {
   const pct = Math.round(Math.max(0, Math.min(100, score)));
   return (
     <div className="flex items-center gap-3">
-      <div className="flex-1 h-2 bg-[#1e1e1e] rounded-full overflow-hidden">
+      <div className="flex-1 h-2 bg-[#111e30] rounded-full overflow-hidden">
         <div
           className="h-full rounded-full transition-all"
           style={{ width: `${pct}%`, backgroundColor: color }}
@@ -90,7 +90,7 @@ export default async function BlueprintErgebnisPage({
   return (
     <div className="max-w-3xl mx-auto pt-6 pb-16 px-4 space-y-6">
       {/* Header */}
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-2xl p-6">
+      <div className="bg-[#0c1520] border border-[#1a2840] rounded-2xl p-6">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <p className="text-[#888] text-xs mb-1">OKUN Blueprint™ 2.0</p>
@@ -101,7 +101,7 @@ export default async function BlueprintErgebnisPage({
           </div>
           <div className="text-right">
             <p className="text-[#888] text-xs mb-1">Gesamtergebnis</p>
-            <p className="text-3xl font-bold text-[#22c55e]">{overallScore}%</p>
+            <p className="text-3xl font-bold text-[#00b8ff]">{overallScore}%</p>
             <p className="text-[#555] text-xs mt-0.5">
               {data.totalAnswered} / {data.totalActive} Fragen
             </p>
@@ -113,7 +113,7 @@ export default async function BlueprintErgebnisPage({
             href={analysisSession.reportUrl}
             target="_blank"
             rel="noreferrer"
-            className="mt-4 flex items-center gap-2 w-full bg-[#22c55e] hover:bg-[#16a34a] text-black font-semibold text-sm rounded-xl py-3 justify-center transition-colors"
+            className="mt-4 flex items-center gap-2 w-full bg-[#00b8ff] hover:bg-[#0099d6] text-white font-semibold text-sm rounded-xl py-3 justify-center transition-colors"
           >
             <FileDown size={16} />
             Blueprint-Bericht herunterladen (PDF)
@@ -122,9 +122,9 @@ export default async function BlueprintErgebnisPage({
       </div>
 
       {/* Module Scores */}
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-2xl p-6">
+      <div className="bg-[#0c1520] border border-[#1a2840] rounded-2xl p-6">
         <h2 className="text-sm font-semibold text-[#f0f0f0] mb-4 flex items-center gap-2">
-          <TrendingUp size={15} className="text-[#22c55e]" />
+          <TrendingUp size={15} className="text-[#00b8ff]" />
           Modul-Ergebnisse
         </h2>
         <div className="space-y-3">
@@ -137,7 +137,7 @@ export default async function BlueprintErgebnisPage({
               </div>
               <ScoreBar
                 score={m.score}
-                color={m.moduleNumber === 5 ? "#3b82f6" : "#22c55e"}
+                color={m.moduleNumber === 5 ? "#3b82f6" : "#00b8ff"}
               />
             </div>
           ))}
@@ -145,7 +145,7 @@ export default async function BlueprintErgebnisPage({
 
         {/* M5 Group Breakdown */}
         {data.m5GroupScores.length > 0 && (
-          <div className="mt-6 pt-5 border-t border-[#1e1e1e]">
+          <div className="mt-6 pt-5 border-t border-[#111e30]">
             <p className="text-xs text-[#888] mb-3">
               M5 Automatisierungsgrad — Gruppendetail
               <span className="ml-2 text-[#3b82f6] font-semibold">
@@ -172,7 +172,7 @@ export default async function BlueprintErgebnisPage({
       </div>
 
       {/* Signal Totals */}
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-2xl p-6">
+      <div className="bg-[#0c1520] border border-[#1a2840] rounded-2xl p-6">
         <h2 className="text-sm font-semibold text-[#f0f0f0] mb-4">
           Lösungssignale
         </h2>
@@ -184,7 +184,7 @@ export default async function BlueprintErgebnisPage({
               return (
                 <div
                   key={cat}
-                  className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4 text-center"
+                  className="bg-[#101c2e] border border-[#1a2840] rounded-xl p-4 text-center"
                 >
                   <p className="text-2xl font-bold text-[#f0f0f0] mb-1">
                     {value}
@@ -197,7 +197,7 @@ export default async function BlueprintErgebnisPage({
         </div>
 
         {data.packageType && (
-          <div className="mt-4 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4">
+          <div className="mt-4 bg-[#101c2e] border border-[#1a2840] rounded-xl p-4">
             <p className="text-xs text-[#888] mb-1">Empfohlenes Paket</p>
             <p
               className="text-sm font-semibold"
@@ -211,7 +211,7 @@ export default async function BlueprintErgebnisPage({
 
       {/* Roadmap */}
       {data.roadmap.length > 0 && (
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-2xl p-6">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-2xl p-6">
           <h2 className="text-sm font-semibold text-[#f0f0f0] mb-4">
             Lösungsroadmap
           </h2>
@@ -237,7 +237,7 @@ export default async function BlueprintErgebnisPage({
                   {phase.solutions.map((sol) => (
                     <div
                       key={sol.solutionId}
-                      className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4"
+                      className="bg-[#101c2e] border border-[#1a2840] rounded-xl p-4"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div>
@@ -251,7 +251,7 @@ export default async function BlueprintErgebnisPage({
                             {sol.description}
                           </p>
                         </div>
-                        <span className="text-xs font-semibold text-[#22c55e] shrink-0">
+                        <span className="text-xs font-semibold text-[#00b8ff] shrink-0">
                           {sol.signalScore}
                         </span>
                       </div>
@@ -268,13 +268,13 @@ export default async function BlueprintErgebnisPage({
       <div className="flex flex-col gap-3">
         <Link
           href="/termine"
-          className="w-full bg-[#22c55e] hover:bg-[#16a34a] text-black font-semibold text-sm rounded-xl py-3 flex items-center justify-center gap-2 transition-colors"
+          className="w-full bg-[#00b8ff] hover:bg-[#0099d6] text-white font-semibold text-sm rounded-xl py-3 flex items-center justify-center gap-2 transition-colors"
         >
           Strategiegespräch buchen
         </Link>
         <Link
           href="/dashboard"
-          className="w-full bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-[#ccc] hover:text-[#f0f0f0] font-medium text-sm rounded-xl py-3 flex items-center justify-center transition-colors"
+          className="w-full bg-[#101c2e] hover:bg-[#222] border border-[#1a2840] text-[#ccc] hover:text-[#f0f0f0] font-medium text-sm rounded-xl py-3 flex items-center justify-center transition-colors"
         >
           Zum Dashboard
         </Link>

@@ -59,11 +59,11 @@ export function WelcomeVideoUpload() {
   return (
     <div>
       <label className="flex items-center gap-2 cursor-pointer">
-        <span className="flex items-center gap-1.5 px-4 py-2 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-[#888] hover:text-[#f0f0f0] text-sm rounded-lg transition-colors">
+        <span className="flex items-center gap-1.5 px-4 py-2 bg-[#101c2e] hover:bg-[#222] border border-[#1a2840] text-[#888] hover:text-[#f0f0f0] text-sm rounded-lg transition-colors">
           {uploading ? (
             <Loader2 size={13} className="animate-spin" />
           ) : done ? (
-            <CheckCircle size={13} className="text-[#22c55e]" />
+            <CheckCircle size={13} className="text-[#00b8ff]" />
           ) : (
             <Upload size={13} />
           )}
@@ -79,7 +79,7 @@ export function WelcomeVideoUpload() {
         />
       </label>
       {error && <p className="text-red-400 text-xs mt-1.5">{error}</p>}
-      {done && <p className="text-[#22c55e] text-xs mt-1.5">Video hochgeladen und URL gespeichert.</p>}
+      {done && <p className="text-[#00b8ff] text-xs mt-1.5">Video hochgeladen und URL gespeichert.</p>}
     </div>
   );
 }

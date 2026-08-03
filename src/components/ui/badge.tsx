@@ -11,7 +11,7 @@ const badgeVariants = cva(
         warning: "bg-yellow-950/60 text-yellow-400 border border-yellow-900/50",
         error: "bg-red-950/60 text-red-400 border border-red-900/50",
         info: "bg-blue-950/60 text-blue-400 border border-blue-900/50",
-        neutral: "bg-[#1a1a1a] text-[#888] border border-[#2a2a2a]",
+        neutral: "bg-[#101c2e] text-[#888] border border-[#1a2840]",
       },
     },
     defaultVariants: {

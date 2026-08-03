@@ -16,7 +16,7 @@ interface ServiceCheck {
 function statusIcon(status: ServiceStatus) {
   switch (status) {
     case "ok":
-      return <CheckCircle2 size={16} className="text-[#22c55e] flex-shrink-0" />;
+      return <CheckCircle2 size={16} className="text-[#00b8ff] flex-shrink-0" />;
     case "degraded":
       return <AlertCircle size={16} className="text-yellow-400 flex-shrink-0" />;
     case "not_configured":
@@ -28,7 +28,7 @@ function statusBadge(status: ServiceStatus) {
   switch (status) {
     case "ok":
       return (
-        <span className="text-xs px-2 py-0.5 rounded-full bg-[#22c55e]/10 border border-[#22c55e]/20 text-[#22c55e]">
+        <span className="text-xs px-2 py-0.5 rounded-full bg-[#00b8ff]/10 border border-[#00b8ff]/20 text-[#00b8ff]">
           Verbunden
         </span>
       );
@@ -40,7 +40,7 @@ function statusBadge(status: ServiceStatus) {
       );
     case "not_configured":
       return (
-        <span className="text-xs px-2 py-0.5 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] text-[#555]">
+        <span className="text-xs px-2 py-0.5 rounded-full bg-[#101c2e] border border-[#1a2840] text-[#555]">
           Nicht konfiguriert
         </span>
       );
@@ -145,7 +145,7 @@ export default async function IntegrationenPage() {
           <form method="GET" action="/admin/einstellungen/integrationen">
             <button
               type="submit"
-              className="flex items-center gap-2 text-sm text-[#888] hover:text-[#f0f0f0] px-3 py-2 border border-[#2a2a2a] rounded-lg hover:bg-[#1a1a1a] transition-colors"
+              className="flex items-center gap-2 text-sm text-[#888] hover:text-[#f0f0f0] px-3 py-2 border border-[#1a2840] rounded-lg hover:bg-[#101c2e] transition-colors"
             >
               <RefreshCw size={13} />
               Neu laden
@@ -156,26 +156,26 @@ export default async function IntegrationenPage() {
 
       {/* Summary */}
       <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-4">
-          <p className="text-[#22c55e] text-2xl font-bold">{okCount}</p>
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-4">
+          <p className="text-[#00b8ff] text-2xl font-bold">{okCount}</p>
           <p className="text-[#888] text-xs mt-0.5">Verbunden</p>
         </div>
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-4">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-4">
           <p className="text-yellow-400 text-2xl font-bold">{degradedCount}</p>
           <p className="text-[#888] text-xs mt-0.5">Eingeschränkt</p>
         </div>
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-4">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-4">
           <p className="text-[#555] text-2xl font-bold">{errorCount}</p>
           <p className="text-[#888] text-xs mt-0.5">Nicht konfiguriert</p>
         </div>
       </div>
 
       {/* Service list */}
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#2a2a2a]">
+      <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-[#1a2840]">
           <p className="text-[#f0f0f0] font-semibold text-sm">Dienste</p>
         </div>
-        <div className="divide-y divide-[#1e1e1e]">
+        <div className="divide-y divide-[#111e30]">
           {checks.map((check) => (
             <div key={check.name} className="px-5 py-4 flex items-center gap-4">
               {statusIcon(check.status)}
@@ -190,7 +190,7 @@ export default async function IntegrationenPage() {
       </div>
 
       {/* Environment variable reference */}
-      <div className="mt-6 bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+      <div className="mt-6 bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
         <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4">Alle erforderlichen Umgebungsvariablen</h2>
         <div className="space-y-1 font-mono text-xs">
           {[

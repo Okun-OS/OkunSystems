@@ -32,9 +32,9 @@ export default async function MethodikPage() {
           { label: "Prozesse in Library", val: processLibrary.length, color: "text-blue-400" },
           { label: "Probleme in Library", val: problemLibrary.length, color: "text-yellow-400" },
           { label: "Offene Vorschläge", val: pending.length, color: "text-orange-400" },
-          { label: "Übernommene Vorschläge", val: approved.length, color: "text-[#22c55e]" },
+          { label: "Übernommene Vorschläge", val: approved.length, color: "text-[#00b8ff]" },
         ].map((stat) => (
-          <div key={stat.label} className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+          <div key={stat.label} className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
             <p className="text-[#888] text-xs mb-2">{stat.label}</p>
             <p className={`text-3xl font-bold ${stat.color}`}>{stat.val}</p>
           </div>
@@ -44,8 +44,8 @@ export default async function MethodikPage() {
       <div className="grid grid-cols-12 gap-5">
         {/* Learning Proposals */}
         <div className="col-span-12 lg:col-span-7">
-          <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl overflow-hidden">
-            <div className="p-5 border-b border-[#2a2a2a] flex items-center justify-between">
+          <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl overflow-hidden">
+            <div className="p-5 border-b border-[#1a2840] flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <AlertCircle size={15} className="text-orange-400" />
                 <h2 className="text-[#f0f0f0] font-semibold text-sm">Methodikvorschläge</h2>
@@ -60,7 +60,7 @@ export default async function MethodikPage() {
                 <p className="text-[#555] text-sm">Noch keine Vorschläge vom OKUN Advisor™</p>
               </div>
             ) : (
-              <div className="divide-y divide-[#1e1e1e]">
+              <div className="divide-y divide-[#111e30]">
                 {proposals.map((proposal) => (
                   <div key={proposal.id} className="p-4">
                     <div className="flex items-start justify-between gap-3">
@@ -88,8 +88,8 @@ export default async function MethodikPage() {
 
         {/* Libraries */}
         <div className="col-span-12 lg:col-span-5 space-y-5">
-          <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl overflow-hidden">
-            <div className="p-5 border-b border-[#2a2a2a] flex items-center gap-2">
+          <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl overflow-hidden">
+            <div className="p-5 border-b border-[#1a2840] flex items-center gap-2">
               <BookOpen size={15} className="text-blue-400" />
               <h2 className="text-[#f0f0f0] font-semibold text-sm">Process Library ({processLibrary.length})</h2>
             </div>
@@ -98,7 +98,7 @@ export default async function MethodikPage() {
                 <p className="text-[#555] text-sm">Noch keine Prozesse. Werden automatisch aus dem Advisor befüllt.</p>
               </div>
             ) : (
-              <div className="divide-y divide-[#1e1e1e] max-h-[300px] overflow-y-auto">
+              <div className="divide-y divide-[#111e30] max-h-[300px] overflow-y-auto">
                 {processLibrary.map((item) => (
                   <div key={item.id} className="p-3 flex items-center justify-between">
                     <div>
@@ -106,7 +106,7 @@ export default async function MethodikPage() {
                       <p className="text-[#555] text-xs">{item.category}</p>
                     </div>
                     {item.isCustom && (
-                      <span className="text-xs text-[#22c55e] bg-[#22c55e]/10 px-1.5 py-0.5 rounded">Custom</span>
+                      <span className="text-xs text-[#00b8ff] bg-[#00b8ff]/10 px-1.5 py-0.5 rounded">Custom</span>
                     )}
                   </div>
                 ))}
@@ -114,8 +114,8 @@ export default async function MethodikPage() {
             )}
           </div>
 
-          <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl overflow-hidden">
-            <div className="p-5 border-b border-[#2a2a2a] flex items-center gap-2">
+          <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl overflow-hidden">
+            <div className="p-5 border-b border-[#1a2840] flex items-center gap-2">
               <AlertCircle size={15} className="text-yellow-400" />
               <h2 className="text-[#f0f0f0] font-semibold text-sm">Problem Library ({problemLibrary.length})</h2>
             </div>
@@ -124,7 +124,7 @@ export default async function MethodikPage() {
                 <p className="text-[#555] text-sm">Noch keine Problemmuster. Werden automatisch aus dem Advisor befüllt.</p>
               </div>
             ) : (
-              <div className="divide-y divide-[#1e1e1e] max-h-[300px] overflow-y-auto">
+              <div className="divide-y divide-[#111e30] max-h-[300px] overflow-y-auto">
                 {problemLibrary.map((item) => (
                   <div key={item.id} className="p-3">
                     <div className="flex items-center justify-between">
@@ -147,15 +147,15 @@ function ProposalTypeBadge({ type }: { type: string }) {
   const map: Record<string, { label: string; cls: string }> = {
     NEW_PROCESS: { label: "Neuer Prozess", cls: "text-blue-400 bg-blue-500/10" },
     NEW_PROBLEM: { label: "Neues Problem", cls: "text-yellow-400 bg-yellow-500/10" },
-    NEW_OPPORTUNITY: { label: "Neue Opportunity", cls: "text-[#22c55e] bg-[#22c55e]/10" },
+    NEW_OPPORTUNITY: { label: "Neue Opportunity", cls: "text-[#00b8ff] bg-[#00b8ff]/10" },
   };
-  const c = map[type] ?? { label: type, cls: "text-[#888] bg-[#1a1a1a]" };
+  const c = map[type] ?? { label: type, cls: "text-[#888] bg-[#101c2e]" };
   return <span className={`text-xs px-2 py-0.5 rounded font-medium ${c.cls}`}>{c.label}</span>;
 }
 
 function StatusIndicator({ status }: { status: string }) {
   if (status === "PENDING") return <Clock size={12} className="text-orange-400" />;
-  if (status === "APPROVED") return <CheckCircle2 size={12} className="text-[#22c55e]" />;
+  if (status === "APPROVED") return <CheckCircle2 size={12} className="text-[#00b8ff]" />;
   if (status === "REJECTED") return <XCircle size={12} className="text-[#888]" />;
   return null;
 }
@@ -164,12 +164,12 @@ function ProposalActions({ proposalId }: { proposalId: string }) {
   return (
     <div className="flex gap-1.5">
       <form action={`/api/admin/proposals/${proposalId}/approve`} method="POST">
-        <button type="submit" className="text-xs bg-[#22c55e]/10 hover:bg-[#22c55e]/20 text-[#22c55e] px-2.5 py-1 rounded-lg transition-colors">
+        <button type="submit" className="text-xs bg-[#00b8ff]/10 hover:bg-[#00b8ff]/20 text-[#00b8ff] px-2.5 py-1 rounded-lg transition-colors">
           Übernehmen
         </button>
       </form>
       <form action={`/api/admin/proposals/${proposalId}/reject`} method="POST">
-        <button type="submit" className="text-xs bg-[#1a1a1a] hover:bg-[#222] text-[#888] px-2.5 py-1 rounded-lg transition-colors">
+        <button type="submit" className="text-xs bg-[#101c2e] hover:bg-[#222] text-[#888] px-2.5 py-1 rounded-lg transition-colors">
           Ablehnen
         </button>
       </form>
@@ -182,7 +182,7 @@ function SeverityBadge({ severity }: { severity: string }) {
     CRITICAL: "text-red-400 bg-red-500/10",
     HIGH: "text-orange-400 bg-orange-500/10",
     MEDIUM: "text-yellow-400 bg-yellow-500/10",
-    LOW: "text-[#888] bg-[#1a1a1a]",
+    LOW: "text-[#888] bg-[#101c2e]",
   };
-  return <span className={`text-xs px-1.5 py-0.5 rounded ${map[severity] ?? "text-[#888] bg-[#1a1a1a]"}`}>{severity}</span>;
+  return <span className={`text-xs px-1.5 py-0.5 rounded ${map[severity] ?? "text-[#888] bg-[#101c2e]"}`}>{severity}</span>;
 }

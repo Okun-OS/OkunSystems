@@ -45,10 +45,10 @@ export default async function OkunCarePage({
   return (
     <div className="max-w-[700px] mx-auto pt-6 pb-16 px-4 space-y-6">
       {/* Header */}
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-2xl p-8 text-center">
+      <div className="bg-[#0c1520] border border-[#1a2840] rounded-2xl p-8 text-center">
         <div className="flex justify-center mb-6">
-          <div className="w-16 h-16 rounded-full bg-[#22c55e]/10 border border-[#22c55e]/30 flex items-center justify-center">
-            <HeartHandshake size={32} className="text-[#22c55e]" />
+          <div className="w-16 h-16 rounded-full bg-[#00b8ff]/10 border border-[#00b8ff]/30 flex items-center justify-center">
+            <HeartHandshake size={32} className="text-[#00b8ff]" />
           </div>
         </div>
 
@@ -71,13 +71,13 @@ export default async function OkunCarePage({
       </div>
 
       {/* Features */}
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-2xl p-6">
+      <div className="bg-[#0c1520] border border-[#1a2840] rounded-2xl p-6">
         <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4">Was OKUN Care beinhaltet</h2>
         <ul className="space-y-3">
           {FEATURES.map((f) => (
             <li key={f} className="flex items-start gap-3">
-              <div className="w-5 h-5 rounded-full bg-[#22c55e]/10 border border-[#22c55e]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <Check size={11} className="text-[#22c55e]" strokeWidth={3} />
+              <div className="w-5 h-5 rounded-full bg-[#00b8ff]/10 border border-[#00b8ff]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Check size={11} className="text-[#00b8ff]" strokeWidth={3} />
               </div>
               <span className="text-[#888] text-sm">{f}</span>
             </li>
@@ -87,9 +87,9 @@ export default async function OkunCarePage({
 
       {/* CTA */}
       {isActive ? (
-        <div className="bg-[#141414] border border-[#22c55e]/20 rounded-2xl p-6 text-center">
+        <div className="bg-[#0c1520] border border-[#00b8ff]/20 rounded-2xl p-6 text-center">
           <div className="flex justify-center mb-3">
-            <span className="text-xs px-3 py-1 rounded-full bg-[#22c55e]/10 border border-[#22c55e]/20 text-[#22c55e] font-medium">
+            <span className="text-xs px-3 py-1 rounded-full bg-[#00b8ff]/10 border border-[#00b8ff]/20 text-[#00b8ff] font-medium">
               OKUN Care aktiv
             </span>
           </div>
@@ -98,17 +98,17 @@ export default async function OkunCarePage({
           </p>
           <Link
             href="/termine"
-            className="mt-4 inline-flex items-center gap-2 text-[#22c55e] text-sm hover:underline"
+            className="mt-4 inline-flex items-center gap-2 text-[#00b8ff] text-sm hover:underline"
           >
             Termin buchen
             <ArrowRight size={14} />
           </Link>
         </div>
       ) : (
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-2xl p-6 text-center">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-2xl p-6 text-center">
           {justSubscribed && (
-            <div className="mb-4 px-4 py-3 bg-[#22c55e]/10 border border-[#22c55e]/20 rounded-xl">
-              <p className="text-[#22c55e] text-sm font-medium">
+            <div className="mb-4 px-4 py-3 bg-[#00b8ff]/10 border border-[#00b8ff]/20 rounded-xl">
+              <p className="text-[#00b8ff] text-sm font-medium">
                 Vielen Dank! Ihr Abonnement wird in Kürze aktiviert.
               </p>
             </div>
@@ -120,13 +120,13 @@ export default async function OkunCarePage({
             <SubscribeButton />
             <p className="text-[#555] text-xs">Sichere Zahlung via Stripe · monatlich kündbar</p>
             <div className="flex items-center gap-3 my-1">
-              <div className="flex-1 border-t border-[#2a2a2a]" />
+              <div className="flex-1 border-t border-[#1a2840]" />
               <span className="text-[#444] text-xs">oder</span>
-              <div className="flex-1 border-t border-[#2a2a2a]" />
+              <div className="flex-1 border-t border-[#1a2840]" />
             </div>
             <Link
               href="/termine"
-              className="w-full border border-[#2a2a2a] hover:border-[#3a3a3a] hover:bg-[#1a1a1a] text-[#888] hover:text-[#f0f0f0] font-medium text-sm rounded-xl py-3 flex items-center justify-center gap-2 transition-colors"
+              className="w-full border border-[#1a2840] hover:border-[#3a3a3a] hover:bg-[#101c2e] text-[#888] hover:text-[#f0f0f0] font-medium text-sm rounded-xl py-3 flex items-center justify-center gap-2 transition-colors"
             >
               <Phone size={15} />
               Beratungsgespräch buchen
@@ -136,7 +136,7 @@ export default async function OkunCarePage({
       )}
 
       {/* Info */}
-      <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-4">
+      <div className="bg-[#060a10] border border-[#111e30] rounded-xl p-4">
         <p className="text-[#555] text-xs leading-relaxed">
           OKUN Care ist ein optionaler Zusatzdienst nach Abschluss Ihres OKUN-Projekts.
           Er ist monatlich kündbar und ergänzt keine laufende Projektpauschale.

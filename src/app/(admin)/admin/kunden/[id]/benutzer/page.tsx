@@ -71,10 +71,10 @@ export default async function CustomerBenutzerPage({
   return (
     <div className="space-y-6">
       {/* User list */}
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#2a2a2a]">
+      <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-[#1a2840]">
           <h2 className="text-[#f0f0f0] font-semibold text-sm flex items-center gap-2">
-            <Users size={15} className="text-[#22c55e]" />
+            <Users size={15} className="text-[#00b8ff]" />
             Portal-Nutzer ({company.users.length})
           </h2>
         </div>
@@ -85,11 +85,11 @@ export default async function CustomerBenutzerPage({
             <p className="text-[#555] text-sm">Noch keine Nutzer für dieses Unternehmen.</p>
           </div>
         ) : (
-          <div className="divide-y divide-[#2a2a2a]">
+          <div className="divide-y divide-[#1a2840]">
             {company.users.map((u) => (
               <div key={u.id} className="flex items-center gap-4 px-5 py-3.5">
-                <div className="w-8 h-8 rounded-full bg-[#22c55e]/10 border border-[#22c55e]/20 flex items-center justify-center flex-shrink-0">
-                  <User size={14} className="text-[#22c55e]" />
+                <div className="w-8 h-8 rounded-full bg-[#00b8ff]/10 border border-[#00b8ff]/20 flex items-center justify-center flex-shrink-0">
+                  <User size={14} className="text-[#00b8ff]" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[#f0f0f0] text-sm font-medium">{u.name ?? "–"}</p>
@@ -112,8 +112,8 @@ export default async function CustomerBenutzerPage({
                       title={u.twoFactorEnabled ? "2FA deaktivieren" : "2FA aktivieren"}
                       className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border transition-colors ${
                         u.twoFactorEnabled
-                          ? "text-[#22c55e] bg-[#22c55e]/10 border-[#22c55e]/20 hover:bg-[#22c55e]/20"
-                          : "text-[#555] bg-[#1a1a1a] border-[#2a2a2a] hover:border-[#555]"
+                          ? "text-[#00b8ff] bg-[#00b8ff]/10 border-[#00b8ff]/20 hover:bg-[#00b8ff]/20"
+                          : "text-[#555] bg-[#101c2e] border-[#1a2840] hover:border-[#555]"
                       }`}
                     >
                       <Shield size={10} />
@@ -131,7 +131,7 @@ export default async function CustomerBenutzerPage({
       </div>
 
       {/* Add user */}
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+      <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
         <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4">Neuen Nutzer hinzufügen</h2>
         <form action={addUser} className="grid grid-cols-2 gap-3">
           <div>
@@ -140,7 +140,7 @@ export default async function CustomerBenutzerPage({
               name="name"
               required
               placeholder="Max Mustermann"
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50"
+              className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/50"
             />
           </div>
           <div>
@@ -150,7 +150,7 @@ export default async function CustomerBenutzerPage({
               type="email"
               required
               placeholder="max@firma.de"
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50"
+              className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/50"
             />
           </div>
           <div className="col-span-2">
@@ -161,13 +161,13 @@ export default async function CustomerBenutzerPage({
               required
               minLength={8}
               placeholder="Mindestens 8 Zeichen"
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50"
+              className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/50"
             />
           </div>
           <div className="col-span-2">
             <button
               type="submit"
-              className="flex items-center gap-2 px-4 py-2 bg-[#22c55e] hover:bg-[#16a34a] text-black font-semibold text-sm rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-[#00b8ff] hover:bg-[#0099d6] text-white font-semibold text-sm rounded-lg transition-colors"
             >
               Nutzer hinzufügen
             </button>

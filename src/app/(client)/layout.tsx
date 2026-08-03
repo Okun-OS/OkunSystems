@@ -20,7 +20,7 @@ export default async function ClientLayout({
   if (userRecord.role === "ADMIN") redirect("/admin/dashboard");
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a]">
+    <div className="min-h-screen bg-[#080c14]">
       <Sidebar
         user={{
           name: userRecord.name,

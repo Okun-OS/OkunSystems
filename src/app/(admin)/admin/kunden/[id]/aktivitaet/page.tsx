@@ -37,7 +37,7 @@ function actionColor(action: string): string {
     return "bg-red-500/10 border-red-500/20 text-red-400";
   }
   if (action.includes("published") || action.includes("activated") || action.includes("accepted")) {
-    return "bg-[#22c55e]/10 border-[#22c55e]/20 text-[#22c55e]";
+    return "bg-[#00b8ff]/10 border-[#00b8ff]/20 text-[#00b8ff]";
   }
   if (action.includes("suggested") || action.includes("created")) {
     return "bg-blue-500/10 border-blue-500/20 text-blue-400";
@@ -50,7 +50,7 @@ function actionDot(action: string): string {
     return "bg-red-500";
   }
   if (action.includes("published") || action.includes("activated") || action.includes("accepted")) {
-    return "bg-[#22c55e]";
+    return "bg-[#00b8ff]";
   }
   if (action.includes("suggested") || action.includes("created")) {
     return "bg-blue-400";
@@ -82,13 +82,13 @@ export default async function AktivitaetPage({
   return (
     <div className="space-y-1">
       {logs.length === 0 ? (
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-8 text-center">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-8 text-center">
           <Activity size={32} className="text-[#333] mx-auto mb-3" />
           <p className="text-[#888] text-sm">Noch keine Aktivitäten vorhanden.</p>
         </div>
       ) : (
         <div className="relative">
-          <div className="absolute left-[19px] top-0 bottom-0 w-px bg-[#2a2a2a]" />
+          <div className="absolute left-[19px] top-0 bottom-0 w-px bg-[#1a2840]" />
 
           <div className="space-y-0">
             {logs.map((log, idx) => {
@@ -102,10 +102,10 @@ export default async function AktivitaetPage({
               return (
                 <div key={log.id} className="flex items-start gap-4 pl-0 relative pb-4">
                   <div
-                    className={`w-[9px] h-[9px] rounded-full mt-[5px] flex-shrink-0 relative z-10 ml-[15px] ring-2 ring-[#0a0a0a] ${actionDot(log.action)}`}
+                    className={`w-[9px] h-[9px] rounded-full mt-[5px] flex-shrink-0 relative z-10 ml-[15px] ring-2 ring-[#080c14] ${actionDot(log.action)}`}
                   />
 
-                  <div className="flex-1 min-w-0 bg-[#141414] border border-[#2a2a2a] rounded-xl p-4 hover:border-[#3a3a3a] transition-colors">
+                  <div className="flex-1 min-w-0 bg-[#0c1520] border border-[#1a2840] rounded-xl p-4 hover:border-[#3a3a3a] transition-colors">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -127,7 +127,7 @@ export default async function AktivitaetPage({
                             {Object.entries(meta).map(([k, v]) => (
                               <span
                                 key={k}
-                                className="text-[#555] text-xs bg-[#0d0d0d] border border-[#1a1a1a] rounded px-2 py-0.5"
+                                className="text-[#555] text-xs bg-[#060a10] border border-[#101c2e] rounded px-2 py-0.5"
                               >
                                 {k}:{" "}
                                 <span className="text-[#888]">

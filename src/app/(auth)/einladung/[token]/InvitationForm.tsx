@@ -59,8 +59,8 @@ export function InvitationForm({
 
   if (success) {
     return (
-      <div className="bg-[#141414] border border-[#22c55e]/20 rounded-xl p-8 flex flex-col items-center text-center">
-        <CheckCircle size={32} className="text-[#22c55e] mb-4" />
+      <div className="bg-[#0c1520] border border-[#00b8ff]/20 rounded-xl p-8 flex flex-col items-center text-center">
+        <CheckCircle size={32} className="text-[#00b8ff] mb-4" />
         <h2 className="text-[#f0f0f0] font-bold mb-2">Konto erstellt</h2>
         <p className="text-[#888] text-sm">Sie werden zum Login weitergeleitet…</p>
       </div>
@@ -68,14 +68,14 @@ export function InvitationForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-6 space-y-4">
+    <form onSubmit={handleSubmit} className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6 space-y-4">
       <div>
         <label className="text-[#888] text-xs block mb-1.5">E-Mail-Adresse</label>
         <input
           type="email"
           value={email}
           disabled
-          className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-3 py-2.5 text-[#555] text-sm cursor-not-allowed"
+          className="w-full bg-[#060a10] border border-[#111e30] rounded-lg px-3 py-2.5 text-[#555] text-sm cursor-not-allowed"
         />
       </div>
 
@@ -87,7 +87,7 @@ export function InvitationForm({
           onChange={(e) => setName(e.target.value)}
           required
           placeholder="Max Mustermann"
-          className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50"
+          className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/50"
         />
       </div>
 
@@ -101,7 +101,7 @@ export function InvitationForm({
             required
             minLength={8}
             placeholder="••••••••"
-            className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 pr-10 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50"
+            className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 pr-10 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/50"
           />
           <button
             type="button"
@@ -121,7 +121,7 @@ export function InvitationForm({
           onChange={(e) => setPasswordConfirm(e.target.value)}
           required
           placeholder="••••••••"
-          className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50"
+          className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/50"
         />
       </div>
 
@@ -134,7 +134,7 @@ export function InvitationForm({
       <button
         type="submit"
         disabled={loading}
-        className="w-full py-3 bg-[#22c55e] hover:bg-[#16a34a] disabled:opacity-50 text-black font-bold text-sm rounded-lg transition-colors flex items-center justify-center gap-2"
+        className="w-full py-3 bg-[#00b8ff] hover:bg-[#0099d6] disabled:opacity-50 text-white font-bold text-sm rounded-lg transition-colors flex items-center justify-center gap-2"
       >
         {loading ? (
           <><Loader2 size={15} className="animate-spin" /> Konto wird erstellt…</>

@@ -51,7 +51,7 @@ export function LessonPlayer({
 
   const statusIcon =
     currentStatus === "completed" ? (
-      <CheckCircle size={16} className="text-[#22c55e] flex-shrink-0" />
+      <CheckCircle size={16} className="text-[#00b8ff] flex-shrink-0" />
     ) : currentStatus === "in_progress" ? (
       <div className="w-4 h-4 rounded-full border-2 border-yellow-400 flex-shrink-0" />
     ) : (
@@ -111,9 +111,9 @@ export function LessonPlayer({
   }
 
   return (
-    <div className="border-b border-[#1a1a1a] last:border-0">
+    <div className="border-b border-[#101c2e] last:border-0">
       <button
-        className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-[#1a1a1a] transition-colors text-left"
+        className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-[#101c2e] transition-colors text-left"
         onClick={() => setExpanded((v) => !v)}
       >
         <span className="text-[#555] text-xs w-5 text-right flex-shrink-0">
@@ -126,7 +126,7 @@ export function LessonPlayer({
             <span className="text-[#f0f0f0] text-sm truncate">{lesson.title}</span>
           </div>
           {currentStatus === "in_progress" && currentPct > 0 && currentPct < 100 && (
-            <div className="mt-1.5 h-1 bg-[#1e1e1e] rounded-full overflow-hidden w-32">
+            <div className="mt-1.5 h-1 bg-[#111e30] rounded-full overflow-hidden w-32">
               <div
                 className="h-full bg-yellow-400 rounded-full"
                 style={{ width: `${currentPct}%` }}
@@ -147,13 +147,13 @@ export function LessonPlayer({
       </button>
 
       {expanded && (
-        <div className="px-5 pb-4 bg-[#0d0d0d]">
+        <div className="px-5 pb-4 bg-[#060a10]">
           <div className="flex items-center gap-3 flex-wrap pt-3">
             {hasR2Content && lesson.contentType === "video" && (
               <button
                 onClick={openR2Video}
                 disabled={videoLoading}
-                className="flex items-center gap-1.5 px-4 py-2 bg-[#22c55e]/10 hover:bg-[#22c55e]/20 border border-[#22c55e]/20 text-[#22c55e] text-sm font-medium rounded-lg transition-colors"
+                className="flex items-center gap-1.5 px-4 py-2 bg-[#00b8ff]/10 hover:bg-[#00b8ff]/20 border border-[#00b8ff]/20 text-[#00b8ff] text-sm font-medium rounded-lg transition-colors"
               >
                 {videoLoading ? (
                   <Loader2 size={13} className="animate-spin" />
@@ -169,7 +169,7 @@ export function LessonPlayer({
             {hasExternalUrl && (
               <button
                 onClick={openExternal}
-                className="flex items-center gap-1.5 px-4 py-2 bg-[#22c55e]/10 hover:bg-[#22c55e]/20 border border-[#22c55e]/20 text-[#22c55e] text-sm font-medium rounded-lg transition-colors"
+                className="flex items-center gap-1.5 px-4 py-2 bg-[#00b8ff]/10 hover:bg-[#00b8ff]/20 border border-[#00b8ff]/20 text-[#00b8ff] text-sm font-medium rounded-lg transition-colors"
               >
                 <ExternalLink size={13} />
                 Inhalt öffnen
@@ -180,7 +180,7 @@ export function LessonPlayer({
               <button
                 onClick={markCompleted}
                 disabled={marking}
-                className="flex items-center gap-1.5 px-4 py-2 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-[#888] hover:text-[#22c55e] text-sm rounded-lg transition-colors disabled:opacity-50"
+                className="flex items-center gap-1.5 px-4 py-2 bg-[#101c2e] hover:bg-[#222] border border-[#1a2840] text-[#888] hover:text-[#00b8ff] text-sm rounded-lg transition-colors disabled:opacity-50"
               >
                 {marking ? (
                   <Loader2 size={13} className="animate-spin" />
@@ -192,7 +192,7 @@ export function LessonPlayer({
             )}
 
             {currentStatus === "completed" && (
-              <span className="flex items-center gap-1.5 text-[#22c55e] text-sm">
+              <span className="flex items-center gap-1.5 text-[#00b8ff] text-sm">
                 <CheckCircle size={13} />
                 Abgeschlossen
               </span>

@@ -142,7 +142,7 @@ export default function BlueprintQuestionnaire({
   return (
     <div className="space-y-5">
       {/* Module progress header */}
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-4">
+      <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-4">
         <div className="flex items-center justify-between mb-3">
           <span className="text-[#f0f0f0] text-xs font-semibold">{moduleLabel}</span>
           <span className="text-[#888] text-xs">
@@ -161,25 +161,25 @@ export default function BlueprintQuestionnaire({
                 key={m}
                 className={cn(
                   "h-1.5 rounded-full flex-1 transition-all",
-                  isCompleted ? "bg-[#22c55e]" : isCurrent ? "bg-[#22c55e]/50" : "bg-[#2a2a2a]"
+                  isCompleted ? "bg-[#00b8ff]" : isCurrent ? "bg-[#00b8ff]/50" : "bg-[#1a2840]"
                 )}
               />
             );
           })}
         </div>
 
-        <div className="h-0.5 bg-[#1e1e1e] rounded-full overflow-hidden">
+        <div className="h-0.5 bg-[#111e30] rounded-full overflow-hidden">
           <div
-            className="h-full bg-[#22c55e] rounded-full transition-all duration-500"
+            className="h-full bg-[#00b8ff] rounded-full transition-all duration-500"
             style={{ width: `${progressPct}%` }}
           />
         </div>
       </div>
 
       {/* Question card */}
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-6">
+      <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6">
         <div className="flex items-center justify-between mb-5">
-          <span className="text-[#22c55e] text-xs font-medium bg-[#22c55e]/10 border border-[#22c55e]/20 rounded-md px-2.5 py-1">
+          <span className="text-[#00b8ff] text-xs font-medium bg-[#00b8ff]/10 border border-[#00b8ff]/20 rounded-md px-2.5 py-1">
             M{currentModule} · {moduleLabel}
           </span>
           <div className="flex items-center gap-2">
@@ -192,7 +192,7 @@ export default function BlueprintQuestionnaire({
             )}
             <button
               onClick={() => setShowHelp(true)}
-              className="w-7 h-7 rounded-full flex items-center justify-center text-[#555] hover:text-[#888] hover:bg-[#1a1a1a] transition-colors"
+              className="w-7 h-7 rounded-full flex items-center justify-center text-[#555] hover:text-[#888] hover:bg-[#101c2e] transition-colors"
               title="Hilfe zu dieser Frage"
             >
               <HelpCircle size={16} />
@@ -212,7 +212,7 @@ export default function BlueprintQuestionnaire({
             disabled={isPending}
             placeholder="Bitte geben Sie hier Ihre Antwort ein…"
             rows={4}
-            className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-4 py-3 text-[#f0f0f0] text-sm placeholder-[#444] focus:outline-none focus:border-[#22c55e]/50 resize-none disabled:opacity-50"
+            className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-4 py-3 text-[#f0f0f0] text-sm placeholder-[#444] focus:outline-none focus:border-[#00b8ff]/50 resize-none disabled:opacity-50"
           />
         ) : (
           <div className="space-y-2">
@@ -228,8 +228,8 @@ export default function BlueprintQuestionnaire({
                     className={cn(
                       "w-full text-left flex items-center gap-3 px-4 py-3.5 rounded-lg border transition-all duration-150",
                       isSelected
-                        ? "border-[#22c55e]/50 bg-[#22c55e]/8 text-[#f0f0f0]"
-                        : "border-[#2a2a2a] bg-[#0d0d0d] text-[#ccc] hover:border-[#3a3a3a] hover:text-[#f0f0f0] hover:bg-[#141414]",
+                        ? "border-[#00b8ff]/50 bg-[#00b8ff]/8 text-[#f0f0f0]"
+                        : "border-[#1a2840] bg-[#060a10] text-[#ccc] hover:border-[#3a3a3a] hover:text-[#f0f0f0] hover:bg-[#0c1520]",
                       isPending && "opacity-50 cursor-not-allowed"
                     )}
                   >
@@ -238,7 +238,7 @@ export default function BlueprintQuestionnaire({
                         "flex-shrink-0 w-4 h-4 rounded flex items-center justify-center border transition-all",
                         question.isMultiSelect ? "rounded" : "rounded-full",
                         isSelected
-                          ? "bg-[#22c55e] border-[#22c55e]"
+                          ? "bg-[#00b8ff] border-[#00b8ff]"
                           : "border-[#3a3a3a] bg-transparent"
                       )}
                     >
@@ -257,7 +257,7 @@ export default function BlueprintQuestionnaire({
                       }
                       disabled={isPending}
                       placeholder="Bitte angeben…"
-                      className="mt-1.5 ml-7 w-[calc(100%-1.75rem)] bg-[#0d0d0d] border border-[#22c55e]/30 rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#444] focus:outline-none focus:border-[#22c55e]/60 disabled:opacity-50"
+                      className="mt-1.5 ml-7 w-[calc(100%-1.75rem)] bg-[#060a10] border border-[#00b8ff]/30 rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#444] focus:outline-none focus:border-[#00b8ff]/60 disabled:opacity-50"
                     />
                   )}
                 </div>
@@ -272,8 +272,8 @@ export default function BlueprintQuestionnaire({
           className={cn(
             "mt-6 w-full font-semibold text-sm rounded-xl py-3 flex items-center justify-center gap-2 transition-all",
             canSubmit
-              ? "bg-[#22c55e] hover:bg-[#16a34a] text-black"
-              : "bg-[#1a1a1a] text-[#444] cursor-not-allowed border border-[#2a2a2a]"
+              ? "bg-[#00b8ff] hover:bg-[#0099d6] text-white"
+              : "bg-[#101c2e] text-[#444] cursor-not-allowed border border-[#1a2840]"
           )}
         >
           {isPending ? (
@@ -297,23 +297,23 @@ export default function BlueprintQuestionnaire({
           onClick={() => setShowHelp(false)}
         >
           <div
-            className="bg-[#141414] border border-[#2a2a2a] rounded-2xl p-6 max-w-lg w-full"
+            className="bg-[#0c1520] border border-[#1a2840] rounded-2xl p-6 max-w-lg w-full"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <HelpCircle size={16} className="text-[#22c55e]" />
+                <HelpCircle size={16} className="text-[#00b8ff]" />
                 <h3 className="text-[#f0f0f0] font-semibold text-sm">Hilfe zu dieser Frage</h3>
               </div>
               <button
                 onClick={() => setShowHelp(false)}
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-[#555] hover:text-[#888] hover:bg-[#1a1a1a] transition-colors"
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-[#555] hover:text-[#888] hover:bg-[#101c2e] transition-colors"
               >
                 <X size={15} />
               </button>
             </div>
 
-            <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-4 mb-4">
+            <div className="bg-[#060a10] border border-[#111e30] rounded-xl p-4 mb-4">
               <p className="text-[#888] text-xs font-medium mb-1">Frage</p>
               <p className="text-[#f0f0f0] text-sm leading-relaxed">{question.questionDe}</p>
             </div>
@@ -342,7 +342,7 @@ export default function BlueprintQuestionnaire({
 
             <button
               onClick={() => setShowHelp(false)}
-              className="mt-4 w-full bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-[#f0f0f0] text-sm font-medium rounded-lg py-2.5 transition-colors"
+              className="mt-4 w-full bg-[#101c2e] hover:bg-[#222] border border-[#1a2840] text-[#f0f0f0] text-sm font-medium rounded-lg py-2.5 transition-colors"
             >
               Verstanden
             </button>

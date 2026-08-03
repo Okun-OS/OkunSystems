@@ -18,7 +18,7 @@ export default async function AdminLayout({
   if (!userRecord || userRecord.role !== "ADMIN") redirect("/dashboard");
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a]">
+    <div className="min-h-screen bg-[#080c14]">
       <AdminSidebar user={{ name: userRecord.name, email: userRecord.email }} />
       <main className="ml-[240px] min-h-screen">
         <div className="p-6 md:p-8">{children}</div>

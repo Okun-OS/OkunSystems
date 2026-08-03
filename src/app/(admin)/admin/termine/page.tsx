@@ -7,9 +7,9 @@ import { CalendarDays, Video, Clock, ArrowRight, Plus } from "lucide-react";
 function statusLabel(s: string) {
   switch (s) {
     case "SCHEDULED": return { label: "Geplant", cls: "text-blue-400 bg-blue-500/10 border-blue-500/20" };
-    case "COMPLETED": return { label: "Durchgeführt", cls: "text-[#22c55e] bg-[#22c55e]/10 border-[#22c55e]/20" };
+    case "COMPLETED": return { label: "Durchgeführt", cls: "text-[#00b8ff] bg-[#00b8ff]/10 border-[#00b8ff]/20" };
     case "CANCELLED": return { label: "Abgesagt", cls: "text-red-400 bg-red-500/10 border-red-500/20" };
-    default: return { label: s, cls: "text-[#888] bg-[#1a1a1a] border-[#2a2a2a]" };
+    default: return { label: s, cls: "text-[#888] bg-[#101c2e] border-[#1a2840]" };
   }
 }
 
@@ -38,17 +38,17 @@ export default async function AdminTerminePage() {
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-8">
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
           <p className="text-[#888] text-xs mb-2">Bevorstehend</p>
-          <p className="text-[#22c55e] text-3xl font-bold">{upcoming.length}</p>
+          <p className="text-[#00b8ff] text-3xl font-bold">{upcoming.length}</p>
         </div>
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
           <p className="text-[#888] text-xs mb-2">Durchgeführt</p>
           <p className="text-[#f0f0f0] text-3xl font-bold">
             {appointments.filter((a) => a.status === "COMPLETED").length}
           </p>
         </div>
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
           <p className="text-[#888] text-xs mb-2">Gesamt</p>
           <p className="text-[#888] text-3xl font-bold">{appointments.length}</p>
         </div>
@@ -58,7 +58,7 @@ export default async function AdminTerminePage() {
       {upcoming.length > 0 && (
         <div className="mb-8">
           <h2 className="text-[#f0f0f0] font-semibold text-sm mb-3 flex items-center gap-2">
-            <Clock size={15} className="text-[#22c55e]" />
+            <Clock size={15} className="text-[#00b8ff]" />
             Bevorstehende Termine
           </h2>
           <div className="space-y-2">
@@ -68,11 +68,11 @@ export default async function AdminTerminePage() {
                 <Link
                   key={appt.id}
                   href={`/admin/termine/${appt.id}`}
-                  className="bg-[#141414] border border-[#2a2a2a] hover:border-[#22c55e]/30 rounded-xl p-4 flex items-center justify-between group transition-colors"
+                  className="bg-[#0c1520] border border-[#1a2840] hover:border-[#00b8ff]/30 rounded-xl p-4 flex items-center justify-between group transition-colors"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-lg bg-[#22c55e]/10 border border-[#22c55e]/20 flex items-center justify-center flex-shrink-0">
-                      <CalendarDays size={16} className="text-[#22c55e]" />
+                    <div className="w-10 h-10 rounded-lg bg-[#00b8ff]/10 border border-[#00b8ff]/20 flex items-center justify-center flex-shrink-0">
+                      <CalendarDays size={16} className="text-[#00b8ff]" />
                     </div>
                     <div>
                       <p className="text-[#f0f0f0] font-medium text-sm">{appt.title}</p>
@@ -97,7 +97,7 @@ export default async function AdminTerminePage() {
                     <span className={`text-xs px-2 py-0.5 rounded-full border ${sc.cls}`}>
                       {sc.label}
                     </span>
-                    <ArrowRight size={14} className="text-[#555] group-hover:text-[#22c55e] transition-colors" />
+                    <ArrowRight size={14} className="text-[#555] group-hover:text-[#00b8ff] transition-colors" />
                   </div>
                 </Link>
               );
@@ -119,10 +119,10 @@ export default async function AdminTerminePage() {
                 <Link
                   key={appt.id}
                   href={`/admin/termine/${appt.id}`}
-                  className="bg-[#141414] border border-[#2a2a2a] hover:border-[#3a3a3a] rounded-xl p-4 flex items-center justify-between group transition-colors"
+                  className="bg-[#0c1520] border border-[#1a2840] hover:border-[#3a3a3a] rounded-xl p-4 flex items-center justify-between group transition-colors"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0">
+                    <div className="w-10 h-10 rounded-lg bg-[#101c2e] border border-[#1a2840] flex items-center justify-center flex-shrink-0">
                       <CalendarDays size={16} className="text-[#555]" />
                     </div>
                     <div>
@@ -152,7 +152,7 @@ export default async function AdminTerminePage() {
       )}
 
       {appointments.length === 0 && (
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-16 text-center">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-16 text-center">
           <CalendarDays size={40} className="text-[#333] mx-auto mb-4" />
           <p className="text-[#888] text-sm">Noch keine Termine vorhanden.</p>
           <p className="text-[#555] text-xs mt-1">

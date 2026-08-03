@@ -120,8 +120,8 @@ export default function BookingCalendar({
   if (booked && bookedTime) {
     const dt = new Date(bookedTime);
     return (
-      <div className="bg-[#141414] border border-[#22c55e]/30 rounded-xl p-8 text-center">
-        <CheckCircle2 size={40} className="text-[#22c55e] mx-auto mb-4" />
+      <div className="bg-[#0c1520] border border-[#00b8ff]/30 rounded-xl p-8 text-center">
+        <CheckCircle2 size={40} className="text-[#00b8ff] mx-auto mb-4" />
         <h2 className="text-[#f0f0f0] text-lg font-bold mb-2">Termin bestätigt!</h2>
         <p className="text-[#888] text-sm mb-1">
           {dt.toLocaleDateString("de-DE", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
@@ -144,11 +144,11 @@ export default function BookingCalendar({
   return (
     <div className="space-y-5">
       {/* Calendar */}
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+      <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
           <button
             onClick={prevMonth}
-            className="w-8 h-8 rounded-lg bg-[#1e1e1e] hover:bg-[#2a2a2a] flex items-center justify-center text-[#888] hover:text-[#f0f0f0] transition-colors"
+            className="w-8 h-8 rounded-lg bg-[#111e30] hover:bg-[#1a2840] flex items-center justify-center text-[#888] hover:text-[#f0f0f0] transition-colors"
           >
             <ChevronLeft size={16} />
           </button>
@@ -157,7 +157,7 @@ export default function BookingCalendar({
           </span>
           <button
             onClick={nextMonth}
-            className="w-8 h-8 rounded-lg bg-[#1e1e1e] hover:bg-[#2a2a2a] flex items-center justify-center text-[#888] hover:text-[#f0f0f0] transition-colors"
+            className="w-8 h-8 rounded-lg bg-[#111e30] hover:bg-[#1a2840] flex items-center justify-center text-[#888] hover:text-[#f0f0f0] transition-colors"
           >
             <ChevronRight size={16} />
           </button>
@@ -196,8 +196,8 @@ export default function BookingCalendar({
                   ${isDisabled
                     ? "text-[#333] cursor-not-allowed"
                     : isSelected
-                    ? "bg-[#22c55e] text-black"
-                    : "text-[#ccc] hover:bg-[#22c55e]/20 hover:text-[#22c55e]"
+                    ? "bg-[#00b8ff] text-white"
+                    : "text-[#ccc] hover:bg-[#00b8ff]/20 hover:text-[#00b8ff]"
                   }
                 `}
               >
@@ -214,7 +214,7 @@ export default function BookingCalendar({
 
       {/* Slots */}
       {selectedDate && (
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
           <p className="text-[#888] text-xs mb-3">
             Verfügbare Uhrzeiten am{" "}
             <span className="text-[#f0f0f0]">
@@ -237,8 +237,8 @@ export default function BookingCalendar({
                   onClick={() => setSelectedSlot(slot.time)}
                   className={`py-2 rounded-lg text-xs font-medium transition-colors ${
                     selectedSlot === slot.time
-                      ? "bg-[#22c55e] text-black"
-                      : "bg-[#1e1e1e] text-[#ccc] hover:bg-[#22c55e]/20 hover:text-[#22c55e]"
+                      ? "bg-[#00b8ff] text-white"
+                      : "bg-[#111e30] text-[#ccc] hover:bg-[#00b8ff]/20 hover:text-[#00b8ff]"
                   }`}
                 >
                   {slot.label}
@@ -251,9 +251,9 @@ export default function BookingCalendar({
 
       {/* Confirm */}
       {selectedSlot && (
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5 space-y-4">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5 space-y-4">
           <div className="flex items-center gap-3">
-            <Calendar size={16} className="text-[#22c55e]" />
+            <Calendar size={16} className="text-[#00b8ff]" />
             <p className="text-[#f0f0f0] text-sm font-medium">
               {new Date(selectedSlot).toLocaleDateString("de-DE", {
                 weekday: "long", day: "2-digit", month: "long",
@@ -270,7 +270,7 @@ export default function BookingCalendar({
               onChange={(e) => setMessage(e.target.value)}
               rows={2}
               placeholder="Gibt es etwas, das wir vor dem Gespräch wissen sollten?"
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-[#f0f0f0] placeholder-[#555] focus:outline-none focus:border-[#22c55e]/40 resize-none"
+              className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2 text-sm text-[#f0f0f0] placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/40 resize-none"
             />
           </div>
 
@@ -281,7 +281,7 @@ export default function BookingCalendar({
           <button
             onClick={confirmBooking}
             disabled={booking}
-            className="w-full bg-[#22c55e] hover:bg-[#16a34a] disabled:bg-[#1e1e1e] disabled:text-[#444] text-black font-semibold text-sm rounded-lg py-2.5 flex items-center justify-center gap-2 transition-colors"
+            className="w-full bg-[#00b8ff] hover:bg-[#0099d6] disabled:bg-[#111e30] disabled:text-[#444] text-white font-semibold text-sm rounded-lg py-2.5 flex items-center justify-center gap-2 transition-colors"
           >
             {booking ? (
               <>

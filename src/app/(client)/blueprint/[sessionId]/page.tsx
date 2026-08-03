@@ -57,7 +57,7 @@ export default async function BlueprintSessionPage({
   if (questions.length === 0) {
     return (
       <div className="max-w-2xl mx-auto pt-8">
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-2xl p-8 text-center">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-2xl p-8 text-center">
           <p className="text-[#f0f0f0] text-sm font-medium mb-2">
             Fragebogen wird eingerichtet
           </p>

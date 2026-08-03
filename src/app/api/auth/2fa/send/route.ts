@@ -76,11 +76,11 @@ export async function POST(req: Request) {
       to: user.email,
       subject: "Ihr OKUN Anmeldecode",
       html: `
-        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#0a0a0a;color:#f0f0f0;border-radius:12px">
-          <h2 style="color:#22c55e;margin-bottom:8px">Anmeldung bestätigen</h2>
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#080c14;color:#f0f0f0;border-radius:12px">
+          <h2 style="color:#00b8ff;margin-bottom:8px">Anmeldung bestätigen</h2>
           <p style="color:#888;margin-bottom:24px">Geben Sie diesen Code auf der Anmeldeseite ein:</p>
-          <div style="background:#141414;border:1px solid #2a2a2a;border-radius:8px;padding:24px;text-align:center;margin-bottom:24px">
-            <span style="font-size:32px;font-weight:700;letter-spacing:8px;color:#22c55e;font-family:monospace">${code}</span>
+          <div style="background:#0c1520;border:1px solid #1a2840;border-radius:8px;padding:24px;text-align:center;margin-bottom:24px">
+            <span style="font-size:32px;font-weight:700;letter-spacing:8px;color:#00b8ff;font-family:monospace">${code}</span>
           </div>
           <p style="color:#555;font-size:13px">Der Code ist 10 Minuten gültig. Wenn Sie sich nicht angemeldet haben, ignorieren Sie diese E-Mail.</p>
         </div>

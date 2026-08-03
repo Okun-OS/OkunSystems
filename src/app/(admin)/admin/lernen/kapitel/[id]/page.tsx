@@ -108,7 +108,7 @@ export default async function ChapterEditorPage({
   const currentTags = chapter.tags.map((ct) => ct.tag.name).join(", ");
   const statusCfg: Record<string, { label: string; cls: string }> = {
     DRAFT: { label: "Entwurf", cls: "bg-[#888]/10 text-[#888] border-[#888]/20" },
-    PUBLISHED: { label: "Veröffentlicht", cls: "bg-[#22c55e]/10 text-[#22c55e] border-[#22c55e]/20" },
+    PUBLISHED: { label: "Veröffentlicht", cls: "bg-[#00b8ff]/10 text-[#00b8ff] border-[#00b8ff]/20" },
     ARCHIVED: { label: "Archiviert", cls: "bg-orange-500/10 text-orange-400 border-orange-500/20" },
   };
   const sc = statusCfg[chapter.status] ?? statusCfg.DRAFT;
@@ -144,7 +144,7 @@ export default async function ChapterEditorPage({
               <input type="hidden" name="chapterId" value={chapter.id} />
               <button
                 type="submit"
-                className="flex items-center gap-2 px-4 py-2.5 bg-[#22c55e] hover:bg-[#16a34a] text-black text-sm font-semibold rounded-lg transition-colors"
+                className="flex items-center gap-2 px-4 py-2.5 bg-[#00b8ff] hover:bg-[#0099d6] text-white text-sm font-semibold rounded-lg transition-colors"
               >
                 Veröffentlichen
               </button>
@@ -156,7 +156,7 @@ export default async function ChapterEditorPage({
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Chapter settings */}
         <div className="lg:col-span-2 space-y-5">
-          <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+          <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
             <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4">Kapitel-Einstellungen</h2>
 
             <form action={handleUpdateChapter} className="space-y-4">
@@ -166,7 +166,7 @@ export default async function ChapterEditorPage({
                   name="title"
                   defaultValue={chapter.title}
                   required
-                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm focus:outline-none focus:border-[#22c55e]/50"
+                  className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm focus:outline-none focus:border-[#00b8ff]/50"
                 />
               </div>
 
@@ -176,7 +176,7 @@ export default async function ChapterEditorPage({
                   name="description"
                   defaultValue={chapter.description ?? ""}
                   rows={3}
-                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm resize-none focus:outline-none focus:border-[#22c55e]/50"
+                  className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm resize-none focus:outline-none focus:border-[#00b8ff]/50"
                 />
               </div>
 
@@ -186,7 +186,7 @@ export default async function ChapterEditorPage({
                   <select
                     name="contentType"
                     defaultValue={chapter.contentType}
-                    className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-[#f0f0f0] focus:outline-none focus:border-[#22c55e]/50"
+                    className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-sm text-[#f0f0f0] focus:outline-none focus:border-[#00b8ff]/50"
                   >
                     <option value="video">Video</option>
                     <option value="text">Text</option>
@@ -205,7 +205,7 @@ export default async function ChapterEditorPage({
                     min={1}
                     defaultValue={chapter.estimatedMinutes ?? ""}
                     placeholder="—"
-                    className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm focus:outline-none focus:border-[#22c55e]/50"
+                    className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm focus:outline-none focus:border-[#00b8ff]/50"
                   />
                 </div>
               </div>
@@ -219,7 +219,7 @@ export default async function ChapterEditorPage({
                   name="tags"
                   defaultValue={currentTags}
                   placeholder="Automatisierung, Prozesse, …"
-                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50"
+                  className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/50"
                 />
               </div>
 
@@ -228,7 +228,7 @@ export default async function ChapterEditorPage({
                 <select
                   name="availability"
                   defaultValue={chapter.availability ?? "strategy_session"}
-                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-[#f0f0f0] focus:outline-none focus:border-[#22c55e]/50"
+                  className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-sm text-[#f0f0f0] focus:outline-none focus:border-[#00b8ff]/50"
                 >
                   <option value="strategy_session">Nach Strategiegespräch (Standard)</option>
                   <option value="immediate">Sofort nach Zuweisung</option>
@@ -240,7 +240,7 @@ export default async function ChapterEditorPage({
 
               <button
                 type="submit"
-                className="w-full flex items-center justify-center gap-2 py-2.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-[#f0f0f0] text-sm rounded-lg transition-colors"
+                className="w-full flex items-center justify-center gap-2 py-2.5 bg-[#101c2e] hover:bg-[#222] border border-[#1a2840] text-[#f0f0f0] text-sm rounded-lg transition-colors"
               >
                 <Save size={13} />
                 Speichern
@@ -251,16 +251,16 @@ export default async function ChapterEditorPage({
 
         {/* Lessons */}
         <div className="lg:col-span-3 space-y-4">
-          <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl overflow-hidden">
-            <div className="px-5 py-4 border-b border-[#2a2a2a] flex items-center gap-2">
-              <BookOpen size={15} className="text-[#22c55e]" />
+          <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-[#1a2840] flex items-center gap-2">
+              <BookOpen size={15} className="text-[#00b8ff]" />
               <h2 className="text-[#f0f0f0] font-semibold text-sm">
                 Lektionen ({chapter.lessons.length})
               </h2>
             </div>
 
             {chapter.lessons.length > 0 && (
-              <div className="divide-y divide-[#1a1a1a]">
+              <div className="divide-y divide-[#101c2e]">
                 {chapter.lessons.map((lesson, idx) => (
                   <LessonUploadRow
                     key={lesson.id}
@@ -274,21 +274,21 @@ export default async function ChapterEditorPage({
             )}
 
             {/* Add lesson */}
-            <form action={handleCreateLesson} className="p-4 border-t border-[#2a2a2a] flex items-end gap-3">
+            <form action={handleCreateLesson} className="p-4 border-t border-[#1a2840] flex items-end gap-3">
               <div className="flex-1">
                 <label className="text-[#555] text-xs block mb-1">Neue Lektion</label>
                 <input
                   name="lessonTitle"
                   required
                   placeholder="Lektionstitel…"
-                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50"
+                  className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/50"
                 />
               </div>
               <div>
                 <label className="text-[#555] text-xs block mb-1">Typ</label>
                 <select
                   name="lessonType"
-                  className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-[#f0f0f0] focus:outline-none focus:border-[#22c55e]/50"
+                  className="bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2 text-sm text-[#f0f0f0] focus:outline-none focus:border-[#00b8ff]/50"
                 >
                   <option value="video">Video</option>
                   <option value="text">Text</option>
@@ -302,12 +302,12 @@ export default async function ChapterEditorPage({
                   type="number"
                   min={1}
                   placeholder="—"
-                  className="w-20 bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-[#f0f0f0] text-sm focus:outline-none focus:border-[#22c55e]/50"
+                  className="w-20 bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2 text-[#f0f0f0] text-sm focus:outline-none focus:border-[#00b8ff]/50"
                 />
               </div>
               <button
                 type="submit"
-                className="flex items-center gap-1.5 px-3 py-2 bg-[#22c55e] hover:bg-[#16a34a] text-black text-sm font-semibold rounded-lg transition-colors"
+                className="flex items-center gap-1.5 px-3 py-2 bg-[#00b8ff] hover:bg-[#0099d6] text-white text-sm font-semibold rounded-lg transition-colors"
               >
                 <Plus size={13} />
                 Lektion

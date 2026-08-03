@@ -60,9 +60,9 @@ export function AppointmentLearningRelease({
   const pendingChapters = availableChapters.filter((c) => !released.has(c.id));
 
   return (
-    <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+    <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
       <h2 className="text-[#f0f0f0] font-semibold text-sm flex items-center gap-2 mb-4">
-        <BookOpen size={15} className="text-[#22c55e]" />
+        <BookOpen size={15} className="text-[#00b8ff]" />
         Lernfreigabe
       </h2>
 
@@ -74,9 +74,9 @@ export function AppointmentLearningRelease({
             const done = a.chapter.lessons.filter((l) => l.progress[0]?.status === "completed").length;
             const pct = total > 0 ? Math.round((done / total) * 100) : 0;
             return (
-              <div key={a.id} className="flex items-center gap-3 p-2.5 bg-[#0d0d0d] rounded-lg">
+              <div key={a.id} className="flex items-center gap-3 p-2.5 bg-[#060a10] rounded-lg">
                 {pct === 100 ? (
-                  <CheckCircle size={13} className="text-[#22c55e] flex-shrink-0" />
+                  <CheckCircle size={13} className="text-[#00b8ff] flex-shrink-0" />
                 ) : (
                   <Clock size={13} className="text-[#555] flex-shrink-0" />
                 )}
@@ -98,7 +98,7 @@ export function AppointmentLearningRelease({
           )}
           {pendingChapters.map((chapter) => (
             <div key={chapter.id}>
-              <div className="flex items-center gap-3 p-2.5 bg-[#0d0d0d] rounded-lg">
+              <div className="flex items-center gap-3 p-2.5 bg-[#060a10] rounded-lg">
                 <div className="flex-1 min-w-0">
                   <p className="text-[#888] text-xs font-medium truncate">{chapter.title}</p>
                   {chapter.estimatedMinutes && (
@@ -108,7 +108,7 @@ export function AppointmentLearningRelease({
                 <button
                   onClick={() => release(chapter.id)}
                   disabled={releasing === chapter.id}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-[#22c55e]/10 text-[#22c55e] text-xs font-medium hover:bg-[#22c55e]/20 disabled:opacity-50 transition-colors flex-shrink-0"
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-[#00b8ff]/10 text-[#00b8ff] text-xs font-medium hover:bg-[#00b8ff]/20 disabled:opacity-50 transition-colors flex-shrink-0"
                 >
                   {releasing === chapter.id ? (
                     <Loader2 size={11} className="animate-spin" />
@@ -129,7 +129,7 @@ export function AppointmentLearningRelease({
       ) : null}
 
       {released.size > 0 && (
-        <p className="text-[#22c55e] text-xs mt-3 flex items-center gap-1">
+        <p className="text-[#00b8ff] text-xs mt-3 flex items-center gap-1">
           <CheckCircle size={11} />
           {released.size} Kapitel soeben freigegeben
         </p>

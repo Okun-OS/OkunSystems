@@ -32,7 +32,7 @@ export function SubscribeButton() {
       <button
         onClick={handleSubscribe}
         disabled={loading}
-        className="w-full bg-[#22c55e] hover:bg-[#16a34a] disabled:opacity-50 text-black font-semibold text-sm rounded-xl py-3 flex items-center justify-center gap-2 transition-colors"
+        className="w-full bg-[#00b8ff] hover:bg-[#0099d6] disabled:opacity-50 text-white font-semibold text-sm rounded-xl py-3 flex items-center justify-center gap-2 transition-colors"
       >
         {loading ? (
           <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />

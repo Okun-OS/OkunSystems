@@ -52,17 +52,17 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
       {/* Action bar */}
       <div className="flex items-center gap-2 mb-6">
         <Link href={`/admin/kunden/${id}/strategy`}
-          className="bg-[#22c55e] hover:bg-[#16a34a] text-black text-sm font-semibold rounded-lg px-4 py-2.5 transition-colors flex items-center gap-2">
+          className="bg-[#00b8ff] hover:bg-[#0099d6] text-white text-sm font-semibold rounded-lg px-4 py-2.5 transition-colors flex items-center gap-2">
           <Target size={14} />
           Strategy Session
         </Link>
         <Link href={`/admin/kunden/${id}/analyse`}
-          className="bg-[#22c55e]/10 hover:bg-[#22c55e]/20 border border-[#22c55e]/20 text-[#22c55e] text-sm font-medium rounded-lg px-4 py-2.5 transition-colors flex items-center gap-2">
+          className="bg-[#00b8ff]/10 hover:bg-[#00b8ff]/20 border border-[#00b8ff]/20 text-[#00b8ff] text-sm font-medium rounded-lg px-4 py-2.5 transition-colors flex items-center gap-2">
           <Brain size={14} />
           Analyse
         </Link>
         <Link href={`/admin/kunden/${id}/bearbeiten`}
-          className="bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-[#f0f0f0] text-sm font-medium rounded-lg px-4 py-2.5 transition-colors">
+          className="bg-[#101c2e] hover:bg-[#222] border border-[#1a2840] text-[#f0f0f0] text-sm font-medium rounded-lg px-4 py-2.5 transition-colors">
           Bearbeiten
         </Link>
       </div>
@@ -75,17 +75,17 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
         </div>
       )}
       {activeSession?.blueprintVersion === "2.0" && activeSession.status === "COMPLETED" && activeSession.reportUrl && (
-        <div className="mb-5 flex items-center gap-3 bg-[#22c55e]/5 border border-[#22c55e]/20 rounded-xl px-4 py-3 text-sm">
-          <CheckCircle2 size={14} className="text-[#22c55e] shrink-0" />
-          <span className="text-[#22c55e]">Blueprint abgeschlossen — PDF-Bericht verfügbar.</span>
-          <Link href={`/admin/kunden/${id}/ergebnisse`} className="ml-auto text-[#22c55e] hover:underline text-xs shrink-0">Ergebnisse →</Link>
+        <div className="mb-5 flex items-center gap-3 bg-[#00b8ff]/5 border border-[#00b8ff]/20 rounded-xl px-4 py-3 text-sm">
+          <CheckCircle2 size={14} className="text-[#00b8ff] shrink-0" />
+          <span className="text-[#00b8ff]">Blueprint abgeschlossen — PDF-Bericht verfügbar.</span>
+          <Link href={`/admin/kunden/${id}/ergebnisse`} className="ml-auto text-[#00b8ff] hover:underline text-xs shrink-0">Ergebnisse →</Link>
         </div>
       )}
 
       <div className="grid grid-cols-12 gap-5">
         {/* Left */}
         <div className="col-span-12 lg:col-span-4 space-y-5">
-          <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+          <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
             <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4">Kundendaten</h2>
             <div className="space-y-3">
               {company.contactPerson && (
@@ -147,13 +147,13 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
           </div>
 
           {/* Blueprint Analysis Status */}
-          <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+          <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-[#f0f0f0] font-semibold text-sm flex items-center gap-2">
-                <Brain size={14} className="text-[#22c55e]" />
+                <Brain size={14} className="text-[#00b8ff]" />
                 Blueprint™ Analyse
               </h2>
-              <Link href={`/admin/kunden/${id}/analyse`} className="text-[#22c55e] text-xs hover:underline">Öffnen →</Link>
+              <Link href={`/admin/kunden/${id}/analyse`} className="text-[#00b8ff] text-xs hover:underline">Öffnen →</Link>
             </div>
             {!activeSession ? (
               <p className="text-[#555] text-sm">Noch nicht gestartet</p>
@@ -161,11 +161,11 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-[#888]">Version</span>
-                  <span className="text-[#22c55e] text-xs font-semibold">Blueprint 2.0</span>
+                  <span className="text-[#00b8ff] text-xs font-semibold">Blueprint 2.0</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-[#888]">Status</span>
-                  <span className={activeSession.status === "COMPLETED" ? "text-[#22c55e]" : "text-yellow-400"}>
+                  <span className={activeSession.status === "COMPLETED" ? "text-[#00b8ff]" : "text-yellow-400"}>
                     {activeSession.status === "COMPLETED" ? "Abgeschlossen" : "In Bearbeitung"}
                   </span>
                 </div>
@@ -173,7 +173,7 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
                   <>
                     <Link
                       href={`/blueprint/${activeSession.id}/ergebnis`}
-                      className="flex items-center justify-between text-xs text-[#888] hover:text-[#22c55e] transition-colors pt-1"
+                      className="flex items-center justify-between text-xs text-[#888] hover:text-[#00b8ff] transition-colors pt-1"
                     >
                       Ergebnisse anzeigen <span>→</span>
                     </Link>
@@ -188,7 +188,7 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-[#888]">Status</span>
-                  <span className={activeSession.status === "COMPLETED" ? "text-[#22c55e]" : "text-yellow-400"}>
+                  <span className={activeSession.status === "COMPLETED" ? "text-[#00b8ff]" : "text-yellow-400"}>
                     {activeSession.status === "COMPLETED" ? "Abgeschlossen" : activeSession.status === "ACTIVE" ? "Aktiv" : "Pausiert"}
                   </span>
                 </div>
@@ -199,7 +199,7 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
                 {activeSession.score && (
                   <div className="flex justify-between text-sm">
                     <span className="text-[#888]">OKUN Score™</span>
-                    <span className="text-[#22c55e] font-bold">{activeSession.score.totalScore}/100</span>
+                    <span className="text-[#00b8ff] font-bold">{activeSession.score.totalScore}/100</span>
                   </div>
                 )}
               </div>
@@ -207,14 +207,14 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
           </div>
 
           {assessment && (
-            <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+            <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
               <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4">Score Übersicht</h2>
               <div className="flex items-center justify-center my-4">
                 <div className="relative">
                   <svg viewBox="0 0 120 120" className="w-32 h-32 -rotate-90">
-                    <circle cx="60" cy="60" r="50" fill="none" stroke="#1e1e1e" strokeWidth="8" />
+                    <circle cx="60" cy="60" r="50" fill="none" stroke="#111e30" strokeWidth="8" />
                     <circle cx="60" cy="60" r="50" fill="none"
-                      stroke={assessment.score && assessment.score >= 70 ? "#22c55e" : "#f59e0b"}
+                      stroke={assessment.score && assessment.score >= 70 ? "#00b8ff" : "#f59e0b"}
                       strokeWidth="8"
                       strokeDasharray={`${((assessment.score ?? 0) / 100) * 314.16} ${314.16 - ((assessment.score ?? 0) / 100) * 314.16}`}
                       strokeLinecap="round"
@@ -230,16 +230,16 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
           )}
 
           {assessment?.recommendations && assessment.recommendations.length > 0 && (
-            <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+            <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
               <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4 flex items-center gap-2">
-                <Lightbulb size={14} className="text-[#22c55e]" />
+                <Lightbulb size={14} className="text-[#00b8ff]" />
                 Empfohlene Systeme
                 <span className="ml-auto text-xs text-red-400 bg-red-500/10 px-2 py-0.5 rounded">Intern</span>
               </h2>
               <div className="space-y-2">
                 {assessment.recommendations.map((rec) => (
-                  <div key={rec.id} className="flex items-start gap-3 p-3 bg-[#0d0d0d] rounded-lg">
-                    <Lightbulb size={13} className="text-[#22c55e] mt-0.5 flex-shrink-0" />
+                  <div key={rec.id} className="flex items-start gap-3 p-3 bg-[#060a10] rounded-lg">
+                    <Lightbulb size={13} className="text-[#00b8ff] mt-0.5 flex-shrink-0" />
                     <div>
                       <p className="text-[#f0f0f0] text-sm">{rec.title}</p>
                       <p className="text-[#888] text-xs mt-0.5">{rec.system}</p>
@@ -259,9 +259,9 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
         {/* Right */}
         <div className="col-span-12 lg:col-span-8 space-y-5">
           {project && (
-            <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+            <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
               <div className="flex items-center gap-2 mb-4">
-                <FolderOpen size={15} className="text-[#22c55e]" />
+                <FolderOpen size={15} className="text-[#00b8ff]" />
                 <h2 className="text-[#f0f0f0] font-semibold text-sm">Aktuelles Projekt</h2>
               </div>
               <p className="text-[#f0f0f0] font-medium mb-3">{project.title}</p>
@@ -269,17 +269,17 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
                 <div className="flex justify-between text-xs text-[#888] mb-1">
                   <span>Fortschritt</span><span>{project.progress}%</span>
                 </div>
-                <div className="h-1.5 bg-[#1e1e1e] rounded-full overflow-hidden">
-                  <div className="h-full bg-[#22c55e] rounded-full" style={{ width: `${project.progress}%` }} />
+                <div className="h-1.5 bg-[#111e30] rounded-full overflow-hidden">
+                  <div className="h-full bg-[#00b8ff] rounded-full" style={{ width: `${project.progress}%` }} />
                 </div>
               </div>
             </div>
           )}
 
-          <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+          <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <CalendarDays size={15} className="text-[#22c55e]" />
+                <CalendarDays size={15} className="text-[#00b8ff]" />
                 <h2 className="text-[#f0f0f0] font-semibold text-sm">Termine ({company.appointments.length})</h2>
               </div>
             </div>
@@ -288,7 +288,7 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
             ) : (
               <div className="space-y-2">
                 {company.appointments.slice(0, 4).map((appt) => (
-                  <div key={appt.id} className="flex items-center justify-between p-3 bg-[#0d0d0d] rounded-lg">
+                  <div key={appt.id} className="flex items-center justify-between p-3 bg-[#060a10] rounded-lg">
                     <div>
                       <p className="text-[#f0f0f0] text-sm">{appt.title}</p>
                       <p className="text-[#888] text-xs mt-0.5">{formatDateTime(appt.startTime)}</p>
@@ -300,26 +300,26 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
             )}
           </div>
 
-          <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+          <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
             <div className="flex items-center gap-2 mb-4">
-              <FileText size={15} className="text-[#22c55e]" />
+              <FileText size={15} className="text-[#00b8ff]" />
               <h2 className="text-[#f0f0f0] font-semibold text-sm">Dokumente ({company.documents.length})</h2>
-              <Link href={`/admin/kunden/${id}/dokumente`} className="ml-auto text-[#555] text-xs hover:text-[#22c55e] transition-colors">Alle →</Link>
+              <Link href={`/admin/kunden/${id}/dokumente`} className="ml-auto text-[#555] text-xs hover:text-[#00b8ff] transition-colors">Alle →</Link>
             </div>
             {company.documents.length === 0 ? (
               <p className="text-[#555] text-sm">Noch keine Dokumente.</p>
             ) : (
               <div className="space-y-2">
                 {company.documents.slice(0, 5).map((doc) => (
-                  <div key={doc.id} className="flex items-center gap-3 p-3 bg-[#0d0d0d] rounded-lg">
-                    <FileText size={14} className={doc.category === "BLUEPRINT" ? "text-[#22c55e]" : "text-[#888]"} />
+                  <div key={doc.id} className="flex items-center gap-3 p-3 bg-[#060a10] rounded-lg">
+                    <FileText size={14} className={doc.category === "BLUEPRINT" ? "text-[#00b8ff]" : "text-[#888]"} />
                     <div className="flex-1 min-w-0">
                       <p className="text-[#f0f0f0] text-sm truncate">{doc.title}</p>
                       {doc.category === "BLUEPRINT" && (
                         <p className="text-[#555] text-xs">Blueprint PDF · automatisch generiert</p>
                       )}
                     </div>
-                    <span className={`text-xs px-2 py-0.5 rounded shrink-0 ${doc.visibility === "customer" ? "text-[#22c55e] bg-[#22c55e]/10" : "text-[#888] bg-[#1a1a1a]"}`}>
+                    <span className={`text-xs px-2 py-0.5 rounded shrink-0 ${doc.visibility === "customer" ? "text-[#00b8ff] bg-[#00b8ff]/10" : "text-[#888] bg-[#101c2e]"}`}>
                       {doc.visibility === "customer" ? "Für Kunden" : "Intern"}
                     </span>
                   </div>
@@ -328,16 +328,16 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
             )}
           </div>
 
-          <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+          <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
             <div className="flex items-center gap-2 mb-4">
-              <MessageSquare size={15} className="text-[#22c55e]" />
+              <MessageSquare size={15} className="text-[#00b8ff]" />
               <h2 className="text-[#f0f0f0] font-semibold text-sm">Interne Notizen</h2>
               <span className="ml-auto text-xs text-red-400 bg-red-500/10 px-2 py-0.5 rounded">Intern</span>
             </div>
             {company.notes.length > 0 && (
               <div className="space-y-2 mb-3">
                 {company.notes.map((note) => (
-                  <div key={note.id} className="p-3 bg-[#0d0d0d] rounded-lg border-l-2 border-[#22c55e]/40">
+                  <div key={note.id} className="p-3 bg-[#060a10] rounded-lg border-l-2 border-[#00b8ff]/40">
                     <p className="text-[#f0f0f0] text-sm">{note.content}</p>
                     <p className="text-[#555] text-xs mt-1">{note.author.name} · {formatDateTime(note.createdAt)}</p>
                   </div>
@@ -346,8 +346,8 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
             )}
             <form action={handleSaveNote}>
               <textarea name="content" placeholder="Neue interne Notiz..." rows={2}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50 resize-none" />
-              <button type="submit" className="mt-2 bg-[#22c55e] hover:bg-[#16a34a] text-black font-semibold text-sm rounded-lg px-4 py-2 transition-colors">
+                className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/50 resize-none" />
+              <button type="submit" className="mt-2 bg-[#00b8ff] hover:bg-[#0099d6] text-white font-semibold text-sm rounded-lg px-4 py-2 transition-colors">
                 Notiz speichern
               </button>
             </form>
@@ -361,7 +361,7 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
 // StatusBadge kept for internal reference only (layout provides the visible one)
 function StatusBadge({ status }: { status: string }) {
   const cfg: Record<string, { label: string; cls: string }> = {
-    ACTIVE: { label: "Aktiv", cls: "bg-[#22c55e]/10 text-[#22c55e] border-[#22c55e]/20" },
+    ACTIVE: { label: "Aktiv", cls: "bg-[#00b8ff]/10 text-[#00b8ff] border-[#00b8ff]/20" },
     ONBOARDING: { label: "Onboarding", cls: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" },
     INACTIVE: { label: "Inaktiv", cls: "bg-[#888]/10 text-[#888] border-[#888]/20" },
   };

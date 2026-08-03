@@ -50,9 +50,9 @@ export default async function AdminEinstellungenPage() {
       <AdminTwoFASection initialEnabled={adminUser?.twoFactorEnabled ?? false} />
 
       {/* Welcome video */}
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-6 mb-6">
+      <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6 mb-6">
         <div className="flex items-center gap-2 mb-5">
-          <Video size={16} className="text-[#22c55e]" />
+          <Video size={16} className="text-[#00b8ff]" />
           <h2 className="text-[#f0f0f0] font-semibold text-sm">Willkommensvideo</h2>
         </div>
 
@@ -63,9 +63,9 @@ export default async function AdminEinstellungenPage() {
         </p>
 
         {settingMap["welcome_video_url"] && (
-          <div className="mb-4 bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg p-3">
+          <div className="mb-4 bg-[#060a10] border border-[#1a2840] rounded-lg p-3">
             <p className="text-[#555] text-xs mb-1">Aktuell gesetzt:</p>
-            <p className="text-[#22c55e] text-xs font-mono break-all">{settingMap["welcome_video_url"]}</p>
+            <p className="text-[#00b8ff] text-xs font-mono break-all">{settingMap["welcome_video_url"]}</p>
           </div>
         )}
 
@@ -79,9 +79,9 @@ export default async function AdminEinstellungenPage() {
           </div>
 
           <div className="flex items-center gap-3 my-1">
-            <div className="flex-1 h-px bg-[#2a2a2a]" />
+            <div className="flex-1 h-px bg-[#1a2840]" />
             <span className="text-[#555] text-xs">oder URL manuell eingeben</span>
-            <div className="flex-1 h-px bg-[#2a2a2a]" />
+            <div className="flex-1 h-px bg-[#1a2840]" />
           </div>
 
           <form action={saveSetting} className="space-y-3">
@@ -96,12 +96,12 @@ export default async function AdminEinstellungenPage() {
                 type="url"
                 defaultValue={settingMap["welcome_video_url"] ?? ""}
                 placeholder="https://..."
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50"
+                className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/50"
               />
             </div>
             <button
               type="submit"
-              className="flex items-center gap-2 px-4 py-2 bg-[#22c55e] hover:bg-[#16a34a] text-black text-sm font-semibold rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-[#00b8ff] hover:bg-[#0099d6] text-white text-sm font-semibold rounded-lg transition-colors"
             >
               <Upload size={13} />
               URL speichern
@@ -123,7 +123,7 @@ export default async function AdminEinstellungenPage() {
       </div>
 
       {/* Solution Library */}
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-6 mb-6">
+      <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6 mb-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Package size={16} className="text-[#888]" />
@@ -131,7 +131,7 @@ export default async function AdminEinstellungenPage() {
           </div>
           <Link
             href="/admin/einstellungen/loesungen"
-            className="flex items-center gap-1.5 text-[#22c55e] text-sm hover:underline"
+            className="flex items-center gap-1.5 text-[#00b8ff] text-sm hover:underline"
           >
             Verwalten
             <ArrowRight size={14} />
@@ -143,15 +143,15 @@ export default async function AdminEinstellungenPage() {
       </div>
 
       {/* Integrations */}
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-6 mb-6">
+      <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6 mb-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Settings size={16} className="text-[#22c55e]" />
+            <Settings size={16} className="text-[#00b8ff]" />
             <h2 className="text-[#f0f0f0] font-semibold text-sm">Integrationen &amp; Status</h2>
           </div>
           <Link
             href="/admin/einstellungen/integrationen"
-            className="flex items-center gap-1.5 text-[#22c55e] text-sm hover:underline"
+            className="flex items-center gap-1.5 text-[#00b8ff] text-sm hover:underline"
           >
             Überprüfen
             <ArrowRight size={14} />
@@ -163,7 +163,7 @@ export default async function AdminEinstellungenPage() {
       </div>
 
       {/* Other settings */}
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-6">
+      <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6">
         <div className="flex items-center gap-2 mb-5">
           <Settings size={16} className="text-[#888]" />
           <h2 className="text-[#f0f0f0] font-semibold text-sm">Weitere Einstellungen</h2>
@@ -176,12 +176,12 @@ export default async function AdminEinstellungenPage() {
             <input
               name="value"
               defaultValue={settingMap["platform_name"] ?? "OKUN Client Portal"}
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50"
+              className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/50"
             />
           </div>
           <button
             type="submit"
-            className="flex items-center gap-2 px-4 py-2 bg-[#22c55e] hover:bg-[#16a34a] text-black text-sm font-semibold rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-[#00b8ff] hover:bg-[#0099d6] text-white text-sm font-semibold rounded-lg transition-colors"
           >
             <Upload size={13} />
             Speichern

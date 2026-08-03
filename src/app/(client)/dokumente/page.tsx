@@ -50,13 +50,13 @@ export default async function DokumentePage() {
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#555]" />
           <input
             placeholder="Dokument suchen..."
-            className="bg-[#141414] border border-[#2a2a2a] rounded-lg pl-9 pr-4 py-2 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50"
+            className="bg-[#0c1520] border border-[#1a2840] rounded-lg pl-9 pr-4 py-2 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/50"
           />
         </div>
       </div>
 
       {documents.length === 0 ? (
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-16 text-center">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-16 text-center">
           <FileText size={32} className="text-[#555] mx-auto mb-4" />
           <p className="text-[#888]">Noch keine Dokumente freigegeben.</p>
           <p className="text-[#555] text-sm mt-2">Ihr OKUN-Berater wird hier Berichte und Unterlagen bereitstellen.</p>
@@ -77,9 +77,9 @@ export default async function DokumentePage() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {docs.map((doc) => (
-                    <div key={doc.id} className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-4 hover:border-[#22c55e]/20 transition-colors">
+                    <div key={doc.id} className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-4 hover:border-[#00b8ff]/20 transition-colors">
                       <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0">
+                        <div className="w-10 h-10 rounded-lg bg-[#101c2e] border border-[#1a2840] flex items-center justify-center flex-shrink-0">
                           <FileText size={16} className={config.color} />
                         </div>
                         <div className="flex-1 min-w-0">
@@ -96,12 +96,12 @@ export default async function DokumentePage() {
                         </div>
                       </div>
                       <div className="flex gap-2 mt-3">
-                        <button className="flex-1 flex items-center justify-center gap-1.5 bg-[#1a1a1a] hover:bg-[#22c55e]/10 border border-[#2a2a2a] hover:border-[#22c55e]/30 text-[#888] hover:text-[#22c55e] text-xs rounded-lg py-1.5 transition-colors">
+                        <button className="flex-1 flex items-center justify-center gap-1.5 bg-[#101c2e] hover:bg-[#00b8ff]/10 border border-[#1a2840] hover:border-[#00b8ff]/30 text-[#888] hover:text-[#00b8ff] text-xs rounded-lg py-1.5 transition-colors">
                           <Eye size={12} />
                           Anzeigen
                         </button>
                         {doc.fileUrl && (
-                          <button className="flex-1 flex items-center justify-center gap-1.5 bg-[#1a1a1a] hover:bg-[#22c55e]/10 border border-[#2a2a2a] hover:border-[#22c55e]/30 text-[#888] hover:text-[#22c55e] text-xs rounded-lg py-1.5 transition-colors">
+                          <button className="flex-1 flex items-center justify-center gap-1.5 bg-[#101c2e] hover:bg-[#00b8ff]/10 border border-[#1a2840] hover:border-[#00b8ff]/30 text-[#888] hover:text-[#00b8ff] text-xs rounded-lg py-1.5 transition-colors">
                             <Download size={12} />
                             Download
                           </button>

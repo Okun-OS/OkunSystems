@@ -33,7 +33,7 @@ export default async function ProjektstatusPage() {
       </div>
 
       {projects.length === 0 ? (
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-16 text-center">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-16 text-center">
           <AlertCircle size={32} className="text-[#555] mx-auto mb-4" />
           <p className="text-[#888]">Noch keine Projekte vorhanden.</p>
           <p className="text-[#555] text-sm mt-2">Ihr OKUN-Berater richtet Ihr erstes Projekt ein.</p>
@@ -41,9 +41,9 @@ export default async function ProjektstatusPage() {
       ) : (
         <div className="space-y-6">
           {projects.map((project) => (
-            <div key={project.id} className="bg-[#141414] border border-[#2a2a2a] rounded-xl overflow-hidden">
+            <div key={project.id} className="bg-[#0c1520] border border-[#1a2840] rounded-xl overflow-hidden">
               {/* Project header */}
-              <div className="p-6 border-b border-[#2a2a2a]">
+              <div className="p-6 border-b border-[#1a2840]">
                 <div className="flex items-start justify-between">
                   <div>
                     <h2 className="text-[#f0f0f0] font-semibold text-lg">{project.title}</h2>
@@ -59,8 +59,8 @@ export default async function ProjektstatusPage() {
                     <span>Fortschritt</span>
                     <span>{project.progress}%</span>
                   </div>
-                  <div className="h-2 bg-[#1e1e1e] rounded-full overflow-hidden">
-                    <div className="h-full bg-[#22c55e] rounded-full transition-all" style={{ width: `${project.progress}%` }} />
+                  <div className="h-2 bg-[#111e30] rounded-full overflow-hidden">
+                    <div className="h-full bg-[#00b8ff] rounded-full transition-all" style={{ width: `${project.progress}%` }} />
                   </div>
                 </div>
               </div>
@@ -73,7 +73,7 @@ export default async function ProjektstatusPage() {
                     {project.milestones.map((m) => (
                       <div key={m.id} className="flex items-center gap-3">
                         {m.completed ? (
-                          <CheckCircle2 size={16} className="text-[#22c55e] flex-shrink-0" />
+                          <CheckCircle2 size={16} className="text-[#00b8ff] flex-shrink-0" />
                         ) : (
                           <Circle size={16} className="text-[#444] flex-shrink-0" />
                         )}
@@ -91,12 +91,12 @@ export default async function ProjektstatusPage() {
 
               {/* Tasks */}
               {project.tasks.length > 0 && (
-                <div className="border-t border-[#1e1e1e] p-6">
+                <div className="border-t border-[#111e30] p-6">
                   <h3 className="text-[#888] text-xs font-medium uppercase tracking-wider mb-4">Offene Aufgaben</h3>
                   <div className="space-y-2">
                     {project.tasks.filter(t => t.status !== "DONE").slice(0, 5).map((task) => (
-                      <div key={task.id} className="flex items-center gap-3 p-3 bg-[#0d0d0d] rounded-lg">
-                        <div className="w-2 h-2 rounded-full bg-[#22c55e] flex-shrink-0" />
+                      <div key={task.id} className="flex items-center gap-3 p-3 bg-[#060a10] rounded-lg">
+                        <div className="w-2 h-2 rounded-full bg-[#00b8ff] flex-shrink-0" />
                         <span className="text-[#f0f0f0] text-sm flex-1">{task.title}</span>
                         <PriorityBadge priority={task.priority} />
                       </div>
@@ -115,7 +115,7 @@ export default async function ProjektstatusPage() {
 function ProjectStatusBadge({ status }: { status: string }) {
   const cfg: Record<string, { label: string; cls: string }> = {
     PLANNING: { label: "In Planung", cls: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
-    ACTIVE: { label: "Aktiv", cls: "bg-[#22c55e]/10 text-[#22c55e] border-[#22c55e]/20" },
+    ACTIVE: { label: "Aktiv", cls: "bg-[#00b8ff]/10 text-[#00b8ff] border-[#00b8ff]/20" },
     REVIEW: { label: "Review", cls: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" },
     COMPLETED: { label: "Abgeschlossen", cls: "bg-[#888]/10 text-[#888] border-[#888]/20" },
     PAUSED: { label: "Pausiert", cls: "bg-orange-500/10 text-orange-400 border-orange-500/20" },

@@ -55,17 +55,17 @@ export default async function AdminDashboardPage() {
         {stats.map((stat) => (
           <div
             key={stat.label}
-            className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5 hover:border-[#22c55e]/20 transition-colors"
+            className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5 hover:border-[#00b8ff]/20 transition-colors"
           >
             <div className="flex items-start justify-between mb-4">
-              <div className="w-10 h-10 rounded-lg bg-[#22c55e]/10 flex items-center justify-center">
-                <stat.icon size={18} className="text-[#22c55e]" />
+              <div className="w-10 h-10 rounded-lg bg-[#00b8ff]/10 flex items-center justify-center">
+                <stat.icon size={18} className="text-[#00b8ff]" />
               </div>
               <ArrowUpRight size={14} className="text-[#555]" />
             </div>
             <p className="text-[#f0f0f0] text-3xl font-bold">{stat.value}</p>
             <p className="text-[#888] text-xs mt-1">{stat.label}</p>
-            <p className="text-[#22c55e] text-xs mt-2 flex items-center gap-1">
+            <p className="text-[#00b8ff] text-xs mt-2 flex items-center gap-1">
               <TrendingUp size={11} />
               {stat.change}
             </p>
@@ -76,21 +76,21 @@ export default async function AdminDashboardPage() {
       <div className="grid grid-cols-12 gap-5">
         {/* Recent Clients */}
         <div className="col-span-12 lg:col-span-8">
-          <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl overflow-hidden">
-            <div className="flex items-center justify-between p-5 border-b border-[#2a2a2a]">
+          <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl overflow-hidden">
+            <div className="flex items-center justify-between p-5 border-b border-[#1a2840]">
               <h2 className="text-[#f0f0f0] font-semibold text-sm">Zuletzt aktualisierte Kunden</h2>
               <Link
                 href="/admin/kunden"
-                className="text-[#22c55e] text-xs hover:text-[#16a34a] transition-colors"
+                className="text-[#00b8ff] text-xs hover:text-[#0099d6] transition-colors"
               >
                 Alle anzeigen →
               </Link>
             </div>
-            <div className="divide-y divide-[#1e1e1e]">
+            <div className="divide-y divide-[#111e30]">
               {recentCompanies.length === 0 ? (
                 <div className="p-8 text-center text-[#555] text-sm">
                   Noch keine Kunden vorhanden.{" "}
-                  <Link href="/admin/kunden" className="text-[#22c55e] hover:underline">
+                  <Link href="/admin/kunden" className="text-[#00b8ff] hover:underline">
                     Ersten Kunden anlegen →
                   </Link>
                 </div>
@@ -99,10 +99,10 @@ export default async function AdminDashboardPage() {
                   <Link
                     key={company.id}
                     href={`/admin/kunden/${company.id}`}
-                    className="flex items-center gap-4 p-4 hover:bg-[#1a1a1a] transition-colors"
+                    className="flex items-center gap-4 p-4 hover:bg-[#101c2e] transition-colors"
                   >
-                    <div className="w-9 h-9 rounded-lg bg-[#1e1e1e] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0">
-                      <span className="text-[#22c55e] text-xs font-bold">
+                    <div className="w-9 h-9 rounded-lg bg-[#111e30] border border-[#1a2840] flex items-center justify-center flex-shrink-0">
+                      <span className="text-[#00b8ff] text-xs font-bold">
                         {company.name.charAt(0)}
                       </span>
                     </div>
@@ -125,7 +125,7 @@ export default async function AdminDashboardPage() {
 
         {/* Quick Actions */}
         <div className="col-span-12 lg:col-span-4 space-y-4">
-          <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+          <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
             <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4">Schnellzugriff</h2>
             <div className="space-y-2">
               {[
@@ -137,9 +137,9 @@ export default async function AdminDashboardPage() {
                 <Link
                   key={action.href}
                   href={action.href}
-                  className="flex items-center gap-3 p-3 rounded-lg bg-[#1a1a1a] hover:bg-[#22c55e]/10 hover:border-[#22c55e]/20 border border-transparent transition-colors"
+                  className="flex items-center gap-3 p-3 rounded-lg bg-[#101c2e] hover:bg-[#00b8ff]/10 hover:border-[#00b8ff]/20 border border-transparent transition-colors"
                 >
-                  <action.icon size={15} className="text-[#22c55e]" />
+                  <action.icon size={15} className="text-[#00b8ff]" />
                   <span className="text-[#f0f0f0] text-sm">{action.label}</span>
                 </Link>
               ))}
@@ -147,14 +147,14 @@ export default async function AdminDashboardPage() {
           </div>
 
           {/* Alerts */}
-          <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+          <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
             <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4 flex items-center gap-2">
               <AlertCircle size={15} className="text-[#f59e0b]" />
               Offene Aufgaben
             </h2>
             {openTickets > 0 ? (
               <div className="space-y-2">
-                <div className="flex items-center justify-between p-3 bg-[#1a1a1a] rounded-lg">
+                <div className="flex items-center justify-between p-3 bg-[#101c2e] rounded-lg">
                   <span className="text-[#888] text-xs">Support-Tickets</span>
                   <span className="bg-[#f59e0b]/10 text-[#f59e0b] text-xs px-2 py-0.5 rounded-full font-medium">
                     {openTickets} offen
@@ -162,7 +162,7 @@ export default async function AdminDashboardPage() {
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-2 text-[#22c55e] text-sm">
+              <div className="flex items-center gap-2 text-[#00b8ff] text-sm">
                 <Clock size={14} />
                 <span>Keine offenen Aufgaben</span>
               </div>
@@ -176,7 +176,7 @@ export default async function AdminDashboardPage() {
 
 function StatusBadge({ status }: { status: string }) {
   const configs: Record<string, { label: string; class: string }> = {
-    ACTIVE: { label: "Aktiv", class: "bg-[#22c55e]/10 text-[#22c55e]" },
+    ACTIVE: { label: "Aktiv", class: "bg-[#00b8ff]/10 text-[#00b8ff]" },
     ONBOARDING: { label: "Onboarding", class: "bg-[#f59e0b]/10 text-[#f59e0b]" },
     INACTIVE: { label: "Inaktiv", class: "bg-[#888]/10 text-[#888]" },
   };

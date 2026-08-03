@@ -43,15 +43,15 @@ export default async function StrategyOverviewPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-8">
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
           <p className="text-[#888] text-xs mb-2">Bereit für Strategy Session</p>
-          <p className="text-[#22c55e] text-3xl font-bold">{readyForStrategy.length}</p>
+          <p className="text-[#00b8ff] text-3xl font-bold">{readyForStrategy.length}</p>
         </div>
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
           <p className="text-[#888] text-xs mb-2">Analyse läuft noch</p>
           <p className="text-yellow-400 text-3xl font-bold">{inProgress.length}</p>
         </div>
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
           <p className="text-[#888] text-xs mb-2">Noch keine Analyse</p>
           <p className="text-[#888] text-3xl font-bold">{companies.length - withAnalysis.length}</p>
         </div>
@@ -61,7 +61,7 @@ export default async function StrategyOverviewPage() {
       {readyForStrategy.length > 0 && (
         <div className="mb-6">
           <h2 className="text-[#f0f0f0] font-semibold text-sm mb-3 flex items-center gap-2">
-            <CheckCircle2 size={15} className="text-[#22c55e]" />
+            <CheckCircle2 size={15} className="text-[#00b8ff]" />
             Bereit für Strategy Session
           </h2>
           <div className="space-y-2">
@@ -70,17 +70,17 @@ export default async function StrategyOverviewPage() {
               const score = analysis.score;
               const appt = company.appointments[0];
               return (
-                <div key={company.id} className="bg-[#141414] border border-[#2a2a2a] hover:border-[#22c55e]/30 rounded-xl p-4 flex items-center justify-between group transition-colors">
+                <div key={company.id} className="bg-[#0c1520] border border-[#1a2840] hover:border-[#00b8ff]/30 rounded-xl p-4 flex items-center justify-between group transition-colors">
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-lg bg-[#22c55e]/10 border border-[#22c55e]/20 flex items-center justify-center flex-shrink-0">
-                      <span className="text-[#22c55e] font-bold text-sm">{company.name.charAt(0)}</span>
+                    <div className="w-10 h-10 rounded-lg bg-[#00b8ff]/10 border border-[#00b8ff]/20 flex items-center justify-center flex-shrink-0">
+                      <span className="text-[#00b8ff] font-bold text-sm">{company.name.charAt(0)}</span>
                     </div>
                     <div>
                       <p className="text-[#f0f0f0] font-medium text-sm">{company.name}</p>
                       <div className="flex items-center gap-3 mt-0.5">
                         {company.industry && <span className="text-[#555] text-xs">{company.industry}</span>}
                         {score && (
-                          <span className={`text-xs font-semibold ${score.totalScore >= 70 ? "text-[#22c55e]" : score.totalScore >= 50 ? "text-yellow-400" : "text-red-400"}`}>
+                          <span className={`text-xs font-semibold ${score.totalScore >= 70 ? "text-[#00b8ff]" : score.totalScore >= 50 ? "text-yellow-400" : "text-red-400"}`}>
                             Score: {score.totalScore}/100
                           </span>
                         )}
@@ -92,7 +92,7 @@ export default async function StrategyOverviewPage() {
                     </div>
                   </div>
                   <Link href={`/admin/kunden/${company.id}/strategy`}
-                    className="flex items-center gap-1.5 bg-[#22c55e] hover:bg-[#16a34a] text-black text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors">
+                    className="flex items-center gap-1.5 bg-[#00b8ff] hover:bg-[#0099d6] text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors">
                     Vorbereiten
                     <ArrowRight size={12} />
                   </Link>
@@ -114,7 +114,7 @@ export default async function StrategyOverviewPage() {
             {inProgress.map((company) => {
               const analysis = company.analysisSessions[0];
               return (
-                <div key={company.id} className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-4 flex items-center justify-between">
+                <div key={company.id} className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-4 flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-lg bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center flex-shrink-0">
                       <span className="text-yellow-400 font-bold text-sm">{company.name.charAt(0)}</span>
@@ -145,9 +145,9 @@ export default async function StrategyOverviewPage() {
           </h2>
           <div className="space-y-2">
             {companies.filter((c) => c.analysisSessions.length === 0).map((company) => (
-              <div key={company.id} className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-4 flex items-center justify-between opacity-60">
+              <div key={company.id} className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-4 flex items-center justify-between opacity-60">
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0">
+                  <div className="w-10 h-10 rounded-lg bg-[#101c2e] border border-[#1a2840] flex items-center justify-center flex-shrink-0">
                     <span className="text-[#555] font-bold text-sm">{company.name.charAt(0)}</span>
                   </div>
                   <div>

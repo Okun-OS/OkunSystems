@@ -92,7 +92,7 @@ export function DocumentUploadButton({
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 px-4 py-2 bg-[#22c55e] hover:bg-[#16a34a] text-black text-sm font-semibold rounded-lg transition-colors"
+        className="flex items-center gap-2 px-4 py-2 bg-[#00b8ff] hover:bg-[#0099d6] text-white text-sm font-semibold rounded-lg transition-colors"
       >
         <Upload size={14} />
         Dokument hochladen
@@ -100,7 +100,7 @@ export function DocumentUploadButton({
 
       {open && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl w-full max-w-md p-6">
+          <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl w-full max-w-md p-6">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-[#f0f0f0] font-semibold">Dokument hochladen</h2>
               <button
@@ -112,7 +112,7 @@ export function DocumentUploadButton({
             </div>
 
             {success ? (
-              <div className="flex flex-col items-center py-8 gap-3 text-[#22c55e]">
+              <div className="flex flex-col items-center py-8 gap-3 text-[#00b8ff]">
                 <CheckCircle size={32} />
                 <p className="text-sm font-medium">Dokument hochgeladen</p>
               </div>
@@ -124,7 +124,7 @@ export function DocumentUploadButton({
                     name="title"
                     required
                     placeholder="Dokumententitel"
-                    className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50"
+                    className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/50"
                   />
                 </div>
 
@@ -133,7 +133,7 @@ export function DocumentUploadButton({
                     <label className="text-[#888] text-xs block mb-1.5">Kategorie</label>
                     <select
                       name="category"
-                      className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-[#f0f0f0] focus:outline-none focus:border-[#22c55e]/50"
+                      className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-sm text-[#f0f0f0] focus:outline-none focus:border-[#00b8ff]/50"
                     >
                       <option value="REPORT">Bericht</option>
                       <option value="CONTRACT">Vertrag</option>
@@ -145,7 +145,7 @@ export function DocumentUploadButton({
                     <label className="text-[#888] text-xs block mb-1.5">Sichtbarkeit</label>
                     <select
                       name="visibility"
-                      className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-[#f0f0f0] focus:outline-none focus:border-[#22c55e]/50"
+                      className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-sm text-[#f0f0f0] focus:outline-none focus:border-[#00b8ff]/50"
                     >
                       <option value="internal">Intern</option>
                       <option value="customer">Für Kunden</option>
@@ -172,14 +172,14 @@ export function DocumentUploadButton({
                   <button
                     type="button"
                     onClick={() => setOpen(false)}
-                    className="flex-1 py-2.5 bg-[#1a1a1a] border border-[#2a2a2a] hover:bg-[#222] text-[#f0f0f0] text-sm rounded-lg transition-colors"
+                    className="flex-1 py-2.5 bg-[#101c2e] border border-[#1a2840] hover:bg-[#222] text-[#f0f0f0] text-sm rounded-lg transition-colors"
                   >
                     Abbrechen
                   </button>
                   <button
                     type="submit"
                     disabled={uploading}
-                    className="flex-1 py-2.5 bg-[#22c55e] hover:bg-[#16a34a] disabled:opacity-50 text-black font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-2"
+                    className="flex-1 py-2.5 bg-[#00b8ff] hover:bg-[#0099d6] disabled:opacity-50 text-white font-semibold text-sm rounded-lg transition-colors flex items-center justify-center gap-2"
                   >
                     {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
                     {uploading ? "Lädt hoch…" : "Hochladen"}

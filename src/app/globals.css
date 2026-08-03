@@ -1,17 +1,17 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0a0a0a;
-  --foreground: #f0f0f0;
-  --card: #141414;
-  --card-hover: #1a1a1a;
-  --border: #2a2a2a;
-  --muted: #888888;
-  --accent: #22c55e;
-  --accent-hover: #16a34a;
-  --accent-glow: rgba(34, 197, 94, 0.15);
-  --sidebar: #0d0d0d;
-  --sidebar-active: rgba(34, 197, 94, 0.12);
+  --background: #080c14;
+  --foreground: #eef2f7;
+  --card: #0c1520;
+  --card-hover: #101c2e;
+  --border: #1a2840;
+  --muted: #8899b4;
+  --accent: #00b8ff;
+  --accent-hover: #0099d6;
+  --accent-glow: rgba(0, 184, 255, 0.15);
+  --sidebar: #060a10;
+  --sidebar-active: rgba(0, 184, 255, 0.12);
 }
 
 @theme inline {
@@ -20,7 +20,7 @@
   --color-card: var(--card);
   --color-border: var(--border);
   --color-accent: var(--accent);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-space-grotesk);
   --font-mono: var(--font-geist-mono);
 }
 
@@ -31,7 +31,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, sans-serif;
+  font-family: var(--font-space-grotesk), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -45,27 +45,27 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #333;
+  background: #1a2840;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #444;
+  background: #243456;
 }
 
 .okun-glow {
   box-shadow: 0 0 20px var(--accent-glow);
 }
 
-.okun-border-green {
+.okun-border-accent {
   border-color: var(--accent);
 }
 
-@keyframes pulse-green {
+@keyframes pulse-accent {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
 }
 
-.animate-pulse-green {
-  animation: pulse-green 2s ease-in-out infinite;
+.animate-pulse-accent {
+  animation: pulse-accent 2s ease-in-out infinite;
 }

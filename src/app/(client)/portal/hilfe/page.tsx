@@ -45,9 +45,9 @@ export default function HilfePage() {
           <a
             key={item.label}
             href={item.href}
-            className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-4 flex items-center gap-3 hover:border-[#22c55e]/30 transition-colors"
+            className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-4 flex items-center gap-3 hover:border-[#00b8ff]/30 transition-colors"
           >
-            <item.icon size={16} className="text-[#22c55e] flex-shrink-0" />
+            <item.icon size={16} className="text-[#00b8ff] flex-shrink-0" />
             <span className="text-[#f0f0f0] text-sm">{item.label}</span>
           </a>
         ))}
@@ -57,7 +57,7 @@ export default function HilfePage() {
       <div className="space-y-3">
         <h2 className="text-[#f0f0f0] font-semibold text-sm">Häufige Fragen</h2>
         {FAQ.map((item, i) => (
-          <div key={i} className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+          <div key={i} className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
             <p className="text-[#f0f0f0] text-sm font-medium mb-2">{item.q}</p>
             <p className="text-[#888] text-sm leading-relaxed">{item.a}</p>
           </div>
@@ -65,9 +65,9 @@ export default function HilfePage() {
       </div>
 
       {/* Contact */}
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-6">
+      <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6">
         <div className="flex items-center gap-2 mb-4">
-          <LifeBuoy size={15} className="text-[#22c55e]" />
+          <LifeBuoy size={15} className="text-[#00b8ff]" />
           <h2 className="text-[#f0f0f0] font-semibold text-sm">Direkter Kontakt</h2>
         </div>
         <p className="text-[#888] text-sm mb-4 leading-relaxed">

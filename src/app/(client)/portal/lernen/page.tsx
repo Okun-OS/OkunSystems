@@ -78,19 +78,19 @@ export default async function PortalLearningPage() {
                   return (
                     <div
                       key={a.id}
-                      className="bg-[#141414] border border-[#2a2a2a] rounded-xl overflow-hidden"
+                      className="bg-[#0c1520] border border-[#1a2840] rounded-xl overflow-hidden"
                     >
                       {/* Chapter header */}
-                      <div className="p-5 border-b border-[#2a2a2a]">
+                      <div className="p-5 border-b border-[#1a2840]">
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                              <BookOpen size={14} className="text-[#22c55e]" />
+                              <BookOpen size={14} className="text-[#00b8ff]" />
                               <h3 className="text-[#f0f0f0] font-semibold text-sm">
                                 {a.chapter.title}
                               </h3>
                               {pct === 100 && (
-                                <CheckCircle size={14} className="text-[#22c55e]" />
+                                <CheckCircle size={14} className="text-[#00b8ff]" />
                               )}
                             </div>
                             {a.chapter.description && (
@@ -102,7 +102,7 @@ export default async function PortalLearningPage() {
                               {a.chapter.tags.slice(0, 3).map((ct) => (
                                 <span
                                   key={ct.tag.name}
-                                  className="text-xs px-2 py-0.5 rounded-full bg-[#22c55e]/10 text-[#22c55e] border border-[#22c55e]/20"
+                                  className="text-xs px-2 py-0.5 rounded-full bg-[#00b8ff]/10 text-[#00b8ff] border border-[#00b8ff]/20"
                                 >
                                   {ct.tag.name}
                                 </span>
@@ -117,9 +117,9 @@ export default async function PortalLearningPage() {
                           </div>
                         </div>
 
-                        <div className="mt-3 h-1.5 bg-[#1e1e1e] rounded-full overflow-hidden">
+                        <div className="mt-3 h-1.5 bg-[#111e30] rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-[#22c55e] rounded-full transition-all"
+                            className="h-full bg-[#00b8ff] rounded-full transition-all"
                             style={{ width: `${pct}%` }}
                           />
                         </div>
@@ -131,7 +131,7 @@ export default async function PortalLearningPage() {
                           Noch keine Lektionen in diesem Kapitel.
                         </p>
                       ) : (
-                        <div className="divide-y divide-[#1a1a1a]">
+                        <div className="divide-y divide-[#101c2e]">
                           {lessons.map((lesson, idx) => {
                             const progress = lesson.progress[0];
                             const isCompleted = progress?.status === "completed";

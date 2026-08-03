@@ -19,7 +19,7 @@ function ScoreRing({ score }: { score: number }) {
   const circ = 2 * Math.PI * r;
   const dash = (score / 100) * circ;
   const color =
-    score >= 80 ? "#22c55e" :
+    score >= 80 ? "#00b8ff" :
     score >= 65 ? "#86efac" :
     score >= 50 ? "#fbbf24" :
     score >= 35 ? "#f97316" :
@@ -27,7 +27,7 @@ function ScoreRing({ score }: { score: number }) {
 
   return (
     <svg width="140" height="140" viewBox="0 0 140 140">
-      <circle cx="70" cy="70" r={r} fill="none" stroke="#1e1e1e" strokeWidth="12" />
+      <circle cx="70" cy="70" r={r} fill="none" stroke="#111e30" strokeWidth="12" />
       <circle
         cx="70" cy="70" r={r}
         fill="none"
@@ -50,7 +50,7 @@ function ScoreRing({ score }: { score: number }) {
 
 function CategoryBar({ label, score }: { label: string; score: number }) {
   const color =
-    score >= 65 ? "#22c55e" :
+    score >= 65 ? "#00b8ff" :
     score >= 50 ? "#fbbf24" :
                   "#ef4444";
   return (
@@ -59,7 +59,7 @@ function CategoryBar({ label, score }: { label: string; score: number }) {
         <span className="text-[#ccc] text-xs">{label}</span>
         <span className="text-[#f0f0f0] text-xs font-semibold">{score}</span>
       </div>
-      <div className="h-1.5 bg-[#1e1e1e] rounded-full overflow-hidden">
+      <div className="h-1.5 bg-[#111e30] rounded-full overflow-hidden">
         <div
           className="h-full rounded-full transition-all duration-700"
           style={{ width: `${score}%`, backgroundColor: color }}
@@ -147,7 +147,7 @@ export default async function ErgebnisPage() {
 
       {/* Score + maturity */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-6 flex items-center gap-6">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6 flex items-center gap-6">
           <ScoreRing score={s.totalScore} />
           <div>
             <p className="text-[#888] text-xs mb-1">OKUN Score</p>
@@ -157,9 +157,9 @@ export default async function ErgebnisPage() {
         </div>
 
         {/* CTA card */}
-        <div className="bg-[#22c55e]/5 border border-[#22c55e]/20 rounded-xl p-6 flex flex-col justify-between">
+        <div className="bg-[#00b8ff]/5 border border-[#00b8ff]/20 rounded-xl p-6 flex flex-col justify-between">
           <div>
-            <p className="text-[#22c55e] text-xs font-semibold uppercase tracking-wider mb-2">
+            <p className="text-[#00b8ff] text-xs font-semibold uppercase tracking-wider mb-2">
               Nächster Schritt
             </p>
             <h2 className="text-[#f0f0f0] text-lg font-semibold leading-snug">
@@ -172,7 +172,7 @@ export default async function ErgebnisPage() {
           </div>
           <Link
             href="/termine"
-            className="mt-4 inline-flex items-center justify-center gap-2 bg-[#22c55e] hover:bg-[#16a34a] text-black font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors"
+            className="mt-4 inline-flex items-center justify-center gap-2 bg-[#00b8ff] hover:bg-[#0099d6] text-white font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors"
           >
             <CalendarDays size={15} />
             Termin buchen
@@ -181,7 +181,7 @@ export default async function ErgebnisPage() {
       </div>
 
       {/* Category scores */}
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-6 mb-4">
+      <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6 mb-4">
         <h3 className="text-[#f0f0f0] font-semibold text-sm mb-4">Analyse nach Bereichen</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
           {categoryScores.map((c) => (
@@ -193,14 +193,14 @@ export default async function ErgebnisPage() {
       {/* Strengths + Potentials */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         {strengths.length > 0 && (
-          <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-6">
+          <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6">
             <h3 className="text-[#f0f0f0] font-semibold text-sm mb-3">
               ✓ Ihre Stärken
             </h3>
             <ul className="space-y-2">
               {strengths.map((s, i) => (
                 <li key={i} className="flex items-start gap-2 text-sm text-[#ccc]">
-                  <span className="text-[#22c55e] mt-0.5 flex-shrink-0">•</span>
+                  <span className="text-[#00b8ff] mt-0.5 flex-shrink-0">•</span>
                   {s}
                 </li>
               ))}
@@ -209,7 +209,7 @@ export default async function ErgebnisPage() {
         )}
 
         {potentials.length > 0 && (
-          <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-6">
+          <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6">
             <h3 className="text-[#f0f0f0] font-semibold text-sm mb-3">
               → Erkannte Potenziale
             </h3>
@@ -227,7 +227,7 @@ export default async function ErgebnisPage() {
 
       {/* Top opportunities (non-internal only) */}
       {opportunities.length > 0 && (
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-6 mb-4">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6 mb-4">
           <h3 className="text-[#f0f0f0] font-semibold text-sm mb-4">
             Erkannte Optimierungspotenziale
           </h3>
@@ -235,19 +235,19 @@ export default async function ErgebnisPage() {
             {opportunities.map((opp) => (
               <div
                 key={opp.id}
-                className="flex items-start gap-4 p-3 bg-[#0d0d0d] border border-[#222] rounded-lg"
+                className="flex items-start gap-4 p-3 bg-[#060a10] border border-[#222] rounded-lg"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <span className="text-[#f0f0f0] text-sm font-medium">{opp.title}</span>
-                    <span className="text-[#555] text-xs px-2 py-0.5 bg-[#1e1e1e] rounded-full">
+                    <span className="text-[#555] text-xs px-2 py-0.5 bg-[#111e30] rounded-full">
                       {typeLabel[opp.type] ?? opp.type}
                     </span>
                   </div>
                   <p className="text-[#888] text-xs leading-relaxed">{opp.description}</p>
                 </div>
                 <div className="flex-shrink-0 text-right">
-                  <p className="text-[#22c55e] text-xs font-semibold">
+                  <p className="text-[#00b8ff] text-xs font-semibold">
                     {impactLabel[opp.impact] ?? opp.impact}
                   </p>
                   <p className="text-[#555] text-xs mt-0.5">
@@ -261,7 +261,7 @@ export default async function ErgebnisPage() {
       )}
 
       {/* Note */}
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+      <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
         <p className="text-[#555] text-xs leading-relaxed">
           Dies ist eine automatisch erstellte Erstbewertung auf Basis Ihrer Angaben. Die genaue
           Auswertung und konkrete Handlungsempfehlungen erhalten Sie im persönlichen

@@ -92,7 +92,7 @@ export default async function LearningLibraryPage() {
 
   const statusCfg: Record<string, { label: string; cls: string }> = {
     DRAFT: { label: "Entwurf", cls: "bg-[#888]/10 text-[#888] border-[#888]/20" },
-    PUBLISHED: { label: "Veröffentlicht", cls: "bg-[#22c55e]/10 text-[#22c55e] border-[#22c55e]/20" },
+    PUBLISHED: { label: "Veröffentlicht", cls: "bg-[#00b8ff]/10 text-[#00b8ff] border-[#00b8ff]/20" },
     ARCHIVED: { label: "Archiviert", cls: "bg-orange-500/10 text-orange-400 border-orange-500/20" },
   };
 
@@ -112,11 +112,11 @@ export default async function LearningLibraryPage() {
             name="title"
             required
             placeholder="Neue Kategorie…"
-            className="bg-[#141414] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-[#f0f0f0] placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50 w-48"
+            className="bg-[#0c1520] border border-[#1a2840] rounded-lg px-3 py-2.5 text-sm text-[#f0f0f0] placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/50 w-48"
           />
           <button
             type="submit"
-            className="flex items-center gap-2 px-4 py-2.5 bg-[#22c55e] hover:bg-[#16a34a] text-black text-sm font-semibold rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2.5 bg-[#00b8ff] hover:bg-[#0099d6] text-white text-sm font-semibold rounded-lg transition-colors"
           >
             <Plus size={14} />
             Kategorie
@@ -180,12 +180,12 @@ export default async function LearningLibraryPage() {
           {categories.map((category) => (
             <div
               key={category.id}
-              className="bg-[#141414] border border-[#2a2a2a] rounded-xl overflow-hidden"
+              className="bg-[#0c1520] border border-[#1a2840] rounded-xl overflow-hidden"
             >
               {/* Category header */}
-              <div className="flex items-center justify-between px-5 py-4 border-b border-[#2a2a2a]">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-[#1a2840]">
                 <div className="flex items-center gap-3">
-                  <FolderOpen size={16} className="text-[#22c55e]" />
+                  <FolderOpen size={16} className="text-[#00b8ff]" />
                   <div>
                     <h2 className="text-[#f0f0f0] font-semibold text-sm">{category.title}</h2>
                     <p className="text-[#555] text-xs">
@@ -200,11 +200,11 @@ export default async function LearningLibraryPage() {
                     name="title"
                     required
                     placeholder="Neues Kapitel…"
-                    className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-[#f0f0f0] placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50 w-44"
+                    className="bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2 text-sm text-[#f0f0f0] placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/50 w-44"
                   />
                   <button
                     type="submit"
-                    className="flex items-center gap-1.5 px-3 py-2 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-[#888] hover:text-[#f0f0f0] text-xs rounded-lg transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-2 bg-[#101c2e] hover:bg-[#222] border border-[#1a2840] text-[#888] hover:text-[#f0f0f0] text-xs rounded-lg transition-colors"
                   >
                     <Plus size={12} />
                     Kapitel
@@ -220,7 +220,7 @@ export default async function LearningLibraryPage() {
               ) : (
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-[#1e1e1e]">
+                    <tr className="border-b border-[#111e30]">
                       {["Kapitel", "Lektionen", "Zuweisungen", "Status", ""].map((h) => (
                         <th key={h} className="text-left text-xs text-[#555] font-medium px-5 py-2.5">
                           {h}
@@ -228,11 +228,11 @@ export default async function LearningLibraryPage() {
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#1a1a1a]">
+                  <tbody className="divide-y divide-[#101c2e]">
                     {category.chapters.map((chapter) => {
                       const sc = statusCfg[chapter.status] ?? statusCfg.DRAFT;
                       return (
-                        <tr key={chapter.id} className="hover:bg-[#1a1a1a] transition-colors group">
+                        <tr key={chapter.id} className="hover:bg-[#101c2e] transition-colors group">
                           <td className="px-5 py-3.5">
                             <div className="flex items-center gap-3">
                               <BookOpen size={13} className="text-[#888] flex-shrink-0" />
@@ -269,7 +269,7 @@ export default async function LearningLibraryPage() {
                                   <input type="hidden" name="chapterId" value={chapter.id} />
                                   <button
                                     type="submit"
-                                    className="w-7 h-7 rounded-md flex items-center justify-center text-[#888] hover:text-[#22c55e] hover:bg-[#22c55e]/10 transition-colors"
+                                    className="w-7 h-7 rounded-md flex items-center justify-center text-[#888] hover:text-[#00b8ff] hover:bg-[#00b8ff]/10 transition-colors"
                                     title="Veröffentlichen"
                                   >
                                     <Eye size={13} />

@@ -39,11 +39,11 @@ export default async function BlueprintStartPage() {
 
   return (
     <div className="max-w-2xl mx-auto pt-8">
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-2xl p-8">
+      <div className="bg-[#0c1520] border border-[#1a2840] rounded-2xl p-8">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-xl bg-[#22c55e]/10 border border-[#22c55e]/20 flex items-center justify-center">
-            <ClipboardList size={18} className="text-[#22c55e]" />
+          <div className="w-10 h-10 rounded-xl bg-[#00b8ff]/10 border border-[#00b8ff]/20 flex items-center justify-center">
+            <ClipboardList size={18} className="text-[#00b8ff]" />
           </div>
           <div>
             <h1 className="text-lg font-bold text-[#f0f0f0]">OKUN Blueprint™ 2.0</h1>
@@ -58,16 +58,16 @@ export default async function BlueprintStartPage() {
 
         {/* Info tiles */}
         <div className="grid grid-cols-2 gap-3 mb-8">
-          <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-4">
+          <div className="bg-[#060a10] border border-[#111e30] rounded-xl p-4">
             <div className="flex items-center gap-2 mb-1">
-              <Clock size={14} className="text-[#22c55e]" />
+              <Clock size={14} className="text-[#00b8ff]" />
               <span className="text-[#888] text-xs">Dauer</span>
             </div>
             <p className="text-[#f0f0f0] text-sm font-semibold">ca. 15–25 Minuten</p>
           </div>
-          <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-4">
+          <div className="bg-[#060a10] border border-[#111e30] rounded-xl p-4">
             <div className="flex items-center gap-2 mb-1">
-              <ClipboardList size={14} className="text-[#22c55e]" />
+              <ClipboardList size={14} className="text-[#00b8ff]" />
               <span className="text-[#888] text-xs">Module</span>
             </div>
             <p className="text-[#f0f0f0] text-sm font-semibold">8 Themenbereiche</p>
@@ -89,7 +89,7 @@ export default async function BlueprintStartPage() {
               "M8 · Personalmanagement",
             ].map((label) => (
               <div key={label} className="flex items-center gap-2 text-[#888] text-xs">
-                <div className="w-1 h-1 rounded-full bg-[#22c55e]/60 flex-shrink-0" />
+                <div className="w-1 h-1 rounded-full bg-[#00b8ff]/60 flex-shrink-0" />
                 {label}
               </div>
             ))}
@@ -100,7 +100,7 @@ export default async function BlueprintStartPage() {
         <form action={startBlueprintSession}>
           <button
             type="submit"
-            className="w-full bg-[#22c55e] hover:bg-[#16a34a] text-black font-semibold text-sm rounded-xl py-3 flex items-center justify-center gap-2 transition-colors"
+            className="w-full bg-[#00b8ff] hover:bg-[#0099d6] text-white font-semibold text-sm rounded-xl py-3 flex items-center justify-center gap-2 transition-colors"
           >
             Blueprint starten
             <ChevronRight size={16} />

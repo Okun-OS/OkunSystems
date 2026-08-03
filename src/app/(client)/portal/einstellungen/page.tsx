@@ -77,14 +77,14 @@ export default function EinstellungenPage() {
       <h1 className="text-xl font-bold text-[#f0f0f0]">Einstellungen</h1>
 
       {/* Account info */}
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-6">
+      <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6">
         <h2 className="text-[#888] text-xs font-medium uppercase tracking-wide mb-4">
           Kontoinformationen
         </h2>
         <div className="space-y-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-[#22c55e]/10 border border-[#22c55e]/20 flex items-center justify-center flex-shrink-0">
-              <User size={14} className="text-[#22c55e]" />
+            <div className="w-8 h-8 rounded-full bg-[#00b8ff]/10 border border-[#00b8ff]/20 flex items-center justify-center flex-shrink-0">
+              <User size={14} className="text-[#00b8ff]" />
             </div>
             <div>
               <p className="text-[#555] text-xs">Name</p>
@@ -92,7 +92,7 @@ export default function EinstellungenPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 rounded-full bg-[#101c2e] border border-[#1a2840] flex items-center justify-center flex-shrink-0">
               <Mail size={14} className="text-[#555]" />
             </div>
             <div>
@@ -102,7 +102,7 @@ export default function EinstellungenPage() {
           </div>
           {user?.companyName && (
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0">
+              <div className="w-8 h-8 rounded-full bg-[#101c2e] border border-[#1a2840] flex items-center justify-center flex-shrink-0">
                 <Building2 size={14} className="text-[#555]" />
               </div>
               <div>
@@ -115,7 +115,7 @@ export default function EinstellungenPage() {
       </div>
 
       {/* Change password */}
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-6">
+      <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6">
         <h2 className="text-[#888] text-xs font-medium uppercase tracking-wide mb-4">
           Passwort ändern
         </h2>
@@ -127,7 +127,7 @@ export default function EinstellungenPage() {
               value={pwForm.current}
               onChange={(e) => setPwForm((f) => ({ ...f, current: e.target.value }))}
               required
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm focus:outline-none focus:border-[#22c55e]/50"
+              className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm focus:outline-none focus:border-[#00b8ff]/50"
             />
           </div>
           <div>
@@ -138,7 +138,7 @@ export default function EinstellungenPage() {
               onChange={(e) => setPwForm((f) => ({ ...f, next: e.target.value }))}
               required
               minLength={8}
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm focus:outline-none focus:border-[#22c55e]/50"
+              className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm focus:outline-none focus:border-[#00b8ff]/50"
             />
           </div>
           <div>
@@ -148,12 +148,12 @@ export default function EinstellungenPage() {
               value={pwForm.confirm}
               onChange={(e) => setPwForm((f) => ({ ...f, confirm: e.target.value }))}
               required
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm focus:outline-none focus:border-[#22c55e]/50"
+              className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm focus:outline-none focus:border-[#00b8ff]/50"
             />
           </div>
 
           {pwMessage && (
-            <p className={`text-sm ${pwMessage.type === "ok" ? "text-[#22c55e]" : "text-red-400"}`}>
+            <p className={`text-sm ${pwMessage.type === "ok" ? "text-[#00b8ff]" : "text-red-400"}`}>
               {pwMessage.text}
             </p>
           )}
@@ -161,7 +161,7 @@ export default function EinstellungenPage() {
           <button
             type="submit"
             disabled={pwLoading}
-            className="flex items-center gap-2 px-4 py-2.5 bg-[#22c55e] hover:bg-[#16a34a] disabled:opacity-50 text-black text-sm font-semibold rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2.5 bg-[#00b8ff] hover:bg-[#0099d6] disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
           >
             <Lock size={13} />
             {pwLoading ? "Wird gespeichert…" : "Passwort ändern"}
@@ -170,24 +170,24 @@ export default function EinstellungenPage() {
       </div>
 
       {/* 2FA */}
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-6">
+      <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6">
         <h2 className="text-[#888] text-xs font-medium uppercase tracking-wide mb-4">
           Zwei-Faktor-Authentifizierung (2FA)
         </h2>
         <p className="text-[#888] text-sm leading-relaxed mb-4">
           Bei aktivierter 2FA erhalten Sie nach der Passworteingabe einen 6-stelligen Code per E-Mail, den Sie zur Anmeldung benötigen.
         </p>
-        <div className="flex items-center justify-between p-3 bg-[#0d0d0d] rounded-lg mb-3">
+        <div className="flex items-center justify-between p-3 bg-[#060a10] rounded-lg mb-3">
           <div className="flex items-center gap-2">
-            <Shield size={14} className={twoFAEnabled ? "text-[#22c55e]" : "text-[#555]"} />
+            <Shield size={14} className={twoFAEnabled ? "text-[#00b8ff]" : "text-[#555]"} />
             <span className="text-sm text-[#f0f0f0]">2FA per E-Mail</span>
           </div>
-          <span className={`text-xs px-2 py-0.5 rounded-full border ${twoFAEnabled ? "text-[#22c55e] bg-[#22c55e]/10 border-[#22c55e]/20" : "text-[#888] bg-[#1a1a1a] border-[#2a2a2a]"}`}>
+          <span className={`text-xs px-2 py-0.5 rounded-full border ${twoFAEnabled ? "text-[#00b8ff] bg-[#00b8ff]/10 border-[#00b8ff]/20" : "text-[#888] bg-[#101c2e] border-[#1a2840]"}`}>
             {twoFAEnabled === null ? "…" : twoFAEnabled ? "Aktiv" : "Inaktiv"}
           </span>
         </div>
         {twoFAMessage && (
-          <p className={`text-xs mb-3 ${twoFAMessage.type === "ok" ? "text-[#22c55e]" : "text-red-400"}`}>
+          <p className={`text-xs mb-3 ${twoFAMessage.type === "ok" ? "text-[#00b8ff]" : "text-red-400"}`}>
             {twoFAMessage.text}
           </p>
         )}
@@ -197,7 +197,7 @@ export default function EinstellungenPage() {
           className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 ${
             twoFAEnabled
               ? "bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400"
-              : "bg-[#22c55e] hover:bg-[#16a34a] text-black"
+              : "bg-[#00b8ff] hover:bg-[#0099d6] text-white"
           }`}
         >
           <Shield size={13} />

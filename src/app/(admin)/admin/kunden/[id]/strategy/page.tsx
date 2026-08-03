@@ -36,7 +36,7 @@ export default async function StrategySessionPage({ params }: { params: Promise<
   const strategyAppt = company.appointments[0];
 
   const SCORE_RANGES = [
-    { min: 81, max: 100, label: "Skalierungsbereit", color: "text-[#22c55e]", bg: "bg-[#22c55e]/10 border-[#22c55e]/20" },
+    { min: 81, max: 100, label: "Skalierungsbereit", color: "text-[#00b8ff]", bg: "bg-[#00b8ff]/10 border-[#00b8ff]/20" },
     { min: 61, max: 80, label: "Fortgeschritten", color: "text-blue-400", bg: "bg-blue-500/10 border-blue-500/20" },
     { min: 41, max: 60, label: "Entwicklungsfähig", color: "text-yellow-400", bg: "bg-yellow-500/10 border-yellow-500/20" },
     { min: 21, max: 40, label: "Instabil", color: "text-orange-400", bg: "bg-orange-500/10 border-orange-500/20" },
@@ -78,10 +78,10 @@ export default async function StrategySessionPage({ params }: { params: Promise<
       </div>
 
       {!analysis ? (
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-12 text-center">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-12 text-center">
           <Target size={40} className="text-[#333] mx-auto mb-4" />
           <p className="text-[#888] text-sm">Keine abgeschlossene Analyse vorhanden.</p>
-          <Link href={`/admin/kunden/${id}/analyse`} className="text-[#22c55e] text-sm hover:underline mt-2 inline-block">
+          <Link href={`/admin/kunden/${id}/analyse`} className="text-[#00b8ff] text-sm hover:underline mt-2 inline-block">
             Zur Blueprint™ Analyse →
           </Link>
         </div>
@@ -92,7 +92,7 @@ export default async function StrategySessionPage({ params }: { params: Promise<
 
             {/* Score card */}
             {score && scoreRange && (
-              <div className={`bg-[#141414] border rounded-xl p-5 ${scoreRange.bg.split(" ")[1]} border`}>
+              <div className={`bg-[#0c1520] border rounded-xl p-5 ${scoreRange.bg.split(" ")[1]} border`}>
                 <div className="flex items-center gap-2 mb-4">
                   <BarChart3 size={14} className={scoreRange.color} />
                   <h2 className="text-[#f0f0f0] font-semibold text-sm">OKUN Score™</h2>
@@ -100,9 +100,9 @@ export default async function StrategySessionPage({ params }: { params: Promise<
                 <div className="flex items-center gap-4 mb-4">
                   <div className="relative flex-shrink-0">
                     <svg viewBox="0 0 100 100" className="w-24 h-24 -rotate-90">
-                      <circle cx="50" cy="50" r="40" fill="none" stroke="#1e1e1e" strokeWidth="7" />
+                      <circle cx="50" cy="50" r="40" fill="none" stroke="#111e30" strokeWidth="7" />
                       <circle cx="50" cy="50" r="40" fill="none"
-                        stroke={score.totalScore >= 70 ? "#22c55e" : score.totalScore >= 50 ? "#f59e0b" : "#ef4444"}
+                        stroke={score.totalScore >= 70 ? "#00b8ff" : score.totalScore >= 50 ? "#f59e0b" : "#ef4444"}
                         strokeWidth="7"
                         strokeDasharray={`${(score.totalScore / 100) * 251.2} ${251.2 - (score.totalScore / 100) * 251.2}`}
                         strokeLinecap="round"
@@ -134,8 +134,8 @@ export default async function StrategySessionPage({ params }: { params: Promise<
                         <span className={val !== null && val !== undefined && val < 50 ? "text-red-400" : "text-[#888]"}>{val ?? "—"}</span>
                       </div>
                       {val !== null && val !== undefined && (
-                        <div className="h-0.5 bg-[#1e1e1e] rounded-full overflow-hidden">
-                          <div className="h-full rounded-full" style={{ width: `${val}%`, backgroundColor: val >= 70 ? "#22c55e" : val >= 50 ? "#f59e0b" : "#ef4444" }} />
+                        <div className="h-0.5 bg-[#111e30] rounded-full overflow-hidden">
+                          <div className="h-full rounded-full" style={{ width: `${val}%`, backgroundColor: val >= 70 ? "#00b8ff" : val >= 50 ? "#f59e0b" : "#ef4444" }} />
                         </div>
                       )}
                     </div>
@@ -146,14 +146,14 @@ export default async function StrategySessionPage({ params }: { params: Promise<
 
             {/* Stärken & Potenziale */}
             {score && (strengths.length > 0 || potentials.length > 0) && (
-              <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+              <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
                 <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4">Für Kundenpräsentation</h2>
                 {strengths.length > 0 && (
                   <div className="mb-3">
-                    <p className="text-[#22c55e] text-xs font-medium mb-2">Stärken</p>
+                    <p className="text-[#00b8ff] text-xs font-medium mb-2">Stärken</p>
                     {strengths.map((s, i) => (
                       <div key={i} className="flex items-start gap-2 mb-1.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-[#22c55e] mt-1.5 flex-shrink-0" />
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#00b8ff] mt-1.5 flex-shrink-0" />
                         <p className="text-[#f0f0f0] text-xs">{s}</p>
                       </div>
                     ))}
@@ -175,7 +175,7 @@ export default async function StrategySessionPage({ params }: { params: Promise<
 
             {/* Prozesse */}
             {analysis.processes.length > 0 && (
-              <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+              <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
                 <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4 flex items-center gap-2">
                   <Map size={14} className="text-blue-400" />
                   Prozesse nach Reife
@@ -188,7 +188,7 @@ export default async function StrategySessionPage({ params }: { params: Promise<
                         <p className="text-[#555] text-xs">{proc.category}</p>
                       </div>
                       {proc.maturityScore !== null && (
-                        <span className={`text-xs px-1.5 py-0.5 rounded flex-shrink-0 ${proc.maturityScore >= 70 ? "text-[#22c55e] bg-[#22c55e]/10" : proc.maturityScore >= 50 ? "text-yellow-400 bg-yellow-500/10" : "text-red-400 bg-red-500/10"}`}>
+                        <span className={`text-xs px-1.5 py-0.5 rounded flex-shrink-0 ${proc.maturityScore >= 70 ? "text-[#00b8ff] bg-[#00b8ff]/10" : proc.maturityScore >= 50 ? "text-yellow-400 bg-yellow-500/10" : "text-red-400 bg-red-500/10"}`}>
                           {proc.maturityScore}
                         </span>
                       )}
@@ -200,14 +200,14 @@ export default async function StrategySessionPage({ params }: { params: Promise<
 
             {/* Root Causes */}
             {analysis.problems.length > 0 && (
-              <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+              <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
                 <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4 flex items-center gap-2">
                   <AlertTriangle size={14} className="text-orange-400" />
                   Top Root Causes
                 </h2>
                 <div className="space-y-2">
                   {analysis.problems.slice(0, 4).map((prob) => (
-                    <div key={prob.id} className="p-2 bg-[#0d0d0d] rounded-lg">
+                    <div key={prob.id} className="p-2 bg-[#060a10] rounded-lg">
                       <div className="flex items-center justify-between mb-0.5">
                         <p className="text-[#f0f0f0] text-xs font-medium">{prob.operativeProblem}</p>
                         <span className={`text-xs px-1 rounded ${prob.severity === "CRITICAL" || prob.severity === "HIGH" ? "text-red-400" : "text-yellow-400"}`}>{prob.confidence}%</span>
@@ -221,17 +221,17 @@ export default async function StrategySessionPage({ params }: { params: Promise<
 
             {/* Opportunities */}
             {analysis.opportunities.length > 0 && (
-              <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+              <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
                 <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4 flex items-center gap-2">
-                  <Lightbulb size={14} className="text-[#22c55e]" />
+                  <Lightbulb size={14} className="text-[#00b8ff]" />
                   Top Potenziale
                 </h2>
                 <div className="space-y-2">
                   {analysis.opportunities.slice(0, 4).map((opp) => (
-                    <div key={opp.id} className="p-2 bg-[#0d0d0d] rounded-lg">
+                    <div key={opp.id} className="p-2 bg-[#060a10] rounded-lg">
                       <div className="flex items-center justify-between mb-0.5">
                         <p className="text-[#f0f0f0] text-xs font-medium">{opp.title}</p>
-                        <span className={`text-xs px-1 rounded ${opp.impact === "VERY_HIGH" || opp.impact === "HIGH" ? "text-[#22c55e] bg-[#22c55e]/10" : "text-yellow-400 bg-yellow-500/10"}`}>{opp.impact}</span>
+                        <span className={`text-xs px-1 rounded ${opp.impact === "VERY_HIGH" || opp.impact === "HIGH" ? "text-[#00b8ff] bg-[#00b8ff]/10" : "text-yellow-400 bg-yellow-500/10"}`}>{opp.impact}</span>
                       </div>
                       {opp.okunSystem && <p className="text-purple-400 text-xs">{opp.okunSystem}</p>}
                     </div>
@@ -241,9 +241,9 @@ export default async function StrategySessionPage({ params }: { params: Promise<
             )}
 
             {/* Angebotslogik */}
-            <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
+            <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
               <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4 flex items-center gap-2">
-                <DollarSign size={14} className="text-[#22c55e]" />
+                <DollarSign size={14} className="text-[#00b8ff]" />
                 Angebotslogik (intern)
               </h2>
               <div className="space-y-2">
@@ -252,10 +252,10 @@ export default async function StrategySessionPage({ params }: { params: Promise<
                   { price: "15.000 €", desc: "Mehrere zusammenhängende Prozesse/Systeme", trigger: score && score.totalScore >= 30 && analysis.problems.length > 2 },
                   { price: "Retainer", desc: "Nach Umsetzung: laufende Optimierung & Betreuung", trigger: false },
                 ].map(({ price, desc, trigger }) => (
-                  <div key={price} className={`p-2.5 rounded-lg border ${trigger ? "border-[#22c55e]/30 bg-[#22c55e]/5" : "border-[#2a2a2a] bg-[#0d0d0d]"}`}>
+                  <div key={price} className={`p-2.5 rounded-lg border ${trigger ? "border-[#00b8ff]/30 bg-[#00b8ff]/5" : "border-[#1a2840] bg-[#060a10]"}`}>
                     <div className="flex items-center justify-between">
-                      <span className={`text-sm font-semibold ${trigger ? "text-[#22c55e]" : "text-[#888]"}`}>{price}</span>
-                      {trigger && <span className="text-xs text-[#22c55e] bg-[#22c55e]/10 px-1.5 py-0.5 rounded">Empfohlen</span>}
+                      <span className={`text-sm font-semibold ${trigger ? "text-[#00b8ff]" : "text-[#888]"}`}>{price}</span>
+                      {trigger && <span className="text-xs text-[#00b8ff] bg-[#00b8ff]/10 px-1.5 py-0.5 rounded">Empfohlen</span>}
                     </div>
                     <p className="text-[#555] text-xs mt-0.5">{desc}</p>
                   </div>

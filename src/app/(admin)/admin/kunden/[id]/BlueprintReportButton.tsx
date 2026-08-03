@@ -34,14 +34,14 @@ export function BlueprintReportButton({
   }
 
   return (
-    <div className="space-y-2 mt-3 pt-3 border-t border-[#1e1e1e]">
+    <div className="space-y-2 mt-3 pt-3 border-t border-[#111e30]">
       {reportUrl ? (
         <>
           <a
             href={reportUrl}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-2 w-full bg-[#22c55e] hover:bg-[#16a34a] text-black font-semibold text-xs rounded-lg px-3 py-2 transition-colors justify-center"
+            className="flex items-center gap-2 w-full bg-[#00b8ff] hover:bg-[#0099d6] text-white font-semibold text-xs rounded-lg px-3 py-2 transition-colors justify-center"
           >
             <FileDown size={13} />
             PDF herunterladen
@@ -49,7 +49,7 @@ export function BlueprintReportButton({
           <button
             onClick={generate}
             disabled={loading}
-            className="flex items-center gap-2 w-full bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-[#888] hover:text-[#f0f0f0] text-xs rounded-lg px-3 py-2 transition-colors justify-center disabled:opacity-50"
+            className="flex items-center gap-2 w-full bg-[#101c2e] hover:bg-[#222] border border-[#1a2840] text-[#888] hover:text-[#f0f0f0] text-xs rounded-lg px-3 py-2 transition-colors justify-center disabled:opacity-50"
           >
             {loading ? (
               <Loader2 size={13} className="animate-spin" />
@@ -63,7 +63,7 @@ export function BlueprintReportButton({
         <button
           onClick={generate}
           disabled={loading}
-          className="flex items-center gap-2 w-full bg-[#22c55e] hover:bg-[#16a34a] disabled:opacity-50 text-black font-semibold text-xs rounded-lg px-3 py-2 transition-colors justify-center"
+          className="flex items-center gap-2 w-full bg-[#00b8ff] hover:bg-[#0099d6] disabled:opacity-50 text-white font-semibold text-xs rounded-lg px-3 py-2 transition-colors justify-center"
         >
           {loading ? (
             <Loader2 size={13} className="animate-spin" />

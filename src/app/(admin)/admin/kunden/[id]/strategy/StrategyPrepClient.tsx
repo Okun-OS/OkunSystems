@@ -78,27 +78,27 @@ export default function StrategyPrepClient({
   const sections = prep ? parseSections(prep) : [];
 
   return (
-    <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl overflow-hidden h-full flex flex-col">
+    <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl overflow-hidden h-full flex flex-col">
       {/* Header */}
-      <div className="p-5 border-b border-[#2a2a2a] flex items-center justify-between">
+      <div className="p-5 border-b border-[#1a2840] flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <FileText size={15} className="text-[#22c55e]" />
+          <FileText size={15} className="text-[#00b8ff]" />
           <h2 className="text-[#f0f0f0] font-semibold text-sm">KI-Vorbereitungsunterlagen</h2>
         </div>
         <div className="flex items-center gap-2">
           {prep && (
             <button
               onClick={copyAll}
-              className="flex items-center gap-1.5 text-xs text-[#888] hover:text-[#f0f0f0] bg-[#1a1a1a] hover:bg-[#222] px-3 py-1.5 rounded-lg transition-colors"
+              className="flex items-center gap-1.5 text-xs text-[#888] hover:text-[#f0f0f0] bg-[#101c2e] hover:bg-[#222] px-3 py-1.5 rounded-lg transition-colors"
             >
-              {copied ? <CheckCheck size={13} className="text-[#22c55e]" /> : <Copy size={13} />}
+              {copied ? <CheckCheck size={13} className="text-[#00b8ff]" /> : <Copy size={13} />}
               {copied ? "Kopiert" : "Alles kopieren"}
             </button>
           )}
           <button
             onClick={generatePrep}
             disabled={loading}
-            className="flex items-center gap-2 bg-[#22c55e] hover:bg-[#16a34a] disabled:bg-[#1a1a1a] disabled:text-[#444] text-black font-semibold text-sm px-4 py-1.5 rounded-lg transition-colors"
+            className="flex items-center gap-2 bg-[#00b8ff] hover:bg-[#0099d6] disabled:bg-[#101c2e] disabled:text-[#444] text-white font-semibold text-sm px-4 py-1.5 rounded-lg transition-colors"
           >
             {loading ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
             {loading ? "Wird generiert..." : prep ? "Neu generieren" : "KI-Vorbereitung generieren"}
@@ -116,8 +116,8 @@ export default function StrategyPrepClient({
 
         {!prep && !loading && (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-16 h-16 rounded-xl bg-[#22c55e]/10 border border-[#22c55e]/20 flex items-center justify-center mb-4">
-              <Wand2 size={24} className="text-[#22c55e]" />
+            <div className="w-16 h-16 rounded-xl bg-[#00b8ff]/10 border border-[#00b8ff]/20 flex items-center justify-center mb-4">
+              <Wand2 size={24} className="text-[#00b8ff]" />
             </div>
             <p className="text-[#f0f0f0] font-semibold mb-2">Strategy Session vorbereiten</p>
             <p className="text-[#888] text-sm max-w-sm">
@@ -129,7 +129,7 @@ export default function StrategyPrepClient({
 
         {loading && (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
-            <Loader2 size={32} className="text-[#22c55e] animate-spin" />
+            <Loader2 size={32} className="text-[#00b8ff] animate-spin" />
             <p className="text-[#888] text-sm">Analysiere Daten und generiere Unterlagen...</p>
           </div>
         )}
@@ -137,7 +137,7 @@ export default function StrategyPrepClient({
         {sections.length > 0 && (
           <div className="space-y-2">
             {sections.map((section, i) => (
-              <div key={i} className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl overflow-hidden">
+              <div key={i} className="bg-[#060a10] border border-[#111e30] rounded-xl overflow-hidden">
                 <button
                   onClick={() => toggleSection(i)}
                   className="w-full flex items-center justify-between p-4 text-left hover:bg-[#111] transition-colors"
@@ -150,7 +150,7 @@ export default function StrategyPrepClient({
                   )}
                 </button>
                 {openSections.has(i) && (
-                  <div className="px-4 pb-4 border-t border-[#1e1e1e]">
+                  <div className="px-4 pb-4 border-t border-[#111e30]">
                     <div className="pt-3 text-[#ccc] text-sm leading-relaxed whitespace-pre-wrap">
                       {section.content.trim()}
                     </div>

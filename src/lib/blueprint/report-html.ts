@@ -2,7 +2,7 @@ import type { BlueprintReportData } from "./report-assembler";
 import type { ReportTexts } from "./report-text-engine";
 
 const CATEGORY_COLORS: Record<string, string> = {
-  WORKFORCE: "#22c55e",
+  WORKFORCE: "#00b8ff",
   BEWAEHRTE_LOESUNG: "#3b82f6",
   CUSTOM_DEVELOPMENT: "#a855f7",
 };
@@ -20,7 +20,7 @@ const TIER_LABELS: Record<string, string> = {
 };
 
 function scoreColor(score: number): string {
-  if (score >= 80) return "#22c55e";
+  if (score >= 80) return "#00b8ff";
   if (score >= 65) return "#86efac";
   if (score >= 50) return "#fbbf24";
   if (score >= 35) return "#f97316";
@@ -133,28 +133,28 @@ export function renderReportHtml(
     justify-content: space-between;
     padding: 2cm 0;
   }
-  .cover-top { border-bottom: 3px solid #22c55e; padding-bottom: 24px; }
+  .cover-top { border-bottom: 3px solid #00b8ff; padding-bottom: 24px; }
   .cover-logo {
     font-size: 22pt;
     font-weight: 800;
     color: #111;
     letter-spacing: -0.5px;
   }
-  .cover-logo span { color: #22c55e; }
+  .cover-logo span { color: #00b8ff; }
   .cover-subtitle { color: #555; font-size: 10pt; margin-top: 4px; }
   .cover-body { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 40px 0; }
   .cover-company { font-size: 28pt; font-weight: 700; color: #111; margin-bottom: 8px; }
-  .cover-title { font-size: 16pt; color: #22c55e; font-weight: 600; margin-bottom: 24px; }
+  .cover-title { font-size: 16pt; color: #00b8ff; font-weight: 600; margin-bottom: 24px; }
   .cover-meta { color: #555; font-size: 9.5pt; line-height: 1.8; }
   .cover-score-box {
     display: inline-block;
-    border: 2px solid #22c55e;
+    border: 2px solid #00b8ff;
     border-radius: 12px;
     padding: 16px 24px;
     margin-top: 24px;
     text-align: center;
   }
-  .cover-score-num { font-size: 40pt; font-weight: 800; color: #22c55e; line-height: 1; }
+  .cover-score-num { font-size: 40pt; font-weight: 800; color: #00b8ff; line-height: 1; }
   .cover-score-lbl { font-size: 9pt; color: #555; margin-top: 4px; }
   .cover-bottom { border-top: 1px solid #e5e5e5; padding-top: 12px; color: #888; font-size: 8.5pt; }
 
@@ -164,7 +164,7 @@ export function renderReportHtml(
     font-size: 13pt;
     font-weight: 700;
     color: #111;
-    border-left: 4px solid #22c55e;
+    border-left: 4px solid #00b8ff;
     padding-left: 12px;
     margin-bottom: 16px;
     page-break-after: avoid;
@@ -216,7 +216,7 @@ export function renderReportHtml(
     page-break-inside: avoid;
   }
   .roadmap-phase-header {
-    background: #22c55e;
+    background: #00b8ff;
     color: #fff;
     font-size: 9pt;
     font-weight: 700;
@@ -289,7 +289,7 @@ export function renderReportHtml(
   <div class="section-title">Signalstärken</div>
   <div class="signal-row">
     <div class="signal-tile">
-      <div class="signal-num" style="color:#22c55e">${data.signals.WORKFORCE}</div>
+      <div class="signal-num" style="color:#00b8ff">${data.signals.WORKFORCE}</div>
       <div class="signal-lbl">OKUN Workforce</div>
     </div>
     <div class="signal-tile">

@@ -77,7 +77,7 @@ export default async function CustomerDocumentsPage({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 text-sm text-[#888]">
-            <Globe size={14} className="text-[#22c55e]" />
+            <Globe size={14} className="text-[#00b8ff]" />
             <span className="text-[#f0f0f0] font-medium">{customerDocs.length}</span> für Kunden sichtbar
           </div>
           <div className="flex items-center gap-2 text-sm text-[#888]">
@@ -89,7 +89,7 @@ export default async function CustomerDocumentsPage({
       </div>
 
       {/* Document list */}
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl overflow-hidden">
+      <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl overflow-hidden">
         {documents.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <FileText size={32} className="text-[#333] mb-3" />
@@ -99,7 +99,7 @@ export default async function CustomerDocumentsPage({
         ) : (
           <table className="w-full">
             <thead>
-              <tr className="border-b border-[#2a2a2a]">
+              <tr className="border-b border-[#1a2840]">
                 {["Dokument", "Kategorie", "Hochgeladen von", "Datum", "Sichtbarkeit", ""].map((h) => (
                   <th key={h} className="text-left text-xs text-[#888] font-medium px-4 py-3">
                     {h}
@@ -107,9 +107,9 @@ export default async function CustomerDocumentsPage({
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#1e1e1e]">
+            <tbody className="divide-y divide-[#111e30]">
               {documents.map((doc) => (
-                <tr key={doc.id} className="hover:bg-[#1a1a1a] transition-colors group">
+                <tr key={doc.id} className="hover:bg-[#101c2e] transition-colors group">
                   <td className="px-4 py-3.5">
                     <div className="flex items-center gap-3">
                       <FileText size={14} className="text-[#888] flex-shrink-0" />
@@ -136,7 +136,7 @@ export default async function CustomerDocumentsPage({
                         type="submit"
                         className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border transition-colors ${
                           doc.visibility === "customer"
-                            ? "bg-[#22c55e]/10 text-[#22c55e] border-[#22c55e]/20 hover:bg-[#22c55e]/20"
+                            ? "bg-[#00b8ff]/10 text-[#00b8ff] border-[#00b8ff]/20 hover:bg-[#00b8ff]/20"
                             : "bg-[#888]/10 text-[#888] border-[#888]/20 hover:bg-[#888]/20"
                         }`}
                       >

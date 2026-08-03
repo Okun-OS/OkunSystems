@@ -23,9 +23,9 @@ export default async function EinstellungenPage() {
 
       <div className="space-y-5">
         {/* Profile */}
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-6">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6">
           <div className="flex items-center gap-3 mb-5">
-            <User size={16} className="text-[#22c55e]" />
+            <User size={16} className="text-[#00b8ff]" />
             <h2 className="text-[#f0f0f0] font-semibold text-sm">Profil</h2>
           </div>
           <div className="space-y-4">
@@ -34,7 +34,7 @@ export default async function EinstellungenPage() {
                 <label className="block text-xs font-medium text-[#888] mb-1.5">Name</label>
                 <input
                   defaultValue={user.name ?? ""}
-                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm focus:outline-none focus:border-[#22c55e]/50"
+                  className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm focus:outline-none focus:border-[#00b8ff]/50"
                 />
               </div>
               <div>
@@ -42,7 +42,7 @@ export default async function EinstellungenPage() {
                 <input
                   defaultValue={user.email}
                   disabled
-                  className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-3 py-2.5 text-[#555] text-sm cursor-not-allowed"
+                  className="w-full bg-[#060a10] border border-[#111e30] rounded-lg px-3 py-2.5 text-[#555] text-sm cursor-not-allowed"
                 />
               </div>
             </div>
@@ -52,47 +52,47 @@ export default async function EinstellungenPage() {
                 <input
                   defaultValue={user.company.name}
                   disabled
-                  className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-3 py-2.5 text-[#555] text-sm cursor-not-allowed"
+                  className="w-full bg-[#060a10] border border-[#111e30] rounded-lg px-3 py-2.5 text-[#555] text-sm cursor-not-allowed"
                 />
               </div>
             )}
-            <button className="bg-[#22c55e] hover:bg-[#16a34a] text-black font-semibold text-sm rounded-lg px-4 py-2.5 transition-colors">
+            <button className="bg-[#00b8ff] hover:bg-[#0099d6] text-white font-semibold text-sm rounded-lg px-4 py-2.5 transition-colors">
               Änderungen speichern
             </button>
           </div>
         </div>
 
         {/* Password */}
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-6">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6">
           <div className="flex items-center gap-3 mb-5">
-            <Lock size={16} className="text-[#22c55e]" />
+            <Lock size={16} className="text-[#00b8ff]" />
             <h2 className="text-[#f0f0f0] font-semibold text-sm">Passwort ändern</h2>
           </div>
           <div className="space-y-4">
             <div>
               <label className="block text-xs font-medium text-[#888] mb-1.5">Aktuelles Passwort</label>
-              <input type="password" placeholder="••••••••" className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50" />
+              <input type="password" placeholder="••••••••" className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/50" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-[#888] mb-1.5">Neues Passwort</label>
-                <input type="password" placeholder="••••••••" className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50" />
+                <input type="password" placeholder="••••••••" className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/50" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-[#888] mb-1.5">Passwort bestätigen</label>
-                <input type="password" placeholder="••••••••" className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50" />
+                <input type="password" placeholder="••••••••" className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/50" />
               </div>
             </div>
-            <button className="bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-[#f0f0f0] font-medium text-sm rounded-lg px-4 py-2.5 transition-colors">
+            <button className="bg-[#101c2e] hover:bg-[#222] border border-[#1a2840] text-[#f0f0f0] font-medium text-sm rounded-lg px-4 py-2.5 transition-colors">
               Passwort aktualisieren
             </button>
           </div>
         </div>
 
         {/* Notifications */}
-        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-6">
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6">
           <div className="flex items-center gap-3 mb-5">
-            <Bell size={16} className="text-[#22c55e]" />
+            <Bell size={16} className="text-[#00b8ff]" />
             <h2 className="text-[#f0f0f0] font-semibold text-sm">Benachrichtigungen</h2>
           </div>
           <div className="space-y-3">
@@ -107,7 +107,7 @@ export default async function EinstellungenPage() {
                   <p className="text-[#f0f0f0] text-sm">{item.label}</p>
                   <p className="text-[#555] text-xs">{item.sub}</p>
                 </div>
-                <button className="w-10 h-6 rounded-full bg-[#22c55e] relative transition-colors">
+                <button className="w-10 h-6 rounded-full bg-[#00b8ff] relative transition-colors">
                   <div className="w-4 h-4 rounded-full bg-white absolute right-1 top-1 transition-transform" />
                 </button>
               </div>

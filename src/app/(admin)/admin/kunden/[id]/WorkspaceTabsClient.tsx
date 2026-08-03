@@ -19,7 +19,7 @@ export function WorkspaceTabsClient({ companyId }: { companyId: string }) {
   const pathname = usePathname();
 
   return (
-    <div className="flex items-center gap-1 border-b border-[#2a2a2a] -mb-px overflow-x-auto">
+    <div className="flex items-center gap-1 border-b border-[#1a2840] -mb-px overflow-x-auto">
       {TABS.map((tab) => {
         const fullHref = `/admin/kunden/${companyId}${tab.href}`;
         const isActive = tab.exact
@@ -32,8 +32,8 @@ export function WorkspaceTabsClient({ companyId }: { companyId: string }) {
             href={fullHref}
             className={`px-4 py-2.5 text-sm border-b-2 transition-colors whitespace-nowrap flex-shrink-0 ${
               isActive
-                ? "text-[#22c55e] border-[#22c55e]"
-                : "text-[#888] hover:text-[#f0f0f0] border-transparent hover:border-[#22c55e]/50"
+                ? "text-[#00b8ff] border-[#00b8ff]"
+                : "text-[#888] hover:text-[#f0f0f0] border-transparent hover:border-[#00b8ff]/50"
             }`}
           >
             {tab.label}
