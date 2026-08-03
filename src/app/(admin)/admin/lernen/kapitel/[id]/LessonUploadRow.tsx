@@ -49,25 +49,19 @@ export function LessonUploadRow({
     setUploadError(null);
 
     try {
-      const res = await fetch("/api/learning/lesson-upload-url", {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("lessonId", lesson.id);
+
+      const res = await fetch("/api/learning/lesson-upload", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          lessonId: lesson.id,
-          fileName: file.name,
-          mimeType: file.type,
-        }),
+        body: formData,
       });
 
-      if (!res.ok) throw new Error(await res.text());
-      const { uploadUrl } = await res.json();
-
-      const putRes = await fetch(uploadUrl, {
-        method: "PUT",
-        body: file,
-        headers: { "Content-Type": file.type },
-      });
-      if (!putRes.ok) throw new Error(`Upload zu R2 fehlgeschlagen (${putRes.status})`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: "Upload fehlgeschlagen" }));
+        throw new Error(data.error || "Upload fehlgeschlagen");
+      }
 
       setUploaded(true);
     } catch (err: unknown) {
