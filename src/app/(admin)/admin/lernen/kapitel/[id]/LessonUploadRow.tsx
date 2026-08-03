@@ -49,13 +49,16 @@ export function LessonUploadRow({
     setUploadError(null);
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("lessonId", lesson.id);
+      const params = new URLSearchParams({
+        lessonId: lesson.id,
+        fileName: file.name,
+        mimeType: file.type || "application/octet-stream",
+      });
 
-      const res = await fetch("/api/learning/lesson-upload", {
+      const res = await fetch(`/api/learning/lesson-upload?${params}`, {
         method: "POST",
-        body: formData,
+        body: file,
+        headers: { "Content-Type": file.type || "application/octet-stream" },
       });
 
       if (!res.ok) {
