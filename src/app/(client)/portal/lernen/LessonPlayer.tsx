@@ -13,6 +13,14 @@ import {
   X,
 } from "lucide-react";
 
+function getEmbedUrl(url: string): string | null {
+  const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1`;
+  const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+  if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}?autoplay=1`;
+  return null;
+}
+
 type Lesson = {
   id: string;
   title: string;
@@ -38,9 +46,12 @@ export function LessonPlayer({
   const [currentPct, setCurrentPct] = useState(progressPct);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoLoading, setVideoLoading] = useState(false);
+  const [embedOpen, setEmbedOpen] = useState(false);
 
   const hasR2Content = !!lesson.r2Key;
   const hasExternalUrl = !!lesson.externalUrl;
+  const embedUrl = lesson.externalUrl ? getEmbedUrl(lesson.externalUrl) : null;
+  const isEmbeddable = !!embedUrl;
 
   const typeIcon =
     lesson.contentType === "video" ? (
@@ -107,7 +118,11 @@ export function LessonPlayer({
       setCurrentStatus("in_progress");
       setCurrentPct(10);
     }
-    window.open(lesson.externalUrl, "_blank", "noopener,noreferrer");
+    if (isEmbeddable) {
+      setEmbedOpen((v) => !v);
+    } else {
+      window.open(lesson.externalUrl, "_blank", "noopener,noreferrer");
+    }
   }
 
   return (
@@ -171,8 +186,14 @@ export function LessonPlayer({
                 onClick={openExternal}
                 className="flex items-center gap-1.5 px-4 py-2 bg-[#00b8ff]/10 hover:bg-[#00b8ff]/20 border border-[#00b8ff]/20 text-[#00b8ff] text-sm font-medium rounded-lg transition-colors"
               >
-                <ExternalLink size={13} />
-                Inhalt öffnen
+                {isEmbeddable ? (
+                  embedOpen ? <X size={13} /> : <Video size={13} />
+                ) : (
+                  <ExternalLink size={13} />
+                )}
+                {isEmbeddable
+                  ? embedOpen ? "Video schließen" : "Video abspielen"
+                  : "Inhalt öffnen"}
               </button>
             )}
 
@@ -199,7 +220,7 @@ export function LessonPlayer({
             )}
           </div>
 
-          {/* Inline video player */}
+          {/* Inline R2 video player */}
           {videoUrl && (
             <div className="mt-4 rounded-xl overflow-hidden bg-black" style={{ aspectRatio: "16/9" }}>
               <video
@@ -208,6 +229,18 @@ export function LessonPlayer({
                 autoPlay
                 className="w-full h-full"
                 onEnded={markCompleted}
+              />
+            </div>
+          )}
+
+          {/* Inline YouTube / Vimeo embed */}
+          {embedOpen && embedUrl && (
+            <div className="mt-4 rounded-xl overflow-hidden bg-black" style={{ aspectRatio: "16/9" }}>
+              <iframe
+                src={embedUrl}
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                allowFullScreen
               />
             </div>
           )}

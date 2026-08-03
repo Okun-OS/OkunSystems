@@ -30,6 +30,14 @@ async function main() {
   console.log("✅ Admin user created:", admin.email);
 
   // -----------------------------------
+  // Demo data — only in non-production environments
+  // -----------------------------------
+  if (process.env.NODE_ENV === "production") {
+    console.log("✅ Production env — skipping demo seed data");
+    return;
+  }
+
+  // -----------------------------------
   // Company 1: Pflegezentrum Müller GmbH
   // -----------------------------------
   const company1 = await prisma.company.upsert({

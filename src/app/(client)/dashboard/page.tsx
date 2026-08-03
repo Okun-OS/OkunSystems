@@ -9,10 +9,10 @@ import {
   CheckCircle,
   Clock,
   Calendar,
-  Play,
   Brain,
   Circle,
 } from "lucide-react";
+import { WelcomeVideoPlayer, WelcomeVideoPlaceholder } from "./WelcomeVideoPlayer";
 
 const PROJECT_PHASES = [
   { value: "onboarding",       label: "Onboarding" },
@@ -120,23 +120,10 @@ export default async function DashboardPage() {
           <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl overflow-hidden">
             {welcomeVideo?.value ? (
               <div className="relative aspect-video">
-                <video
-                  src={welcomeVideo.value}
-                  controls
-                  className="w-full h-full object-cover"
-                  poster=""
-                />
+                <WelcomeVideoPlayer url={welcomeVideo.value} />
               </div>
             ) : (
-              <div className="relative aspect-video bg-gradient-to-br from-[#101c2e] to-[#060a10] flex items-center justify-center">
-                <div className="text-center">
-                  <div className="w-14 h-14 rounded-full bg-[#00b8ff]/10 border border-[#00b8ff]/20 flex items-center justify-center mx-auto mb-3">
-                    <Play size={20} className="text-[#00b8ff] ml-0.5" />
-                  </div>
-                  <p className="text-[#f0f0f0] font-semibold text-sm">Willkommensvideo</p>
-                  <p className="text-[#555] text-xs mt-1">von OKUN Systems</p>
-                </div>
-              </div>
+              <WelcomeVideoPlaceholder />
             )}
           </div>
         </div>
