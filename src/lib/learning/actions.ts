@@ -106,28 +106,22 @@ export async function releaseChapterToCompany(params: {
   chapterId: string;
   assignedById: string;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
-  const existing = await db.customerLearningAssignment.findUnique({
-    where: { companyId_chapterId: { companyId: params.companyId, chapterId: params.chapterId } },
-  });
+  const [existing, chapter] = await Promise.all([
+    db.customerLearningAssignment.findUnique({
+      where: { companyId_chapterId: { companyId: params.companyId, chapterId: params.chapterId } },
+    }),
+    db.learningChapter.findUnique({
+      where: { id: params.chapterId },
+      select: { title: true, status: true },
+    }),
+  ]);
 
-  if (existing) {
-    if (existing.status === "active") {
-      return { ok: false, error: "Kapitel bereits freigegeben." };
-    }
-    await db.customerLearningAssignment.update({
-      where: { id: existing.id },
-      data: { status: "active", activatedAt: new Date() },
-    });
-    return { ok: true };
+  if (existing?.status === "active") {
+    return { ok: false, error: "Kapitel bereits freigegeben." };
   }
 
-  const chapter = await db.learningChapter.findUnique({
-    where: { id: params.chapterId },
-    select: { title: true, status: true },
-  });
-
-  // Publish the chapter and its content-bearing lessons if not already published,
-  // so the client can immediately see the lessons after release.
+  // Publish the chapter and its content-bearing lessons regardless of whether
+  // this is a first-time release or a re-activation of a suggested assignment.
   if (chapter && chapter.status !== "PUBLISHED") {
     await db.learningChapter.update({
       where: { id: params.chapterId },
@@ -141,6 +135,15 @@ export async function releaseChapterToCompany(params: {
       },
       data: { status: "PUBLISHED" },
     });
+  }
+
+  if (existing) {
+    // Re-activate a suggested/rejected assignment — publish cascade already ran above
+    await db.customerLearningAssignment.update({
+      where: { id: existing.id },
+      data: { status: "active", activatedAt: new Date() },
+    });
+    return { ok: true };
   }
 
   const assignment = await db.customerLearningAssignment.create({
@@ -164,9 +167,7 @@ export async function releaseChapterToCompany(params: {
         toName: primaryUser.name ?? primaryUser.email,
         companyName: assignment.company.name,
         chapterTitle: chapter.title,
-      }).catch(() => {
-        // Email failure must not block the release — assignment is already persisted
-      });
+      }).catch(() => {});
     }
   }
 
@@ -322,7 +323,7 @@ export async function suggestAssignment(params: {
         toName: primaryUser.name ?? primaryUser.email,
         companyName: assignment.company.name,
         chapterTitle: chapter.title,
-      });
+      }).catch(() => {});
     }
   }
 
@@ -358,7 +359,7 @@ export async function activateAssignment(params: {
       toName: primaryUser.name ?? primaryUser.email,
       companyName: assignment.company.name,
       chapterTitle: assignment.chapter.title,
-    });
+    }).catch(() => {});
   }
 
   return assignment;
