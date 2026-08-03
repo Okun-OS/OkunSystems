@@ -1,10 +1,15 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { submitBlueprintAnswer } from "../actions";
-import { ChevronRight, Check, HelpCircle, X } from "lucide-react";
+import { ChevronRight, Check, HelpCircle, X, Send, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+interface HelpMessage {
+  role: "user" | "assistant";
+  content: string;
+}
 
 // Options whose text implies the user should provide additional details
 const FREE_TEXT_TRIGGER_PATTERNS = [
@@ -68,8 +73,74 @@ export default function BlueprintQuestionnaire({
   const [freeText, setFreeText] = useState("");
   const [conditionalTexts, setConditionalTexts] = useState<Record<string, string>>({});
   const [showHelp, setShowHelp] = useState(false);
+  const [helpMessages, setHelpMessages] = useState<HelpMessage[]>([]);
+  const [helpLoading, setHelpLoading] = useState(false);
+  const [helpInput, setHelpInput] = useState("");
+  const helpScrollRef = useRef<HTMLDivElement>(null);
 
   const isFreeTextOnly = question.options.length === 0;
+
+  async function fetchHelpExplanation(
+    conversationHistory: HelpMessage[],
+    userMessage?: string
+  ) {
+    setHelpLoading(true);
+    try {
+      const res = await fetch("/api/blueprint/question-help", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          questionId: question.id,
+          sessionId,
+          userMessage,
+          conversationHistory,
+        }),
+      });
+      const data = await res.json();
+      if (data.explanation) {
+        setHelpMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: data.explanation },
+        ]);
+      }
+    } catch {
+      setHelpMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "Entschuldigung, die KI ist momentan nicht erreichbar. Bitte versuchen Sie es später erneut." },
+      ]);
+    } finally {
+      setHelpLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (showHelp && helpMessages.length === 0) {
+      fetchHelpExplanation([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showHelp]);
+
+  useEffect(() => {
+    if (helpScrollRef.current) {
+      helpScrollRef.current.scrollTop = helpScrollRef.current.scrollHeight;
+    }
+  }, [helpMessages, helpLoading]);
+
+  function handleOpenHelp() {
+    setHelpMessages([]);
+    setHelpInput("");
+    setShowHelp(true);
+  }
+
+  async function handleHelpSend() {
+    const msg = helpInput.trim();
+    if (!msg || helpLoading) return;
+    const userMsg: HelpMessage = { role: "user", content: msg };
+    const newHistory = [...helpMessages, userMsg];
+    setHelpMessages(newHistory);
+    setHelpInput("");
+    await fetchHelpExplanation(helpMessages, msg);
+  }
 
   // An option that requires a text suffix when selected
   const selectedNeedingText = question.options.filter(
@@ -191,7 +262,7 @@ export default function BlueprintQuestionnaire({
               </span>
             )}
             <button
-              onClick={() => setShowHelp(true)}
+              onClick={handleOpenHelp}
               className="w-7 h-7 rounded-full flex items-center justify-center text-[#555] hover:text-[#888] hover:bg-[#101c2e] transition-colors"
               title="Hilfe zu dieser Frage"
             >
@@ -297,13 +368,16 @@ export default function BlueprintQuestionnaire({
           onClick={() => setShowHelp(false)}
         >
           <div
-            className="bg-[#0c1520] border border-[#1a2840] rounded-2xl p-6 max-w-lg w-full"
+            className="bg-[#0c1520] border border-[#1a2840] rounded-2xl max-w-lg w-full flex flex-col"
+            style={{ maxHeight: "85vh" }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between mb-4">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#1a2840] flex-shrink-0">
               <div className="flex items-center gap-2">
                 <HelpCircle size={16} className="text-[#00b8ff]" />
-                <h3 className="text-[#f0f0f0] font-semibold text-sm">Hilfe zu dieser Frage</h3>
+                <h3 className="text-[#f0f0f0] font-semibold text-sm">KI-Assistent</h3>
+                <span className="text-[#555] text-xs">· {question.externalId}</span>
               </div>
               <button
                 onClick={() => setShowHelp(false)}
@@ -313,39 +387,88 @@ export default function BlueprintQuestionnaire({
               </button>
             </div>
 
-            <div className="bg-[#060a10] border border-[#111e30] rounded-xl p-4 mb-4">
-              <p className="text-[#888] text-xs font-medium mb-1">Frage</p>
-              <p className="text-[#f0f0f0] text-sm leading-relaxed">{question.questionDe}</p>
+            {/* Current question context */}
+            <div className="px-5 pt-4 pb-3 flex-shrink-0">
+              <div className="bg-[#060a10] border border-[#111e30] rounded-xl px-4 py-3">
+                <p className="text-[#555] text-xs mb-1">Aktuelle Frage</p>
+                <p className="text-[#ccc] text-sm leading-relaxed">{question.questionDe}</p>
+              </div>
             </div>
 
-            <div className="space-y-3 text-sm text-[#888] leading-relaxed">
-              <p>
-                Mit dieser Frage erfassen wir, wie Ihr Unternehmen in diesem Bereich aktuell
-                aufgestellt ist. Wählen Sie die Antwort, die Ihrer tatsächlichen Situation am
-                nächsten kommt — es gibt kein Richtig oder Falsch.
-              </p>
-              <p>
-                Ihre Angaben fließen in den OKUN Blueprint™ ein und helfen uns, Ihre individuelle
-                Analyse und Handlungsempfehlungen möglichst passgenau zu gestalten.
-              </p>
-              {question.options.length === 0 && (
-                <p className="text-[#f0f0f0]">
-                  Schreiben Sie einfach auf, welche Tools oder Systeme Sie nutzen — auch
-                  Softwarenamen, Apps oder Online-Dienste sind hilfreich.
-                </p>
+            {/* Conversation area */}
+            <div
+              ref={helpScrollRef}
+              className="flex-1 overflow-y-auto px-5 pb-3 space-y-3 min-h-0"
+            >
+              {helpMessages.length === 0 && !helpLoading && (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 size={18} className="text-[#555] animate-spin" />
+                </div>
+              )}
+
+              {helpMessages.map((msg, i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    "rounded-xl px-4 py-3 text-sm leading-relaxed",
+                    msg.role === "assistant"
+                      ? "bg-[#060a10] border border-[#111e30] text-[#d0d8e4]"
+                      : "bg-[#00b8ff]/10 border border-[#00b8ff]/20 text-[#f0f0f0] ml-6"
+                  )}
+                >
+                  {msg.role === "assistant" && (
+                    <p className="text-[#00b8ff] text-xs font-medium mb-1.5">KI-Assistent</p>
+                  )}
+                  <p style={{ whiteSpace: "pre-wrap" }}>{msg.content}</p>
+                </div>
+              ))}
+
+              {helpLoading && helpMessages.length > 0 && (
+                <div className="bg-[#060a10] border border-[#111e30] rounded-xl px-4 py-3">
+                  <p className="text-[#00b8ff] text-xs font-medium mb-1.5">KI-Assistent</p>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#555] animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#555] animate-bounce" style={{ animationDelay: "150ms" }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#555] animate-bounce" style={{ animationDelay: "300ms" }} />
+                  </div>
+                </div>
               )}
             </div>
 
-            <p className="text-[#555] text-xs mt-4">
-              Frage-ID: {question.externalId}
-            </p>
-
-            <button
-              onClick={() => setShowHelp(false)}
-              className="mt-4 w-full bg-[#101c2e] hover:bg-[#222] border border-[#1a2840] text-[#f0f0f0] text-sm font-medium rounded-lg py-2.5 transition-colors"
-            >
-              Verstanden
-            </button>
+            {/* Input area */}
+            <div className="px-5 pb-5 pt-3 border-t border-[#1a2840] flex-shrink-0">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={helpInput}
+                  onChange={(e) => setHelpInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleHelpSend();
+                    }
+                  }}
+                  disabled={helpLoading}
+                  placeholder="Weitere Frage stellen…"
+                  className="flex-1 bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#444] focus:outline-none focus:border-[#00b8ff]/50 disabled:opacity-50"
+                />
+                <button
+                  onClick={handleHelpSend}
+                  disabled={!helpInput.trim() || helpLoading}
+                  className={cn(
+                    "w-10 h-10 rounded-lg flex items-center justify-center transition-colors flex-shrink-0",
+                    helpInput.trim() && !helpLoading
+                      ? "bg-[#00b8ff] hover:bg-[#0099d6] text-white"
+                      : "bg-[#101c2e] text-[#333] cursor-not-allowed"
+                  )}
+                >
+                  <Send size={14} />
+                </button>
+              </div>
+              <p className="text-[#444] text-xs mt-2 text-center">
+                Powered by KI · Ihre Antworten werden nicht gespeichert
+              </p>
+            </div>
           </div>
         </div>
       )}
