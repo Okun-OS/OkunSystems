@@ -4,86 +4,99 @@ export function OkunLogo({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
   const scales = { sm: 0.72, md: 1, lg: 1.4 };
   const s = scales[size];
 
-  const W = Math.round(192 * s);
-  const H = Math.round(48 * s);
+  const W = Math.round(204 * s);
+  const H = Math.round(52 * s);
 
-  // Unique gradient ID per size to avoid SVG ID collisions across instances
-  const gid = `okun-g-${size}`;
+  const gid = `og-${size}`;
+  const fid = `ogf-${size}`;
 
   return (
     <svg
       width={W}
       height={H}
-      viewBox="0 0 192 48"
+      viewBox="0 0 204 52"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      aria-label="OKUN Systems"
+      aria-label="ÖKUN Systems"
     >
       <defs>
-        {/* Vertical gradient top=deep-blue → bottom=electric-cyan, across icon area */}
-        <linearGradient id={gid} x1="24" y1="4" x2="24" y2="44" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#1e5dc8" />
-          <stop offset="100%" stopColor="#00b8ff" />
+        {/*
+          Gradient matches reference: deep blue top-left → bright cyan bottom-right.
+          gradientUnits="userSpaceOnUse" so it spans the icon area consistently.
+        */}
+        <linearGradient id={gid} x1="4" y1="6" x2="46" y2="46" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#1040b8" />
+          <stop offset="55%" stopColor="#0090d8" />
+          <stop offset="100%" stopColor="#00c8ff" />
         </linearGradient>
+
+        {/* Glow: blur layer merged behind sharp layer */}
+        <filter id={fid} x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
       </defs>
 
       {/* ── Icon mark ── */}
       {/*
-        Circle: center (24, 24), radius 18
-        Gap on left (9 o'clock), from 205° to 155° — 310° arc clockwise.
-        205°: x=24+18·cos(205°)=24-16.31=7.69, y=24+18·sin(205°)=24-7.61=16.39
-        155°: x=7.69,            y=24+7.61=31.61
-        SVG arc: M start A rx ry 0 large-arc sweep end
-        large-arc=1 (310°>180°), sweep=1 (clockwise)
+        Circle center (26, 26) radius 20.
+        Gap ~40° wide on left (160° to 200°):
+          160°: x=26+20·cos(160°)=26-18.79=7.21, y=26+20·sin(160°)=26+6.84=32.84
+          200°: x=7.21,                            y=26-6.84=19.16
+        Arc from 200° to 160° clockwise (320° arc):
+          large-arc=1, sweep=1
+          M 7.21 19.16 A 20 20 0 1 1 7.21 32.84
+        Arm: horizontal from x=1 through gap to circle centre (26,26), dot at centre.
       */}
-      <path
-        d="M 7.69 16.39 A 18 18 0 1 1 7.69 31.61"
-        stroke={`url(#${gid})`}
-        strokeWidth="2.4"
-        strokeLinecap="round"
-        fill="none"
-      />
-
-      {/* Arm: horizontal from outside-left → center of circle */}
-      <line
-        x1="1"
-        y1="24"
-        x2="24"
-        y2="24"
-        stroke={`url(#${gid})`}
-        strokeWidth="2.2"
-        strokeLinecap="round"
-      />
-
-      {/* Dot at arm tip (circle centre) */}
-      <circle cx="24" cy="24" r="2.6" fill="#00b8ff" />
+      <g filter={`url(#${fid})`}>
+        <path
+          d="M 7.21 19.16 A 20 20 0 1 1 7.21 32.84"
+          stroke={`url(#${gid})`}
+          strokeWidth="2.6"
+          strokeLinecap="round"
+          fill="none"
+        />
+        <line
+          x1="1"
+          y1="26"
+          x2="26"
+          y2="26"
+          stroke={`url(#${gid})`}
+          strokeWidth="2.3"
+          strokeLinecap="round"
+        />
+        <circle cx="26" cy="26" r="3" fill="#00c8ff" />
+      </g>
 
       {/* ── Wordmark ── */}
-      {/* "OKUN" — white, bold */}
+      {/* "ÖKUN" — white, bold. The Ö is the correct brand name. */}
       <text
-        x="54"
-        y="30"
+        x="58"
+        y="33"
         fontFamily="'Space Grotesk', system-ui, sans-serif"
-        fontSize="23"
+        fontSize="26"
         fontWeight="700"
-        fill="#eef2f7"
-        letterSpacing="1.5"
+        fill="#ffffff"
+        letterSpacing="1"
       >
-        OKUN
+        ÖKUN
       </text>
 
-      {/* Thin separator line */}
-      <line x1="54" y1="35" x2="190" y2="35" stroke="#1e3a8a" strokeWidth="0.75" />
+      {/* Thin blue separator */}
+      <line x1="58" y1="38" x2="202" y2="38" stroke="#1e3a8a" strokeWidth="0.7" />
 
-      {/* "SYSTEMS" — electric blue, tracked */}
+      {/* "SYSTEMS" — electric blue, spaced */}
       <text
-        x="55"
-        y="45"
+        x="59"
+        y="49"
         fontFamily="'Space Grotesk', system-ui, sans-serif"
-        fontSize="8.5"
+        fontSize="9"
         fontWeight="500"
         fill="#00b8ff"
-        letterSpacing="5.5"
+        letterSpacing="6"
       >
         SYSTEMS
       </text>
