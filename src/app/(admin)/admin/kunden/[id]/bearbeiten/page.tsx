@@ -56,7 +56,7 @@ export default async function KundeBearbeitenPage({
         plan:          (formData.get("plan") as string) || null,
         contactPerson: (formData.get("contactPerson") as string) || null,
         status:        formData.get("status") as string,
-        // projectPhase is managed automatically by the workflow — not editable here
+        projectPhase:  formData.get("projectPhase") as string,
       },
     });
     revalidatePath(`/admin/kunden/${id}`);
@@ -163,11 +163,15 @@ export default async function KundeBearbeitenPage({
 
             <div>
               <label className="text-[#888] text-xs block mb-1.5">Projektphase</label>
-              <div className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-sm text-[#888] flex items-center justify-between">
-                <span>{PROJECT_PHASES.find((p) => p.value === company.projectPhase)?.label ?? company.projectPhase}</span>
-                <span className="text-xs text-[#555]">automatisch</span>
-              </div>
-              <p className="text-[#555] text-xs mt-1">Wird automatisch durch den Workflow gesetzt.</p>
+              <select
+                name="projectPhase"
+                defaultValue={company.projectPhase}
+                className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-sm text-[#f0f0f0] focus:outline-none focus:border-[#00b8ff]/50"
+              >
+                {PROJECT_PHASES.map((p) => (
+                  <option key={p.value} value={p.value}>{p.label}</option>
+                ))}
+              </select>
             </div>
           </div>
 

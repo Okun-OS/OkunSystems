@@ -20,7 +20,7 @@ export async function PATCH(req: Request) {
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const userId = (session.user as any).id as string;
-  const { enabled } = await req.json();
+  const { twoFactorEnabled: enabled } = await req.json();
 
   await db.user.update({
     where: { id: userId },
