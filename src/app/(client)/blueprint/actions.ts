@@ -153,6 +153,36 @@ export async function submitBlueprintAnswer(
   revalidatePath(`/blueprint/${sessionId}`);
 }
 
+// ─── Undo the last answered question ─────────────────────────────────────────
+
+export async function undoBlueprintAnswer(sessionId: string): Promise<void> {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+
+  const userId = (session.user as { id: string }).id;
+  const user = await db.user.findUnique({ where: { id: userId } });
+  if (!user?.companyId) redirect("/dashboard");
+
+  const analysisSession = await db.analysisSession.findUnique({
+    where: { id: sessionId },
+    select: { companyId: true, status: true },
+  });
+  if (analysisSession?.companyId !== user.companyId) throw new Error("Unauthorized");
+  if (analysisSession.status === "COMPLETED") redirect(`/blueprint/${sessionId}/abgeschlossen`);
+
+  const lastAnswer = await db.sessionAnswer.findFirst({
+    where: { sessionId, status: "ANSWERED" },
+    orderBy: { answeredAt: "desc" },
+    select: { id: true },
+  });
+
+  if (lastAnswer) {
+    await db.sessionAnswer.delete({ where: { id: lastAnswer.id } });
+  }
+
+  revalidatePath(`/blueprint/${sessionId}`);
+}
+
 // ─── Mark session as completed ────────────────────────────────────────────────
 
 export async function completeBlueprintSession(sessionId: string): Promise<void> {

@@ -2,8 +2,8 @@
 
 import { useState, useTransition, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { submitBlueprintAnswer } from "../actions";
-import { ChevronRight, Check, HelpCircle, X, Send, Loader2 } from "lucide-react";
+import { submitBlueprintAnswer, undoBlueprintAnswer } from "../actions";
+import { ChevronRight, ChevronLeft, Check, HelpCircle, X, Send, Loader2, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface HelpMessage {
@@ -69,6 +69,7 @@ export default function BlueprintQuestionnaire({
 }: BlueprintQuestionnaireProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [isGoingBack, setIsGoingBack] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [freeText, setFreeText] = useState("");
   const [conditionalTexts, setConditionalTexts] = useState<Record<string, string>>({});
@@ -184,6 +185,20 @@ export default function BlueprintQuestionnaire({
         return new Set([optionId]);
       }
     });
+  }
+
+  async function handleBack() {
+    setIsGoingBack(true);
+    try {
+      await undoBlueprintAnswer(sessionId);
+      router.refresh();
+    } finally {
+      setIsGoingBack(false);
+    }
+  }
+
+  function handleSaveAndExit() {
+    router.push("/blueprint");
   }
 
   function handleSubmit() {
@@ -337,28 +352,56 @@ export default function BlueprintQuestionnaire({
           </div>
         )}
 
-        <button
-          onClick={handleSubmit}
-          disabled={!canSubmit}
-          className={cn(
-            "mt-6 w-full font-semibold text-sm rounded-xl py-3 flex items-center justify-center gap-2 transition-all",
-            canSubmit
-              ? "bg-[#00b8ff] hover:bg-[#0099d6] text-white"
-              : "bg-[#101c2e] text-[#444] cursor-not-allowed border border-[#1a2840]"
-          )}
-        >
-          {isPending ? (
-            <span className="flex items-center gap-2">
-              <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-              Speichern…
-            </span>
-          ) : (
-            <>
-              Weiter
-              <ChevronRight size={16} />
-            </>
-          )}
-        </button>
+        <div className="mt-6 flex items-center gap-3">
+          {/* Back */}
+          <button
+            onClick={handleBack}
+            disabled={isPending || isGoingBack || totalAnswered === 0}
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-[#1a2840] bg-[#101c2e] text-[#888] hover:text-[#ccc] hover:bg-[#1a2840] disabled:opacity-30 disabled:cursor-not-allowed text-sm font-medium transition-all flex-shrink-0"
+          >
+            {isGoingBack ? (
+              <span className="w-4 h-4 border-2 border-[#888]/30 border-t-[#888] rounded-full animate-spin" />
+            ) : (
+              <ChevronLeft size={15} />
+            )}
+            Zurück
+          </button>
+
+          {/* Submit / Weiter */}
+          <button
+            onClick={handleSubmit}
+            disabled={!canSubmit}
+            className={cn(
+              "flex-1 font-semibold text-sm rounded-xl py-2.5 flex items-center justify-center gap-2 transition-all",
+              canSubmit
+                ? "bg-[#00b8ff] hover:bg-[#0099d6] text-white"
+                : "bg-[#101c2e] text-[#444] cursor-not-allowed border border-[#1a2840]"
+            )}
+          >
+            {isPending ? (
+              <>
+                <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                Speichern…
+              </>
+            ) : (
+              <>
+                Weiter
+                <ChevronRight size={16} />
+              </>
+            )}
+          </button>
+
+          {/* Save & exit */}
+          <button
+            onClick={handleSaveAndExit}
+            disabled={isPending || isGoingBack}
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-[#1a2840] bg-[#101c2e] text-[#888] hover:text-[#ccc] hover:bg-[#1a2840] disabled:opacity-30 disabled:cursor-not-allowed text-sm font-medium transition-all flex-shrink-0"
+            title="Fortschritt speichern und später fortsetzen"
+          >
+            <Save size={13} />
+            Beenden
+          </button>
+        </div>
       </div>
 
       {/* Help modal */}
