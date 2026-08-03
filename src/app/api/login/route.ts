@@ -83,7 +83,7 @@ export async function POST(req: Request) {
       // Verify the supplied code
       const freshUser = await db.user.findUnique({
         where: { id: user.id },
-        select: { twoFactorCode: true, twoFactorExpiry: true },
+        select: { twoFactorCode: true, twoFactorExpiry: true, twoFactorAttempts: true },
       });
       if (!freshUser?.twoFactorCode || !freshUser.twoFactorExpiry) {
         return Response.json({ error: "Kein Code angefordert. Bitte erneut anmelden." }, { status: 400 });
@@ -91,13 +91,21 @@ export async function POST(req: Request) {
       if (new Date() > freshUser.twoFactorExpiry) {
         return Response.json({ error: "Code abgelaufen. Bitte erneut anmelden." }, { status: 400 });
       }
+      if ((freshUser.twoFactorAttempts ?? 0) >= 5) {
+        await db.user.update({
+          where: { id: user.id },
+          data: { twoFactorCode: null, twoFactorExpiry: null, twoFactorAttempts: 0 },
+        });
+        return Response.json({ error: "Zu viele Fehlversuche. Bitte erneut anmelden." }, { status: 429 });
+      }
       if (freshUser.twoFactorCode !== twoFactorCode.trim()) {
+        await db.user.update({ where: { id: user.id }, data: { twoFactorAttempts: { increment: 1 } } });
         return Response.json({ error: "Ungültiger Code" }, { status: 400 });
       }
       // Clear the code
       await db.user.update({
         where: { id: user.id },
-        data: { twoFactorCode: null, twoFactorExpiry: null },
+        data: { twoFactorCode: null, twoFactorExpiry: null, twoFactorAttempts: 0 },
       });
     }
 

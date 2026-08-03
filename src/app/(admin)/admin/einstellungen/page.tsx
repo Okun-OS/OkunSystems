@@ -5,10 +5,17 @@ import { revalidatePath } from "next/cache";
 import { Settings, Video, Upload, Trash2, Package, ArrowRight, Link2 } from "lucide-react";
 import Link from "next/link";
 import { WelcomeVideoUpload } from "./WelcomeVideoUpload";
+import { AdminTwoFASection } from "./AdminTwoFASection";
 
 export default async function AdminEinstellungenPage() {
   const session = await auth();
   if (!session?.user || (session.user as any).role !== "ADMIN") redirect("/login");
+
+  const adminUserId = (session.user as any).id as string;
+  const adminUser = await db.user.findUnique({
+    where: { id: adminUserId },
+    select: { twoFactorEnabled: true },
+  });
 
   const settings = await db.systemSetting.findMany();
   const settingMap = Object.fromEntries(settings.map((s) => [s.key, s.value]));
@@ -38,6 +45,9 @@ export default async function AdminEinstellungenPage() {
         <h1 className="text-2xl font-bold text-[#f0f0f0]">Systemeinstellungen</h1>
         <p className="text-[#888] text-sm mt-1">Plattformweite Konfiguration</p>
       </div>
+
+      {/* Admin 2FA */}
+      <AdminTwoFASection initialEnabled={adminUser?.twoFactorEnabled ?? false} />
 
       {/* Welcome video */}
       <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-6 mb-6">

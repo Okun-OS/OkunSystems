@@ -6,12 +6,13 @@ import { usePathname } from "next/navigation";
 const TABS = [
   { label: "Übersicht", href: "", exact: true },
   { label: "Blueprint", href: "/blueprint-portal" },
-  { label: "Ergebnisse & Analyse", href: "/ergebnisse" },
+  { label: "Ergebnisse", href: "/ergebnisse" },
+  { label: "Analyse intern", href: "/analyse" },
   { label: "Dokumente", href: "/dokumente" },
   { label: "Termine", href: "/termine" },
   { label: "Lernen", href: "/lernen" },
   { label: "Benutzer", href: "/benutzer" },
-  { label: "Einstellungen", href: "/bearbeiten" },
+  { label: "Stammdaten", href: "/bearbeiten" },
 ];
 
 export function WorkspaceTabsClient({ companyId }: { companyId: string }) {

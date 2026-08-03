@@ -74,16 +74,43 @@ export async function updateLearningChapter(
 }
 
 export async function publishChapter(id: string) {
-  return db.learningChapter.update({
+  await db.learningChapter.update({
     where: { id },
+    data: { status: "PUBLISHED" },
+  });
+  // Cascade: publish all lessons that have content (r2Key or externalUrl)
+  await db.learningLesson.updateMany({
+    where: {
+      chapterId: id,
+      isActive: true,
+      OR: [{ r2Key: { not: null } }, { externalUrl: { not: null } }],
+    },
     data: { status: "PUBLISHED" },
   });
 }
 
 export async function archiveChapter(id: string) {
-  return db.learningChapter.update({
+  await db.learningChapter.update({
     where: { id },
     data: { status: "ARCHIVED" },
+  });
+  await db.learningLesson.updateMany({
+    where: { chapterId: id },
+    data: { status: "ARCHIVED" },
+  });
+}
+
+export async function publishLesson(id: string) {
+  return db.learningLesson.update({
+    where: { id },
+    data: { status: "PUBLISHED" },
+  });
+}
+
+export async function unpublishLesson(id: string) {
+  return db.learningLesson.update({
+    where: { id },
+    data: { status: "DRAFT" },
   });
 }
 

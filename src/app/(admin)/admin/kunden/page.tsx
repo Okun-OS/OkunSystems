@@ -49,6 +49,12 @@ export default async function KundenPage({
       users: { where: { role: "CLIENT" }, take: 1 },
       projects: { orderBy: { updatedAt: "desc" }, take: 1 },
       assessments: { orderBy: { updatedAt: "desc" }, take: 1 },
+      analysisSessions: {
+        where: { blueprintVersion: "2.0" },
+        include: { score: true },
+        orderBy: { updatedAt: "desc" },
+        take: 1,
+      },
       _count: {
         select: {
           projects: true,
@@ -173,8 +179,11 @@ export default async function KundenPage({
                   const contact = company.users[0];
                   const project = company.projects[0];
                   const assessment = company.assessments[0];
-                  const score = assessment?.score ?? null;
-                  const progress = project?.progress ?? 0;
+                  const blueprintSession = company.analysisSessions[0];
+                  // Single source of truth: prefer OkunScore from Blueprint session, then Assessment
+                  const score = blueprintSession?.score?.totalScore ?? assessment?.score ?? null;
+                  const blueprintStatus = blueprintSession?.status ?? null;
+                  const projectPhase = company.projectPhase;
 
                   return (
                     <tr
@@ -230,19 +239,15 @@ export default async function KundenPage({
                         <StatusPill status={company.status} />
                       </td>
 
-                      {/* Analyse Progress */}
-                      <td className="px-4 py-3.5 min-w-[120px]">
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 h-1.5 bg-[#1e1e1e] rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-[#22c55e] rounded-full"
-                              style={{ width: `${progress}%` }}
-                            />
-                          </div>
-                          <span className="text-xs text-[#888] w-8 text-right">
-                            {progress}%
-                          </span>
-                        </div>
+                      {/* Blueprint / Projektphase */}
+                      <td className="px-4 py-3.5 whitespace-nowrap">
+                        {blueprintStatus === "COMPLETED" ? (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-[#22c55e]/10 text-[#22c55e] border border-[#22c55e]/20">Abgeschlossen</span>
+                        ) : blueprintStatus === "ACTIVE" || blueprintStatus === "PAUSED" ? (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">In Bearbeitung</span>
+                        ) : (
+                          <span className="text-xs text-[#555]">—</span>
+                        )}
                       </td>
 
                       {/* Score */}
@@ -271,8 +276,22 @@ export default async function KundenPage({
 
                       {/* Nächster Schritt */}
                       <td className="px-4 py-3.5 text-sm text-[#888] whitespace-nowrap">
-                        {company.status === "ONBOARDING"
+                        {projectPhase === "onboarding"
                           ? "Onboarding abschließen"
+                          : projectPhase === "blueprint"
+                          ? "Blueprint ausfüllen"
+                          : projectPhase === "internal_review"
+                          ? "Auswertung erstellen"
+                          : projectPhase === "strategy_session"
+                          ? "Strategiegespräch führen"
+                          : projectPhase === "learning"
+                          ? "Lerninhalte begleiten"
+                          : projectPhase === "implementation"
+                          ? "Implementierung begleiten"
+                          : projectPhase === "stabilization"
+                          ? "Stabilisierung"
+                          : projectPhase === "completed"
+                          ? "Abgeschlossen"
                           : project?.status === "PLANNING"
                           ? "Projekt starten"
                           : project?.status === "IN_PROGRESS"

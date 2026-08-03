@@ -1,3 +1,4 @@
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
@@ -10,8 +11,22 @@ function generateCode(): string {
 }
 
 export async function POST(req: Request) {
-  const { email } = await req.json();
-  if (!email) return NextResponse.json({ error: "email required" }, { status: 400 });
+  // Accept email from body OR use the currently authenticated session
+  let email: string | undefined;
+  try {
+    const body = await req.json();
+    email = body.email;
+  } catch {
+    email = undefined;
+  }
+
+  if (!email) {
+    const session = await auth();
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "email required" }, { status: 400 });
+    }
+    email = session.user.email as string;
+  }
 
   const user = await db.user.findUnique({
     where: { email },
@@ -33,6 +48,14 @@ export async function POST(req: Request) {
     }
   }
 
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    return NextResponse.json(
+      { error: "E-Mail-Versand nicht konfiguriert. RESEND_API_KEY fehlt.", not_configured: true },
+      { status: 503 }
+    );
+  }
+
   const code = generateCode();
   const expiry = new Date(Date.now() + CODE_TTL_SECONDS * 1000);
 
@@ -45,29 +68,27 @@ export async function POST(req: Request) {
     },
   });
 
-  const apiKey = process.env.RESEND_API_KEY;
-  if (apiKey) {
-    try {
-      const resend = new Resend(apiKey);
-      const from = process.env.EMAIL_FROM ?? "OKUN Systems <noreply@okun-systems.de>";
-      await resend.emails.send({
-        from,
-        to: user.email,
-        subject: "Ihr OKUN Anmeldecode",
-        html: `
-          <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#0a0a0a;color:#f0f0f0;border-radius:12px">
-            <h2 style="color:#22c55e;margin-bottom:8px">Anmeldung bestätigen</h2>
-            <p style="color:#888;margin-bottom:24px">Geben Sie diesen Code auf der Anmeldeseite ein:</p>
-            <div style="background:#141414;border:1px solid #2a2a2a;border-radius:8px;padding:24px;text-align:center;margin-bottom:24px">
-              <span style="font-size:32px;font-weight:700;letter-spacing:8px;color:#22c55e;font-family:monospace">${code}</span>
-            </div>
-            <p style="color:#555;font-size:13px">Der Code ist 10 Minuten gültig. Wenn Sie sich nicht angemeldet haben, ignorieren Sie diese E-Mail.</p>
+  try {
+    const resend = new Resend(apiKey);
+    const from = process.env.EMAIL_FROM ?? "OKUN Systems <noreply@okun-systems.de>";
+    await resend.emails.send({
+      from,
+      to: user.email,
+      subject: "Ihr OKUN Anmeldecode",
+      html: `
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#0a0a0a;color:#f0f0f0;border-radius:12px">
+          <h2 style="color:#22c55e;margin-bottom:8px">Anmeldung bestätigen</h2>
+          <p style="color:#888;margin-bottom:24px">Geben Sie diesen Code auf der Anmeldeseite ein:</p>
+          <div style="background:#141414;border:1px solid #2a2a2a;border-radius:8px;padding:24px;text-align:center;margin-bottom:24px">
+            <span style="font-size:32px;font-weight:700;letter-spacing:8px;color:#22c55e;font-family:monospace">${code}</span>
           </div>
-        `,
-      });
-    } catch {
-      // Log but don't fail — code is still stored in DB
-    }
+          <p style="color:#555;font-size:13px">Der Code ist 10 Minuten gültig. Wenn Sie sich nicht angemeldet haben, ignorieren Sie diese E-Mail.</p>
+        </div>
+      `,
+    });
+  } catch (err) {
+    console.error("[2fa/send] Resend error:", err);
+    return NextResponse.json({ error: "E-Mail konnte nicht gesendet werden. Bitte prüfen Sie Ihre Resend-Konfiguration." }, { status: 502 });
   }
 
   return NextResponse.json({ ok: true });

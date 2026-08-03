@@ -51,6 +51,12 @@ export async function startBlueprintSession(): Promise<void> {
     select: { id: true },
   });
 
+  // Advance project phase to blueprint
+  await db.company.updateMany({
+    where: { id: companyId, projectPhase: "onboarding" },
+    data: { projectPhase: "blueprint" },
+  });
+
   redirect(`/blueprint/${created.id}`);
 }
 
@@ -160,6 +166,12 @@ export async function completeBlueprintSession(sessionId: string): Promise<void>
   await db.analysisSession.updateMany({
     where: { id: sessionId, companyId: user.companyId },
     data: { status: "COMPLETED", completedAt: new Date() },
+  });
+
+  // Advance project phase to internal_review
+  await db.company.updateMany({
+    where: { id: user.companyId!, projectPhase: "blueprint" },
+    data: { projectPhase: "internal_review" },
   });
 
   try {

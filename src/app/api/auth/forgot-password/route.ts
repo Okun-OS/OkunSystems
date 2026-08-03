@@ -28,10 +28,25 @@ export async function POST(req: NextRequest) {
     data: { resetToken: token, resetTokenExpiry: expiry },
   });
 
-  const appUrl = process.env.NEXTAUTH_URL ?? process.env.APP_URL ?? "";
+  const appUrl =
+    process.env.NEXTAUTH_URL ??
+    process.env.APP_URL ??
+    process.env.NEXT_PUBLIC_APP_URL ??
+    "";
   const resetUrl = `${appUrl}/passwort-reset/${token}`;
 
-  await sendPasswordResetEmail({ toEmail: user.email, resetUrl });
+  if (!process.env.RESEND_API_KEY) {
+    // Token is stored — admin can share the link manually
+    console.warn("[forgot-password] RESEND_API_KEY not set; reset token stored but email not sent.");
+    return NextResponse.json({ ok: true });
+  }
+
+  try {
+    await sendPasswordResetEmail({ toEmail: user.email, resetUrl });
+  } catch (err) {
+    console.error("[forgot-password] Email send failed:", err);
+    // Don't leak error to user — token is stored, they can retry
+  }
 
   return NextResponse.json({ ok: true });
 }

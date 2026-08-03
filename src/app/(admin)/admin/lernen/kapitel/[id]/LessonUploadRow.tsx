@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Video, FileText, Link2, Upload, CheckCircle, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { Video, FileText, Link2, Upload, CheckCircle, Loader2, ChevronDown, ChevronUp, Eye, EyeOff } from "lucide-react";
 
 type Lesson = {
   id: string;
@@ -18,10 +18,12 @@ export function LessonUploadRow({
   lesson,
   index,
   updateAction,
+  toggleStatusAction,
 }: {
   lesson: Lesson;
   index: number;
   updateAction: (formData: FormData) => Promise<void>;
+  toggleStatusAction: (formData: FormData) => Promise<void>;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -34,10 +36,10 @@ export function LessonUploadRow({
     pdf: <FileText size={13} className="text-[#888]" />,
   }[lesson.contentType] ?? <FileText size={13} className="text-[#888]" />;
 
-  const statusCls =
-    lesson.status === "PUBLISHED"
-      ? "bg-[#22c55e]/10 text-[#22c55e] border-[#22c55e]/20"
-      : "bg-[#888]/10 text-[#888] border-[#888]/20";
+  const isPublished = lesson.status === "PUBLISHED";
+  const statusCls = isPublished
+    ? "bg-[#22c55e]/10 text-[#22c55e] border-[#22c55e]/20"
+    : "bg-[#888]/10 text-[#888] border-[#888]/20";
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -89,7 +91,7 @@ export function LessonUploadRow({
         )}
         {uploaded && <CheckCircle size={13} className="text-[#22c55e]" />}
         <span className={`text-xs px-2 py-0.5 rounded-full border ${statusCls}`}>
-          {lesson.status === "PUBLISHED" ? "Aktiv" : "Entwurf"}
+          {isPublished ? "Aktiv" : "Entwurf"}
         </span>
         {expanded ? (
           <ChevronUp size={13} className="text-[#555]" />
@@ -101,6 +103,23 @@ export function LessonUploadRow({
       {expanded && (
         <div className="px-5 pb-4 bg-[#0d0d0d]">
           <div className="pt-3 space-y-3">
+            {/* Publish toggle */}
+            <form action={toggleStatusAction} onClick={(e) => e.stopPropagation()}>
+              <input type="hidden" name="lessonId" value={lesson.id} />
+              <input type="hidden" name="currentStatus" value={lesson.status} />
+              <button
+                type="submit"
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border transition-colors ${
+                  isPublished
+                    ? "bg-[#888]/10 border-[#888]/20 text-[#888] hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20"
+                    : "bg-[#22c55e]/10 border-[#22c55e]/20 text-[#22c55e] hover:bg-[#22c55e]/20"
+                }`}
+              >
+                {isPublished ? <EyeOff size={11} /> : <Eye size={11} />}
+                {isPublished ? "Lektion deaktivieren" : "Lektion veröffentlichen"}
+              </button>
+            </form>
+
             {/* External URL */}
             <div>
               <label className="text-[#555] text-xs flex items-center gap-1 mb-1.5">

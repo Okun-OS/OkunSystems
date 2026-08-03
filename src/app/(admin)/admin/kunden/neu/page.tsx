@@ -3,16 +3,17 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Building2, User, Mail, Lock, Globe, Phone, MapPin, Loader2 } from "lucide-react";
+import { ArrowLeft, Building2, User, Mail, Globe, Phone, MapPin, Loader2, CheckCircle, AlertTriangle, Copy } from "lucide-react";
 
 export default function NeuerKundePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [created, setCreated] = useState<{ companyId: string; inviteUrl: string | null; invitationSent: boolean; invitationError: string | null } | null>(null);
 
   const [form, setForm] = useState({
     companyName: "", industry: "", website: "", phone: "", address: "",
-    contactName: "", contactEmail: "", contactPassword: "",
+    contactName: "", contactEmail: "",
     plan: "",
   });
 
@@ -33,12 +34,75 @@ export default function NeuerKundePage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Fehler beim Anlegen");
-      router.push(`/admin/kunden/${data.id}`);
+      setCreated({
+        companyId: data.id,
+        inviteUrl: data.inviteUrl,
+        invitationSent: data.invitationSent,
+        invitationError: data.invitationError,
+      });
     } catch (err: any) {
       setError(err.message ?? "Ein Fehler ist aufgetreten.");
     } finally {
       setLoading(false);
     }
+  }
+
+  if (created) {
+    return (
+      <div className="max-w-[640px] mx-auto">
+        <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-8 text-center">
+          <div className="w-12 h-12 rounded-full bg-[#22c55e]/10 border border-[#22c55e]/20 flex items-center justify-center mx-auto mb-4">
+            <CheckCircle size={24} className="text-[#22c55e]" />
+          </div>
+          <h2 className="text-[#f0f0f0] font-bold text-lg mb-2">Kunde wurde angelegt</h2>
+          <p className="text-[#888] text-sm mb-6">{form.companyName} — {form.contactName}</p>
+
+          {created.invitationSent ? (
+            <div className="bg-[#22c55e]/5 border border-[#22c55e]/20 rounded-xl p-4 mb-6 text-left">
+              <p className="text-[#22c55e] text-sm font-semibold flex items-center gap-2 mb-1">
+                <CheckCircle size={14} /> Einladung per E-Mail gesendet
+              </p>
+              <p className="text-[#888] text-xs">
+                {form.contactEmail} hat eine Einladung erhalten und kann sein Passwort selbst setzen.
+              </p>
+            </div>
+          ) : (
+            <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-xl p-4 mb-6 text-left">
+              <p className="text-yellow-400 text-sm font-semibold flex items-center gap-2 mb-1">
+                <AlertTriangle size={14} /> Einladung konnte nicht gesendet werden
+              </p>
+              <p className="text-[#888] text-xs mb-3">{created.invitationError}</p>
+              {created.inviteUrl && (
+                <div>
+                  <p className="text-[#888] text-xs mb-1.5">Einladungslink manuell übermitteln:</p>
+                  <div className="flex items-center gap-2 bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2">
+                    <code className="text-[#22c55e] text-xs flex-1 break-all">{created.inviteUrl}</code>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(created.inviteUrl!)}
+                      className="text-[#555] hover:text-[#f0f0f0] transition-colors shrink-0"
+                    >
+                      <Copy size={13} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={() => router.push(`/admin/kunden/${created.companyId}`)}
+              className="px-5 py-2.5 bg-[#22c55e] hover:bg-[#16a34a] text-black font-semibold text-sm rounded-lg transition-colors"
+            >
+              Zur Kundenakte
+            </button>
+            <Link href="/admin/kunden" className="px-5 py-2.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-[#888] font-medium text-sm rounded-lg transition-colors">
+              Zurück zur Liste
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -49,7 +113,9 @@ export default function NeuerKundePage() {
           Zurück zur Übersicht
         </Link>
         <h1 className="text-2xl font-bold text-[#f0f0f0]">Neuen Kunden anlegen</h1>
-        <p className="text-[#888] text-sm mt-1">Erstellen Sie ein neues Kundenkonto mit Portal-Zugang.</p>
+        <p className="text-[#888] text-sm mt-1">
+          Der Kunde erhält eine Einladungs-E-Mail und setzt sein Passwort selbst. Kein Klartext-Passwort.
+        </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -126,14 +192,14 @@ export default function NeuerKundePage() {
           </div>
         </div>
 
-        {/* Contact / Login */}
+        {/* Contact */}
         <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-6">
           <div className="flex items-center gap-2 mb-5">
             <User size={15} className="text-[#22c55e]" />
             <h2 className="text-[#f0f0f0] font-semibold text-sm">Ansprechpartner & Portal-Zugang</h2>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
+            <div>
               <label className="block text-xs font-medium text-[#888] mb-1.5">Name des Ansprechpartners *</label>
               <input required value={form.contactName} onChange={e => update("contactName", e.target.value)}
                 placeholder="Max Mustermann"
@@ -148,16 +214,10 @@ export default function NeuerKundePage() {
                   className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg pl-9 pr-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50" />
               </div>
             </div>
-            <div>
-              <label className="block text-xs font-medium text-[#888] mb-1.5">Initiales Passwort *</label>
-              <div className="relative">
-                <Lock size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#555]" />
-                <input required type="password" value={form.contactPassword} onChange={e => update("contactPassword", e.target.value)}
-                  placeholder="Temporäres Passwort"
-                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg pl-9 pr-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#22c55e]/50" />
-              </div>
-            </div>
           </div>
+          <p className="text-[#555] text-xs mt-3">
+            Der Kunde erhält eine Einladungs-E-Mail und setzt sein Passwort selbst. Es wird kein temporäres Passwort benötigt.
+          </p>
         </div>
 
         {error && (
@@ -170,7 +230,7 @@ export default function NeuerKundePage() {
           <button type="submit" disabled={loading}
             className="flex items-center gap-2 bg-[#22c55e] hover:bg-[#16a34a] disabled:opacity-50 text-black font-semibold text-sm rounded-lg px-6 py-2.5 transition-colors">
             {loading && <Loader2 size={15} className="animate-spin" />}
-            {loading ? "Wird erstellt..." : "Kunden anlegen"}
+            {loading ? "Wird erstellt..." : "Kunden anlegen & einladen"}
           </button>
           <Link href="/admin/kunden"
             className="px-6 py-2.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-[#888] font-medium text-sm rounded-lg transition-colors">

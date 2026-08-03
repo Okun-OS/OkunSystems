@@ -6,6 +6,8 @@ import {
   createLearningLesson,
   updateLearningLesson,
   publishChapter,
+  publishLesson,
+  unpublishLesson,
   setChapterTags,
 } from "@/lib/learning/actions";
 import { ArrowLeft, BookOpen, Plus, Save, Tag, Clock } from "lucide-react";
@@ -88,6 +90,18 @@ export default async function ChapterEditorPage({
       externalUrl: (formData.get("externalUrl") as string) || undefined,
       status: formData.get("lessonStatus") as string,
     });
+    redirect(`/admin/lernen/kapitel/${id}`);
+  }
+
+  async function handleToggleLessonStatus(formData: FormData) {
+    "use server";
+    const lessonId = formData.get("lessonId") as string;
+    const current = formData.get("currentStatus") as string;
+    if (current === "PUBLISHED") {
+      await unpublishLesson(lessonId);
+    } else {
+      await publishLesson(lessonId);
+    }
     redirect(`/admin/lernen/kapitel/${id}`);
   }
 
@@ -253,6 +267,7 @@ export default async function ChapterEditorPage({
                     lesson={lesson}
                     index={idx}
                     updateAction={handleUpdateLesson}
+                    toggleStatusAction={handleToggleLessonStatus}
                   />
                 ))}
               </div>
