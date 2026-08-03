@@ -81,7 +81,9 @@ export default function LoginPage() {
     <div className="w-full max-w-md">
       {/* Logo */}
       <div className="flex flex-col items-center mb-10">
-        <OkunLogo size="lg" />
+        <div style={{ width: 210 }}>
+          <OkunLogo size="lg" />
+        </div>
         <p className="text-[#8899b4] text-sm mt-3 tracking-wide">Client Portal</p>
       </div>
 

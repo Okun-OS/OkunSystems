@@ -18,10 +18,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "OKUN Systems – Client Portal",
   description: "OKUN Systems B2B Client Portal",
-  icons: {
-    icon: "/okun-icon.png",
-    apple: "/okun-icon.png",
-  },
 };
 
 export default function RootLayout({
