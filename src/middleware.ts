@@ -8,7 +8,9 @@ const secret =
 
 export async function middleware(req: NextRequest) {
   const { nextUrl } = req;
-  const isAuthPage = nextUrl.pathname === "/login";
+  const isAuthPage =
+    nextUrl.pathname === "/login" ||
+    nextUrl.pathname.startsWith("/einladung/");
   const isApiRoute = nextUrl.pathname.startsWith("/api/");
 
   if (isApiRoute) {
