@@ -238,6 +238,123 @@ export function renderReportHtml(
   .signal-num { font-size: 22pt; font-weight: 800; }
   .signal-lbl { font-size: 8pt; color: #555; margin-top: 2px; }
 
+  /* ── Score analysis page ─────────────────────────────────────────────── */
+  .score-page {
+    page-break-before: always;
+    page-break-after: always;
+    min-height: 247mm;
+    display: flex;
+    flex-direction: column;
+    padding: 0.5cm 0;
+  }
+  .score-page-header {
+    border-bottom: 3px solid #00b8ff;
+    padding-bottom: 16px;
+    margin-bottom: 28px;
+  }
+  .score-page-eyebrow {
+    font-size: 8pt;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #00b8ff;
+    margin-bottom: 4px;
+  }
+  .score-page-title {
+    font-size: 17pt;
+    font-weight: 800;
+    color: #111;
+  }
+  .score-hero {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    margin-bottom: 28px;
+  }
+  .score-circle {
+    flex-shrink: 0;
+    width: 110px;
+    height: 110px;
+    border-radius: 50%;
+    border: 4px solid;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .score-circle-num {
+    font-size: 30pt;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .score-circle-denom {
+    font-size: 9pt;
+    color: #888;
+    margin-top: 2px;
+  }
+  .score-hero-meta {
+    flex: 1;
+  }
+  .score-hero-label {
+    font-size: 18pt;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .score-hero-company {
+    font-size: 10.5pt;
+    color: #555;
+    margin-bottom: 10px;
+  }
+  .score-scale {
+    position: relative;
+    height: 10px;
+    background: linear-gradient(to right, #ef4444 0%, #f97316 25%, #fbbf24 40%, #86efac 60%, #00b8ff 80%);
+    border-radius: 5px;
+    margin-bottom: 6px;
+  }
+  .score-scale-marker {
+    position: absolute;
+    top: -4px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 3px solid #fff;
+    box-shadow: 0 0 0 2px #111;
+    transform: translateX(-50%);
+  }
+  .score-scale-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 7pt;
+    color: #888;
+  }
+  .score-analysis-body {
+    flex: 1;
+    font-size: 10pt;
+    line-height: 1.65;
+    color: #222;
+  }
+  .score-analysis-body p {
+    margin-bottom: 10px;
+  }
+  .score-analysis-body p:last-child {
+    margin-bottom: 0;
+  }
+  .score-module-mini {
+    margin-top: 20px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .score-module-chip {
+    font-size: 8pt;
+    padding: 3px 10px;
+    border-radius: 999px;
+    border: 1px solid;
+    font-weight: 600;
+  }
+
   /* ── Footer ──────────────────────────────────────────────────────────── */
   @page { @bottom-right { content: "OKUN Blueprint™ 2.0 · " counter(page) " / " counter(pages); font-size: 8pt; color: #888; } }
 
@@ -270,6 +387,43 @@ export function renderReportHtml(
   <div class="cover-bottom">
     Vertraulich · Nur für interne Verwendung · OKUN Systems GmbH
   </div>
+</div>
+
+<!-- ── Digitalisierungsscore Erklärung ───────────────────────────────────── -->
+<div class="score-page">
+  <div class="score-page-header">
+    <div class="score-page-eyebrow">Ihr Ergebnis auf einen Blick</div>
+    <div class="score-page-title">Digitalisierungsscore</div>
+  </div>
+
+  <div class="score-hero">
+    <div class="score-circle" style="border-color:${scoreColor(avgScore)};color:${scoreColor(avgScore)}">
+      <div class="score-circle-num">${avgScore}</div>
+      <div class="score-circle-denom" style="color:#888">/ 100</div>
+    </div>
+    <div class="score-hero-meta">
+      <div class="score-hero-label" style="color:${scoreColor(avgScore)}">${scoreLabel(avgScore)}</div>
+      <div class="score-hero-company">${data.company.name}${data.company.industry ? ` · ${data.company.industry}` : ""}</div>
+      <div class="score-scale">
+        <div class="score-scale-marker" style="left:${avgScore}%;background:${scoreColor(avgScore)}"></div>
+      </div>
+      <div class="score-scale-labels">
+        <span>0 – Dringend</span>
+        <span>35 – Handlungsbedarf</span>
+        <span>50 – Ausbaufähig</span>
+        <span>65 – Gut</span>
+        <span>80 – Sehr gut</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="score-analysis-body">
+    ${texts.scoreAnalysis || `<p>${data.company.name} hat den OKUN Blueprint™ 2.0 erfolgreich abgeschlossen. Die detaillierten Ergebnisse finden Sie auf den folgenden Seiten.</p>`}
+  </div>
+
+  ${data.moduleScores.length > 0 ? `<div class="score-module-mini">
+    ${data.moduleScores.map((m) => `<span class="score-module-chip" style="color:${scoreColor(m.score)};border-color:${scoreColor(m.score)}40">M${m.moduleNumber} ${m.label}: ${m.score}</span>`).join("")}
+  </div>` : ""}
 </div>
 
 <!-- ── Executive Summary ─────────────────────────────────────────────────── -->
