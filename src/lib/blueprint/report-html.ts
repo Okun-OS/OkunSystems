@@ -331,28 +331,21 @@ export function renderReportHtml(
   }
   .score-analysis-body {
     flex: 1;
-    font-size: 10pt;
-    line-height: 1.65;
-    color: #222;
+    font-size: 10.5pt;
+    line-height: 1.75;
+    color: #1a1a1a;
+    text-align: justify;
+    hyphens: auto;
   }
   .score-analysis-body p {
-    margin-bottom: 10px;
+    margin-bottom: 13px;
+  }
+  .score-analysis-body p:first-child {
+    font-size: 11pt;
+    font-weight: 500;
   }
   .score-analysis-body p:last-child {
     margin-bottom: 0;
-  }
-  .score-module-mini {
-    margin-top: 20px;
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-  .score-module-chip {
-    font-size: 8pt;
-    padding: 3px 10px;
-    border-radius: 999px;
-    border: 1px solid;
-    font-weight: 600;
   }
 
   /* ── Footer ──────────────────────────────────────────────────────────── */
@@ -420,10 +413,6 @@ export function renderReportHtml(
   <div class="score-analysis-body">
     ${texts.scoreAnalysis || `<p>${data.company.name} hat den OKUN Blueprint™ 2.0 erfolgreich abgeschlossen. Die detaillierten Ergebnisse finden Sie auf den folgenden Seiten.</p>`}
   </div>
-
-  ${data.moduleScores.length > 0 ? `<div class="score-module-mini">
-    ${data.moduleScores.map((m) => `<span class="score-module-chip" style="color:${scoreColor(m.score)};border-color:${scoreColor(m.score)}40">M${m.moduleNumber} ${m.label}: ${m.score}</span>`).join("")}
-  </div>` : ""}
 </div>
 
 <!-- ── Executive Summary ─────────────────────────────────────────────────── -->

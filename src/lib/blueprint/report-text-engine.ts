@@ -44,6 +44,12 @@ export async function generateReportTexts(
     .map((m) => `${m.label} (${m.score}/100)`)
     .join(", ");
 
+  const bestModules = [...data.moduleScores]
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 2)
+    .map((m) => `${m.label} (${m.score}/100)`)
+    .join(", ");
+
   const prompt = `Du bist Lead-Berater bei OKUN Systems und verfasst den professionellen OKUN Blueprint™ 2.0 Analysebericht für folgendes Unternehmen.
 
 Unternehmen: ${data.company.name}
@@ -53,9 +59,10 @@ Analyse abgeschlossen: ${data.completedAt?.toLocaleDateString("de-DE") ?? "–"}
 Beantwortete Fragen: ${data.totalAnswered} / ${data.totalActive}
 
 Gesamtscore: ${avgScore}/100 (Bewertung: ${scoreLabelText(avgScore)})
+Stärkste Bereiche: ${bestModules}
 Schwächste Bereiche: ${worstModules}
 
-Modul-Scores (0–100):
+Alle Modul-Scores (0–100):
 ${moduleList}
 
 Top-Empfehlungen:
@@ -66,28 +73,27 @@ Signalstärken:
 - Bewährte Standardlösungen: ${data.signals.BEWAEHRTE_LOESUNG}
 - Individuelle Entwicklung: ${data.signals.CUSTOM_DEVELOPMENT}
 
-Erstelle Berichtstexte im JSON-Format:
+Erstelle Berichtstexte im JSON-Format. Alle Felder auf Deutsch. Antworte NUR mit dem JSON-Objekt, kein Markdown drumherum.
+
 {
-  "scoreAnalysis": "Vollständige A4-Seite Analyse (6-8 Absätze, ca. 350-450 Wörter) des Digitalisierungsscores für ${data.company.name}. Struktur: (1) Einstieg mit konkretem Score ${avgScore}/100 und Einordnung als '${scoreLabelText(avgScore)}' auf der OKUN-Skala. (2) Was dieser Score konkret bedeutet – was gut läuft, was fehlt. (3) Die 3 schwächsten Bereiche benennen und erklären warum sie entscheidend sind. (4) Konkrete nächste Schritte die ${data.company.name} angehen sollte. (5) Realistischer Ausblick: Was ist möglich wenn Maßnahmen umgesetzt werden. Direkte Ansprache ('Sie'/'Ihr Unternehmen'). Sachlich, keine Übertreibungen, kein Marketing-Sprech. HTML mit <p>-Tags für Absätze.",
+  "scoreAnalysis": "WICHTIG: Hier kommt ein zusammenhängender Fließtext ohne Aufzählungen und ohne Zwischenüberschriften. Reiner Fließtext in HTML-Absätzen (<p>...</p>). Ca. 600-700 Wörter. Der Text liest sich wie ein Abschnitt aus einem professionellen Beratungsbericht – sachlich, präzise, direkt. Kein Marketing, keine Floskeln. Schreib so, als würde ein erfahrener Unternehmensberater das persönlich für ${data.company.name} verfassen. Inhalt der Absätze in dieser Reihenfolge: (1) Was der Score ${avgScore}/100 konkret bedeutet und wie er sich in den Kontext der OKUN-Skala (0–100) einordnet – was '${scoreLabelText(avgScore)}' für ein Unternehmen in der Praxis heißt. (2) Was die Analyse über den aktuellen Digitalisierungsstand von ${data.company.name} aussagt: welche Bereiche bereits funktionieren (${bestModules}) und was das bedeutet. (3) Wo die größten Lücken liegen: die schwächsten Bereiche (${worstModules}) im Detail erklären – warum genau diese Bereiche kritisch sind und welche konkreten Konsequenzen der Status quo hat, wenn nichts unternommen wird. (4) Was ${data.company.name} als nächstes konkret tun sollte – keine abstrakten Ratschläge, sondern spezifische, priorisierte Handlungsempfehlungen die sich aus den Schwachstellen ergeben. (5) Ausblick: Was realistisch möglich ist wenn die identifizierten Maßnahmen umgesetzt werden – welche Veränderungen im Unternehmen das bewirken kann und in welchem Zeitrahmen Verbesserungen sichtbar werden könnten.",
   "executiveSummary": "3-4 Sätze professionelle Zusammenfassung des Digitalisierungsstands für Entscheider. Nennt konkrete Stärken und Hauptpotenziale. Kein Marketing-Deutsch.",
   "moduleInsights": {
     "1": "1-2 Sätze Kernaussage zu Modul 1",
-    "2": "...",
-    "3": "...",
-    "4": "...",
-    "5": "...",
-    "6": "...",
-    "7": "...",
-    "8": "..."
+    "2": "1-2 Sätze Kernaussage zu Modul 2",
+    "3": "1-2 Sätze Kernaussage zu Modul 3",
+    "4": "1-2 Sätze Kernaussage zu Modul 4",
+    "5": "1-2 Sätze Kernaussage zu Modul 5",
+    "6": "1-2 Sätze Kernaussage zu Modul 6",
+    "7": "1-2 Sätze Kernaussage zu Modul 7",
+    "8": "1-2 Sätze Kernaussage zu Modul 8"
   },
   "recommendationContext": "2-3 Sätze Einleitung für den Empfehlungsbereich. Erklärt warum diese Lösungen priorisiert wurden."
-}
-
-Schreibe präzise, sachlich und auf Deutsch. Vermeide Füllwörter. Antworte NUR mit dem JSON-Objekt.`;
+}`;
 
   const response = await client.messages.create({
     model: "claude-sonnet-5",
-    max_tokens: 3000,
+    max_tokens: 4000,
     messages: [{ role: "user", content: prompt }],
   });
 
