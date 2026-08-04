@@ -44,8 +44,7 @@ export function LessonPlayer({
   const [marking, setMarking] = useState(false);
   const [currentStatus, setCurrentStatus] = useState(status);
   const [currentPct, setCurrentPct] = useState(progressPct);
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [videoLoading, setVideoLoading] = useState(false);
+  const [videoOpen, setVideoOpen] = useState(false);
   const [embedOpen, setEmbedOpen] = useState(false);
 
   const hasR2Content = !!lesson.r2Key;
@@ -94,21 +93,7 @@ export function LessonPlayer({
       setCurrentStatus("in_progress");
       setCurrentPct(10);
     }
-
-    if (videoUrl) {
-      setVideoUrl(null);
-      return;
-    }
-
-    setVideoLoading(true);
-    try {
-      const res = await fetch(`/api/learning/lesson-read-url?lessonId=${lesson.id}`);
-      if (!res.ok) throw new Error("Fehler");
-      const data = await res.json();
-      setVideoUrl(data.url);
-    } finally {
-      setVideoLoading(false);
-    }
+    setVideoOpen((v) => !v);
   }
 
   async function openExternal() {
@@ -167,17 +152,10 @@ export function LessonPlayer({
             {hasR2Content && lesson.contentType === "video" && (
               <button
                 onClick={openR2Video}
-                disabled={videoLoading}
                 className="flex items-center gap-1.5 px-4 py-2 bg-[#00b8ff]/10 hover:bg-[#00b8ff]/20 border border-[#00b8ff]/20 text-[#00b8ff] text-sm font-medium rounded-lg transition-colors"
               >
-                {videoLoading ? (
-                  <Loader2 size={13} className="animate-spin" />
-                ) : videoUrl ? (
-                  <X size={13} />
-                ) : (
-                  <Video size={13} />
-                )}
-                {videoUrl ? "Video schließen" : "Video abspielen"}
+                {videoOpen ? <X size={13} /> : <Video size={13} />}
+                {videoOpen ? "Video schließen" : "Video abspielen"}
               </button>
             )}
 
@@ -220,11 +198,11 @@ export function LessonPlayer({
             )}
           </div>
 
-          {/* Inline R2 video player */}
-          {videoUrl && (
+          {/* Inline R2 video player (streamed via server proxy) */}
+          {videoOpen && (
             <div className="mt-4 rounded-xl overflow-hidden bg-black" style={{ aspectRatio: "16/9" }}>
               <video
-                src={videoUrl}
+                src={`/api/learning/lesson-video?lessonId=${lesson.id}`}
                 controls
                 autoPlay
                 className="w-full h-full"
