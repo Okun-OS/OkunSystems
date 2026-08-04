@@ -42,15 +42,21 @@ export async function uploadPdfToR2(
 
   const client = getR2Client();
 
-  await client.send(
-    new PutObjectCommand({
-      Bucket: bucket,
-      Key: key,
-      Body: pdfBuffer,
-      ContentType: "application/pdf",
-      CacheControl: "private, max-age=3600",
-    })
-  );
+  try {
+    await client.send(
+      new PutObjectCommand({
+        Bucket: bucket,
+        Key: key,
+        Body: pdfBuffer,
+        ContentType: "application/pdf",
+        CacheControl: "private, max-age=3600",
+      })
+    );
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[R2 PDF upload] FAILED key=${key} bucket=${bucket} accountId=${process.env.R2_ACCOUNT_ID?.slice(0, 8)}… error=${msg}`);
+    throw new Error(`R2 PDF-Upload fehlgeschlagen: ${msg}`);
+  }
 
   return `${publicUrl.replace(/\/$/, "")}/${key}`;
 }

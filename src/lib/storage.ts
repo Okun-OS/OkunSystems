@@ -72,15 +72,21 @@ export async function uploadToR2(
   if (!publicUrl) throw new Error("R2_PUBLIC_URL is not set.");
 
   const client = getR2Client();
-  await client.send(
-    new PutObjectCommand({
-      Bucket: bucket,
-      Key: key,
-      Body: buffer,
-      ContentType: contentType,
-      CacheControl: "private, max-age=3600",
-    })
-  );
+  try {
+    await client.send(
+      new PutObjectCommand({
+        Bucket: bucket,
+        Key: key,
+        Body: buffer,
+        ContentType: contentType,
+        CacheControl: "private, max-age=3600",
+      })
+    );
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[R2 upload] FAILED key=${key} bucket=${bucket} accountId=${process.env.R2_ACCOUNT_ID?.slice(0, 8)}… error=${msg}`);
+    throw new Error(`R2 Upload fehlgeschlagen: ${msg}`);
+  }
 
   return `${publicUrl.replace(/\/$/, "")}/${key}`;
 }
