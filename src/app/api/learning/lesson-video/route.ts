@@ -2,18 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
-import type { Readable } from "stream";
 
 export const runtime = "nodejs";
+export const maxDuration = 300;
 
 function getR2Client(): S3Client {
+  const accountId = process.env.R2_ACCOUNT_ID;
+  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+  if (!accountId || !accessKeyId || !secretAccessKey) {
+    throw new Error("R2 credentials missing");
+  }
   return new S3Client({
     region: "auto",
-    endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-    credentials: {
-      accessKeyId: process.env.R2_ACCESS_KEY_ID!,
-      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
-    },
+    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+    credentials: { accessKeyId, secretAccessKey },
   });
 }
 
@@ -57,36 +60,31 @@ export async function GET(req: NextRequest) {
 
     if (user?.role !== "ADMIN") {
       const hasAccess = lesson.chapter.assignments.some(
-        (a) => a.companyId === user?.companyId
+        (a: { companyId: string }) => a.companyId === user?.companyId
       );
       if (!hasAccess) {
         return NextResponse.json({ error: "Kein Zugriff" }, { status: 403 });
       }
     }
 
-    const bucket = process.env.R2_BUCKET_NAME!;
-    const rangeHeader = req.headers.get("range") ?? undefined;
+    const bucket = process.env.R2_BUCKET_NAME;
+    if (!bucket) {
+      return NextResponse.json({ error: "Bucket nicht konfiguriert" }, { status: 500 });
+    }
 
-    const command = new GetObjectCommand({
-      Bucket: bucket,
-      Key: lesson.r2Key,
-      ...(rangeHeader ? { Range: rangeHeader } : {}),
-    });
+    const rangeHeader = req.headers.get("range");
 
-    const r2 = await getR2Client().send(command);
+    const r2 = await getR2Client().send(
+      new GetObjectCommand({
+        Bucket: bucket,
+        Key: lesson.r2Key,
+        ...(rangeHeader ? { Range: rangeHeader } : {}),
+      })
+    );
 
-    // Convert R2 SDK body (Node.js Readable) to a Web ReadableStream
-    const nodeStream = r2.Body as Readable;
-    const webStream = new ReadableStream({
-      start(controller) {
-        nodeStream.on("data", (chunk: Buffer) => controller.enqueue(chunk));
-        nodeStream.on("end", () => controller.close());
-        nodeStream.on("error", (err) => controller.error(err));
-      },
-      cancel() {
-        nodeStream.destroy();
-      },
-    });
+    if (!r2.Body) {
+      return NextResponse.json({ error: "Leeres Video" }, { status: 404 });
+    }
 
     const headers: Record<string, string> = {
       "Content-Type": r2.ContentType ?? "video/mp4",
@@ -96,12 +94,15 @@ export async function GET(req: NextRequest) {
     if (r2.ContentLength) headers["Content-Length"] = String(r2.ContentLength);
     if (r2.ContentRange) headers["Content-Range"] = r2.ContentRange;
 
-    return new Response(webStream, {
+    // Stream directly from R2 to the browser without buffering in memory
+    const stream = r2.Body.transformToWebStream();
+
+    return new Response(stream, {
       status: rangeHeader ? 206 : 200,
       headers,
     });
   } catch (err) {
-    console.error("[lesson-video] error:", err);
+    console.error("[lesson-video]", err);
     return NextResponse.json({ error: "Interner Fehler" }, { status: 500 });
   }
 }
