@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
         chapter: {
           select: {
             assignments: {
-              where: { status: "active" },
+              where: { status: { in: ["suggested", "active"] } },
               select: { companyId: true },
             },
           },
@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
     // Admins can access all lessons; clients need an active assignment
     if (user?.role !== "ADMIN") {
       const hasAccess = lesson.chapter.assignments.some(
-        (a) => a.companyId === user?.companyId
+        (a: { companyId: string }) => a.companyId === user?.companyId
       );
       if (!hasAccess) {
         return NextResponse.json({ error: "Kein Zugriff" }, { status: 403 });
