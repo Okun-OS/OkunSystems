@@ -10,7 +10,9 @@ export async function middleware(req: NextRequest) {
   const { nextUrl } = req;
   const isAuthPage =
     nextUrl.pathname === "/login" ||
-    nextUrl.pathname.startsWith("/einladung/");
+    nextUrl.pathname.startsWith("/einladung/") ||
+    nextUrl.pathname === "/passwort-vergessen" ||
+    nextUrl.pathname.startsWith("/passwort-reset/");
   const isApiRoute = nextUrl.pathname.startsWith("/api/");
 
   if (isApiRoute) {
