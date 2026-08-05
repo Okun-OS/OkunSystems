@@ -15,7 +15,7 @@ export default async function AdminLayout({
     where: { id: (session.user as any).id },
   });
 
-  if (!userRecord || userRecord.role !== "ADMIN") redirect("/dashboard");
+  if (!userRecord || (userRecord.role !== "ADMIN" && userRecord.role !== "CLOSER")) redirect("/dashboard");
 
   return (
     <div className="min-h-screen bg-[#080c14]">

@@ -13,9 +13,10 @@ export async function middleware(req: NextRequest) {
     nextUrl.pathname.startsWith("/einladung/") ||
     nextUrl.pathname === "/passwort-vergessen" ||
     nextUrl.pathname.startsWith("/passwort-reset/");
+  const isClosingRoute = nextUrl.pathname.startsWith("/closing/");
   const isApiRoute = nextUrl.pathname.startsWith("/api/");
 
-  if (isApiRoute) {
+  if (isApiRoute || isClosingRoute) {
     return NextResponse.next();
   }
 
@@ -37,15 +38,17 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL("/login", nextUrl));
   }
 
+  const isAdminOrCloser = role === "ADMIN" || role === "CLOSER";
+
   if (isLoggedIn && isAuthPage) {
-    if (role === "ADMIN") {
+    if (isAdminOrCloser) {
       return NextResponse.redirect(new URL("/admin/dashboard", nextUrl));
     }
     return NextResponse.redirect(new URL("/dashboard", nextUrl));
   }
 
   if (isLoggedIn && nextUrl.pathname === "/") {
-    if (role === "ADMIN") {
+    if (isAdminOrCloser) {
       return NextResponse.redirect(new URL("/admin/dashboard", nextUrl));
     }
     return NextResponse.redirect(new URL("/dashboard", nextUrl));

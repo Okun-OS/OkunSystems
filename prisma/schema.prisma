@@ -12,7 +12,7 @@ model User {
   email             String    @unique
   name              String?
   password          String
-  role              String    @default("CLIENT")
+  role              String    @default("CLIENT") // ADMIN | CLIENT | CLOSER
   portalRole        String?
   image             String?
   firstLogin        Boolean   @default(true)
@@ -27,17 +27,26 @@ model User {
   updatedAt         DateTime  @updatedAt
 
   companyId String?
-  company   Company? @relation(fields: [companyId], references: [id])
+  company   Company? @relation("CompanyUsers", fields: [companyId], references: [id])
 
-  appointments        Appointment[]
-  notes               Note[]
-  tickets             RetainerTicket[]
-  learningReviews     LearningProposal[]
-  createdInvitations  Invitation[]
-  managedAssignments  CustomerLearningAssignment[]
-  uploadedDocuments   Document[]
-  lessonProgress      LessonProgress[]
-  activityLogs        ActivityLog[]
+  appointments          Appointment[]
+  notes                 Note[]
+  tickets               RetainerTicket[]
+  learningReviews       LearningProposal[]
+  createdInvitations    Invitation[]
+  managedAssignments    CustomerLearningAssignment[]
+  uploadedDocuments     Document[]
+  lessonProgress        LessonProgress[]
+  activityLogs          ActivityLog[]
+  // Sales & Closing
+  assignedLeads         Company[]        @relation("CompanyCloser")
+  closerSessions        ClosingSession[] @relation("CloserUser")
+  createdOfferTemplates OfferTemplate[]
+  createdOffers         Offer[]          @relation("OfferCreatedBy")
+  createdInvoices       Invoice[]        @relation("InvoiceCreatedBy")
+  confirmedInvoices     Invoice[]        @relation("InvoiceConfirmedBy")
+  createdLegalDocs      LegalDocument[]
+  closingEvents         ClosingEvent[]
 }
 
 model Company {
@@ -55,7 +64,18 @@ model Company {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  users               User[]
+  // Sales & Closing — Pre-Sale fields
+  leadStatus       String?   // prospect | closing_scheduled | in_progress | offer_presented | agreement_reached | consent_given | contract_closed | payment_pending | verloren | storniert | abgesagt
+  leadSource       String?
+  contractValue    Int?
+  contractPackage  String?
+  paymentMethod    String?   // stripe | invoice
+  convertedAt      DateTime?
+  closingNotes     String?
+  assignedCloserId String?
+  assignedCloser   User?    @relation("CompanyCloser", fields: [assignedCloserId], references: [id])
+
+  users               User[]                      @relation("CompanyUsers")
   projects            Project[]
   appointments        Appointment[]
   documents           Document[]
@@ -72,6 +92,12 @@ model Company {
   learningAssignments CustomerLearningAssignment[]
   activityLogs        ActivityLog[]
   careSubscription    CareSubscription?
+  // Sales & Closing relations
+  closingSessions     ClosingSession[]
+  offers              Offer[]
+  consentRecords      ConsentRecord[]
+  invoices            Invoice[]
+  closingEvents       ClosingEvent[]
 }
 
 model Project {
@@ -143,6 +169,7 @@ model Appointment {
   attendees         User[]
   analysisSessionId String?
   analysisSession   AnalysisSession? @relation(fields: [analysisSessionId], references: [id])
+  closingSession    ClosingSession?
 }
 
 model Document {
@@ -655,6 +682,7 @@ model LearningChapter {
   lessons     LearningLesson[]
   tags        LearningChapterTag[]
   assignments CustomerLearningAssignment[]
+  packageAssignments PackageDefaultLearningAssignment[]
 }
 
 model LearningLesson {
@@ -745,6 +773,8 @@ model ActivityLog {
 model SystemSetting {
   key       String   @id
   value     String
+  label     String   @default("")
+  group     String   @default("general") // invoice | legal | activation | general
   updatedAt DateTime @updatedAt
 }
 
@@ -760,4 +790,264 @@ model CareSubscription {
 
   companyId String  @unique
   company   Company @relation(fields: [companyId], references: [id])
+}
+
+// ─── OKUN Sales & Closing Module ─────────────────────────────────────────────
+
+model LegalDocument {
+  id            String   @id @default(cuid())
+  type          String   // agb | datenschutz | leistungsbedingungen | avv | recording_consent | vertragsunterlagen | sonstiges
+  title         String
+  version       String
+  description   String?
+  r2Key         String
+  mimeType      String   @default("application/pdf")
+  isActive      Boolean  @default(false)
+  isRequired    Boolean  @default(true)
+  displayOrder  Int      @default(0)
+  checkboxLabel String?
+  linkText      String?
+  createdAt     DateTime @default(now())
+
+  createdById    String
+  createdBy      User            @relation(fields: [createdById], references: [id])
+  consentRecords ConsentRecord[]
+}
+
+model ClosingSession {
+  id               String    @id @default(cuid())
+  status           String    @default("closing_scheduled")
+  activeOfferId    String?
+  currentStep      String?
+  recordingStatus  String    @default("idle")
+  dailyRecordingId String?
+  recordingR2Key   String?
+  clientTokenHash  String    @unique
+  tokenExpiresAt   DateTime
+  startedAt        DateTime?
+  closedAt         DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  appointmentId String?      @unique
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id])
+  companyId     String
+  company       Company      @relation(fields: [companyId], references: [id])
+  closerId      String
+  closer        User         @relation("CloserUser", fields: [closerId], references: [id])
+
+  offers           Offer[]
+  consentRecords   ConsentRecord[]
+  contractSnapshot ContractSnapshot?
+  invoices         Invoice[]
+  events           ClosingEvent[]
+}
+
+model OfferTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  packageType String
+  description String?
+  priceNet    Int
+  currency    String   @default("EUR")
+  lineItems   String   @default("[]")
+  validDays   Int      @default(30)
+  r2Key       String?
+  status      String   @default("draft")
+  version     Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdById String
+  createdBy   User    @relation(fields: [createdById], references: [id])
+  offers      Offer[]
+}
+
+model Offer {
+  id               String    @id @default(cuid())
+  status           String    @default("draft")
+  currency         String    @default("EUR")
+  priceNet         Int
+  validUntil       DateTime
+  presentedAt      DateTime?
+  acceptedAt       DateTime?
+  pdfR2Key         String?
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  companyId        String
+  company          Company        @relation(fields: [companyId], references: [id])
+  templateId       String?
+  template         OfferTemplate? @relation(fields: [templateId], references: [id])
+  closingSessionId String?
+  closingSession   ClosingSession? @relation(fields: [closingSessionId], references: [id])
+  createdById      String
+  createdBy        User           @relation("OfferCreatedBy", fields: [createdById], references: [id])
+
+  lineItems      OfferLineItem[]
+  consentRecords ConsentRecord[]
+  invoices       Invoice[]
+}
+
+model OfferLineItem {
+  id             String  @id @default(cuid())
+  position       Int
+  description    String
+  quantity       Float   @default(1)
+  unitPriceCents Int
+  totalCents     Int
+  isExtra        Boolean @default(false)
+  note           String?
+
+  offerId String
+  offer   Offer  @relation(fields: [offerId], references: [id])
+}
+
+model ConsentRecord {
+  id                  String    @id @default(cuid())
+  consentType         String
+  isRequired          Boolean
+  offerVersion        Int       @default(1)
+  displayedPriceCents Int
+  displayedItems      String    @default("[]")
+  offerDisplayedAt    DateTime?
+  agreementAt         DateTime?
+  result              String
+  grantedAt           DateTime  @default(now())
+  ipAddress           String?
+  userAgent           String?
+  sessionTokenHash    String
+
+  companyId        String
+  company          Company        @relation(fields: [companyId], references: [id])
+  closingSessionId String
+  closingSession   ClosingSession @relation(fields: [closingSessionId], references: [id])
+  offerId          String
+  offer            Offer          @relation(fields: [offerId], references: [id])
+  legalDocumentId  String
+  legalDocument    LegalDocument  @relation(fields: [legalDocumentId], references: [id])
+}
+
+model Invoice {
+  id                    String    @id @default(cuid())
+  invoiceNumber         String    @unique
+  status                String    @default("draft")
+  netAmount             Int
+  taxRate               Float     @default(0.19)
+  grossAmount           Int
+  currency              String    @default("EUR")
+  dueDate               DateTime
+  issuedAt              DateTime?
+  paidAt                DateTime?
+  paidBy                String?
+  stripePaymentIntentId String?
+  pdfR2Key              String?
+  billingName           String?
+  billingAddress        String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  companyId        String
+  company          Company         @relation(fields: [companyId], references: [id])
+  offerId          String?
+  offer            Offer?          @relation(fields: [offerId], references: [id])
+  closingSessionId String?
+  closingSession   ClosingSession? @relation(fields: [closingSessionId], references: [id])
+  createdById      String
+  createdBy        User            @relation("InvoiceCreatedBy", fields: [createdById], references: [id])
+  confirmedById    String?
+  confirmedBy      User?           @relation("InvoiceConfirmedBy", fields: [confirmedById], references: [id])
+
+  items InvoiceItem[]
+}
+
+model InvoiceItem {
+  id          String @id @default(cuid())
+  position    Int
+  description String
+  quantity    Float  @default(1)
+  unitPrice   Int
+  totalPrice  Int
+
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id])
+}
+
+model ContractSnapshot {
+  id               String   @id @default(cuid())
+  offerVersion     Int      @default(1)
+  packageType      String
+  totalNetCents    Int
+  lineItems        String   @default("[]")
+  extras           String   @default("[]")
+  customChanges    String?
+  offerDate        DateTime
+  agbVersion       String
+  privacyVersion   String
+  otherDocVersions String   @default("{}")
+  closedAt         DateTime
+  closerName       String
+  companyName      String
+  fullSnapshot     String   @default("{}")
+  createdAt        DateTime @default(now())
+
+  closingSessionId String         @unique
+  closingSession   ClosingSession @relation(fields: [closingSessionId], references: [id])
+  offerId          String
+  closerId         String
+  companyId        String
+}
+
+model PackageDefaultLearningAssignment {
+  id              String  @id @default(cuid())
+  packageType     String
+  assignmentOrder Int     @default(0)
+  isActive        Boolean @default(true)
+
+  chapterId String
+  chapter   LearningChapter @relation(fields: [chapterId], references: [id])
+
+  @@unique([packageType, chapterId])
+}
+
+model SalesContent {
+  id                String   @id @default(cuid())
+  type              String   // closing_script | objection | faq | package_info | guide | email_template
+  category          String?
+  title             String
+  content           String
+  order             Int      @default(0)
+  isVisibleToClient Boolean  @default(false)
+  status            String   @default("draft")
+  version           Int      @default(1)
+  r2Key             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model EmailTemplate {
+  id               String   @id @default(cuid())
+  key              String   @unique
+  subject          String
+  bodyHtml         String
+  attachmentConfig String   @default("[]")
+  legalFooter      String?
+  isActive         Boolean  @default(true)
+  updatedAt        DateTime @updatedAt
+}
+
+model ClosingEvent {
+  id         String   @id @default(cuid())
+  eventType  String
+  metadata   String   @default("{}")
+  reason     String?
+  occurredAt DateTime @default(now())
+
+  closingSessionId String
+  closingSession   ClosingSession @relation(fields: [closingSessionId], references: [id])
+  companyId        String
+  company          Company        @relation(fields: [companyId], references: [id])
+  actorId          String?
+  actor            User?          @relation(fields: [actorId], references: [id])
 }

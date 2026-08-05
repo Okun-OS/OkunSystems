@@ -12,12 +12,14 @@ import {
   Settings,
   LogOut,
   ChevronDown,
+  TrendingUp,
 } from "lucide-react";
 import { OkunLogo } from "./okun-logo";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/admin/dashboard", icon: LayoutDashboard, label: "Übersicht" },
+  { href: "/admin/sales", icon: TrendingUp, label: "Sales & Closing" },
   { href: "/admin/kunden", icon: Users, label: "Kunden" },
   { href: "/admin/lernen", icon: BookOpen, label: "Learning Library" },
   { href: "/admin/termine", icon: Calendar, label: "Termine" },
