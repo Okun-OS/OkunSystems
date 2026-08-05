@@ -32,8 +32,43 @@ export async function POST(req: NextRequest) {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
     const companyId = session.metadata?.companyId;
+    const type = session.metadata?.type;
 
-    if (companyId && session.mode === "subscription") {
+    if (type === "sales_payment" && companyId && session.mode === "payment") {
+      const closingSessionId = session.metadata?.closingSessionId;
+      const offerId = session.metadata?.offerId;
+
+      await db.company.update({
+        where: { id: companyId },
+        data: { status: "ACTIVE", leadStatus: "contract_closed" },
+      });
+
+      if (closingSessionId) {
+        await db.closingSession.update({
+          where: { id: closingSessionId },
+          data: { status: "contract_closed", closedAt: new Date() },
+        });
+        await db.closingEvent.create({
+          data: {
+            closingSessionId,
+            companyId,
+            eventType: "payment_received",
+            metadata: JSON.stringify({
+              stripeSessionId: session.id,
+              amount: session.amount_total,
+              offerId,
+            }),
+          },
+        });
+      }
+
+      if (offerId) {
+        await db.offer.update({
+          where: { id: offerId },
+          data: { status: "accepted", acceptedAt: new Date() },
+        });
+      }
+    } else if (companyId && session.mode === "subscription") {
       await db.careSubscription.upsert({
         where: { companyId },
         update: {

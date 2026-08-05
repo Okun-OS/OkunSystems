@@ -12,9 +12,9 @@ import {
   AlertCircle,
   BookOpen,
   Tag,
-  PlusCircle,
   Eye,
   Clock,
+  CreditCard,
 } from "lucide-react";
 import {
   updateClosingSessionStatus,
@@ -197,9 +197,10 @@ export function ClosingWorkspaceClient({
     });
   }
 
-  // Consent state
+  // Consent & payment state
   const [consentPending, startConsentTransition] = useTransition();
   const [contractPending, startContractTransition] = useTransition();
+  const [paymentPending, setPaymentPending] = useState(false);
   const [consentError, setConsentError] = useState<string | null>(null);
 
   function handleRecordConsent(docId: string, consentType: string) {
@@ -217,6 +218,24 @@ export function ClosingWorkspaceClient({
       if (result?.error) setConsentError(result.error);
       else router.refresh();
     });
+  }
+
+  async function handleRequestPayment() {
+    const activeOffer = closingSession.offers.find((o) => o.id === closingSession.activeOfferId);
+    if (!activeOffer) { setConsentError("Kein aktives Angebot."); return; }
+    setPaymentPending(true);
+    setConsentError(null);
+    try {
+      const res = await fetch("/api/stripe/sales-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ closingSessionId: closingSession.id, offerId: activeOffer.id }),
+      });
+      const data = await res.json() as { url?: string; error?: string };
+      if (data.error) { setConsentError(data.error); }
+      else if (data.url) { window.open(data.url, "_blank"); }
+    } catch { setConsentError("Stripe-Checkout konnte nicht gestartet werden."); }
+    finally { setPaymentPending(false); }
   }
 
   function handleCloseContract() {
@@ -771,6 +790,29 @@ export function ClosingWorkspaceClient({
             )}
             {!closingSession.activeOfferId && (
               <p className="text-xs text-[#ef4444] mt-2">Kein aktives Angebot — erst Angebot erstellen.</p>
+            )}
+          </div>
+
+          {/* Stripe payment */}
+          <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6">
+            <h2 className="text-sm font-semibold text-[#f0f0f0] mb-2">Stripe-Zahlung anfordern</h2>
+            <p className="text-xs text-[#666] mb-4">
+              Öffnet den Stripe-Checkout-Link. Der Kunde kann direkt zahlen (Karte, SEPA). Nach Zahlung wird das Unternehmen automatisch aktiviert.
+            </p>
+            {closingSession.status === "payment_pending" || closingSession.status === "contract_closed" ? (
+              <div className="flex items-center gap-2 text-[#22c55e] text-sm">
+                <CheckCircle size={15} />
+                {closingSession.status === "contract_closed" ? "Zahlung eingegangen — Unternehmen aktiviert." : "Warte auf Zahlung…"}
+              </div>
+            ) : (
+              <button
+                onClick={handleRequestPayment}
+                disabled={paymentPending || !closingSession.activeOfferId}
+                className="flex items-center gap-2 px-5 py-2.5 bg-[#6366f1] hover:bg-[#4f46e5] disabled:opacity-40 text-white font-bold text-sm rounded-lg transition-colors"
+              >
+                <CreditCard size={15} />
+                {paymentPending ? "Wird vorbereitet…" : "Stripe-Checkout öffnen"}
+              </button>
             )}
           </div>
         </div>
