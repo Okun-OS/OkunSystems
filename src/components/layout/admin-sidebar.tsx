@@ -13,6 +13,10 @@ import {
   LogOut,
   ChevronDown,
   TrendingUp,
+  UserCircle,
+  Package,
+  Library,
+  Receipt,
 } from "lucide-react";
 import { OkunLogo } from "./okun-logo";
 import { cn } from "@/lib/utils";
@@ -25,6 +29,14 @@ const navItems = [
   { href: "/admin/termine", icon: Calendar, label: "Termine" },
   { href: "/admin/dokumente", icon: FileText, label: "Dokumente" },
   { href: "/admin/einstellungen", icon: Settings, label: "Einstellungen" },
+];
+
+const salesSubItems = [
+  { href: "/admin/sales", label: "Dashboard", icon: TrendingUp, exact: true },
+  { href: "/admin/sales/leads", label: "Leads", icon: UserCircle },
+  { href: "/admin/sales/angebote", label: "Angebote", icon: Package },
+  { href: "/admin/sales/bibliothek", label: "Bibliothek", icon: Library },
+  { href: "/admin/sales/rechnungen", label: "Rechnungen", icon: Receipt },
 ];
 
 interface AdminSidebarProps {
@@ -45,24 +57,49 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
 
       <nav className="flex-1 overflow-y-auto py-4 px-3">
         {navItems.map((item) => {
-          const isActive =
-            item.href === "/admin/kunden"
-              ? pathname === item.href || pathname.startsWith(item.href + "/")
-              : pathname === item.href || pathname.startsWith(item.href + "/");
+          const isSales = item.href === "/admin/sales";
+          const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg mb-0.5 text-sm font-medium transition-all duration-150",
-                isActive
-                  ? "bg-[rgba(0,184,255,0.12)] text-[#00b8ff]"
-                  : "text-[#8899b4] hover:text-[#eef2f7] hover:bg-[#101c2e]"
+            <div key={item.href}>
+              <Link
+                href={item.href}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg mb-0.5 text-sm font-medium transition-all duration-150",
+                  isActive
+                    ? "bg-[rgba(0,184,255,0.12)] text-[#00b8ff]"
+                    : "text-[#8899b4] hover:text-[#eef2f7] hover:bg-[#101c2e]"
+                )}
+              >
+                <item.icon size={17} />
+                <span>{item.label}</span>
+              </Link>
+
+              {/* Sales sub-navigation */}
+              {isSales && isActive && (
+                <div className="ml-4 pl-3 border-l border-[#1a2840] mb-1">
+                  {salesSubItems.map((sub) => {
+                    const subActive = sub.exact
+                      ? pathname === sub.href
+                      : pathname === sub.href || pathname.startsWith(sub.href + "/");
+                    return (
+                      <Link
+                        key={sub.href}
+                        href={sub.href}
+                        className={cn(
+                          "flex items-center gap-2.5 px-2.5 py-2 rounded-lg mb-0.5 text-xs font-medium transition-all",
+                          subActive
+                            ? "text-[#00b8ff] bg-[rgba(0,184,255,0.08)]"
+                            : "text-[#667] hover:text-[#c0cce0] hover:bg-[#101c2e]"
+                        )}
+                      >
+                        <sub.icon size={13} />
+                        {sub.label}
+                      </Link>
+                    );
+                  })}
+                </div>
               )}
-            >
-              <item.icon size={17} />
-              <span>{item.label}</span>
-            </Link>
+            </div>
           );
         })}
       </nav>
