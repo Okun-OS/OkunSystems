@@ -45,6 +45,10 @@ export default async function ClosingWorkspacePage({
         include: { template: { select: { name: true } } },
         orderBy: { createdAt: "desc" },
       },
+      consentRecords: {
+        include: { legalDocument: { select: { title: true, version: true } } },
+        orderBy: { grantedAt: "asc" },
+      },
       events: {
         include: { actor: { select: { name: true } } },
         orderBy: { occurredAt: "desc" },
@@ -57,7 +61,7 @@ export default async function ClosingWorkspacePage({
     redirect("/admin/sales");
   }
 
-  const [salesContent, offerTemplates] = await Promise.all([
+  const [salesContent, offerTemplates, legalDocuments] = await Promise.all([
     db.salesContent.findMany({
       where: { status: "published" },
       select: { id: true, type: true, category: true, title: true, content: true },
@@ -75,6 +79,18 @@ export default async function ClosingWorkspacePage({
       },
       orderBy: { priceNet: "asc" },
     }),
+    db.legalDocument.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        type: true,
+        title: true,
+        version: true,
+        isRequired: true,
+        checkboxLabel: true,
+      },
+      orderBy: [{ isRequired: "desc" }, { displayOrder: "asc" }],
+    }),
   ]);
 
   return (
@@ -82,6 +98,7 @@ export default async function ClosingWorkspacePage({
       closingSession={closingSession}
       salesContent={salesContent}
       offerTemplates={offerTemplates}
+      legalDocuments={legalDocuments}
       currentUserId={userId}
     />
   );

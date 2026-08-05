@@ -20,6 +20,8 @@ import {
   updateClosingSessionStatus,
   createOfferForSession,
   presentOffer,
+  recordConsent,
+  closeContract,
 } from "../actions";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -97,6 +99,24 @@ type ClosingSessionData = {
     occurredAt: Date;
     actor: { name: string | null } | null;
   }>;
+  consentRecords: ConsentRecord[];
+};
+
+type LegalDocument = {
+  id: string;
+  type: string;
+  title: string;
+  version: string;
+  isRequired: boolean;
+  checkboxLabel: string | null;
+};
+
+type ConsentRecord = {
+  id: string;
+  consentType: string;
+  result: string;
+  grantedAt: Date;
+  legalDocument: { title: string; version: string };
 };
 
 type SalesContentItem = {
@@ -120,6 +140,7 @@ interface Props {
   closingSession: ClosingSessionData;
   salesContent: SalesContentItem[];
   offerTemplates: OfferTemplate[];
+  legalDocuments: LegalDocument[];
   currentUserId: string;
 }
 
@@ -127,10 +148,11 @@ export function ClosingWorkspaceClient({
   closingSession,
   salesContent,
   offerTemplates,
+  legalDocuments,
   currentUserId,
 }: Props) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"overview" | "skript" | "angebot" | "protokoll">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "skript" | "angebot" | "consent" | "protokoll">("overview");
   const [statusPending, startStatusTransition] = useTransition();
   const [offerPending, startOfferTransition] = useTransition();
   const [actionError, setActionError] = useState<string | null>(null);
@@ -171,6 +193,46 @@ export function ClosingWorkspaceClient({
     startOfferTransition(async () => {
       const result = await presentOffer(closingSession.id, offerId);
       if (result?.error) setActionError(result.error);
+      else router.refresh();
+    });
+  }
+
+  // Consent state
+  const [consentPending, startConsentTransition] = useTransition();
+  const [contractPending, startContractTransition] = useTransition();
+  const [consentError, setConsentError] = useState<string | null>(null);
+
+  function handleRecordConsent(docId: string, consentType: string) {
+    const activeOffer = closingSession.offers.find((o) => o.id === closingSession.activeOfferId);
+    if (!activeOffer) { setConsentError("Kein aktives Angebot. Zuerst ein Angebot erstellen."); return; }
+    setConsentError(null);
+    startConsentTransition(async () => {
+      const result = await recordConsent(closingSession.id, {
+        offerId: activeOffer.id,
+        legalDocumentId: docId,
+        consentType,
+        displayedPriceCents: activeOffer.priceNet,
+        sessionTokenHash: closingSession.id,
+      });
+      if (result?.error) setConsentError(result.error);
+      else router.refresh();
+    });
+  }
+
+  function handleCloseContract() {
+    const activeOffer = closingSession.offers.find((o) => o.id === closingSession.activeOfferId);
+    if (!activeOffer) { setConsentError("Kein aktives Angebot."); return; }
+    setConsentError(null);
+    startContractTransition(async () => {
+      const result = await closeContract(closingSession.id, {
+        offerId: activeOffer.id,
+        packageType: closingSession.company.contractPackage ?? "custom",
+        agbVersion: legalDocuments.find((d) => d.type === "agb")?.version ?? "1.0",
+        privacyVersion: legalDocuments.find((d) => d.type === "datenschutz")?.version ?? "1.0",
+        closerName: closingSession.closer.name ?? "Closer",
+        companyName: closingSession.company.name,
+      });
+      if (result?.error) setConsentError(result.error);
       else router.refresh();
     });
   }
@@ -255,6 +317,7 @@ export function ClosingWorkspaceClient({
             { key: "overview", label: "Übersicht" },
             { key: "skript", label: `Skript & Inhalte (${salesContent.length})` },
             { key: "angebot", label: `Angebote (${closingSession.offers.length})` },
+            { key: "consent", label: `Consent & Abschluss (${closingSession.consentRecords.length})` },
             { key: "protokoll", label: `Protokoll (${closingSession.events.length})` },
           ] as const
         ).map((tab) => (
@@ -592,6 +655,122 @@ export function ClosingWorkspaceClient({
                   </button>
                 ))}
               </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Consent & Abschluss */}
+      {activeTab === "consent" && (
+        <div className="space-y-6">
+          {consentError && (
+            <div className="px-4 py-3 bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.2)] rounded-lg text-[#ef4444] text-sm">
+              {consentError}
+            </div>
+          )}
+
+          {/* Legal document consent */}
+          <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6">
+            <h2 className="text-sm font-semibold text-[#f0f0f0] mb-1">Dokument-Consents</h2>
+            <p className="text-xs text-[#666] mb-4">Klicken Sie für jedes Dokument, sobald der Kunde zugestimmt hat.</p>
+            {legalDocuments.length === 0 ? (
+              <p className="text-[#555] text-sm">Keine aktiven Rechtsdokumente. In den Admin-Einstellungen hinterlegen.</p>
+            ) : (
+              <div className="space-y-3">
+                {legalDocuments.map((doc) => {
+                  const alreadyConsented = closingSession.consentRecords.some(
+                    (cr) => cr.legalDocument.title === doc.title
+                  );
+                  return (
+                    <div
+                      key={doc.id}
+                      className={`flex items-center justify-between p-4 rounded-xl border ${
+                        alreadyConsented
+                          ? "border-[rgba(34,197,94,0.3)] bg-[rgba(34,197,94,0.05)]"
+                          : "border-[#1a2840]"
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="text-sm font-medium text-[#f0f0f0]">{doc.title}</span>
+                          <span className="text-xs text-[#555]">v{doc.version}</span>
+                          {doc.isRequired && (
+                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[rgba(239,68,68,0.1)] text-[#ef4444]">
+                              Pflicht
+                            </span>
+                          )}
+                        </div>
+                        {doc.checkboxLabel && (
+                          <p className="text-xs text-[#666]">{doc.checkboxLabel}</p>
+                        )}
+                      </div>
+                      {alreadyConsented ? (
+                        <div className="flex items-center gap-1.5 text-[#22c55e] text-sm">
+                          <CheckCircle size={15} />
+                          <span className="text-xs">Bestätigt</span>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => handleRecordConsent(doc.id, doc.type)}
+                          disabled={consentPending}
+                          className="px-3 py-1.5 bg-[#1a2840] hover:bg-[#243550] disabled:opacity-40 text-[#f0f0f0] text-xs font-medium rounded-lg transition-colors"
+                        >
+                          Consent bestätigen
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Previously recorded consents */}
+          {closingSession.consentRecords.length > 0 && (
+            <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6">
+              <h2 className="text-sm font-semibold text-[#f0f0f0] mb-4">Consent-Protokoll</h2>
+              <div className="space-y-2">
+                {closingSession.consentRecords.map((cr) => (
+                  <div key={cr.id} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle size={13} className="text-[#22c55e]" />
+                      <span className="text-[#f0f0f0]">{cr.legalDocument.title}</span>
+                      <span className="text-xs text-[#555]">v{cr.legalDocument.version}</span>
+                    </div>
+                    <span className="text-xs text-[#555]">
+                      {new Date(cr.grantedAt).toLocaleString("de-DE", {
+                        day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Contract closing */}
+          <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6">
+            <h2 className="text-sm font-semibold text-[#f0f0f0] mb-2">Vertrag abschließen</h2>
+            <p className="text-xs text-[#666] mb-4">
+              Schließt den Vertrag ab und erstellt den ContractSnapshot. Nur wenn alle Pflicht-Consents erteilt wurden.
+            </p>
+            {closingSession.status === "contract_closed" ? (
+              <div className="flex items-center gap-2 text-[#22c55e] text-sm">
+                <CheckCircle size={16} />
+                Vertrag wurde abgeschlossen.
+              </div>
+            ) : (
+              <button
+                onClick={handleCloseContract}
+                disabled={contractPending || !closingSession.activeOfferId}
+                className="flex items-center gap-2 px-5 py-2.5 bg-[#22c55e] hover:bg-[#16a34a] disabled:opacity-40 text-black font-bold text-sm rounded-lg transition-colors"
+              >
+                <CheckCircle size={15} />
+                {contractPending ? "Wird abgeschlossen…" : "Vertrag jetzt abschließen"}
+              </button>
+            )}
+            {!closingSession.activeOfferId && (
+              <p className="text-xs text-[#ef4444] mt-2">Kein aktives Angebot — erst Angebot erstellen.</p>
             )}
           </div>
         </div>

@@ -117,6 +117,144 @@ export async function createOfferForSession(
   return { offerId: offer.id };
 }
 
+export async function recordConsent(
+  sessionId: string,
+  data: {
+    offerId: string;
+    legalDocumentId: string;
+    consentType: string;
+    displayedPriceCents: number;
+    sessionTokenHash: string;
+  }
+) {
+  const session = await auth();
+  if (!session?.user) return { error: "Nicht authentifiziert" };
+  const userId = (session.user as { id: string }).id;
+  const userRecord = await db.user.findUnique({ where: { id: userId } });
+  if (!userRecord || (userRecord.role !== "ADMIN" && userRecord.role !== "CLOSER")) {
+    return { error: "Keine Berechtigung" };
+  }
+
+  const closingSession = await db.closingSession.findUnique({
+    where: { id: sessionId },
+    select: { closerId: true, companyId: true },
+  });
+  if (!closingSession) return { error: "Session nicht gefunden" };
+
+  const legalDoc = await db.legalDocument.findUnique({
+    where: { id: data.legalDocumentId },
+    select: { isRequired: true },
+  });
+
+  await db.consentRecord.create({
+    data: {
+      consentType: data.consentType,
+      isRequired: legalDoc?.isRequired ?? true,
+      displayedPriceCents: data.displayedPriceCents,
+      agreementAt: new Date(),
+      result: "granted",
+      sessionTokenHash: data.sessionTokenHash,
+      companyId: closingSession.companyId,
+      closingSessionId: sessionId,
+      offerId: data.offerId,
+      legalDocumentId: data.legalDocumentId,
+    },
+  });
+
+  await db.closingEvent.create({
+    data: {
+      closingSessionId: sessionId,
+      companyId: closingSession.companyId,
+      eventType: "consent_recorded",
+      metadata: JSON.stringify({ consentType: data.consentType, legalDocumentId: data.legalDocumentId }),
+      actorId: userId,
+    },
+  });
+
+  revalidatePath(`/admin/sales/closing/${sessionId}`);
+  return { ok: true };
+}
+
+export async function closeContract(
+  sessionId: string,
+  data: {
+    offerId: string;
+    packageType: string;
+    agbVersion: string;
+    privacyVersion: string;
+    closerName: string;
+    companyName: string;
+  }
+) {
+  const session = await auth();
+  if (!session?.user) return { error: "Nicht authentifiziert" };
+  const userId = (session.user as { id: string }).id;
+  const userRecord = await db.user.findUnique({ where: { id: userId } });
+  if (!userRecord || (userRecord.role !== "ADMIN" && userRecord.role !== "CLOSER")) {
+    return { error: "Keine Berechtigung" };
+  }
+
+  const closingSession = await db.closingSession.findUnique({
+    where: { id: sessionId },
+    select: { closerId: true, companyId: true },
+  });
+  if (!closingSession) return { error: "Session nicht gefunden" };
+  if (userRecord.role === "CLOSER" && closingSession.closerId !== userId) {
+    return { error: "Keine Berechtigung" };
+  }
+
+  const offer = await db.offer.findUnique({
+    where: { id: data.offerId },
+    select: { priceNet: true },
+  });
+  if (!offer) return { error: "Angebot nicht gefunden" };
+
+  const now = new Date();
+
+  await db.contractSnapshot.create({
+    data: {
+      packageType: data.packageType,
+      totalNetCents: offer.priceNet,
+      agbVersion: data.agbVersion,
+      privacyVersion: data.privacyVersion,
+      offerDate: now,
+      closedAt: now,
+      closerName: data.closerName,
+      companyName: data.companyName,
+      fullSnapshot: JSON.stringify({ offerId: data.offerId, sessionId }),
+      closingSessionId: sessionId,
+      offerId: data.offerId,
+    },
+  });
+
+  await db.offer.update({
+    where: { id: data.offerId },
+    data: { status: "accepted", acceptedAt: now },
+  });
+  await db.closingSession.update({
+    where: { id: sessionId },
+    data: { status: "contract_closed", closedAt: now },
+  });
+  await db.company.update({
+    where: { id: closingSession.companyId },
+    data: { leadStatus: "contract_closed" },
+  });
+  await db.closingEvent.create({
+    data: {
+      closingSessionId: sessionId,
+      companyId: closingSession.companyId,
+      eventType: "contract_closed",
+      metadata: JSON.stringify({ offerId: data.offerId }),
+      actorId: userId,
+    },
+  });
+
+  revalidatePath(`/admin/sales/closing/${sessionId}`);
+  revalidatePath(`/admin/sales/leads/${closingSession.companyId}`);
+  revalidatePath("/admin/sales");
+  return { ok: true };
+}
+
 export async function presentOffer(sessionId: string, offerId: string) {
   const session = await auth();
   if (!session?.user) return { error: "Nicht authentifiziert" };
