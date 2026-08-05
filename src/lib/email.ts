@@ -273,6 +273,67 @@ export async function sendDocumentReleasedEmail({
   });
 }
 
+export async function sendClosingInvitationEmail({
+  toEmail,
+  toName,
+  companyName,
+  closingUrl,
+  scheduledAt,
+  closerName,
+}: {
+  toEmail: string;
+  toName: string;
+  companyName: string;
+  closingUrl: string;
+  scheduledAt: Date;
+  closerName: string;
+}) {
+  if (!resend) {
+    console.warn("[email] RESEND_API_KEY not set — skipping closing invitation email");
+    return;
+  }
+
+  const formattedDate = scheduledAt.toLocaleDateString("de-DE", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+  const formattedTime = scheduledAt.toLocaleTimeString("de-DE", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  await resend.emails.send({
+    from: FROM_ADDRESS,
+    to: toEmail,
+    subject: `Ihre Einladung zum Strategiegespräch – OKUN Systems`,
+    html: `
+      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#080c14;color:#f0f0f0;padding:32px;border-radius:12px;">
+        <h1 style="font-size:20px;font-weight:700;color:#f0f0f0;margin:0 0 8px;">Strategiegespräch-Einladung</h1>
+        <p style="color:#888;font-size:14px;margin:0 0 24px;">
+          Hallo ${toName}, wir freuen uns auf Ihr Gespräch mit <strong style="color:#f0f0f0;">${closerName}</strong>.
+        </p>
+        <div style="background:#0c1520;border:1px solid #1a2840;border-radius:8px;padding:20px;margin-bottom:24px;">
+          <p style="margin:0 0 8px;font-weight:600;color:#f0f0f0;">${companyName} · Strategiegespräch</p>
+          <p style="margin:4px 0;color:#888;font-size:14px;">📅 ${formattedDate}</p>
+          <p style="margin:4px 0 16px;color:#888;font-size:14px;">🕐 ${formattedTime} Uhr</p>
+          <a href="${closingUrl}" style="display:inline-block;background:#00b8ff;color:#000;font-weight:700;font-size:14px;text-decoration:none;padding:12px 24px;border-radius:8px;">
+            Zum Gespräch beitreten
+          </a>
+        </div>
+        <p style="color:#555;font-size:12px;line-height:1.6;">
+          Über diesen Link gelangen Sie direkt in Ihr persönliches Gesprächsportal.
+          Der Link ist 7 Tage gültig. Bei Fragen antworten Sie einfach auf diese E-Mail.
+        </p>
+        <div style="margin-top:24px;padding-top:16px;border-top:1px solid #111e30;">
+          <p style="color:#444;font-size:11px;margin:0;">OKUN Systems · <a href="https://okun-systems.de" style="color:#444;">okun-systems.de</a></p>
+        </div>
+      </div>
+    `,
+  });
+}
+
 export async function sendPasswordResetEmail({
   toEmail,
   resetUrl,

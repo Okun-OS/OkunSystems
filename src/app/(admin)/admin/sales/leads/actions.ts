@@ -3,6 +3,8 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { randomBytes, createHash } from "crypto";
+import { sendClosingInvitationEmail } from "@/lib/email";
 
 export async function createLead(formData: FormData) {
   const session = await auth();
@@ -112,6 +114,91 @@ export async function updateLeadDetails(companyId: string, formData: FormData) {
   revalidatePath("/admin/sales");
   revalidatePath("/admin/sales/leads");
   return { ok: true };
+}
+
+export async function createClosingSession(
+  companyId: string,
+  data: {
+    scheduledAt: string;
+    durationMinutes: number;
+    clientEmail: string;
+    clientName: string;
+  }
+) {
+  const session = await auth();
+  if (!session?.user) return { error: "Nicht authentifiziert" };
+  const userId = (session.user as { id: string }).id;
+  const userRecord = await db.user.findUnique({ where: { id: userId } });
+  if (!userRecord || (userRecord.role !== "ADMIN" && userRecord.role !== "CLOSER")) {
+    return { error: "Keine Berechtigung" };
+  }
+
+  const company = await db.company.findUnique({
+    where: { id: companyId },
+    select: { id: true, name: true, assignedCloserId: true, leadStatus: true },
+  });
+  if (!company) return { error: "Lead nicht gefunden" };
+  if (userRecord.role === "CLOSER" && company.assignedCloserId !== userId) {
+    return { error: "Keine Berechtigung" };
+  }
+
+  const scheduledAt = new Date(data.scheduledAt);
+  if (isNaN(scheduledAt.getTime())) return { error: "Ungültiges Datum" };
+
+  const endTime = new Date(scheduledAt.getTime() + data.durationMinutes * 60 * 1000);
+
+  const token = randomBytes(24).toString("hex");
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+  const tokenExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+  const closerId = company.assignedCloserId ?? userId;
+
+  const appointment = await db.appointment.create({
+    data: {
+      title: `Closing-Gespräch · ${company.name}`,
+      type: "CLOSING_CALL",
+      startTime: scheduledAt,
+      endTime,
+      bookedByName: data.clientName,
+      bookedByEmail: data.clientEmail,
+      companyId,
+    },
+  });
+
+  const closingSession = await db.closingSession.create({
+    data: {
+      clientTokenHash: tokenHash,
+      tokenExpiresAt,
+      appointmentId: appointment.id,
+      companyId,
+      closerId,
+      status: "closing_scheduled",
+    },
+  });
+
+  await db.company.update({
+    where: { id: companyId },
+    data: { leadStatus: "closing_scheduled" },
+  });
+
+  const appUrl = process.env.NEXTAUTH_URL ?? process.env.APP_URL ?? "https://okun-systems.de";
+  const closingUrl = `${appUrl}/closing/${token}`;
+
+  const closer = await db.user.findUnique({ where: { id: closerId }, select: { name: true } });
+
+  await sendClosingInvitationEmail({
+    toEmail: data.clientEmail,
+    toName: data.clientName,
+    companyName: company.name,
+    closingUrl,
+    scheduledAt,
+    closerName: closer?.name ?? "Ihr Berater",
+  });
+
+  revalidatePath(`/admin/sales/leads/${companyId}`);
+  revalidatePath("/admin/sales");
+  revalidatePath("/admin/sales/leads");
+  return { sessionId: closingSession.id };
 }
 
 export async function addLeadNote(companyId: string, content: string) {

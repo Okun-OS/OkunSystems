@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Save, Plus, ChevronRight, FileText, Video } from "lucide-react";
-import { updateLeadDetails, updateLeadStatus, addLeadNote } from "../actions";
+import { ArrowLeft, Save, Plus, ChevronRight, FileText, Video, CalendarPlus } from "lucide-react";
+import { updateLeadDetails, updateLeadStatus, addLeadNote, createClosingSession } from "../actions";
 
 const LEAD_STATUS_LABELS: Record<string, string> = {
   prospect: "Interessent",
@@ -100,6 +101,7 @@ interface Props {
 }
 
 export function LeadDetailClient({ company, closers, currentUserId, currentUserRole }: Props) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"details" | "notizen" | "sessions" | "rechnungen">("details");
   const [isPending, startTransition] = useTransition();
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -115,6 +117,17 @@ export function LeadDetailClient({ company, closers, currentUserId, currentUserR
   const [noteText, setNoteText] = useState("");
   const [notePending, startNoteTransition] = useTransition();
   const [noteError, setNoteError] = useState<string | null>(null);
+
+  // Closing session scheduling
+  const [showNewSession, setShowNewSession] = useState(false);
+  const [sessionClientEmail, setSessionClientEmail] = useState("");
+  const [sessionClientName, setSessionClientName] = useState(company.contactPerson ?? "");
+  const [sessionDate, setSessionDate] = useState("");
+  const [sessionTime, setSessionTime] = useState("10:00");
+  const [sessionDuration, setSessionDuration] = useState(60);
+  const [sessionPending, startSessionTransition] = useTransition();
+  const [sessionError, setSessionError] = useState<string | null>(null);
+  const [sessionSuccess, setSessionSuccess] = useState<string | null>(null);
 
   function handleSaveDetails(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -152,6 +165,28 @@ export function LeadDetailClient({ company, closers, currentUserId, currentUserR
   }
 
   const needsReason = ["verloren", "storniert", "abgesagt"].includes(statusTarget);
+
+  function handleCreateSession() {
+    if (!sessionClientEmail.trim() || !sessionDate) return;
+    setSessionError(null);
+    setSessionSuccess(null);
+    const scheduledAt = `${sessionDate}T${sessionTime}:00`;
+    startSessionTransition(async () => {
+      const result = await createClosingSession(company.id, {
+        scheduledAt,
+        durationMinutes: sessionDuration,
+        clientEmail: sessionClientEmail.trim(),
+        clientName: sessionClientName.trim() || company.name,
+      });
+      if (result?.error) {
+        setSessionError(result.error);
+      } else {
+        setSessionSuccess("Termin erstellt. Einladung wurde versandt.");
+        setShowNewSession(false);
+        router.refresh();
+      }
+    });
+  }
 
   return (
     <div className="max-w-[1200px] mx-auto">
@@ -409,16 +444,106 @@ export function LeadDetailClient({ company, closers, currentUserId, currentUserR
       {/* Tab: Closing Sessions */}
       {activeTab === "sessions" && (
         <div className="space-y-4">
-          <div className="flex justify-end">
-            <p className="text-sm text-[#666]">
-              Closing-Termine werden in Phase 2 angelegt (Termin + Einladung).
-            </p>
+          <div className="flex items-center justify-between">
+            {sessionSuccess && (
+              <p className="text-[#22c55e] text-sm">{sessionSuccess}</p>
+            )}
+            <div className="ml-auto">
+              <button
+                onClick={() => { setShowNewSession((v) => !v); setSessionError(null); setSessionSuccess(null); }}
+                className="flex items-center gap-2 px-4 py-2 bg-[#00b8ff] hover:bg-[#0099dd] text-black font-semibold text-sm rounded-lg transition-colors"
+              >
+                <CalendarPlus size={14} />
+                Termin planen
+              </button>
+            </div>
           </div>
+
+          {showNewSession && (
+            <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6 space-y-4">
+              <h3 className="text-sm font-semibold text-[#f0f0f0]">Neuen Closing-Termin planen</h3>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-[#888] uppercase tracking-wide mb-1.5">Datum</label>
+                  <input
+                    type="date"
+                    value={sessionDate}
+                    onChange={(e) => setSessionDate(e.target.value)}
+                    min={new Date().toISOString().split("T")[0]}
+                    className="w-full bg-[#080d14] border border-[#1a2840] rounded-lg px-3 py-2.5 text-sm text-[#f0f0f0] focus:outline-none focus:border-[#00b8ff] transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-[#888] uppercase tracking-wide mb-1.5">Uhrzeit</label>
+                  <input
+                    type="time"
+                    value={sessionTime}
+                    onChange={(e) => setSessionTime(e.target.value)}
+                    className="w-full bg-[#080d14] border border-[#1a2840] rounded-lg px-3 py-2.5 text-sm text-[#f0f0f0] focus:outline-none focus:border-[#00b8ff] transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-[#888] uppercase tracking-wide mb-1.5">Dauer (Minuten)</label>
+                  <select
+                    value={sessionDuration}
+                    onChange={(e) => setSessionDuration(Number(e.target.value))}
+                    className="w-full bg-[#080d14] border border-[#1a2840] rounded-lg px-3 py-2.5 text-sm text-[#f0f0f0] focus:outline-none focus:border-[#00b8ff] transition-colors"
+                  >
+                    {[30, 45, 60, 75, 90, 120].map((m) => (
+                      <option key={m} value={m}>{m} Min.</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-[#888] uppercase tracking-wide mb-1.5">Ansprechpartner (Kunde)</label>
+                  <input
+                    type="text"
+                    value={sessionClientName}
+                    onChange={(e) => setSessionClientName(e.target.value)}
+                    placeholder={company.name}
+                    className="w-full bg-[#080d14] border border-[#1a2840] rounded-lg px-3 py-2.5 text-sm text-[#f0f0f0] placeholder-[#444] focus:outline-none focus:border-[#00b8ff] transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-[#888] uppercase tracking-wide mb-1.5">E-Mail (Kundeneinladung) *</label>
+                <input
+                  type="email"
+                  value={sessionClientEmail}
+                  onChange={(e) => setSessionClientEmail(e.target.value)}
+                  placeholder="kunde@beispiel.de"
+                  className="w-full bg-[#080d14] border border-[#1a2840] rounded-lg px-3 py-2.5 text-sm text-[#f0f0f0] placeholder-[#444] focus:outline-none focus:border-[#00b8ff] transition-colors"
+                />
+              </div>
+
+              {sessionError && <p className="text-[#ef4444] text-xs">{sessionError}</p>}
+
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleCreateSession}
+                  disabled={sessionPending || !sessionClientEmail.trim() || !sessionDate}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#00b8ff] hover:bg-[#0099dd] disabled:opacity-40 text-black font-semibold text-sm rounded-lg transition-colors"
+                >
+                  <Video size={14} />
+                  {sessionPending ? "Wird erstellt…" : "Termin erstellen & Einladung senden"}
+                </button>
+                <button
+                  onClick={() => setShowNewSession(false)}
+                  className="px-4 py-2 text-sm text-[#666] hover:text-[#f0f0f0] transition-colors"
+                >
+                  Abbrechen
+                </button>
+              </div>
+            </div>
+          )}
 
           {company.closingSessions.length === 0 ? (
             <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl py-12 text-center">
               <Video size={28} className="text-[#333] mx-auto mb-3" />
               <p className="text-[#666] text-sm">Noch keine Closing-Sessions.</p>
+              <p className="text-[#555] text-xs mt-1">Planen Sie einen Termin und senden Sie die Kundeneinladung.</p>
             </div>
           ) : (
             company.closingSessions.map((cs) => (
