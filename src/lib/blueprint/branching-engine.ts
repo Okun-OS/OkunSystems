@@ -125,6 +125,9 @@ export function evaluateSession(
     if (isActive) {
       if (!sa || sa.status === "NOT_APPLICABLE") {
         status = "PENDING";
+      } else if (sa.status === "SKIPPED") {
+        status = "SKIPPED";
+        // No score, no selected options, no signals — skipped questions are inert
       } else {
         status = "ANSWERED";
 

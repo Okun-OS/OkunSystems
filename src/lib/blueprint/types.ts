@@ -66,7 +66,7 @@ export interface SolutionInput {
 // ─── Engine output shapes ──────────────────────────────────────────────────
 
 export type QuestionType = "A" | "B" | "C";
-export type AnswerStatus = "ANSWERED" | "PENDING" | "NOT_APPLICABLE";
+export type AnswerStatus = "ANSWERED" | "PENDING" | "NOT_APPLICABLE" | "SKIPPED";
 
 export interface SignalEntry {
   category: string;

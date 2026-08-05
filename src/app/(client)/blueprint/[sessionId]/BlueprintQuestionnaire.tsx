@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { submitBlueprintAnswer, undoBlueprintAnswer } from "../actions";
+import { submitBlueprintAnswer, undoBlueprintAnswer, skipBlueprintQuestion } from "../actions";
 import { ChevronRight, ChevronLeft, Check, HelpCircle, X, Send, Loader2, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -70,6 +70,7 @@ export default function BlueprintQuestionnaire({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isGoingBack, setIsGoingBack] = useState(false);
+  const [isSkipping, setIsSkipping] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [freeText, setFreeText] = useState("");
   const [conditionalTexts, setConditionalTexts] = useState<Record<string, string>>({});
@@ -187,6 +188,16 @@ export default function BlueprintQuestionnaire({
     });
   }
 
+  async function handleSkip() {
+    setIsSkipping(true);
+    try {
+      await skipBlueprintQuestion(sessionId, question.id);
+      router.refresh();
+    } finally {
+      setIsSkipping(false);
+    }
+  }
+
   async function handleBack() {
     setIsGoingBack(true);
     try {
@@ -269,7 +280,7 @@ export default function BlueprintQuestionnaire({
             M{currentModule} · {moduleLabel}
           </span>
           <div className="flex items-center gap-2">
-            {question.isMultiSelect && !isFreeTextOnly && (
+            {!isFreeTextOnly && (
               <span className="text-[#888] text-xs">
                 {question.maxSelections
                   ? `Bis zu ${question.maxSelections} auswählen`
@@ -322,7 +333,6 @@ export default function BlueprintQuestionnaire({
                     <div
                       className={cn(
                         "flex-shrink-0 w-4 h-4 rounded flex items-center justify-center border transition-all",
-                        question.isMultiSelect ? "rounded" : "rounded-full",
                         isSelected
                           ? "bg-[#00b8ff] border-[#00b8ff]"
                           : "border-[#3a3a3a] bg-transparent"
@@ -352,11 +362,32 @@ export default function BlueprintQuestionnaire({
           </div>
         )}
 
-        <div className="mt-6 flex items-center gap-3">
+        {/* Skip section */}
+        <div className="mt-5 pt-4 border-t border-[#111e30] text-center">
+          <button
+            onClick={handleSkip}
+            disabled={isPending || isGoingBack || isSkipping}
+            className="text-[#4a5f78] hover:text-[#7a8fa8] text-xs transition-colors disabled:opacity-30 disabled:cursor-not-allowed hover:underline underline-offset-2"
+          >
+            {isSkipping ? (
+              <span className="flex items-center gap-1.5 justify-center">
+                <span className="w-3 h-3 border border-[#4a5f78]/40 border-t-[#4a5f78] rounded-full animate-spin" />
+                Wird übersprungen…
+              </span>
+            ) : (
+              "Diese Frage überspringen"
+            )}
+          </button>
+          <p className="text-[#2a3a50] text-[11px] mt-1">
+            Das Überspringen hat keinen Einfluss auf Ihre Bewertung.
+          </p>
+        </div>
+
+        <div className="mt-5 flex items-center gap-3">
           {/* Back */}
           <button
             onClick={handleBack}
-            disabled={isPending || isGoingBack || totalAnswered === 0}
+            disabled={isPending || isGoingBack || isSkipping || totalAnswered === 0}
             className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-[#1a2840] bg-[#101c2e] text-[#888] hover:text-[#ccc] hover:bg-[#1a2840] disabled:opacity-30 disabled:cursor-not-allowed text-sm font-medium transition-all flex-shrink-0"
           >
             {isGoingBack ? (
@@ -370,10 +401,10 @@ export default function BlueprintQuestionnaire({
           {/* Submit / Weiter */}
           <button
             onClick={handleSubmit}
-            disabled={!canSubmit}
+            disabled={!canSubmit || isSkipping}
             className={cn(
               "flex-1 font-semibold text-sm rounded-xl py-2.5 flex items-center justify-center gap-2 transition-all",
-              canSubmit
+              canSubmit && !isSkipping
                 ? "bg-[#00b8ff] hover:bg-[#0099d6] text-white"
                 : "bg-[#101c2e] text-[#444] cursor-not-allowed border border-[#1a2840]"
             )}
@@ -394,7 +425,7 @@ export default function BlueprintQuestionnaire({
           {/* Save & exit */}
           <button
             onClick={handleSaveAndExit}
-            disabled={isPending || isGoingBack}
+            disabled={isPending || isGoingBack || isSkipping}
             className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-[#1a2840] bg-[#101c2e] text-[#888] hover:text-[#ccc] hover:bg-[#1a2840] disabled:opacity-30 disabled:cursor-not-allowed text-sm font-medium transition-all flex-shrink-0"
             title="Fortschritt speichern und später fortsetzen"
           >

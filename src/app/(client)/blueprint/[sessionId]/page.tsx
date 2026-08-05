@@ -91,9 +91,8 @@ export default async function BlueprintSessionPage({
     try { return JSON.parse(questionRow.activationConds || "[]"); }
     catch { return []; }
   })();
-  const isMultiSelect = conds.some(
-    (c) => c.type === "SCORE_MODE" && c.mode === "MULTI_SELECT"
-  );
+  // All option-based questions allow multiple selections
+  const isMultiSelect = true;
   const maxSelections = conds.find((c) => c.type === "MAX_SELECTIONS")?.max ?? null;
 
   // Module progress data
@@ -107,13 +106,13 @@ export default async function BlueprintSessionPage({
   for (const q of activeQuestions) {
     const m = q.moduleNumber!;
     totalByModule[m] = (totalByModule[m] ?? 0) + 1;
-    if (q.status === "ANSWERED") {
+    if (q.status === "ANSWERED" || q.status === "SKIPPED") {
       answeredByModule[m] = (answeredByModule[m] ?? 0) + 1;
     }
   }
 
   const totalActive = activeQuestions.length;
-  const totalAnswered = activeQuestions.filter((q) => q.status === "ANSWERED").length;
+  const totalAnswered = activeQuestions.filter((q) => q.status === "ANSWERED" || q.status === "SKIPPED").length;
   const currentModule = next.moduleNumber ?? 1;
 
   return (
