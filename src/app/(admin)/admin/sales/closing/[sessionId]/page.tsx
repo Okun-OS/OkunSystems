@@ -34,11 +34,13 @@ export default async function ClosingWorkspacePage({
       closer: { select: { id: true, name: true } },
       appointment: {
         select: {
+          id: true,
           startTime: true,
           endTime: true,
           title: true,
           bookedByName: true,
           bookedByEmail: true,
+          meetingUrl: true,
         },
       },
       offers: {

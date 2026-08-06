@@ -3,6 +3,7 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { sendInvoiceEmail } from "@/lib/email";
 
 async function getAdminUser() {
   const session = await auth();
@@ -133,6 +134,60 @@ export async function cancelInvoice(invoiceId: string) {
   await db.invoice.update({
     where: { id: invoiceId },
     data: { status: "cancelled" },
+  });
+
+  revalidatePath("/admin/sales/rechnungen");
+  return { ok: true };
+}
+
+export async function sendInvoice(invoiceId: string) {
+  const auth_ = await getAdminUser();
+  if (!auth_) return { error: "Keine Berechtigung" };
+
+  const invoice = await db.invoice.findUnique({
+    where: { id: invoiceId },
+    include: {
+      company: {
+        select: {
+          name: true,
+          users: { select: { email: true, name: true }, take: 1 },
+          appointments: {
+            select: { bookedByEmail: true, bookedByName: true },
+            orderBy: { createdAt: "desc" },
+            take: 1,
+          },
+        },
+      },
+    },
+  });
+  if (!invoice) return { error: "Rechnung nicht gefunden" };
+
+  const toEmail =
+    invoice.company.users[0]?.email ??
+    invoice.company.appointments[0]?.bookedByEmail;
+  const toName =
+    invoice.company.users[0]?.name ??
+    invoice.company.appointments[0]?.bookedByName ??
+    invoice.billingName ??
+    invoice.company.name;
+
+  if (!toEmail) return { error: "Keine E-Mail-Adresse für dieses Unternehmen gefunden" };
+
+  const appUrl = process.env.NEXTAUTH_URL ?? process.env.APP_URL ?? "https://okun-systems.de";
+
+  await sendInvoiceEmail({
+    toEmail,
+    toName,
+    companyName: invoice.company.name,
+    invoiceNumber: invoice.invoiceNumber,
+    grossAmount: invoice.grossAmount,
+    dueDate: invoice.dueDate,
+    portalUrl: `${appUrl}/portal`,
+  });
+
+  await db.invoice.update({
+    where: { id: invoiceId },
+    data: { status: "sent", issuedAt: new Date() },
   });
 
   revalidatePath("/admin/sales/rechnungen");

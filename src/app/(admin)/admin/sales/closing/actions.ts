@@ -4,7 +4,8 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { randomBytes, createHash } from "crypto";
-import { sendClosingInvitationEmail } from "@/lib/email";
+import bcrypt from "bcryptjs";
+import { sendClosingInvitationEmail, sendContractClosedEmail } from "@/lib/email";
 
 const VALID_SESSION_STATUSES = [
   "closing_scheduled",
@@ -198,7 +199,7 @@ export async function closeContract(
 
   const closingSession = await db.closingSession.findUnique({
     where: { id: sessionId },
-    select: { closerId: true, companyId: true },
+    select: { closerId: true, companyId: true, appointmentId: true },
   });
   if (!closingSession) return { error: "Session nicht gefunden" };
   if (userRecord.role === "CLOSER" && closingSession.closerId !== userId) {
@@ -252,6 +253,47 @@ export async function closeContract(
       actorId: userId,
     },
   });
+
+  // Auto-create CLIENT user if appointment has an email and no user exists yet
+  const appointment = closingSession.appointmentId
+    ? await db.appointment.findUnique({
+        where: { id: closingSession.appointmentId },
+        select: { bookedByEmail: true, bookedByName: true },
+      })
+    : null;
+  if (appointment?.bookedByEmail) {
+    const existingUser = await db.user.findUnique({
+      where: { email: appointment.bookedByEmail },
+    });
+    if (!existingUser) {
+      const tempPassword = await bcrypt.hash(randomBytes(24).toString("hex"), 12);
+      const resetToken = randomBytes(32).toString("hex");
+      const resetTokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      await db.user.create({
+        data: {
+          email: appointment.bookedByEmail,
+          name: appointment.bookedByName ?? data.companyName,
+          password: tempPassword,
+          role: "CLIENT",
+          companyId: closingSession.companyId,
+          resetToken,
+          resetTokenExpiry,
+        },
+      });
+      const appUrl = process.env.NEXTAUTH_URL ?? process.env.APP_URL ?? "https://okun-systems.de";
+      try {
+        await sendContractClosedEmail({
+          toEmail: appointment.bookedByEmail,
+          toName: appointment.bookedByName ?? data.companyName,
+          companyName: data.companyName,
+          passwordSetUrl: `${appUrl}/passwort-reset/${resetToken}`,
+          closerName: data.closerName,
+        });
+      } catch (e) {
+        console.error("[closeContract] sendContractClosedEmail failed:", e);
+      }
+    }
+  }
 
   revalidatePath(`/admin/sales/closing/${sessionId}`);
   revalidatePath(`/admin/sales/leads/${closingSession.companyId}`);
@@ -347,5 +389,43 @@ export async function presentOffer(sessionId: string, offerId: string) {
   });
 
   revalidatePath(`/admin/sales/closing/${sessionId}`);
+  return { ok: true };
+}
+
+export async function saveChecklistState(
+  sessionId: string,
+  checklist: Record<string, boolean>
+) {
+  const session = await auth();
+  if (!session?.user) return { error: "Nicht authentifiziert" };
+  const userId = (session.user as { id: string }).id;
+  const userRecord = await db.user.findUnique({ where: { id: userId } });
+  if (!userRecord || (userRecord.role !== "ADMIN" && userRecord.role !== "CLOSER")) {
+    return { error: "Keine Berechtigung" };
+  }
+  await db.closingSession.update({
+    where: { id: sessionId },
+    data: { currentStep: JSON.stringify(checklist) },
+  });
+  return { ok: true };
+}
+
+export async function saveClosingNotes(sessionId: string, notes: string) {
+  const session = await auth();
+  if (!session?.user) return { error: "Nicht authentifiziert" };
+  const userId = (session.user as { id: string }).id;
+  const userRecord = await db.user.findUnique({ where: { id: userId } });
+  if (!userRecord || (userRecord.role !== "ADMIN" && userRecord.role !== "CLOSER")) {
+    return { error: "Keine Berechtigung" };
+  }
+  const cs = await db.closingSession.findUnique({
+    where: { id: sessionId },
+    select: { companyId: true },
+  });
+  if (!cs) return { error: "Session nicht gefunden" };
+  await db.company.update({
+    where: { id: cs.companyId },
+    data: { closingNotes: notes },
+  });
   return { ok: true };
 }

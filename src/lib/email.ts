@@ -368,3 +368,117 @@ export async function sendPasswordResetEmail({
     `,
   });
 }
+
+export async function sendContractClosedEmail({
+  toEmail,
+  toName,
+  companyName,
+  passwordSetUrl,
+  closerName,
+}: {
+  toEmail: string;
+  toName: string;
+  companyName: string;
+  passwordSetUrl: string;
+  closerName: string;
+}) {
+  if (!resend) {
+    console.warn("[email] RESEND_API_KEY not set — skipping sendContractClosedEmail");
+    return;
+  }
+
+  await resend.emails.send({
+    from: FROM_ADDRESS,
+    to: toEmail,
+    subject: `Willkommen bei OKUN Systems – Ihr Zugang wird eingerichtet`,
+    html: `
+      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#080c14;color:#f0f0f0;padding:32px;border-radius:12px;">
+        <h1 style="font-size:20px;font-weight:700;color:#f0f0f0;margin:0 0 8px;">Herzlich Willkommen, ${toName}!</h1>
+        <p style="color:#888;font-size:14px;margin:0 0 24px;">
+          Ihr Vertrag für <strong style="color:#f0f0f0;">${companyName}</strong> wurde erfolgreich abgeschlossen.
+          Wir richten gerade Ihren persönlichen Bereich ein.
+        </p>
+        <div style="background:#0c1520;border:1px solid #1a2840;border-radius:8px;padding:20px;margin-bottom:24px;">
+          <p style="margin:0 0 12px;font-size:14px;color:#aaa;">Bitte setzen Sie jetzt Ihr Passwort, um sich in Ihr Kunden-Portal einzuloggen:</p>
+          <a href="${passwordSetUrl}" style="display:inline-block;background:#00b8ff;color:#000;font-weight:700;font-size:14px;text-decoration:none;padding:12px 24px;border-radius:8px;">
+            Passwort festlegen
+          </a>
+          <p style="margin:12px 0 0;font-size:11px;color:#444;">Der Link ist 7 Tage gültig.</p>
+        </div>
+        <p style="color:#888;font-size:13px;margin:0 0 8px;">
+          Bei Fragen steht Ihnen ${closerName} gerne zur Verfügung.
+        </p>
+        <div style="margin-top:24px;padding-top:16px;border-top:1px solid #111e30;">
+          <p style="color:#444;font-size:11px;margin:0;">OKUN Systems · <a href="https://okun-systems.de" style="color:#444;">okun-systems.de</a></p>
+        </div>
+      </div>
+    `,
+  });
+}
+
+export async function sendInvoiceEmail({
+  toEmail,
+  toName,
+  companyName,
+  invoiceNumber,
+  grossAmount,
+  dueDate,
+  portalUrl,
+}: {
+  toEmail: string;
+  toName: string;
+  companyName: string;
+  invoiceNumber: string;
+  grossAmount: number;
+  dueDate: Date;
+  portalUrl: string;
+}) {
+  if (!resend) {
+    console.warn("[email] RESEND_API_KEY not set — skipping sendInvoiceEmail");
+    return;
+  }
+
+  const fmtDate = (d: Date) =>
+    d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const fmtEur = (cents: number) =>
+    new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(cents / 100);
+
+  await resend.emails.send({
+    from: FROM_ADDRESS,
+    to: toEmail,
+    subject: `Rechnung ${invoiceNumber} – OKUN Systems`,
+    html: `
+      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#080c14;color:#f0f0f0;padding:32px;border-radius:12px;">
+        <h1 style="font-size:20px;font-weight:700;color:#f0f0f0;margin:0 0 8px;">Ihre Rechnung</h1>
+        <p style="color:#888;font-size:14px;margin:0 0 24px;">Hallo ${toName},</p>
+        <div style="background:#0c1520;border:1px solid #1a2840;border-radius:8px;padding:20px;margin-bottom:24px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+            <span style="color:#888;font-size:13px;">Rechnungsnummer</span>
+            <span style="color:#f0f0f0;font-weight:600;">${invoiceNumber}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+            <span style="color:#888;font-size:13px;">Unternehmen</span>
+            <span style="color:#f0f0f0;">${companyName}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+            <span style="color:#888;font-size:13px;">Betrag (inkl. MwSt.)</span>
+            <span style="color:#f0f0f0;font-weight:700;font-size:16px;">${fmtEur(grossAmount)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding-top:12px;border-top:1px solid #1a2840;">
+            <span style="color:#888;font-size:13px;">Fällig bis</span>
+            <span style="color:#f59e0b;font-weight:600;">${fmtDate(dueDate)}</span>
+          </div>
+        </div>
+        <p style="color:#888;font-size:13px;margin:0 0 8px;">
+          Die vollständige Rechnung finden Sie in Ihrem Kunden-Portal.
+        </p>
+        <a href="${portalUrl}" style="display:inline-block;background:#1a2840;color:#f0f0f0;font-size:14px;text-decoration:none;padding:10px 20px;border-radius:8px;">
+          Zum Portal
+        </a>
+        <div style="margin-top:24px;padding-top:16px;border-top:1px solid #111e30;">
+          <p style="color:#444;font-size:11px;margin:0;">OKUN Systems · <a href="https://okun-systems.de" style="color:#444;">okun-systems.de</a></p>
+        </div>
+      </div>
+    `,
+  });
+}
