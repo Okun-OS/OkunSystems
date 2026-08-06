@@ -128,6 +128,8 @@ export function LeadDetailClient({ company, closers, currentUserId, currentUserR
   const [sessionPending, startSessionTransition] = useTransition();
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [sessionSuccess, setSessionSuccess] = useState<string | null>(null);
+  const [sessionLink, setSessionLink] = useState<string | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   function handleSaveDetails(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -182,6 +184,7 @@ export function LeadDetailClient({ company, closers, currentUserId, currentUserR
         setSessionError(result.error);
       } else {
         setSessionSuccess("Termin erstellt. Einladung wurde versandt.");
+        if (result.closingUrl) setSessionLink(result.closingUrl);
         setShowNewSession(false);
         router.refresh();
       }
@@ -444,20 +447,42 @@ export function LeadDetailClient({ company, closers, currentUserId, currentUserR
       {/* Tab: Closing Sessions */}
       {activeTab === "sessions" && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            {sessionSuccess && (
-              <p className="text-[#22c55e] text-sm">{sessionSuccess}</p>
-            )}
-            <div className="ml-auto">
-              <button
-                onClick={() => { setShowNewSession((v) => !v); setSessionError(null); setSessionSuccess(null); }}
-                className="flex items-center gap-2 px-4 py-2 bg-[#00b8ff] hover:bg-[#0099dd] text-black font-semibold text-sm rounded-lg transition-colors"
-              >
-                <CalendarPlus size={14} />
-                Termin planen
-              </button>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1">
+              {sessionSuccess && (
+                <p className="text-[#22c55e] text-sm">{sessionSuccess}</p>
+              )}
             </div>
+            <button
+              onClick={() => { setShowNewSession((v) => !v); setSessionError(null); setSessionSuccess(null); }}
+              className="flex items-center gap-2 px-4 py-2 bg-[#00b8ff] hover:bg-[#0099dd] text-black font-semibold text-sm rounded-lg transition-colors flex-shrink-0"
+            >
+              <CalendarPlus size={14} />
+              Termin planen
+            </button>
           </div>
+
+          {sessionLink && (
+            <div className="px-4 py-3 bg-[#0c1520] border border-[rgba(0,184,255,0.2)] rounded-xl space-y-2">
+              <div className="text-xs font-medium text-[#00b8ff] uppercase tracking-wide">Kunden-Link (nur einmalig sichtbar)</div>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 text-xs font-mono text-[#f0f0f0] truncate bg-[#080d14] px-2 py-1.5 rounded">
+                  {sessionLink}
+                </code>
+                <button
+                  onClick={() => {
+                    void navigator.clipboard.writeText(sessionLink);
+                    setLinkCopied(true);
+                    setTimeout(() => setLinkCopied(false), 2000);
+                  }}
+                  className="px-3 py-1.5 bg-[#1a2840] hover:bg-[#243550] text-[#f0f0f0] text-xs rounded-lg transition-colors flex-shrink-0"
+                >
+                  {linkCopied ? "Kopiert ✓" : "Kopieren"}
+                </button>
+              </div>
+              <p className="text-xs text-[#555]">Dieser Link ist nur jetzt sichtbar. Für einen neuen Link nutzen Sie „Einladung erneut senden" im Closing-Workspace.</p>
+            </div>
+          )}
 
           {showNewSession && (
             <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6 space-y-4">

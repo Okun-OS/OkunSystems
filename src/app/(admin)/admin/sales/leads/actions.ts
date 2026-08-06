@@ -198,7 +198,7 @@ export async function createClosingSession(
   revalidatePath(`/admin/sales/leads/${companyId}`);
   revalidatePath("/admin/sales");
   revalidatePath("/admin/sales/leads");
-  return { sessionId: closingSession.id };
+  return { sessionId: closingSession.id, token, closingUrl };
 }
 
 export async function addLeadNote(companyId: string, content: string) {

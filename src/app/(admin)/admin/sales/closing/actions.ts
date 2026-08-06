@@ -3,6 +3,8 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { randomBytes, createHash } from "crypto";
+import { sendClosingInvitationEmail } from "@/lib/email";
 
 const VALID_SESSION_STATUSES = [
   "closing_scheduled",
@@ -255,6 +257,56 @@ export async function closeContract(
   revalidatePath(`/admin/sales/leads/${closingSession.companyId}`);
   revalidatePath("/admin/sales");
   return { ok: true };
+}
+
+export async function resendClientInvitation(sessionId: string) {
+  const session = await auth();
+  if (!session?.user) return { error: "Nicht authentifiziert" };
+  const userId = (session.user as { id: string }).id;
+  const userRecord = await db.user.findUnique({ where: { id: userId } });
+  if (!userRecord || (userRecord.role !== "ADMIN" && userRecord.role !== "CLOSER")) {
+    return { error: "Keine Berechtigung" };
+  }
+
+  const closingSession = await db.closingSession.findUnique({
+    where: { id: sessionId },
+    include: {
+      company: { select: { name: true } },
+      closer: { select: { name: true } },
+      appointment: { select: { startTime: true, bookedByEmail: true, bookedByName: true } },
+    },
+  });
+  if (!closingSession) return { error: "Session nicht gefunden" };
+  if (userRecord.role === "CLOSER" && closingSession.closerId !== userId) {
+    return { error: "Keine Berechtigung" };
+  }
+  if (!closingSession.appointment?.bookedByEmail) {
+    return { error: "Keine Kunden-E-Mail gespeichert" };
+  }
+
+  const token = randomBytes(24).toString("hex");
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+  const tokenExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+  await db.closingSession.update({
+    where: { id: sessionId },
+    data: { clientTokenHash: tokenHash, tokenExpiresAt },
+  });
+
+  const appUrl = process.env.NEXTAUTH_URL ?? process.env.APP_URL ?? "https://okun-systems.de";
+  const closingUrl = `${appUrl}/closing/${token}`;
+
+  await sendClosingInvitationEmail({
+    toEmail: closingSession.appointment.bookedByEmail,
+    toName: closingSession.appointment.bookedByName ?? closingSession.company.name,
+    companyName: closingSession.company.name,
+    closingUrl,
+    scheduledAt: closingSession.appointment.startTime,
+    closerName: closingSession.closer.name ?? "Ihr Berater",
+  });
+
+  revalidatePath(`/admin/sales/closing/${sessionId}`);
+  return { closingUrl };
 }
 
 export async function presentOffer(sessionId: string, offerId: string) {

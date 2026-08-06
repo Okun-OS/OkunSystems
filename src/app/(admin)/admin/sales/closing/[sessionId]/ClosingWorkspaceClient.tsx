@@ -22,6 +22,7 @@ import {
   presentOffer,
   recordConsent,
   closeContract,
+  resendClientInvitation,
 } from "../actions";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -194,6 +195,22 @@ export function ClosingWorkspaceClient({
       const result = await presentOffer(closingSession.id, offerId);
       if (result?.error) setActionError(result.error);
       else router.refresh();
+    });
+  }
+
+  // Resend invitation
+  const [resendPending, startResendTransition] = useTransition();
+  const [resendLink, setResendLink] = useState<string | null>(null);
+  const [resendLinkCopied, setResendLinkCopied] = useState(false);
+  const [resendError, setResendError] = useState<string | null>(null);
+
+  function handleResendInvitation() {
+    setResendError(null);
+    setResendLink(null);
+    startResendTransition(async () => {
+      const result = await resendClientInvitation(closingSession.id);
+      if (result?.error) setResendError(result.error);
+      else if (result?.closingUrl) setResendLink(result.closingUrl);
     });
   }
 
@@ -491,6 +508,39 @@ export function ClosingWorkspaceClient({
                   </div>
                 )}
               </div>
+
+            {/* Resend invitation */}
+            <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5 space-y-3">
+              <div className="text-xs font-medium text-[#888] uppercase tracking-wide">Kunden-Einladung</div>
+              {resendError && <p className="text-[#ef4444] text-xs">{resendError}</p>}
+              {resendLink ? (
+                <div className="space-y-2">
+                  <p className="text-xs text-[#22c55e]">Einladung gesendet. Neuer Link:</p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-[10px] font-mono text-[#00b8ff] truncate bg-[#080d14] px-2 py-1.5 rounded">
+                      {resendLink}
+                    </code>
+                    <button
+                      onClick={() => {
+                        void navigator.clipboard.writeText(resendLink);
+                        setResendLinkCopied(true);
+                        setTimeout(() => setResendLinkCopied(false), 2000);
+                      }}
+                      className="px-2 py-1.5 bg-[#1a2840] hover:bg-[#243550] text-[#f0f0f0] text-xs rounded transition-colors"
+                    >
+                      {resendLinkCopied ? "✓" : "Kopieren"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={handleResendInvitation}
+                  disabled={resendPending}
+                  className="w-full py-2 bg-[#1a2840] hover:bg-[#243550] disabled:opacity-40 text-[#f0f0f0] text-xs font-medium rounded-lg transition-colors"
+                >
+                  {resendPending ? "Wird gesendet…" : "Einladung erneut senden"}
+                </button>
+              )}
             </div>
           </div>
         </div>
