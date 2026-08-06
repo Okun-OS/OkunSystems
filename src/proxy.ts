@@ -6,7 +6,7 @@ const secret =
   process.env.NEXTAUTH_SECRET ||
   "okun-systems-platform-secret-please-set-NEXTAUTH_SECRET-in-railway";
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { nextUrl } = req;
   const isAuthPage =
     nextUrl.pathname === "/login" ||

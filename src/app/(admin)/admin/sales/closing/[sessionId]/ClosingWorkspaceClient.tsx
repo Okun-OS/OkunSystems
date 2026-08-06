@@ -525,6 +525,7 @@ export function ClosingWorkspaceClient({
                   </div>
                 )}
               </div>
+            </div>
 
             {/* Resend invitation */}
             <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5 space-y-3">
