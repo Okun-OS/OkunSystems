@@ -78,6 +78,7 @@ export default async function ClosingWorkspacePage({
         priceNet: true,
         currency: true,
         description: true,
+        r2Key: true,
       },
       orderBy: { priceNet: "asc" },
     }),

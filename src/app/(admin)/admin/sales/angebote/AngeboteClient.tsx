@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Edit2, Archive, Check, X } from "lucide-react";
-import { createOfferTemplate, updateOfferTemplate, archiveOfferTemplate } from "./actions";
+import { Plus, Edit2, Archive, Check, FileText, Upload, Loader2 } from "lucide-react";
+import { createOfferTemplate, updateOfferTemplate, archiveOfferTemplate, setOfferTemplateR2Key } from "./actions";
 
 const PACKAGE_TYPES = [
   { value: "foundation", label: "Foundation" },
@@ -19,6 +19,7 @@ type Template = {
   priceNet: number;
   currency: string;
   validDays: number;
+  r2Key: string | null;
   status: string;
   _count: { offers: number };
 };
@@ -34,7 +35,11 @@ export function AngeboteClient({ templates, archivedTemplates }: Props) {
   const [editId, setEditId] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadTargetId = useRef<string | null>(null);
 
   function handleCreate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -65,8 +70,68 @@ export function AngeboteClient({ templates, archivedTemplates }: Props) {
     });
   }
 
+  function triggerPdfUpload(templateId: string) {
+    uploadTargetId.current = templateId;
+    setUploadError(null);
+    fileInputRef.current?.click();
+  }
+
+  async function handlePdfFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    const templateId = uploadTargetId.current;
+    if (!file || !templateId) return;
+    if (file.type !== "application/pdf") {
+      setUploadError("Nur PDF-Dateien erlaubt.");
+      return;
+    }
+    e.target.value = "";
+
+    setUploadingId(templateId);
+    setUploadError(null);
+    try {
+      const res = await fetch("/api/admin/offer-pdf-upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ templateId }),
+      });
+      const { uploadUrl, key, error } = (await res.json()) as { uploadUrl?: string; key?: string; error?: string };
+      if (error || !uploadUrl || !key) {
+        setUploadError(error ?? "Presigned URL konnte nicht erstellt werden.");
+        return;
+      }
+
+      const uploadRes = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": "application/pdf" },
+        body: file,
+      });
+      if (!uploadRes.ok) {
+        setUploadError("Upload fehlgeschlagen.");
+        return;
+      }
+
+      const saveResult = await setOfferTemplateR2Key(templateId, key);
+      if (saveResult?.error) { setUploadError(saveResult.error); return; }
+
+      router.refresh();
+    } catch {
+      setUploadError("Netzwerkfehler beim Upload.");
+    } finally {
+      setUploadingId(null);
+    }
+  }
+
   return (
     <div className="max-w-[1200px] mx-auto">
+      {/* Hidden file input for PDF uploads */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="application/pdf"
+        className="hidden"
+        onChange={handlePdfFileSelected}
+      />
+
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-[#f0f0f0]">Angebots-Templates</h1>
@@ -84,6 +149,11 @@ export function AngeboteClient({ templates, archivedTemplates }: Props) {
       {actionError && (
         <div className="mb-4 px-4 py-3 bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.2)] rounded-lg text-[#ef4444] text-sm">
           {actionError}
+        </div>
+      )}
+      {uploadError && (
+        <div className="mb-4 px-4 py-3 bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.2)] rounded-lg text-[#ef4444] text-sm">
+          {uploadError}
         </div>
       )}
 
@@ -155,6 +225,12 @@ export function AngeboteClient({ templates, archivedTemplates }: Props) {
                         {template.packageType}
                       </span>
                       <span className="text-xs text-[#555]">· {template._count.offers} Angebote</span>
+                      {template.r2Key && (
+                        <span className="flex items-center gap-1 text-xs text-[#22c55e]">
+                          <FileText size={11} />
+                          PDF hochgeladen
+                        </span>
+                      )}
                     </div>
                     <h3 className="text-base font-semibold text-[#f0f0f0] mb-0.5">{template.name}</h3>
                     {template.description && (
@@ -168,6 +244,19 @@ export function AngeboteClient({ templates, archivedTemplates }: Props) {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      onClick={() => triggerPdfUpload(template.id)}
+                      disabled={uploadingId === template.id}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-[#888] hover:text-[#f0f0f0] border border-[#1a2840] hover:border-[#243550] rounded-lg transition-colors disabled:opacity-40"
+                      title="PDF hochladen"
+                    >
+                      {uploadingId === template.id ? (
+                        <Loader2 size={12} className="animate-spin" />
+                      ) : (
+                        <Upload size={12} />
+                      )}
+                      {template.r2Key ? "PDF ersetzen" : "PDF hochladen"}
+                    </button>
                     <button
                       onClick={() => setEditId(template.id)}
                       className="p-2 text-[#666] hover:text-[#f0f0f0] transition-colors"

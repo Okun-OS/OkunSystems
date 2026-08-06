@@ -76,3 +76,19 @@ export async function archiveOfferTemplate(templateId: string) {
   revalidatePath("/admin/sales/angebote");
   return { ok: true };
 }
+
+export async function setOfferTemplateR2Key(templateId: string, r2Key: string) {
+  const session = await auth();
+  if (!session?.user) return { error: "Nicht authentifiziert" };
+  const userId = (session.user as { id: string }).id;
+  const userRecord = await db.user.findUnique({ where: { id: userId } });
+  if (!userRecord || userRecord.role !== "ADMIN") return { error: "Keine Berechtigung" };
+
+  await db.offerTemplate.update({
+    where: { id: templateId },
+    data: { r2Key },
+  });
+
+  revalidatePath("/admin/sales/angebote");
+  return { ok: true };
+}

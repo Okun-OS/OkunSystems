@@ -8,6 +8,7 @@ import {
   markInvoiceSent,
   markInvoicePaid,
   cancelInvoice,
+  sendInvoice,
 } from "./actions";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -57,6 +58,7 @@ export function RechnungenClient({ invoices, companies }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [paidByMap, setPaidByMap] = useState<Record<string, string>>({});
   const [actionError, setActionError] = useState<string | null>(null);
+  const [sendingId, setSendingId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const filtered =
@@ -84,6 +86,18 @@ export function RechnungenClient({ invoices, companies }: Props) {
       await markInvoiceSent(id);
       router.refresh();
     });
+  }
+
+  async function handleSendEmail(id: string) {
+    setSendingId(id);
+    setActionError(null);
+    try {
+      const result = await sendInvoice(id);
+      if (result?.error) setActionError(result.error);
+      else router.refresh();
+    } finally {
+      setSendingId(null);
+    }
   }
 
   function handlePaid(id: string) {
@@ -314,14 +328,24 @@ export function RechnungenClient({ invoices, companies }: Props) {
                   {/* Actions */}
                   <div className="flex items-center gap-3 pt-3 border-t border-[#111e30]">
                     {inv.status === "draft" && (
-                      <button
-                        onClick={() => handleSent(inv.id)}
-                        disabled={pending}
-                        className="flex items-center gap-2 px-3 py-2 bg-[#00b8ff] hover:bg-[#0099dd] disabled:opacity-40 text-black font-semibold text-xs rounded-lg"
-                      >
-                        <Send size={13} />
-                        Als versendet markieren
-                      </button>
+                      <>
+                        <button
+                          onClick={() => handleSendEmail(inv.id)}
+                          disabled={pending || sendingId === inv.id}
+                          className="flex items-center gap-2 px-3 py-2 bg-[#00b8ff] hover:bg-[#0099dd] disabled:opacity-40 text-black font-semibold text-xs rounded-lg"
+                        >
+                          <Send size={13} />
+                          {sendingId === inv.id ? "Wird gesendet…" : "Per E-Mail senden"}
+                        </button>
+                        <button
+                          onClick={() => handleSent(inv.id)}
+                          disabled={pending}
+                          className="flex items-center gap-2 px-3 py-2 bg-[#1a2840] hover:bg-[#243550] disabled:opacity-40 text-[#888] text-xs rounded-lg"
+                        >
+                          <Check size={13} />
+                          Nur als versendet markieren
+                        </button>
+                      </>
                     )}
                     {(inv.status === "sent" || inv.status === "draft") && (
                       <div className="flex items-center gap-2">
