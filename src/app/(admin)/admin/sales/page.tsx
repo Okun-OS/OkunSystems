@@ -46,8 +46,10 @@ export default async function SalesDashboardPage() {
     redirect("/dashboard");
   }
 
+  const closerFilter = userRecord.role === "CLOSER" ? { assignedCloserId: userId } : {};
+
   const leads = await db.company.findMany({
-    where: { leadStatus: { not: null } },
+    where: { leadStatus: { not: null }, ...closerFilter },
     include: {
       assignedCloser: { select: { name: true } },
       _count: { select: { closingSessions: true } },

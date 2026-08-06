@@ -24,6 +24,7 @@ import {
   closeContract,
   resendClientInvitation,
 } from "../actions";
+import { createInvoiceFromOffer } from "../../rechnungen/actions";
 
 const STATUS_LABELS: Record<string, string> = {
   closing_scheduled: "Termin geplant",
@@ -195,6 +196,22 @@ export function ClosingWorkspaceClient({
       const result = await presentOffer(closingSession.id, offerId);
       if (result?.error) setActionError(result.error);
       else router.refresh();
+    });
+  }
+
+  // Invoice
+  const [invoicePending, startInvoiceTransition] = useTransition();
+  const [invoiceId, setInvoiceId] = useState<string | null>(null);
+  const [invoiceError, setInvoiceError] = useState<string | null>(null);
+
+  function handleCreateInvoice() {
+    const activeOffer = closingSession.offers.find((o) => o.id === closingSession.activeOfferId);
+    if (!activeOffer) { setInvoiceError("Kein aktives Angebot."); return; }
+    setInvoiceError(null);
+    startInvoiceTransition(async () => {
+      const result = await createInvoiceFromOffer(activeOffer.id);
+      if (result?.error) setInvoiceError(result.error);
+      else if (result?.invoiceId) { setInvoiceId(result.invoiceId); router.refresh(); }
     });
   }
 
@@ -862,6 +879,33 @@ export function ClosingWorkspaceClient({
               >
                 <CreditCard size={15} />
                 {paymentPending ? "Wird vorbereitet…" : "Stripe-Checkout öffnen"}
+              </button>
+            )}
+          </div>
+
+          {/* Invoice creation */}
+          <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6">
+            <h2 className="text-sm font-semibold text-[#f0f0f0] mb-2">Rechnung erstellen</h2>
+            <p className="text-xs text-[#666] mb-4">
+              Erstellt eine Rechnungserfassung aus dem aktiven Angebot für die Rechnungs-Verwaltung.
+            </p>
+            {invoiceError && <p className="text-[#ef4444] text-xs mb-3">{invoiceError}</p>}
+            {invoiceId ? (
+              <div className="flex items-center gap-2 text-[#22c55e] text-sm">
+                <CheckCircle size={15} />
+                Rechnung erstellt.{" "}
+                <a href="/admin/sales/rechnungen" className="text-[#00b8ff] hover:underline text-xs">
+                  Zur Rechnungs-Verwaltung →
+                </a>
+              </div>
+            ) : (
+              <button
+                onClick={handleCreateInvoice}
+                disabled={invoicePending || !closingSession.activeOfferId}
+                className="flex items-center gap-2 px-4 py-2.5 bg-[#1a2840] hover:bg-[#243550] disabled:opacity-40 text-[#f0f0f0] font-medium text-sm rounded-lg transition-colors"
+              >
+                <FileText size={14} />
+                {invoicePending ? "Wird erstellt…" : "Rechnung aus Angebot erstellen"}
               </button>
             )}
           </div>
