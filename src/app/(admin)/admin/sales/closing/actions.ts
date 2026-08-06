@@ -222,8 +222,10 @@ export async function closeContract(
       closerName: data.closerName,
       companyName: data.companyName,
       fullSnapshot: JSON.stringify({ offerId: data.offerId, sessionId }),
-      closingSessionId: sessionId,
+      closingSession: { connect: { id: sessionId } },
       offerId: data.offerId,
+      closerId: closingSession.closerId,
+      companyId: closingSession.companyId,
     },
   });
 
