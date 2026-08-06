@@ -88,7 +88,7 @@ type ClosingSessionData = {
     status: string;
     priceNet: number;
     currency: string;
-    validUntil: Date;
+    validUntil: Date | null;
     presentedAt: Date | null;
     template: { name: string } | null;
   }>;
@@ -621,7 +621,7 @@ export function ClosingWorkspaceClient({
                       <span className="font-mono text-[#f0f0f0]">
                         {offer.currency} {(offer.priceNet / 100).toLocaleString("de-DE")} netto
                       </span>
-                      <span>Gültig bis {new Date(offer.validUntil).toLocaleDateString("de-DE")}</span>
+                      {offer.validUntil && <span>Gültig bis {new Date(offer.validUntil).toLocaleDateString("de-DE")}</span>}
                       {offer.presentedAt && (
                         <span>Gezeigt: {new Date(offer.presentedAt).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>
                       )}
