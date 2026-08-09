@@ -17,7 +17,7 @@ export default async function ClosingClientPage({
       company: { select: { name: true } },
       closer: { select: { name: true } },
       appointment: {
-        select: { startTime: true, endTime: true, bookedByName: true },
+        select: { startTime: true, endTime: true, bookedByName: true, meetingUrl: true },
       },
       consentRecords: {
         select: {
@@ -64,7 +64,7 @@ export default async function ClosingClientPage({
             validUntil: true,
             status: true,
             acceptedAt: true,
-            template: { select: { name: true, description: true } },
+            template: { select: { name: true, description: true, r2Key: true } },
           },
         })
       : Promise.resolve(null),
@@ -80,7 +80,14 @@ export default async function ClosingClientPage({
     status: closingSession.status,
     company: closingSession.company,
     closer: closingSession.closer,
-    appointment: closingSession.appointment,
+    appointment: closingSession.appointment
+      ? {
+          startTime: closingSession.appointment.startTime,
+          endTime: closingSession.appointment.endTime,
+          bookedByName: closingSession.appointment.bookedByName,
+          meetingUrl: closingSession.appointment.meetingUrl ?? null,
+        }
+      : null,
     activeOffer: activeOffer ?? null,
     legalDocuments,
     consentRecords: closingSession.consentRecords,

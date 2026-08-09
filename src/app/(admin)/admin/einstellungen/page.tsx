@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { Settings, Video, Upload, Trash2, Package, ArrowRight, Link2 } from "lucide-react";
+import { Settings, Video, Upload, Trash2, Package, ArrowRight, Link2, FileText } from "lucide-react";
 import Link from "next/link";
 import { WelcomeVideoUpload } from "./WelcomeVideoUpload";
 import { AdminTwoFASection } from "./AdminTwoFASection";
@@ -139,6 +139,26 @@ export default async function AdminEinstellungenPage() {
         </div>
         <p className="text-[#888] text-xs mt-2 leading-relaxed">
           Lösungen im Katalog pflegen – Kategorien, Pakete und Beschreibungen.
+        </p>
+      </div>
+
+      {/* Legal documents */}
+      <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6 mb-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <FileText size={16} className="text-[#888]" />
+            <h2 className="text-[#f0f0f0] font-semibold text-sm">Rechtliche Dokumente</h2>
+          </div>
+          <Link
+            href="/admin/einstellungen/rechtliches"
+            className="flex items-center gap-1.5 text-[#00b8ff] text-sm hover:underline"
+          >
+            Verwalten
+            <ArrowRight size={14} />
+          </Link>
+        </div>
+        <p className="text-[#888] text-xs mt-2 leading-relaxed">
+          AGBs, Datenschutzerklärung und weitere Dokumente – werden Kunden im Closing zur Zustimmung angezeigt.
         </p>
       </div>
 

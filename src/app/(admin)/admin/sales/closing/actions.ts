@@ -232,10 +232,6 @@ export async function closeContract(
     },
   });
 
-  await db.offer.update({
-    where: { id: data.offerId },
-    data: { status: "accepted", acceptedAt: now },
-  });
   await db.closingSession.update({
     where: { id: sessionId },
     data: { status: "contract_closed", closedAt: now },
