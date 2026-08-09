@@ -291,9 +291,57 @@ export function ClosingWorkspaceClient({
   const notesTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const checklistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ─── Draggable + resizable video overlay ──────────────────────────────────
+  const [vidPos, setVidPos] = useState({ x: 0, y: 0 });
+  const [vidSize, setVidSize] = useState({ w: 420, h: 300 });
+  const vidPosInitialized = useRef(false);
+  const isDragging = useRef(false);
+  const isResizing = useRef(false);
+  const dragOrigin = useRef({ mx: 0, my: 0, x: 0, y: 0 });
+  const resizeOrigin = useRef({ mx: 0, my: 0, w: 0, h: 0 });
+
+  // Recording consent gate
+  const [showRecordingConsentPrompt, setShowRecordingConsentPrompt] = useState(false);
+  const [recordingConsentChecked, setRecordingConsentChecked] = useState(false);
+
   const checkedCount = ALL_STEP_IDS.filter((id) => checklist[id]).length;
   const totalCount = ALL_STEP_IDS.length;
   const progress = totalCount > 0 ? Math.round((checkedCount / totalCount) * 100) : 0;
+
+  // ─── Drag + resize events ─────────────────────────────────────────────────
+  useEffect(() => {
+    function onMove(e: MouseEvent) {
+      if (isDragging.current) {
+        setVidPos({
+          x: dragOrigin.current.x + (e.clientX - dragOrigin.current.mx),
+          y: dragOrigin.current.y + (e.clientY - dragOrigin.current.my),
+        });
+      }
+      if (isResizing.current) {
+        setVidSize({
+          w: Math.max(280, resizeOrigin.current.w + (e.clientX - resizeOrigin.current.mx)),
+          h: Math.max(180, resizeOrigin.current.h + (e.clientY - resizeOrigin.current.my)),
+        });
+      }
+    }
+    function onUp() {
+      isDragging.current = false;
+      isResizing.current = false;
+    }
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+    return () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (callActive && !vidPosInitialized.current) {
+      setVidPos({ x: Math.max(20, window.innerWidth - 460), y: 108 });
+      vidPosInitialized.current = true;
+    }
+  }, [callActive]);
 
   const handleChecklistChange = useCallback(
     (stepId: string, checked: boolean) => {
@@ -463,6 +511,9 @@ export function ClosingWorkspaceClient({
       else router.refresh();
     });
   }
+
+  const activeOfferObj = closingSession.offers.find((o) => o.id === closingSession.activeOfferId);
+  const isPaid = activeOfferObj?.status === "accepted";
 
   const nextAction = NEXT_STATUS_MAP[closingSession.status];
   const filteredContent = contentTypeFilter === "all"
@@ -701,15 +752,50 @@ export function ClosingWorkspaceClient({
               ) : null}
 
               {/* Recording */}
-              {recordingStatus === "idle" && (
+              {recordingStatus === "idle" && !showRecordingConsentPrompt && (
                 <button
-                  onClick={handleStartRecording}
+                  onClick={() => setShowRecordingConsentPrompt(true)}
                   disabled={recordingPending}
                   className="flex items-center gap-2 px-3 py-2 bg-[rgba(239,68,68,0.1)] hover:bg-[rgba(239,68,68,0.15)] border border-[rgba(239,68,68,0.2)] text-[#ef4444] text-sm font-medium rounded-lg transition-colors disabled:opacity-40"
                 >
                   <Mic size={14} />
-                  {recordingPending ? "Startet…" : "Aufzeichnung starten"}
+                  Aufzeichnung starten
                 </button>
+              )}
+              {recordingStatus === "idle" && showRecordingConsentPrompt && (
+                <div className="flex flex-col gap-2 bg-[rgba(239,68,68,0.05)] border border-[rgba(239,68,68,0.2)] rounded-lg px-3 py-2.5">
+                  <p className="text-xs font-semibold text-[#f0f0f0]">Aufnahme-Einwilligung bestätigen</p>
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={recordingConsentChecked}
+                      onChange={(e) => setRecordingConsentChecked(e.target.checked)}
+                      className="mt-0.5 w-3.5 h-3.5 accent-[#ef4444] flex-shrink-0"
+                    />
+                    <span className="text-xs text-[#ccc] leading-snug">Der Kunde hat der Aufzeichnung dieses Gesprächs ausdrücklich zugestimmt.</span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={async () => {
+                        if (recordingConsentChecked) {
+                          setShowRecordingConsentPrompt(false);
+                          await handleStartRecording();
+                        }
+                      }}
+                      disabled={!recordingConsentChecked || recordingPending}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[rgba(239,68,68,0.1)] hover:bg-[rgba(239,68,68,0.15)] border border-[rgba(239,68,68,0.2)] text-[#ef4444] text-xs font-medium rounded-lg transition-colors disabled:opacity-40"
+                    >
+                      <Mic size={12} />
+                      {recordingPending ? "Startet…" : "Aufnehmen"}
+                    </button>
+                    <button
+                      onClick={() => { setShowRecordingConsentPrompt(false); setRecordingConsentChecked(false); }}
+                      className="px-2.5 py-1.5 text-xs text-[#666] hover:text-[#f0f0f0] transition-colors"
+                    >
+                      Abbrechen
+                    </button>
+                  </div>
+                </div>
               )}
               {recordingStatus === "recording" && (
                 <div className="flex items-center gap-3">
@@ -1092,10 +1178,15 @@ export function ClosingWorkspaceClient({
           <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6">
             <h2 className="text-sm font-semibold text-[#f0f0f0] mb-2">Stripe-Zahlung anfordern</h2>
             <p className="text-xs text-[#666] mb-4">Öffnet den Stripe-Checkout-Link (Karte, SEPA). Nach Zahlung wird das Unternehmen automatisch aktiviert.</p>
-            {closingSession.status === "payment_pending" || closingSession.status === "contract_closed" ? (
+            {isPaid ? (
               <div className="flex items-center gap-2 text-[#22c55e] text-sm">
                 <CheckCircle size={15} />
-                {closingSession.status === "contract_closed" ? "Zahlung eingegangen — Unternehmen aktiviert." : "Warte auf Zahlung…"}
+                Zahlung eingegangen — Unternehmen aktiviert.
+              </div>
+            ) : (closingSession.status === "payment_pending" || closingSession.status === "contract_closed") ? (
+              <div className="flex items-center gap-2 text-[#f59e0b] text-sm">
+                <Clock size={15} />
+                Warte auf Zahlung vom Kunden…
               </div>
             ) : (
               <button onClick={handleRequestPayment} disabled={paymentPending || !closingSession.activeOfferId}
@@ -1174,19 +1265,23 @@ export function ClosingWorkspaceClient({
         </div>
       )}
 
-      {/* ─── Embedded video overlay ─────────────────────────────────────────────
+      {/* ─── Embedded video overlay — draggable + resizable ───────────────────
           Rendered once (never unmounted) so the call stays alive when switching
-          tabs. Position/size changes via className only. */}
+          tabs. Drag via title bar, resize via corner handle. */}
       {callActive && closingSession.appointment?.meetingUrl && (
         <div
-          className={`fixed z-50 flex flex-col shadow-2xl border border-[#1a2840] bg-[#080d14] rounded-xl overflow-hidden transition-all duration-300 ${
-            activeTab === "maske"
-              ? "top-[108px] right-6 w-[420px] h-[300px]"
-              : "bottom-4 right-4 w-[300px] h-[210px]"
-          }`}
+          className="fixed z-50 flex flex-col shadow-2xl border border-[#1a2840] bg-[#080d14] rounded-xl overflow-hidden"
+          style={{ left: `${vidPos.x}px`, top: `${vidPos.y}px`, width: `${vidSize.w}px`, height: `${vidSize.h}px` }}
         >
-          {/* Title bar */}
-          <div className="flex items-center justify-between px-3 py-2 bg-[#0c1520] border-b border-[#1a2840] flex-shrink-0">
+          {/* Title bar — drag handle */}
+          <div
+            className="flex items-center justify-between px-3 py-2 bg-[#0c1520] border-b border-[#1a2840] flex-shrink-0 cursor-grab active:cursor-grabbing select-none"
+            onMouseDown={(e) => {
+              isDragging.current = true;
+              dragOrigin.current = { mx: e.clientX, my: e.clientY, x: vidPos.x, y: vidPos.y };
+              e.preventDefault();
+            }}
+          >
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-[#ef4444] animate-pulse" />
               <span className="text-xs font-medium text-[#f0f0f0]">Live-Gespräch</span>
@@ -1194,6 +1289,7 @@ export function ClosingWorkspaceClient({
                 <button
                   onClick={() => setActiveTab("maske")}
                   className="text-[10px] text-[#00b8ff] hover:underline"
+                  onMouseDown={(e) => e.stopPropagation()}
                 >
                   → Maske
                 </button>
@@ -1203,6 +1299,7 @@ export function ClosingWorkspaceClient({
               onClick={() => setCallActive(false)}
               className="text-[#666] hover:text-[#ef4444] transition-colors"
               title="Gespräch verlassen"
+              onMouseDown={(e) => e.stopPropagation()}
             >
               <Square size={11} />
             </button>
@@ -1213,6 +1310,21 @@ export function ClosingWorkspaceClient({
             className="w-full flex-1 border-0"
             title="Closing-Gespräch"
           />
+          {/* Resize handle — bottom-right corner */}
+          <div
+            className="absolute bottom-0 right-0 w-5 h-5 cursor-se-resize z-10"
+            onMouseDown={(e) => {
+              isResizing.current = true;
+              resizeOrigin.current = { mx: e.clientX, my: e.clientY, w: vidSize.w, h: vidSize.h };
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          >
+            <svg width="10" height="10" viewBox="0 0 10 10" className="absolute bottom-1 right-1 text-[#444]">
+              <path d="M 9 3 L 9 9 L 3 9" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M 9 6 L 6 9" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+            </svg>
+          </div>
         </div>
       )}
     </div>

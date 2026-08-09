@@ -80,7 +80,7 @@ export function ClosingClientView({ session: s, token }: Props) {
   const paymentResult = searchParams.get("payment");
   const isPaid = s.activeOffer?.status === "accepted";
   const statusIdx = STATUS_ORDER.indexOf(s.status);
-  const isWaiting = statusIdx < 1; // closing_scheduled
+  const isWaiting = statusIdx < 1;
   const offerVisible = statusIdx >= 2 && s.activeOffer !== null;
   const paymentReady = s.status === "contract_closed" && !isPaid;
   const paymentPending = s.status === "payment_pending";
@@ -135,239 +135,317 @@ export function ClosingClientView({ session: s, token }: Props) {
     });
   }
 
-  return (
-    <>
-      {/* Floating video call — stays mounted so call doesn't drop */}
-      {callActive && s.appointment?.meetingUrl && (
-        <div className="fixed bottom-4 right-4 z-50 w-[340px] h-[240px] flex flex-col rounded-xl overflow-hidden shadow-2xl border border-[#1a2840] bg-[#080d14]">
-          <div className="flex items-center justify-between px-3 py-1.5 bg-[#0c1520] border-b border-[#1a2840]">
-            <span className="text-xs text-[#888] font-medium">Video-Gespräch</span>
+  // ── Full-screen video call layout ───────────────────────────────────────────
+  if (callActive && s.appointment?.meetingUrl) {
+    const showBottomBar = !isPaid && (showConsentForm || paymentReady) || (paymentResult === "success" || isPaid);
+
+    return (
+      <div className="fixed inset-0 z-50 bg-black flex flex-col">
+        {/* Top bar */}
+        <div className="flex items-center justify-between px-4 py-2.5 bg-[#080d14] border-b border-[#1a2840] flex-shrink-0">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/okun-logo.png"
+            alt="OKUN Systems"
+            className="h-6"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+          />
+          <div className="flex items-center gap-3">
+            <StatusPill status={s.status} isPaid={isPaid} />
             <button
               onClick={() => setCallActive(false)}
-              className="text-xs text-[#666] hover:text-[#f0f0f0] transition-colors px-1"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[rgba(239,68,68,0.12)] hover:bg-[rgba(239,68,68,0.2)] border border-[rgba(239,68,68,0.25)] text-[#ef4444] text-xs font-semibold rounded-lg transition-colors"
             >
-              ✕
+              <VideoOff size={12} />
+              Verlassen
             </button>
           </div>
-          <iframe
-            src={s.appointment.meetingUrl}
-            allow="camera; microphone; fullscreen; display-capture; screen-wake-lock"
-            className="w-full flex-1 border-0"
-            title="Gespräch"
+        </div>
+
+        {/* Main video — takes all remaining space */}
+        <iframe
+          src={s.appointment.meetingUrl}
+          allow="camera; microphone; fullscreen; display-capture; screen-wake-lock"
+          className="flex-1 w-full border-0"
+          title="Gespräch"
+        />
+
+        {/* Bottom action bar — only visible when action needed */}
+        {showBottomBar && (
+          <div className="flex-shrink-0 bg-[#080d14] border-t border-[#1a2840] px-4 py-3 space-y-3 max-h-52 overflow-y-auto">
+            {(paymentResult === "success" || isPaid) && (
+              <div className="flex items-center gap-2 text-[#22c55e] text-sm font-medium">
+                <span>✅</span>
+                <span>Zahlung erfolgreich — Ihr Konto wird in Kürze aktiviert.</span>
+              </div>
+            )}
+            {showConsentForm && !isPaid && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-[#888] uppercase tracking-wide">Einwilligungen bestätigen</p>
+                <div className="flex flex-wrap gap-3">
+                  {s.legalDocuments.map((doc) => {
+                    const checked = consented.has(doc.id);
+                    const loading = consentPending === doc.id;
+                    return (
+                      <label
+                        key={doc.id}
+                        className={`flex items-center gap-2 cursor-pointer ${loading ? "opacity-60" : ""}`}
+                        onClick={() => !checked && handleConsent(doc)}
+                      >
+                        <div
+                          className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 border transition-colors ${
+                            checked ? "bg-[#22c55e] border-[#22c55e]" : "border-[#2a3a50] hover:border-[#00b8ff]"
+                          }`}
+                        >
+                          {checked && (
+                            <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                              <path d="M1 4L3.5 6.5L9 1" stroke="black" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          )}
+                        </div>
+                        <span className="text-xs text-[#ccc]">
+                          {doc.title}
+                          {doc.isRequired && <span className="text-[#ef4444] ml-0.5">*</span>}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {paymentReady && s.activeOffer && !isPaid && (
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs text-[#888]">Gesamtbetrag inkl. MwSt.</p>
+                  <p className="text-lg font-bold text-[#f0f0f0]">{fmtEur(Math.round(s.activeOffer.priceNet * 1.19))}</p>
+                </div>
+                <div className="flex flex-col items-end gap-1">
+                  {showConsentForm && !allRequiredConsented && (
+                    <p className="text-xs text-[#f59e0b]">Bitte alle Pflichtdokumente bestätigen.</p>
+                  )}
+                  <button
+                    onClick={handlePay}
+                    disabled={paying || (showConsentForm && !allRequiredConsented)}
+                    className="px-5 py-2.5 rounded-xl bg-[#00b8ff] hover:bg-[#0099dd] disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-sm transition-colors"
+                  >
+                    {paying ? "Weiterleitung…" : "Jetzt bezahlen →"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── Normal info-card layout (call not active) ────────────────────────────────
+  return (
+    <div className="min-h-screen bg-[#080d14] text-[#f0f0f0] p-4 flex flex-col items-center justify-start pt-12 pb-16">
+      <div className="max-w-xl w-full space-y-5">
+
+        {/* Logo */}
+        <div className="text-center mb-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/okun-logo.png"
+            alt="OKUN Systems"
+            className="h-8 mx-auto"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.display = "none";
+            }}
           />
         </div>
-      )}
 
-      <div className="min-h-screen bg-[#080d14] text-[#f0f0f0] p-4 flex flex-col items-center justify-start pt-12 pb-16">
-        <div className="max-w-xl w-full space-y-5">
+        {/* Join call banner */}
+        {canJoinCall && (
+          <div className="rounded-2xl bg-[rgba(0,184,255,0.05)] border border-[rgba(0,184,255,0.2)] p-4 flex items-center justify-between gap-4">
+            <div className="text-sm text-[#aaa]">
+              Ihr Berater wartet im Video-Gespräch auf Sie.
+            </div>
+            <button
+              onClick={() => setCallActive(true)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex-shrink-0 bg-[#00b8ff] text-black hover:bg-[#0099dd]"
+            >
+              <Video size={13} />
+              Beitreten
+            </button>
+          </div>
+        )}
 
-          {/* Logo */}
-          <div className="text-center mb-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/okun-logo.png"
-              alt="OKUN Systems"
-              className="h-8 mx-auto"
-              onError={(e) => {
-                (e.currentTarget as HTMLImageElement).style.display = "none";
-              }}
-            />
+        {/* Payment success banner */}
+        {(paymentResult === "success" || isPaid) && (
+          <div className="rounded-2xl bg-[rgba(34,197,94,0.08)] border border-[rgba(34,197,94,0.2)] p-6 text-center">
+            <div className="text-4xl mb-3">✅</div>
+            <h2 className="text-lg font-bold text-[#22c55e] mb-2">Zahlung erfolgreich</h2>
+            <p className="text-sm text-[#888]">
+              Vielen Dank! Wir haben Ihre Zahlung erhalten und Ihr Konto wird in Kürze aktiviert.
+              Sie erhalten eine Bestätigung per E-Mail.
+            </p>
+          </div>
+        )}
+
+        {/* Payment cancelled banner */}
+        {paymentResult === "cancelled" && !isPaid && (
+          <div className="rounded-2xl bg-[rgba(239,68,68,0.08)] border border-[rgba(239,68,68,0.2)] p-5 text-center">
+            <p className="text-sm text-[#ef4444]">Zahlung abgebrochen. Sie können es jederzeit erneut versuchen.</p>
+          </div>
+        )}
+
+        {/* Session info card */}
+        <div className="rounded-2xl bg-[#0c1520] border border-[#1a2840] p-6 space-y-4">
+          <div className="text-xs font-medium text-[#444] uppercase tracking-widest">Gesprächsdetails</div>
+
+          <div className="space-y-3">
+            <Row icon="🏢" label="Unternehmen" value={s.company.name} />
+            {s.closer.name && <Row icon="👤" label="Ihr Berater" value={s.closer.name} />}
+            {s.appointment && (
+              <Row
+                icon="📅"
+                label="Termin"
+                value={fmtDate(s.appointment.startTime)}
+                sub={fmtTime(s.appointment.startTime) + " Uhr"}
+              />
+            )}
           </div>
 
-          {/* Join call banner */}
-          {canJoinCall && (
-            <div className="rounded-2xl bg-[rgba(0,184,255,0.05)] border border-[rgba(0,184,255,0.2)] p-4 flex items-center justify-between gap-4">
-              <div className="text-sm text-[#aaa]">
-                Ihr Berater wartet im Video-Gespräch auf Sie.
-              </div>
-              <button
-                onClick={() => setCallActive((v) => !v)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex-shrink-0 ${
-                  callActive
-                    ? "bg-[rgba(239,68,68,0.15)] text-[#ef4444] border border-[rgba(239,68,68,0.3)]"
-                    : "bg-[#00b8ff] text-black hover:bg-[#0099dd]"
-                }`}
-              >
-                {callActive ? <VideoOff size={13} /> : <Video size={13} />}
-                {callActive ? "Verlassen" : "Beitreten"}
-              </button>
-            </div>
-          )}
+          <StatusPill status={s.status} isPaid={isPaid} />
+        </div>
 
-          {/* Payment success banner */}
-          {(paymentResult === "success" || isPaid) && (
-            <div className="rounded-2xl bg-[rgba(34,197,94,0.08)] border border-[rgba(34,197,94,0.2)] p-6 text-center">
-              <div className="text-4xl mb-3">✅</div>
-              <h2 className="text-lg font-bold text-[#22c55e] mb-2">Zahlung erfolgreich</h2>
-              <p className="text-sm text-[#888]">
-                Vielen Dank! Wir haben Ihre Zahlung erhalten und Ihr Konto wird in Kürze aktiviert.
-                Sie erhalten eine Bestätigung per E-Mail.
-              </p>
-            </div>
-          )}
+        {/* Offer card */}
+        {offerVisible && s.activeOffer && !isPaid && (
+          <OfferCard offer={s.activeOffer} token={token} />
+        )}
 
-          {/* Payment cancelled banner */}
-          {paymentResult === "cancelled" && !isPaid && (
-            <div className="rounded-2xl bg-[rgba(239,68,68,0.08)] border border-[rgba(239,68,68,0.2)] p-5 text-center">
-              <p className="text-sm text-[#ef4444]">Zahlung abgebrochen. Sie können es jederzeit erneut versuchen.</p>
-            </div>
-          )}
-
-          {/* Session info card */}
+        {/* Consent form */}
+        {showConsentForm && !isPaid && (
           <div className="rounded-2xl bg-[#0c1520] border border-[#1a2840] p-6 space-y-4">
-            <div className="text-xs font-medium text-[#444] uppercase tracking-widest">Gesprächsdetails</div>
-
+            <div className="text-xs font-medium text-[#444] uppercase tracking-widest">Einwilligungen</div>
+            <p className="text-sm text-[#888]">
+              Bitte bestätigen Sie die folgenden Dokumente, um den Vertrag abzuschließen.
+            </p>
             <div className="space-y-3">
-              <Row icon="🏢" label="Unternehmen" value={s.company.name} />
-              {s.closer.name && <Row icon="👤" label="Ihr Berater" value={s.closer.name} />}
-              {s.appointment && (
-                <Row
-                  icon="📅"
-                  label="Termin"
-                  value={fmtDate(s.appointment.startTime)}
-                  sub={fmtTime(s.appointment.startTime) + " Uhr"}
-                />
-              )}
-            </div>
-
-            <StatusPill status={s.status} isPaid={isPaid} />
-          </div>
-
-          {/* Offer card */}
-          {offerVisible && s.activeOffer && !isPaid && (
-            <OfferCard offer={s.activeOffer} token={token} />
-          )}
-
-          {/* Consent form — shown when contract is ready for payment */}
-          {showConsentForm && !isPaid && (
-            <div className="rounded-2xl bg-[#0c1520] border border-[#1a2840] p-6 space-y-4">
-              <div className="text-xs font-medium text-[#444] uppercase tracking-widest">Einwilligungen</div>
-              <p className="text-sm text-[#888]">
-                Bitte bestätigen Sie die folgenden Dokumente, um den Vertrag abzuschließen.
-              </p>
-              <div className="space-y-3">
-                {s.legalDocuments.map((doc) => {
-                  const checked = consented.has(doc.id);
-                  const loading = consentPending === doc.id;
-                  return (
-                    <label
-                      key={doc.id}
-                      className={`flex items-start gap-3 cursor-pointer group ${loading ? "opacity-60" : ""}`}
-                      onClick={() => !checked && handleConsent(doc)}
-                    >
-                      <div
-                        className={`mt-0.5 w-4 h-4 rounded flex items-center justify-center flex-shrink-0 border transition-colors ${
-                          checked
-                            ? "bg-[#22c55e] border-[#22c55e]"
-                            : "border-[#2a3a50] group-hover:border-[#00b8ff]"
-                        }`}
-                      >
-                        {checked && (
-                          <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                            <path d="M1 4L3.5 6.5L9 1" stroke="black" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        )}
-                      </div>
-                      <span className="text-sm text-[#ccc] leading-tight">
-                        Ich akzeptiere die{" "}
-                        <span className="text-[#00b8ff] font-medium">{doc.title}</span>
-                        {doc.isRequired && <span className="text-[#ef4444] ml-0.5">*</span>}
-                        <span className="text-[#555] text-xs ml-1">v{doc.version}</span>
-                      </span>
-                    </label>
-                  );
-                })}
-              </div>
-              {requiredDocs.length > 0 && (
-                <p className="text-xs text-[#444]">* Pflichtfeld</p>
-              )}
-            </div>
-          )}
-
-          {/* Consent records summary (already given) */}
-          {s.consentRecords.length > 0 && isPaid && (
-            <div className="rounded-2xl bg-[#0c1520] border border-[#1a2840] p-6 space-y-3">
-              <div className="text-xs font-medium text-[#444] uppercase tracking-widest">Ihre Einwilligungen</div>
-              {s.consentRecords.map((cr) => {
-                const doc = s.legalDocuments.find((d) => d.id === cr.legalDocumentId);
+              {s.legalDocuments.map((doc) => {
+                const checked = consented.has(doc.id);
+                const loading = consentPending === doc.id;
                 return (
-                  <div key={cr.id} className="flex items-center gap-3 text-sm">
-                    <span className="text-[#22c55e] flex-shrink-0">✓</span>
-                    <span className="text-[#ccc]">{doc?.title ?? cr.consentType}</span>
-                    <span className="ml-auto text-[#444] text-xs">
-                      {cr.agreementAt ? fmtDate(new Date(cr.agreementAt)) : "—"}
+                  <label
+                    key={doc.id}
+                    className={`flex items-start gap-3 cursor-pointer group ${loading ? "opacity-60" : ""}`}
+                    onClick={() => !checked && handleConsent(doc)}
+                  >
+                    <div
+                      className={`mt-0.5 w-4 h-4 rounded flex items-center justify-center flex-shrink-0 border transition-colors ${
+                        checked
+                          ? "bg-[#22c55e] border-[#22c55e]"
+                          : "border-[#2a3a50] group-hover:border-[#00b8ff]"
+                      }`}
+                    >
+                      {checked && (
+                        <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                          <path d="M1 4L3.5 6.5L9 1" stroke="black" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </div>
+                    <span className="text-sm text-[#ccc] leading-tight">
+                      Ich akzeptiere die{" "}
+                      <span className="text-[#00b8ff] font-medium">{doc.title}</span>
+                      {doc.isRequired && <span className="text-[#ef4444] ml-0.5">*</span>}
+                      <span className="text-[#555] text-xs ml-1">v{doc.version}</span>
                     </span>
-                  </div>
+                  </label>
                 );
               })}
             </div>
-          )}
+            {requiredDocs.length > 0 && (
+              <p className="text-xs text-[#444]">* Pflichtfeld</p>
+            )}
+          </div>
+        )}
 
-          {/* Payment CTA */}
-          {paymentReady && s.activeOffer && (
-            <div className="rounded-2xl bg-[#0c1520] border border-[rgba(0,184,255,0.2)] p-6 space-y-4">
-              <div className="text-xs font-medium text-[#444] uppercase tracking-widest">Vertragsabschluss</div>
-              <p className="text-sm text-[#aaa]">
-                Ihr Berater hat den Vertrag bestätigt. Schließen Sie Ihre Bestellung jetzt ab.
+        {/* Consent records summary (already given, after payment) */}
+        {s.consentRecords.length > 0 && isPaid && (
+          <div className="rounded-2xl bg-[#0c1520] border border-[#1a2840] p-6 space-y-3">
+            <div className="text-xs font-medium text-[#444] uppercase tracking-widest">Ihre Einwilligungen</div>
+            {s.consentRecords.map((cr) => {
+              const doc = s.legalDocuments.find((d) => d.id === cr.legalDocumentId);
+              return (
+                <div key={cr.id} className="flex items-center gap-3 text-sm">
+                  <span className="text-[#22c55e] flex-shrink-0">✓</span>
+                  <span className="text-[#ccc]">{doc?.title ?? cr.consentType}</span>
+                  <span className="ml-auto text-[#444] text-xs">
+                    {cr.agreementAt ? fmtDate(new Date(cr.agreementAt)) : "—"}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Payment CTA */}
+        {paymentReady && s.activeOffer && (
+          <div className="rounded-2xl bg-[#0c1520] border border-[rgba(0,184,255,0.2)] p-6 space-y-4">
+            <div className="text-xs font-medium text-[#444] uppercase tracking-widest">Vertragsabschluss</div>
+            <p className="text-sm text-[#aaa]">
+              Ihr Berater hat den Vertrag bestätigt. Schließen Sie Ihre Bestellung jetzt ab.
+            </p>
+            <div className="flex items-baseline justify-between mb-1">
+              <span className="text-[#888] text-sm">Gesamtbetrag inkl. MwSt.</span>
+              <span className="text-2xl font-bold text-[#f0f0f0]">
+                {fmtEur(Math.round(s.activeOffer.priceNet * 1.19))}
+              </span>
+            </div>
+            {showConsentForm && !allRequiredConsented && (
+              <p className="text-xs text-[#f59e0b]">
+                Bitte bestätigen Sie alle Pflichtdokumente um fortzufahren.
               </p>
-              <div className="flex items-baseline justify-between mb-1">
-                <span className="text-[#888] text-sm">Gesamtbetrag inkl. MwSt.</span>
-                <span className="text-2xl font-bold text-[#f0f0f0]">
-                  {fmtEur(Math.round(s.activeOffer.priceNet * 1.19))}
-                </span>
-              </div>
-              {showConsentForm && !allRequiredConsented && (
-                <p className="text-xs text-[#f59e0b]">
-                  Bitte bestätigen Sie alle Pflichtdokumente um fortzufahren.
-                </p>
-              )}
-              <button
-                onClick={handlePay}
-                disabled={paying || (showConsentForm && !allRequiredConsented)}
-                className="w-full py-3 rounded-xl bg-[#00b8ff] hover:bg-[#0099dd] disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-sm transition-colors"
-              >
-                {paying ? "Weiterleitung…" : "Jetzt bezahlen →"}
-              </button>
-              <p className="text-xs text-[#444] text-center">
-                Sicher über Stripe · Kreditkarte oder SEPA-Lastschrift
-              </p>
-            </div>
-          )}
-
-          {/* Payment pending */}
-          {paymentPending && !isPaid && (
-            <div className="rounded-2xl bg-[#0c1520] border border-[#1a2840] p-6 text-center space-y-3">
-              <div className="text-3xl">⏳</div>
-              <p className="text-sm text-[#888]">Zahlung wird verarbeitet. Diese Seite aktualisiert sich automatisch.</p>
-            </div>
-          )}
-
-          {/* Lost */}
-          {s.status === "verloren" && (
-            <div className="rounded-2xl bg-[#0c1520] border border-[#1a2840] p-6 text-center">
-              <p className="text-sm text-[#666] leading-relaxed">
-                Das Gespräch wurde beendet. Bei Fragen wenden Sie sich bitte an Ihren Berater.
-              </p>
-            </div>
-          )}
-
-          {isWaiting && !isPaid && (
-            <div className="text-center">
-              <p className="text-xs text-[#333]">Diese Seite aktualisiert sich automatisch alle 20 Sekunden.</p>
-            </div>
-          )}
-
-          <div className="text-center pt-2">
-            <p className="text-xs text-[#333]">
-              OKUN Systems ·{" "}
-              <a href="mailto:info@okun-systems.de" className="hover:text-[#555] transition-colors">
-                info@okun-systems.de
-              </a>
+            )}
+            <button
+              onClick={handlePay}
+              disabled={paying || (showConsentForm && !allRequiredConsented)}
+              className="w-full py-3 rounded-xl bg-[#00b8ff] hover:bg-[#0099dd] disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-sm transition-colors"
+            >
+              {paying ? "Weiterleitung…" : "Jetzt bezahlen →"}
+            </button>
+            <p className="text-xs text-[#444] text-center">
+              Sicher über Stripe · Kreditkarte oder SEPA-Lastschrift
             </p>
           </div>
+        )}
+
+        {/* Payment pending */}
+        {paymentPending && !isPaid && (
+          <div className="rounded-2xl bg-[#0c1520] border border-[#1a2840] p-6 text-center space-y-3">
+            <div className="text-3xl">⏳</div>
+            <p className="text-sm text-[#888]">Zahlung wird verarbeitet. Diese Seite aktualisiert sich automatisch.</p>
+          </div>
+        )}
+
+        {/* Lost */}
+        {s.status === "verloren" && (
+          <div className="rounded-2xl bg-[#0c1520] border border-[#1a2840] p-6 text-center">
+            <p className="text-sm text-[#666] leading-relaxed">
+              Das Gespräch wurde beendet. Bei Fragen wenden Sie sich bitte an Ihren Berater.
+            </p>
+          </div>
+        )}
+
+        {isWaiting && !isPaid && (
+          <div className="text-center">
+            <p className="text-xs text-[#333]">Diese Seite aktualisiert sich automatisch alle 20 Sekunden.</p>
+          </div>
+        )}
+
+        <div className="text-center pt-2">
+          <p className="text-xs text-[#333]">
+            OKUN Systems ·{" "}
+            <a href="mailto:info@okun-systems.de" className="hover:text-[#555] transition-colors">
+              info@okun-systems.de
+            </a>
+          </p>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
