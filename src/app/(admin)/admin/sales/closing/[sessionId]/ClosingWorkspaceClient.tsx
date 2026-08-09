@@ -617,7 +617,7 @@ export function ClosingWorkspaceClient({
                     )}
                   </div>
                 )}
-                {closingSession.appointment.meetingUrl && (
+                {closingSession.appointment.meetingUrl ? (
                   <a
                     href={closingSession.appointment.meetingUrl}
                     target="_blank"
@@ -627,6 +627,8 @@ export function ClosingWorkspaceClient({
                     <Video size={12} />
                     Video-Raum öffnen
                   </a>
+                ) : (
+                  <CreateRoomButton appointmentId={closingSession.appointment.id} />
                 )}
               </div>
             )}
@@ -683,7 +685,7 @@ export function ClosingWorkspaceClient({
           <div className="col-span-2 space-y-4">
             {/* Control bar */}
             <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-4 flex items-center gap-4 flex-wrap">
-              {closingSession.appointment?.meetingUrl && (
+              {closingSession.appointment?.meetingUrl ? (
                 <a
                   href={closingSession.appointment.meetingUrl}
                   target="_blank"
@@ -693,7 +695,9 @@ export function ClosingWorkspaceClient({
                   <Video size={14} />
                   Video-Raum öffnen
                 </a>
-              )}
+              ) : closingSession.appointment ? (
+                <CreateRoomButton appointmentId={closingSession.appointment.id} />
+              ) : null}
 
               {/* Recording */}
               {recordingStatus === "idle" && (
@@ -1168,6 +1172,45 @@ export function ClosingWorkspaceClient({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function CreateRoomButton({ appointmentId }: { appointmentId: string }) {
+  const router = useRouter();
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleCreate() {
+    setCreating(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/daily/create-room", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appointmentId }),
+      });
+      const data = (await res.json()) as { meetingUrl?: string; error?: string };
+      if (data.error) setError(data.error);
+      else router.refresh();
+    } catch {
+      setError("Netzwerkfehler");
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  return (
+    <div className="mt-3">
+      {error && <p className="text-xs text-[#ef4444] mb-1">{error}</p>}
+      <button
+        onClick={handleCreate}
+        disabled={creating}
+        className="flex items-center gap-1.5 text-xs text-[#888] hover:text-[#00b8ff] transition-colors disabled:opacity-40"
+      >
+        <Video size={12} />
+        {creating ? "Wird erstellt…" : "Videoraum erstellen"}
+      </button>
     </div>
   );
 }

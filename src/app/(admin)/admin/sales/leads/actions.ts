@@ -165,6 +165,45 @@ export async function createClosingSession(
     },
   });
 
+  // Auto-create Daily.co video room
+  const dailyApiKey = process.env.DAILY_API_KEY;
+  if (dailyApiKey) {
+    try {
+      const roomName = `closing-${appointment.id.slice(-8)}`;
+      const exp = Math.floor(endTime.getTime() / 1000) + 7200;
+      const dailyRes = await fetch("https://api.daily.co/v1/rooms", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${dailyApiKey}`,
+        },
+        body: JSON.stringify({
+          name: roomName,
+          properties: {
+            exp,
+            enable_screenshare: true,
+            enable_chat: true,
+            start_video_off: false,
+            start_audio_off: false,
+          },
+        }),
+      });
+      if (dailyRes.ok) {
+        const room = (await dailyRes.json()) as { url?: string };
+        if (room.url) {
+          await db.appointment.update({
+            where: { id: appointment.id },
+            data: { meetingUrl: room.url },
+          });
+        }
+      } else {
+        console.warn("[createClosingSession] Daily.co room creation failed:", await dailyRes.text());
+      }
+    } catch (e) {
+      console.error("[createClosingSession] Daily.co error:", e);
+    }
+  }
+
   const closingSession = await db.closingSession.create({
     data: {
       clientTokenHash: tokenHash,

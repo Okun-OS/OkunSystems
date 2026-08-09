@@ -3,7 +3,7 @@
 import { useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Edit2, Archive, Check, FileText, Upload, Loader2 } from "lucide-react";
-import { createOfferTemplate, updateOfferTemplate, archiveOfferTemplate, setOfferTemplateR2Key } from "./actions";
+import { createOfferTemplate, updateOfferTemplate, archiveOfferTemplate } from "./actions";
 
 const PACKAGE_TYPES = [
   { value: "foundation", label: "Foundation" },
@@ -89,30 +89,15 @@ export function AngeboteClient({ templates, archivedTemplates }: Props) {
     setUploadingId(templateId);
     setUploadError(null);
     try {
-      const res = await fetch("/api/admin/offer-pdf-upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ templateId }),
-      });
-      const { uploadUrl, key, error } = (await res.json()) as { uploadUrl?: string; key?: string; error?: string };
-      if (error || !uploadUrl || !key) {
-        setUploadError(error ?? "Presigned URL konnte nicht erstellt werden.");
+      const fd = new FormData();
+      fd.append("templateId", templateId);
+      fd.append("file", file);
+      const res = await fetch("/api/admin/offer-pdf-upload", { method: "POST", body: fd });
+      const data = (await res.json()) as { key?: string; error?: string };
+      if (data.error || !data.key) {
+        setUploadError(data.error ?? "Upload fehlgeschlagen.");
         return;
       }
-
-      const uploadRes = await fetch(uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": "application/pdf" },
-        body: file,
-      });
-      if (!uploadRes.ok) {
-        setUploadError("Upload fehlgeschlagen.");
-        return;
-      }
-
-      const saveResult = await setOfferTemplateR2Key(templateId, key);
-      if (saveResult?.error) { setUploadError(saveResult.error); return; }
-
       router.refresh();
     } catch {
       setUploadError("Netzwerkfehler beim Upload.");

@@ -5,8 +5,12 @@ import { db } from "@/lib/db";
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user || (session.user as any).role !== "ADMIN") {
+    if (!session?.user) {
       return NextResponse.json({ error: "Nicht autorisiert" }, { status: 401 });
+    }
+    const role = (session.user as { role?: string }).role;
+    if (role !== "ADMIN" && role !== "CLOSER") {
+      return NextResponse.json({ error: "Keine Berechtigung" }, { status: 403 });
     }
 
     const { appointmentId } = await req.json();
