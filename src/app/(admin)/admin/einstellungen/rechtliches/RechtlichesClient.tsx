@@ -17,7 +17,7 @@ type Doc = {
   title: string;
   type: string;
   version: string;
-  content: string;
+  content: string | null;
   checkboxLabel: string | null;
   isRequired: boolean;
   isActive: boolean;
@@ -176,7 +176,7 @@ export function RechtlichesClient({ documents }: Props) {
                   </div>
                   {expandId === doc.id && (
                     <div className="mt-4 pt-4 border-t border-[#1a2840]">
-                      <pre className="text-xs text-[#888] whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">{doc.content}</pre>
+                      <pre className="text-xs text-[#888] whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">{doc.content ?? "(kein Inhalt)"}</pre>
                     </div>
                   )}
                 </div>
@@ -221,7 +221,7 @@ function DocForm({
     title: string;
     type: string;
     version: string;
-    content: string;
+    content: string | null;
     checkboxLabel: string | null;
     isRequired: boolean;
     displayOrder: number;
@@ -283,7 +283,7 @@ function DocForm({
         <label className="block text-xs font-medium text-[#888] uppercase tracking-wide mb-1.5">Inhalt *</label>
         <textarea
           name="content"
-          defaultValue={defaultValues?.content ?? ""}
+          defaultValue={defaultValues?.content ?? "" }
           rows={8}
           required
           className="w-full bg-[#080d14] border border-[#1a2840] rounded-lg px-3 py-2.5 text-sm text-[#f0f0f0] placeholder-[#444] focus:outline-none focus:border-[#00b8ff] resize-y"
