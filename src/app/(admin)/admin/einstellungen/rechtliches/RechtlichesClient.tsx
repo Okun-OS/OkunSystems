@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Edit2, Eye, EyeOff, Check, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Edit2, Eye, EyeOff, Check, ChevronDown, ChevronUp, FileText, Upload, X } from "lucide-react";
 import { createLegalDocument, updateLegalDocument, toggleLegalDocumentActive } from "./actions";
 
 const DOC_TYPES = [
@@ -18,6 +18,7 @@ type Doc = {
   type: string;
   version: string;
   content: string | null;
+  r2Key: string | null;
   checkboxLabel: string | null;
   isRequired: boolean;
   isActive: boolean;
@@ -37,27 +38,66 @@ export function RechtlichesClient({ documents }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  async function uploadPdfFile(file: File): Promise<string | null> {
+    const uploadForm = new FormData();
+    uploadForm.append("file", file);
+    const res = await fetch("/api/admin/legal-doc-upload", {
+      method: "POST",
+      body: uploadForm,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({})) as { error?: string };
+      throw new Error(err.error ?? "PDF-Upload fehlgeschlagen");
+    }
+    const { r2Key } = await res.json() as { r2Key: string };
+    return r2Key;
+  }
+
   function handleCreate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
-    const formData = new FormData(e.currentTarget);
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    const fileInput = form.querySelector('input[name="pdfFile"]') as HTMLInputElement | null;
+    const file = fileInput?.files?.[0] ?? null;
+
     startTransition(async () => {
-      const result = await createLegalDocument(formData);
-      if (result?.error) { setError(result.error); return; }
-      setShowCreate(false);
-      router.refresh();
+      try {
+        if (file) {
+          const r2Key = await uploadPdfFile(file);
+          if (r2Key) formData.set("r2Key", r2Key);
+        }
+        const result = await createLegalDocument(formData);
+        if (result?.error) { setError(result.error); return; }
+        setShowCreate(false);
+        router.refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Fehler beim Speichern");
+      }
     });
   }
 
   function handleUpdate(id: string, e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
-    const formData = new FormData(e.currentTarget);
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    const fileInput = form.querySelector('input[name="pdfFile"]') as HTMLInputElement | null;
+    const file = fileInput?.files?.[0] ?? null;
+
     startTransition(async () => {
-      const result = await updateLegalDocument(id, formData);
-      if (result?.error) { setError(result.error); return; }
-      setEditId(null);
-      router.refresh();
+      try {
+        if (file) {
+          const r2Key = await uploadPdfFile(file);
+          if (r2Key) formData.set("r2Key", r2Key);
+        }
+        const result = await updateLegalDocument(id, formData);
+        if (result?.error) { setError(result.error); return; }
+        setEditId(null);
+        router.refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Fehler beim Speichern");
+      }
     });
   }
 
@@ -146,6 +186,12 @@ export function RechtlichesClient({ documents }: Props) {
                         {doc.isRequired && (
                           <span className="text-xs text-[#ef4444] font-medium">Pflicht</span>
                         )}
+                        {doc.r2Key && (
+                          <span className="flex items-center gap-1 text-xs text-[#22c55e]">
+                            <FileText size={10} />
+                            PDF
+                          </span>
+                        )}
                         <span className="text-xs text-[#555]">· {doc._count.consentRecords} Einwilligungen</span>
                       </div>
                       <h3 className="text-base font-semibold text-[#f0f0f0]">{doc.title}</h3>
@@ -176,7 +222,18 @@ export function RechtlichesClient({ documents }: Props) {
                   </div>
                   {expandId === doc.id && (
                     <div className="mt-4 pt-4 border-t border-[#1a2840]">
-                      <pre className="text-xs text-[#888] whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">{doc.content ?? "(kein Inhalt)"}</pre>
+                      {doc.r2Key && (
+                        <div className="flex items-center gap-2 mb-3 text-xs text-[#888]">
+                          <FileText size={12} className="text-[#22c55e]" />
+                          <span>PDF gespeichert: <code className="text-[#aaa] text-[10px]">{doc.r2Key.split("/").pop()}</code></span>
+                        </div>
+                      )}
+                      {doc.content && (
+                        <pre className="text-xs text-[#888] whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">{doc.content}</pre>
+                      )}
+                      {!doc.content && !doc.r2Key && (
+                        <p className="text-xs text-[#555]">(kein Inhalt)</p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -196,6 +253,7 @@ export function RechtlichesClient({ documents }: Props) {
                 <div>
                   <span className="text-sm text-[#888]">{doc.title}</span>
                   <span className="text-xs text-[#555] ml-2">v{doc.version}</span>
+                  {doc.r2Key && <span className="text-xs text-[#555] ml-2">· PDF</span>}
                 </div>
                 <button
                   onClick={() => handleToggle(doc.id, doc.isActive)}
@@ -222,11 +280,15 @@ function DocForm({
     type: string;
     version: string;
     content: string | null;
+    r2Key: string | null;
     checkboxLabel: string | null;
     isRequired: boolean;
     displayOrder: number;
   };
 }) {
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   return (
     <div className="grid grid-cols-2 gap-4">
       <div>
@@ -279,13 +341,65 @@ function DocForm({
           placeholder='z.B. "Ich akzeptiere die AGB"'
         />
       </div>
+
+      {/* PDF upload */}
       <div className="col-span-2">
-        <label className="block text-xs font-medium text-[#888] uppercase tracking-wide mb-1.5">Inhalt *</label>
+        <label className="block text-xs font-medium text-[#888] uppercase tracking-wide mb-1.5">PDF-Datei hochladen</label>
+        <div
+          className="border border-dashed border-[#1a2840] rounded-lg px-4 py-4 bg-[#080d14] hover:border-[#00b8ff]/40 transition-colors cursor-pointer"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          {selectedFile ? (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm text-[#f0f0f0]">
+                <FileText size={14} className="text-[#00b8ff]" />
+                <span>{selectedFile.name}</span>
+                <span className="text-[#555] text-xs">({(selectedFile.size / 1024).toFixed(0)} KB)</span>
+              </div>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setSelectedFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                className="p-1 text-[#555] hover:text-[#f0f0f0] rounded"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          ) : defaultValues?.r2Key ? (
+            <div className="flex items-center gap-2 text-sm text-[#888]">
+              <FileText size={14} className="text-[#22c55e]" />
+              <span>PDF vorhanden: <code className="text-[#aaa] text-xs">{defaultValues.r2Key.split("/").pop()}</code></span>
+              <span className="text-[#555] text-xs ml-1">· Neue Datei wählen um zu ersetzen</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-sm text-[#555]">
+              <Upload size={14} />
+              <span>PDF auswählen (optional, wenn kein Textinhalt eingegeben)</span>
+            </div>
+          )}
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          name="pdfFile"
+          accept="application/pdf"
+          className="hidden"
+          onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
+        />
+        {defaultValues?.r2Key && !selectedFile && (
+          <input type="hidden" name="r2Key" value={defaultValues.r2Key} />
+        )}
+      </div>
+
+      {/* Inline text content */}
+      <div className="col-span-2">
+        <label className="block text-xs font-medium text-[#888] uppercase tracking-wide mb-1.5">
+          Textinhalt
+          <span className="ml-1 text-[#555] normal-case font-normal">(alternativ oder zusätzlich zur PDF)</span>
+        </label>
         <textarea
           name="content"
-          defaultValue={defaultValues?.content ?? "" }
-          rows={8}
-          required
+          defaultValue={defaultValues?.content ?? ""}
+          rows={7}
           className="w-full bg-[#080d14] border border-[#1a2840] rounded-lg px-3 py-2.5 text-sm text-[#f0f0f0] placeholder-[#444] focus:outline-none focus:border-[#00b8ff] resize-y"
           placeholder="Vollständiger Text des Dokuments..."
         />

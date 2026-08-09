@@ -162,6 +162,8 @@ export default function BlueprintQuestionnaire({
 
   const progressPct = totalActive > 0 ? Math.round((totalAnswered / totalActive) * 100) : 0;
 
+  const isMaxReached = !!question.maxSelections && selected.size >= question.maxSelections;
+
   function toggleOption(optionId: string, isExclusive: boolean) {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -281,9 +283,14 @@ export default function BlueprintQuestionnaire({
           </span>
           <div className="flex items-center gap-2">
             {!isFreeTextOnly && (
-              <span className="text-[#888] text-xs">
+              <span className={cn(
+                "text-xs font-medium transition-colors",
+                isMaxReached ? "text-[#f59e0b]" : "text-[#888]"
+              )}>
                 {question.maxSelections
-                  ? `Bis zu ${question.maxSelections} auswählen`
+                  ? selected.size > 0
+                    ? `${selected.size} / ${question.maxSelections} ausgewählt${isMaxReached ? " · Maximum erreicht" : ""}`
+                    : `Bis zu ${question.maxSelections} auswählen`
                   : "Mehrfachauswahl möglich"}
               </span>
             )}
@@ -315,18 +322,21 @@ export default function BlueprintQuestionnaire({
           <div className="space-y-2">
             {question.options.map((opt) => {
               const isSelected = selected.has(opt.id);
+              const isBlocked = isMaxReached && !isSelected;
               const needsText = isSelected && requiresFreeTextInput(opt.textDe);
 
               return (
                 <div key={opt.id}>
                   <button
                     onClick={() => toggleOption(opt.id, opt.isExclusive)}
-                    disabled={isPending}
+                    disabled={isPending || isBlocked}
                     className={cn(
                       "w-full text-left flex items-center gap-3 px-4 py-3.5 rounded-lg border transition-all duration-150",
                       isSelected
                         ? "border-[#00b8ff]/50 bg-[#00b8ff]/8 text-[#f0f0f0]"
-                        : "border-[#1a2840] bg-[#060a10] text-[#ccc] hover:border-[#3a3a3a] hover:text-[#f0f0f0] hover:bg-[#0c1520]",
+                        : isBlocked
+                          ? "border-[#1a2840] bg-[#060a10] text-[#444] opacity-40 cursor-not-allowed"
+                          : "border-[#1a2840] bg-[#060a10] text-[#ccc] hover:border-[#3a3a3a] hover:text-[#f0f0f0] hover:bg-[#0c1520]",
                       isPending && "opacity-50 cursor-not-allowed"
                     )}
                   >

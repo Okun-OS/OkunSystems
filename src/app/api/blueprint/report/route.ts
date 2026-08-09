@@ -7,6 +7,8 @@ import { renderReportHtml } from "@/lib/blueprint/report-html";
 import { renderHtmlToPdf } from "@/lib/blueprint/pdf-generator";
 import { uploadPdfToR2, buildReportKey } from "@/lib/blueprint/storage";
 import { sendBlueprintReportReady } from "@/lib/email";
+import fs from "fs";
+import path from "path";
 
 // Force Node.js runtime — Puppeteer cannot run in the Edge runtime
 export const runtime = "nodejs";
@@ -72,8 +74,16 @@ export async function POST(req: NextRequest) {
     // Step 2: Generate AI narrative texts
     const texts = await generateReportTexts(reportData);
 
-    // Step 3: Render HTML
-    const html = renderReportHtml(reportData, texts);
+    // Step 3: Render HTML (embed logo as base64 data URI)
+    let logoDataUri = "";
+    try {
+      const logoPath = path.join(process.cwd(), "public", "okun-logo.png");
+      const logoBuffer = fs.readFileSync(logoPath);
+      logoDataUri = `data:image/png;base64,${logoBuffer.toString("base64")}`;
+    } catch {
+      // logo missing — fall back to text logo
+    }
+    const html = renderReportHtml(reportData, texts, logoDataUri);
 
     // Step 4: Generate PDF
     const pdfBuffer = await renderHtmlToPdf(html);

@@ -16,6 +16,7 @@ export default async function RechtlichesPage() {
       type: true,
       version: true,
       content: true,
+      r2Key: true,
       checkboxLabel: true,
       isRequired: true,
       isActive: true,

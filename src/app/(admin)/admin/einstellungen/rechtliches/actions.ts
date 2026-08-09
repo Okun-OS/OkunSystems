@@ -20,12 +20,14 @@ export async function createLegalDocument(formData: FormData) {
   const title = (formData.get("title") as string)?.trim();
   const type = (formData.get("type") as string)?.trim();
   const version = (formData.get("version") as string)?.trim() || "1.0";
-  const content = (formData.get("content") as string)?.trim();
+  const content = (formData.get("content") as string)?.trim() || null;
+  const r2Key = (formData.get("r2Key") as string)?.trim() || null;
   const checkboxLabel = (formData.get("checkboxLabel") as string)?.trim() || "";
   const isRequired = formData.get("isRequired") === "true";
   const displayOrder = parseInt((formData.get("displayOrder") as string) ?? "0", 10) || 0;
 
-  if (!title || !type || !content) return { error: "Titel, Typ und Inhalt sind Pflichtfelder" };
+  if (!title || !type) return { error: "Titel und Typ sind Pflichtfelder" };
+  if (!content && !r2Key) return { error: "Bitte Inhalt eingeben oder eine PDF-Datei hochladen" };
 
   await db.legalDocument.create({
     data: {
@@ -33,6 +35,7 @@ export async function createLegalDocument(formData: FormData) {
       type,
       version,
       content,
+      r2Key,
       checkboxLabel,
       isRequired,
       displayOrder,
@@ -51,16 +54,18 @@ export async function updateLegalDocument(id: string, formData: FormData) {
   const title = (formData.get("title") as string)?.trim();
   const type = (formData.get("type") as string)?.trim();
   const version = (formData.get("version") as string)?.trim() || "1.0";
-  const content = (formData.get("content") as string)?.trim();
+  const content = (formData.get("content") as string)?.trim() || null;
+  const r2Key = (formData.get("r2Key") as string)?.trim() || null;
   const checkboxLabel = (formData.get("checkboxLabel") as string)?.trim() || "";
   const isRequired = formData.get("isRequired") === "true";
   const displayOrder = parseInt((formData.get("displayOrder") as string) ?? "0", 10) || 0;
 
-  if (!title || !type || !content) return { error: "Titel, Typ und Inhalt sind Pflichtfelder" };
+  if (!title || !type) return { error: "Titel und Typ sind Pflichtfelder" };
+  if (!content && !r2Key) return { error: "Bitte Inhalt eingeben oder eine PDF-Datei hochladen" };
 
   await db.legalDocument.update({
     where: { id },
-    data: { title, type, version, content, checkboxLabel, isRequired, displayOrder },
+    data: { title, type, version, content, r2Key, checkboxLabel, isRequired, displayOrder },
   });
 
   revalidatePath("/admin/einstellungen/rechtliches");

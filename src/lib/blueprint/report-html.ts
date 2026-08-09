@@ -13,12 +13,6 @@ const CATEGORY_LABELS: Record<string, string> = {
   CUSTOM_DEVELOPMENT: "Individuelle Entwicklung",
 };
 
-const TIER_LABELS: Record<string, string> = {
-  foundation: "Phase 1 – Grundlagen",
-  operations: "Phase 2 – Betrieb",
-  custom: "Phase 3 – Individuell",
-};
-
 function scoreColor(score: number): string {
   if (score >= 80) return "#00b8ff";
   if (score >= 65) return "#22c55e";
@@ -74,7 +68,7 @@ function moduleDetailCard(m: ModuleScoreEntry, detailed: string): string {
   </div>`;
 }
 
-export function renderReportHtml(data: BlueprintReportData, texts: ReportTexts): string {
+export function renderReportHtml(data: BlueprintReportData, texts: ReportTexts, logoDataUri?: string): string {
   const dateStr = data.completedAt
     ? new Date(data.completedAt).toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric" })
     : new Date().toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric" });
@@ -108,7 +102,7 @@ export function renderReportHtml(data: BlueprintReportData, texts: ReportTexts):
 </div>`);
   }
 
-  // ── Recommendation cards ─────────────────────────────────────────────────
+  // ── Recommendation cards for Fazit page ─────────────────────────────────
   const recCards = data.recommendations
     .slice(0, 6)
     .map((r) => {
@@ -124,17 +118,10 @@ export function renderReportHtml(data: BlueprintReportData, texts: ReportTexts):
     })
     .join("\n");
 
-  // ── Roadmap phases ───────────────────────────────────────────────────────
-  const roadmapCols = data.roadmap
-    .map((phase) => {
-      const phaseLabel = TIER_LABELS[phase.packageTier] ?? phase.phaseLabel;
-      const items = phase.solutions.map((s) => `<li>${s.name}</li>`).join("");
-      return `<div class="rm-col">
-        <div class="rm-col-hd">${phaseLabel}</div>
-        <ul class="rm-list">${items}</ul>
-      </div>`;
-    })
-    .join("\n");
+  // ── Logo markup ──────────────────────────────────────────────────────────
+  const logoHtml = logoDataUri
+    ? `<img src="${logoDataUri}" alt="OKUN" class="cover-logo-img" />`
+    : `<div class="cover-logo">OKUN<span>.</span></div>`;
 
   return `<!DOCTYPE html>
 <html lang="de">
@@ -202,6 +189,11 @@ body {
   border-bottom: 2px solid #00b8ff;
   padding-bottom: 18px;
   margin-bottom: 0;
+}
+.cover-logo-img {
+  height: 36px;
+  width: auto;
+  object-fit: contain;
 }
 .cover-logo {
   font-size: 20pt;
@@ -308,18 +300,18 @@ body {
 
 /* ── Context page ─────────────────────────────────────────────────────────*/
 .ctx-body {
-  font-size: 10.5pt;
+  font-size: 10pt;
   line-height: 1.75;
   color: #222;
   text-align: justify;
   hyphens: auto;
 }
-.ctx-body p { margin-bottom: 14px; }
+.ctx-body p { margin-bottom: 12px; }
 .ctx-body p:last-child { margin-bottom: 0; }
 .ctx-info-bar {
   display: flex;
   gap: 24px;
-  margin-top: 20px;
+  margin-top: 18px;
   padding: 12px 16px;
   background: #f5f9ff;
   border: 1px solid #dbeafe;
@@ -328,6 +320,33 @@ body {
 .ctx-info-item { }
 .ctx-info-label { font-size: 7.5pt; color: #6b7280; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 2px; }
 .ctx-info-val { font-size: 9.5pt; font-weight: 600; color: #1a1a2e; }
+
+/* ── Digitalization intro page ────────────────────────────────────────────*/
+.digi-body {
+  font-size: 10pt;
+  line-height: 1.75;
+  color: #222;
+  text-align: justify;
+  hyphens: auto;
+}
+.digi-body p { margin-bottom: 12px; }
+.digi-body p:last-child { margin-bottom: 0; }
+.digi-industry-bar {
+  margin-top: 18px;
+  padding: 14px 18px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-left: 3px solid #22c55e;
+  border-radius: 8px;
+}
+.digi-industry-label {
+  font-size: 7.5pt;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: #16a34a;
+  margin-bottom: 6px;
+}
 
 /* ── Score overview page ─────────────────────────────────────────────────*/
 .score-hero {
@@ -412,14 +431,14 @@ body {
 
 /* ── Score analysis page ─────────────────────────────────────────────────*/
 .prose {
-  font-size: 10.5pt;
+  font-size: 10pt;
   line-height: 1.75;
   color: #1a1a1a;
   text-align: justify;
   hyphens: auto;
 }
-.prose p { margin-bottom: 14px; }
-.prose p:first-child { font-size: 11pt; font-weight: 500; }
+.prose p { margin-bottom: 12px; }
+.prose p:first-child { font-size: 10.5pt; font-weight: 500; }
 .prose p:last-child { margin-bottom: 0; }
 
 /* ── Module detail pages ─────────────────────────────────────────────────*/
@@ -469,27 +488,18 @@ body {
 .rec-badge { font-size: 6.5pt; font-weight: 700; padding: 2px 7px; border-radius: 99px; white-space: nowrap; flex-shrink: 0; margin-top: 1px; }
 .rec-desc { font-size: 8pt; color: #666; line-height: 1.5; }
 
-/* ── Roadmap ─────────────────────────────────────────────────────────────*/
-.rm-intro { font-size: 10pt; line-height: 1.7; color: #333; margin-bottom: 20px; }
-.rm-grid { display: flex; gap: 14px; }
-.rm-col { flex: 1; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; page-break-inside: avoid; }
-.rm-col-hd { background: #00b8ff; color: #fff; font-size: 8.5pt; font-weight: 700; padding: 9px 12px; }
-.rm-list { list-style: none; padding: 10px 12px; }
-.rm-list li { font-size: 8pt; color: #333; padding: 4px 0; border-bottom: 1px solid #f0f0f0; line-height: 1.4; }
-.rm-list li:last-child { border-bottom: none; }
-
 /* ── Fazit ────────────────────────────────────────────────────────────────*/
 .fazit-prose {
-  font-size: 10.5pt;
+  font-size: 10pt;
   line-height: 1.75;
   color: #1a1a1a;
   text-align: justify;
   hyphens: auto;
 }
-.fazit-prose p { margin-bottom: 14px; }
+.fazit-prose p { margin-bottom: 12px; }
 .fazit-prose p:last-child { margin-bottom: 0; }
 .fazit-closing {
-  margin-top: 28px;
+  margin-top: 24px;
   padding: 16px 20px;
   background: #f0fdf4;
   border: 1px solid #bbf7d0;
@@ -519,7 +529,7 @@ body {
 <div class="cover">
   <div class="cover-logo-bar">
     <div>
-      <div class="cover-logo">OKUN<span>.</span></div>
+      ${logoHtml}
       <div class="cover-logo-sub">OKUN Systems · Digitalisierungsberatung</div>
     </div>
     <div class="cover-confidential">Vertraulich · Nur für intern</div>
@@ -579,7 +589,22 @@ ${texts.contextPageText ? `
 ` : ""}
 
 <!-- ══════════════════════════════════════════════════════════════════════
-     SEITE 3: GESAMTAUSWERTUNG
+     SEITE 3: DIGITALISIERUNG & POTENZIALE
+     ══════════════════════════════════════════════════════════════════════ -->
+<div class="npage">
+  ${ph("Grundlagen", "Digitalisierung & Automatisierung")}
+  <div class="digi-body">
+    ${texts.digitalizationIntro || `<p>Digitalisierung bezeichnet den Einsatz digitaler Technologien zur Optimierung von Geschäftsprozessen, Produkten und Dienstleistungen. Für Unternehmen im Mittelstand bietet die Digitalisierung erhebliche Potenziale zur Effizienzsteigerung, Kostensenkung und Wettbewerbsstärkung.</p>`}
+  </div>
+  ${data.company.industry ? `
+  <div class="digi-industry-bar">
+    <div class="digi-industry-label">Branche: ${data.company.industry}</div>
+    <div style="font-size:9pt;color:#166534;line-height:1.6">Die oben beschriebenen Potenziale gelten insbesondere für Unternehmen in der Branche ${data.company.industry}, wo typische manuelle Prozesse besonders stark von digitaler Optimierung profitieren.</div>
+  </div>` : ""}
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     SEITE 4: GESAMTAUSWERTUNG
      ══════════════════════════════════════════════════════════════════════ -->
 <div class="npage">
   ${ph("Ihr Ergebnis auf einen Blick", "Gesamtauswertung")}
@@ -628,27 +653,27 @@ ${texts.contextPageText ? `
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════════════
-     SEITE 4: SCORE-ANALYSE (PROSA)
+     SEITE 5: SCORE-ANALYSE (PROSA)
      ══════════════════════════════════════════════════════════════════════ -->
 <div class="npage">
   ${ph("Analyse Ihres Digitalisierungsstands", "Score-Analyse")}
   <div class="prose">
-    ${texts.scoreAnalysis || `<p>${data.company.name} hat den OKUN Blueprint™ 2.0 erfolgreich abgeschlossen.</p>`}
+    ${texts.scoreAnalysis || `<p>${data.company.name} hat den OKUN Blueprint™ 2.0 erfolgreich abgeschlossen und einen Gesamtscore von ${avgScore}/100 erzielt. Die Auswertung zeigt ein differenziertes Bild des aktuellen Digitalisierungsstands mit konkreten Handlungsfeldern und Stärken.</p>`}
   </div>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════════════
-     SEITEN 5–8: MODULANALYSE (JE 2 MODULE PRO SEITE)
+     SEITEN 6–9: MODULANALYSE (JE 2 MODULE PRO SEITE)
      ══════════════════════════════════════════════════════════════════════ -->
 ${moduleDetailPages.join("\n")}
 
 <!-- ══════════════════════════════════════════════════════════════════════
-     SEITE 9: AUTOMATISIERUNGSPOTENZIALE & LÖSUNGSEMPFEHLUNGEN
+     SEITE 10: FAZIT & EMPFEHLUNGEN
      ══════════════════════════════════════════════════════════════════════ -->
 <div class="npage">
-  ${ph("Chancen & Potenziale", "Automatisierung & Lösungen")}
-  <div class="prose">
-    ${texts.automationPotentials || ""}
+  ${ph("Zusammenfassung & Empfehlungen", "Fazit")}
+  <div class="fazit-prose">
+    ${texts.conclusionText || `<p>Die Analyse von ${data.company.name} zeigt ein klares Bild des aktuellen Digitalisierungsstands und eröffnet konkrete Wege zur Verbesserung. Der OKUN Blueprint™ 2.0 hat die wichtigsten Handlungsfelder identifiziert und priorisiert.</p>`}
   </div>
   ${data.recommendations.length > 0 ? `
   <div class="section-lbl" style="margin-top:20px">Empfohlene Lösungen</div>
@@ -656,28 +681,6 @@ ${moduleDetailPages.join("\n")}
   <div class="rec-grid">
     ${recCards}
   </div>` : ""}
-</div>
-
-<!-- ══════════════════════════════════════════════════════════════════════
-     SEITE 10: UMSETZUNGSFAHRPLAN
-     ══════════════════════════════════════════════════════════════════════ -->
-${data.roadmap.length > 0 ? `
-<div class="npage">
-  ${ph("Ihre nächsten Schritte", "Priorisierter Umsetzungsfahrplan")}
-  ${texts.roadmapIntro ? `<div class="rm-intro">${texts.roadmapIntro}</div>` : ""}
-  <div class="rm-grid">
-    ${roadmapCols}
-  </div>
-</div>` : ""}
-
-<!-- ══════════════════════════════════════════════════════════════════════
-     SEITE 11: FAZIT & NÄCHSTE SCHRITTE
-     ══════════════════════════════════════════════════════════════════════ -->
-<div class="npage">
-  ${ph("Zusammenfassung", "Fazit & Nächste Schritte")}
-  <div class="fazit-prose">
-    ${texts.conclusionText || ""}
-  </div>
   <div class="fazit-closing">
     <strong>Ihr nächster Schritt:</strong> Im Strategiegespräch mit OKUN Systems besprechen wir gemeinsam, wie Sie die identifizierten Potenziale gezielt und mit klaren Prioritäten umsetzen — individuell abgestimmt auf Ihre Situation und Ihr Unternehmen.
   </div>
