@@ -250,6 +250,7 @@ export function ClosingWorkspaceClient({
 }: Props) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"overview" | "maske" | "skript" | "angebot" | "consent" | "protokoll">("overview");
+  const [callActive, setCallActive] = useState(false);
 
   // Status actions
   const [statusPending, startStatusTransition] = useTransition();
@@ -618,15 +619,13 @@ export function ClosingWorkspaceClient({
                   </div>
                 )}
                 {closingSession.appointment.meetingUrl ? (
-                  <a
-                    href={closingSession.appointment.meetingUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    onClick={() => { setCallActive(true); setActiveTab("maske"); }}
                     className="mt-3 flex items-center gap-2 text-xs text-[#00b8ff] hover:underline"
                   >
                     <Video size={12} />
-                    Video-Raum öffnen
-                  </a>
+                    {callActive ? "Gespräch läuft" : "Gespräch beitreten"}
+                  </button>
                 ) : (
                   <CreateRoomButton appointmentId={closingSession.appointment.id} />
                 )}
@@ -686,15 +685,17 @@ export function ClosingWorkspaceClient({
             {/* Control bar */}
             <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-4 flex items-center gap-4 flex-wrap">
               {closingSession.appointment?.meetingUrl ? (
-                <a
-                  href={closingSession.appointment.meetingUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-3 py-2 bg-[rgba(0,184,255,0.1)] hover:bg-[rgba(0,184,255,0.15)] border border-[rgba(0,184,255,0.2)] text-[#00b8ff] text-sm font-medium rounded-lg transition-colors"
+                <button
+                  onClick={() => setCallActive((v) => !v)}
+                  className={`flex items-center gap-2 px-3 py-2 border text-sm font-medium rounded-lg transition-colors ${
+                    callActive
+                      ? "bg-[rgba(239,68,68,0.1)] border-[rgba(239,68,68,0.3)] text-[#ef4444] hover:bg-[rgba(239,68,68,0.15)]"
+                      : "bg-[rgba(0,184,255,0.1)] border-[rgba(0,184,255,0.2)] text-[#00b8ff] hover:bg-[rgba(0,184,255,0.15)]"
+                  }`}
                 >
                   <Video size={14} />
-                  Video-Raum öffnen
-                </a>
+                  {callActive ? "Gespräch verlassen" : "Gespräch beitreten"}
+                </button>
               ) : closingSession.appointment ? (
                 <CreateRoomButton appointmentId={closingSession.appointment.id} />
               ) : null}
@@ -1170,6 +1171,48 @@ export function ClosingWorkspaceClient({
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ─── Embedded video overlay ─────────────────────────────────────────────
+          Rendered once (never unmounted) so the call stays alive when switching
+          tabs. Position/size changes via className only. */}
+      {callActive && closingSession.appointment?.meetingUrl && (
+        <div
+          className={`fixed z-50 flex flex-col shadow-2xl border border-[#1a2840] bg-[#080d14] rounded-xl overflow-hidden transition-all duration-300 ${
+            activeTab === "maske"
+              ? "top-[108px] right-6 w-[420px] h-[300px]"
+              : "bottom-4 right-4 w-[300px] h-[210px]"
+          }`}
+        >
+          {/* Title bar */}
+          <div className="flex items-center justify-between px-3 py-2 bg-[#0c1520] border-b border-[#1a2840] flex-shrink-0">
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#ef4444] animate-pulse" />
+              <span className="text-xs font-medium text-[#f0f0f0]">Live-Gespräch</span>
+              {activeTab !== "maske" && (
+                <button
+                  onClick={() => setActiveTab("maske")}
+                  className="text-[10px] text-[#00b8ff] hover:underline"
+                >
+                  → Maske
+                </button>
+              )}
+            </div>
+            <button
+              onClick={() => setCallActive(false)}
+              className="text-[#666] hover:text-[#ef4444] transition-colors"
+              title="Gespräch verlassen"
+            >
+              <Square size={11} />
+            </button>
+          </div>
+          <iframe
+            src={closingSession.appointment.meetingUrl}
+            allow="camera; microphone; fullscreen; display-capture; screen-wake-lock"
+            className="w-full flex-1 border-0"
+            title="Closing-Gespräch"
+          />
         </div>
       )}
     </div>
