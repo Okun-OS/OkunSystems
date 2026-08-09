@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
-import { TrendingUp, FileDown, Brain, AlertCircle, CheckCircle2, Clock, Target, Zap } from "lucide-react";
+import { TrendingUp, FileDown, Brain, AlertCircle, CheckCircle2, Clock, Target, Zap, MessageCircle } from "lucide-react";
 import { assembleBlueprintReport } from "@/lib/blueprint/report-assembler";
 import { BlueprintReportButton } from "../BlueprintReportButton";
 
@@ -27,7 +27,7 @@ export default async function ErgebnissePage({
 
   const { id } = await params;
 
-  const [company, anyCompletedSession] = await Promise.all([
+  const [company, anyCompletedSession, companyContextSession] = await Promise.all([
     db.company.findUnique({
       where: { id },
       select: {
@@ -61,6 +61,11 @@ export default async function ErgebnissePage({
     db.analysisSession.findFirst({
       where: { companyId: id, status: "COMPLETED" },
       select: { id: true },
+    }),
+    db.companyContextSession.findFirst({
+      where: { companyId: id, status: "COMPLETED" },
+      include: { entries: { orderBy: { order: "asc" } } },
+      orderBy: { completedAt: "desc" },
     }),
   ]);
 
@@ -144,6 +149,54 @@ export default async function ErgebnissePage({
                 <> · Abgeschlossen {new Date(analysisSession.completedAt).toLocaleDateString("de-DE")}</>
               )}
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Company Context Card */}
+      {companyContextSession && companyContextSession.entries.length > 0 && (
+        <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
+          <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4 flex items-center gap-2">
+            <MessageCircle size={15} className="text-[#00b8ff]" />
+            Unternehmenskontext
+            <span className="ml-auto text-[#444] text-xs font-normal">
+              {companyContextSession.completedAt
+                ? new Date(companyContextSession.completedAt).toLocaleDateString("de-DE")
+                : "In Bearbeitung"}
+            </span>
+          </h2>
+          {companyContextSession.summary && (
+            <div className="mb-4 p-3 bg-[#060a10] rounded-lg border border-[#1a2840]">
+              <p className="text-[#888] text-xs font-medium mb-1 uppercase tracking-wider">KI-Zusammenfassung</p>
+              <p className="text-[#ccc] text-xs leading-relaxed">{companyContextSession.summary}</p>
+            </div>
+          )}
+          <div className="space-y-3">
+            {(() => {
+              const pairs: Array<{ q: string; a: string | null }> = [];
+              const entries = companyContextSession.entries;
+              for (let i = 0; i < entries.length; i++) {
+                const e = entries[i];
+                if (e.role === "assistant") {
+                  const next = entries[i + 1];
+                  pairs.push({ q: e.content, a: next?.role === "user" ? next.content : null });
+                }
+              }
+              return pairs.map((p, idx) => (
+                <div key={idx} className="border border-[#1a2840] rounded-lg overflow-hidden">
+                  <div className="px-3 py-2 bg-[#060a10] border-b border-[#1a2840]">
+                    <p className="text-[#00b8ff] text-xs font-medium">{p.q}</p>
+                  </div>
+                  <div className="px-3 py-2">
+                    {p.a ? (
+                      <p className="text-[#ccc] text-xs leading-relaxed">{p.a}</p>
+                    ) : (
+                      <p className="text-[#444] text-xs italic">Übersprungen</p>
+                    )}
+                  </div>
+                </div>
+              ));
+            })()}
           </div>
         </div>
       )}

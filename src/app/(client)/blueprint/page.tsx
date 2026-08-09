@@ -1,9 +1,8 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
-import { startBlueprintSession } from "./actions";
-import { Button } from "@/components/ui/button";
-import { ClipboardList, Clock, ChevronRight } from "lucide-react";
+import { startContextSession } from "./kontext/actions";
+import { Clock, ClipboardList, ChevronRight, MessageCircle } from "lucide-react";
 
 export default async function BlueprintStartPage() {
   const session = await auth();
@@ -15,20 +14,15 @@ export default async function BlueprintStartPage() {
 
   const companyId = user.companyId;
 
-  // Redirect if there's an active session
+  // Redirect if there's an active Blueprint session (skip context for in-progress sessions)
   const activeSession = await db.analysisSession.findFirst({
-    where: {
-      companyId,
-      blueprintVersion: "2.0",
-      status: { in: ["ACTIVE", "PAUSED"] },
-    },
+    where: { companyId, blueprintVersion: "2.0", status: { in: ["ACTIVE", "PAUSED"] } },
     select: { id: true },
     orderBy: { updatedAt: "desc" },
   });
   if (activeSession) redirect(`/blueprint/${activeSession.id}`);
 
-  // Redirect if already completed — only when the session has actual answers
-  // (sessions falsely completed with 0 answers due to missing seed are ignored)
+  // Redirect if already completed (with real answers)
   const completedSession = await db.analysisSession.findFirst({
     where: { companyId, blueprintVersion: "2.0", status: "COMPLETED" },
     select: { id: true, _count: { select: { sessionAnswers: true } } },
@@ -36,6 +30,13 @@ export default async function BlueprintStartPage() {
   if (completedSession && completedSession._count.sessionAnswers > 0) {
     redirect(`/blueprint/${completedSession.id}/abgeschlossen`);
   }
+
+  // Redirect to active context session if one exists
+  const activeCtx = await db.companyContextSession.findFirst({
+    where: { companyId, status: "ACTIVE" },
+    select: { id: true },
+  });
+  if (activeCtx) redirect("/blueprint/kontext");
 
   return (
     <div className="max-w-2xl mx-auto pt-8">
@@ -51,32 +52,37 @@ export default async function BlueprintStartPage() {
           </div>
         </div>
 
-        {/* Description */}
         <p className="text-[#ccc] text-sm leading-relaxed mb-6">
-          Der OKUN Blueprint™ erfasst systematisch den Digitalisierungsstand Ihres Unternehmens in 8 Modulen. Auf Basis Ihrer Antworten erhalten Sie einen individuellen Optimierungsfahrplan mit konkreten Lösungsempfehlungen.
+          Der OKUN Blueprint™ erfasst systematisch den Digitalisierungsstand Ihres Unternehmens
+          in 8 Modulen. Auf Basis Ihrer Antworten erhalten Sie einen individuellen Optimierungsfahrplan
+          mit konkreten Lösungsempfehlungen.
         </p>
 
-        {/* Info tiles */}
+        {/* Two-step overview */}
         <div className="grid grid-cols-2 gap-3 mb-8">
           <div className="bg-[#060a10] border border-[#111e30] rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <Clock size={14} className="text-[#00b8ff]" />
-              <span className="text-[#888] text-xs">Dauer</span>
+            <div className="flex items-center gap-2 mb-2">
+              <MessageCircle size={14} className="text-[#00b8ff]" />
+              <span className="text-[#888] text-xs font-medium">Schritt 1</span>
             </div>
-            <p className="text-[#f0f0f0] text-sm font-semibold">ca. 15–25 Minuten</p>
+            <p className="text-[#f0f0f0] text-sm font-semibold mb-0.5">Unternehmenskontext</p>
+            <p className="text-[#666] text-xs">ca. 3–5 Minuten · 6 kurze Fragen</p>
           </div>
           <div className="bg-[#060a10] border border-[#111e30] rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <ClipboardList size={14} className="text-[#00b8ff]" />
-              <span className="text-[#888] text-xs">Module</span>
+            <div className="flex items-center gap-2 mb-2">
+              <Clock size={14} className="text-[#00b8ff]" />
+              <span className="text-[#888] text-xs font-medium">Schritt 2</span>
             </div>
-            <p className="text-[#f0f0f0] text-sm font-semibold">8 Themenbereiche</p>
+            <p className="text-[#f0f0f0] text-sm font-semibold mb-0.5">Blueprint-Analyse</p>
+            <p className="text-[#666] text-xs">ca. 15–25 Minuten · 8 Module</p>
           </div>
         </div>
 
         {/* Module overview */}
         <div className="mb-8">
-          <p className="text-[#888] text-xs font-medium mb-3 uppercase tracking-wider">Inhalt</p>
+          <p className="text-[#888] text-xs font-medium mb-3 uppercase tracking-wider">
+            Blueprint-Module
+          </p>
           <div className="grid grid-cols-2 gap-2">
             {[
               "M1 · Unternehmensprofil",
@@ -97,15 +103,18 @@ export default async function BlueprintStartPage() {
         </div>
 
         {/* Start button */}
-        <form action={startBlueprintSession}>
+        <form action={startContextSession}>
           <button
             type="submit"
             className="w-full bg-[#00b8ff] hover:bg-[#0099d6] text-white font-semibold text-sm rounded-xl py-3 flex items-center justify-center gap-2 transition-colors"
           >
-            Blueprint starten
+            Analyse starten
             <ChevronRight size={16} />
           </button>
         </form>
+        <p className="text-center text-[#444] text-xs mt-3">
+          Beginnt mit kurzen Kontextfragen · Insgesamt ca. 20–30 Minuten
+        </p>
       </div>
     </div>
   );

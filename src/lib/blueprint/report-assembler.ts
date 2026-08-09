@@ -17,6 +17,11 @@ export interface ModuleScoreEntry {
   score: number;
 }
 
+export interface CompanyContextData {
+  summary: string | null;
+  entries: Array<{ role: string; content: string }>;
+}
+
 export interface BlueprintReportData {
   sessionId: string;
   company: {
@@ -33,6 +38,7 @@ export interface BlueprintReportData {
   roadmap: RoadmapPhase[];
   totalAnswered: number;
   totalActive: number;
+  companyContext: CompanyContextData | null;
 }
 
 const MODULE_LABELS: Record<number, string> = {
@@ -56,10 +62,15 @@ export async function assembleBlueprintReport(
 
   if (!analysisSession) throw new Error(`Session not found: ${sessionId}`);
 
-  const [questions, sessionAnswers, solutions] = await Promise.all([
+  const [questions, sessionAnswers, solutions, contextSession] = await Promise.all([
     loadBlueprintQuestions(),
     loadSessionAnswers(sessionId),
     loadSolutions(),
+    db.companyContextSession.findFirst({
+      where: { companyId: analysisSession.companyId, status: "COMPLETED" },
+      include: { entries: { orderBy: { order: "asc" } } },
+      orderBy: { completedAt: "desc" },
+    }),
   ]);
 
   const evaluated = evaluateSession(questions, sessionAnswers);
@@ -94,5 +105,11 @@ export async function assembleBlueprintReport(
     roadmap,
     totalAnswered,
     totalActive,
+    companyContext: contextSession
+      ? {
+          summary: contextSession.summary,
+          entries: (contextSession.entries as Array<{ role: string; content: string }>).map((e) => ({ role: e.role, content: e.content })),
+        }
+      : null,
   };
 }

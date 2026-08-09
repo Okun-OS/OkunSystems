@@ -5,9 +5,14 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 export interface ReportTexts {
   executiveSummary: string;
-  moduleInsights: Record<number, string>;
+  contextPageText: string;         // Page 2: company context narrative
+  scoreAnalysis: string;           // Page 3: score analysis prose
+  moduleInsights: Record<number, string>; // Per-module expanded analysis
+  moduleDetailedAnalysis: Record<number, string>; // Per-module deep-dive paragraphs
+  automationPotentials: string;    // Page 8: automation & solution analysis
+  roadmapIntro: string;            // Page 9: roadmap context intro
+  conclusionText: string;          // Page 10: personalized conclusion
   recommendationContext: string;
-  scoreAnalysis: string;
 }
 
 function scoreLabelText(score: number): string {
@@ -24,159 +29,283 @@ function calcAvgScore(data: BlueprintReportData): number {
     : 0;
 }
 
-// ── Score-Analyse: separater Aufruf, reiner Fließtext (kein JSON) ────────────
+function formatContextForPrompt(data: BlueprintReportData): string {
+  if (!data.companyContext) return "Kein Unternehmenskontext verfügbar.";
+  if (data.companyContext.summary) return data.companyContext.summary;
+
+  // Build from entries
+  const pairs = data.companyContext.entries
+    .reduce<Array<{ q: string; a: string }>>((acc, e, i, arr) => {
+      if (e.role === "assistant") {
+        const next = arr[i + 1];
+        if (next?.role === "user") acc.push({ q: e.content, a: next.content });
+      }
+      return acc;
+    }, []);
+
+  return pairs.map((p) => `Frage: ${p.q}\nAntwort: ${p.a}`).join("\n\n");
+}
+
+// ── Context page text (Page 2) ───────────────────────────────────────────────
+async function generateContextPageText(data: BlueprintReportData): Promise<string> {
+  if (!data.companyContext || data.companyContext.entries.length === 0) {
+    return "";
+  }
+
+  const context = formatContextForPrompt(data);
+  const prompt = `Du bist Senior-Berater bei OKUN Systems und schreibst den Einleitungsabschnitt für einen professionellen Analysebericht.
+
+Unternehmenskontext aus dem Vorgespräch:
+${context}
+
+Unternehmen: ${data.company.name}${data.company.industry ? ` | Branche: ${data.company.industry}` : ""}
+
+Schreibe einen professionellen Unternehmensabschnitt mit genau 4 Absätzen als zusammenhängenden Fließtext.
+Kein Markdown, keine Aufzählungen, keine Überschriften.
+Schreibe in der dritten Person ("Das Unternehmen...", "Der Betrieb...", "${data.company.name}...").
+Schreibe nur das, was aus dem Unternehmenskontext hervorgeht — erfinde keine Informationen.
+
+Absatz 1: Kurze, prägnante Beschreibung des Unternehmens — Branche, Geschäftsmodell, Was macht es konkret.
+
+Absatz 2: Aktuelle Situation — Größe, Aufstellung, Digitalisierungsstand, wo das Unternehmen heute steht.
+
+Absatz 3: Die wichtigsten Herausforderungen, die im Gespräch genannt wurden. Was kostet Zeit, was ist aufwändig, was läuft suboptimal?
+
+Absatz 4: Die Motivation und Ziele — warum beschäftigt sich das Unternehmen jetzt mit Digitalisierung, und was soll konkret erreicht werden?
+
+Schreibe jetzt die 4 Absätze:`;
+
+  try {
+    const res = await client.messages.create({
+      model: "claude-opus-5",
+      max_tokens: 1200,
+      messages: [{ role: "user", content: prompt }],
+    });
+    const raw = res.content[0].type === "text" ? res.content[0].text.trim() : "";
+    return htmlParagraphs(raw);
+  } catch {
+    return "";
+  }
+}
+
+// ── Score analysis (Page 3) ──────────────────────────────────────────────────
 async function generateScoreAnalysis(data: BlueprintReportData, avgScore: number): Promise<string> {
   const label = scoreLabelText(avgScore);
-  const worst = [...data.moduleScores]
-    .sort((a, b) => a.score - b.score)
-    .slice(0, 3)
-    .map((m) => `${m.label} (${m.score}/100)`)
-    .join(", ");
-  const best = [...data.moduleScores]
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 2)
-    .map((m) => `${m.label} (${m.score}/100)`)
-    .join(" und ");
+  const worst = [...data.moduleScores].sort((a, b) => a.score - b.score).slice(0, 3)
+    .map((m) => `${m.label} (${m.score}/100)`).join(", ");
+  const best = [...data.moduleScores].sort((a, b) => b.score - a.score).slice(0, 2)
+    .map((m) => `${m.label} (${m.score}/100)`).join(" und ");
+
+  const contextHint = data.companyContext
+    ? `\n\nUnternehmenskontext: ${formatContextForPrompt(data)}`
+    : "";
 
   const prompt = `Du bist Senior-Berater bei OKUN Systems. Schreibe einen professionellen Analysetext über den Digitalisierungsstand von ${data.company.name}.
 
 Daten:
 - Unternehmen: ${data.company.name}${data.company.industry ? ` | Branche: ${data.company.industry}` : ""}
 - Digitalisierungsscore: ${avgScore} von 100 Punkten
-- Einstufung auf der OKUN-Skala: ${label}
+- Einstufung: ${label}
 - Stärkste Bereiche: ${best}
 - Größte Handlungsfelder: ${worst}
-- Beantwortete Fragen: ${data.totalAnswered} von ${data.totalActive}
+- Beantwortete Fragen: ${data.totalAnswered} von ${data.totalActive}${contextHint}
 
-Schreibe genau 5 Absätze als zusammenhängenden Fließtext. Kein Markdown, keine Aufzählungen, keine Überschriften innerhalb des Texts.
-Jeder Absatz wird mit einem Zeilenumbruch getrennt.
-Schreibe in direkter Ansprache ("Sie", "Ihr Unternehmen"). Sachlich und präzise – kein Marketing-Deutsch.
+Schreibe genau 5 Absätze als zusammenhängenden Fließtext. Kein Markdown, keine Aufzählungen, keine Überschriften.
+Schreibe in direkter Ansprache ("Sie", "Ihr Unternehmen"). Sachlich und präzise — kein Marketing-Deutsch.
 
-Absatz 1: Ordne den Score ${avgScore}/100 auf der OKUN-Skala ein. Erkläre was "${label}" in der Praxis bedeutet und wie es sich von anderen Einstufungen unterscheidet.
+Absatz 1: Ordne den Score ${avgScore}/100 auf der OKUN-Skala ein. Was bedeutet "${label}" in der Praxis, konkret für ein Unternehmen wie ${data.company.name}?
 
-Absatz 2: Beschreibe was die Gesamtanalyse von ${data.company.name} konkret zeigt. Wo steht das Unternehmen heute? Was läuft bereits gut (${best})?
+Absatz 2: Was zeigt die Gesamtanalyse konkret? Wo steht das Unternehmen, was läuft bereits gut (${best})?
 
-Absatz 3: Analysiere die drei größten Schwachstellen (${worst}) im Detail. Warum sind genau diese Bereiche kritisch? Welche Konsequenzen hat der aktuelle Zustand für das operative Geschäft, wenn nichts unternommen wird?
+Absatz 3: Analysiere die drei größten Handlungsfelder (${worst}) im Detail. Warum sind genau diese Bereiche kritisch, welche Konsequenzen hat der aktuelle Zustand?
 
-Absatz 4: Formuliere konkrete, priorisierte nächste Schritte für ${data.company.name}. Keine abstrakten Empfehlungen – was genau sollte als erstes, zweites, drittes angegangen werden und warum?
+Absatz 4: Formuliere konkrete priorisierte nächste Schritte für ${data.company.name} — kein Allgemeines, sondern was als Erstes, Zweites und Drittes angegangen werden sollte und warum.
 
-Absatz 5: Realistischer Ausblick: Was wird möglich sein, wenn die wichtigsten Maßnahmen umgesetzt sind? In welchem Zeitrahmen sind Verbesserungen spürbar?
+Absatz 5: Realistischer Ausblick — was wird möglich sein, wenn die wichtigsten Maßnahmen umgesetzt sind, und in welchem Zeitrahmen?
 
 Schreibe jetzt die 5 Absätze:`;
 
   try {
-    const response = await client.messages.create({
-      model: "claude-sonnet-5",
+    const res = await client.messages.create({
+      model: "claude-opus-5",
       max_tokens: 2000,
       messages: [{ role: "user", content: prompt }],
     });
-
-    const raw = response.content[0].type === "text" ? response.content[0].text.trim() : "";
-    if (!raw) return "";
-
-    // Wrap double-newline-separated paragraphs in <p> tags if Claude returned plain text
-    if (!raw.startsWith("<p>")) {
-      return raw
-        .split(/\n{2,}/)
-        .map((p) => p.trim())
-        .filter(Boolean)
-        .map((p) => `<p>${p}</p>`)
-        .join("\n");
-    }
-    return raw;
+    const raw = res.content[0].type === "text" ? res.content[0].text.trim() : "";
+    return htmlParagraphs(raw);
   } catch {
     return "";
   }
 }
 
-// ── Übrige Berichtstexte: JSON-Aufruf ───────────────────────────────────────
-async function generateJsonTexts(data: BlueprintReportData, avgScore: number): Promise<Omit<ReportTexts, "scoreAnalysis">> {
-  const moduleList = data.moduleScores
-    .map((m) => `M${m.moduleNumber} ${m.label}: ${m.score}/100`)
-    .join("\n");
+// ── Module insights + detailed analysis (Pages 4–7) ─────────────────────────
+async function generateModuleTexts(data: BlueprintReportData, avgScore: number): Promise<{
+  moduleInsights: Record<number, string>;
+  moduleDetailedAnalysis: Record<number, string>;
+}> {
+  const moduleList = data.moduleScores.map((m) => `M${m.moduleNumber} ${m.label}: ${m.score}/100`).join("\n");
+  const contextHint = data.companyContext ? `\n\nUnternehmenskontext:\n${formatContextForPrompt(data)}` : "";
 
-  const recList = data.recommendations
-    .slice(0, 5)
-    .map((r) => `- ${r.name} (${r.category}, Signalstärke: ${r.signalScore})`)
-    .join("\n");
+  const prompt = `Du bist Lead-Berater bei OKUN Systems. Erstelle eine detaillierte Modulanalyse für ${data.company.name}.
 
-  const worstModules = [...data.moduleScores]
-    .sort((a, b) => a.score - b.score)
-    .slice(0, 3)
-    .map((m) => m.label)
-    .join(", ");
-
-  const prompt = `Du bist Lead-Berater bei OKUN Systems. Analysebericht für: ${data.company.name} (${data.company.industry ?? "Branche nicht angegeben"}).
-
-Score: ${avgScore}/100 (${scoreLabelText(avgScore)})
-Fragen: ${data.totalAnswered}/${data.totalActive}
+Gesamt-Score: ${avgScore}/100 (${scoreLabelText(avgScore)})
 
 Modul-Scores:
-${moduleList}
+${moduleList}${contextHint}
 
-Empfehlungen:
-${recList}
-
-Signale: Workforce ${data.signals.WORKFORCE} | Bewährt ${data.signals.BEWAEHRTE_LOESUNG} | Individual ${data.signals.CUSTOM_DEVELOPMENT}
-
-Antworte NUR mit diesem JSON-Objekt (kein Markdown):
+Antworte NUR mit diesem JSON-Objekt (kein Markdown, kein Kommentar):
 {
-  "executiveSummary": "3-4 Sätze Zusammenfassung für Entscheider. Konkrete Stärken und Potenziale. Kein Marketing.",
-  "moduleInsights": {
-    "1": "1-2 Sätze zu Modul 1",
-    "2": "1-2 Sätze zu Modul 2",
-    "3": "1-2 Sätze zu Modul 3",
-    "4": "1-2 Sätze zu Modul 4",
-    "5": "1-2 Sätze zu Modul 5",
-    "6": "1-2 Sätze zu Modul 6",
-    "7": "1-2 Sätze zu Modul 7",
-    "8": "1-2 Sätze zu Modul 8"
+  "insights": {
+    "1": "Kurze Einschätzung M1 (1-2 Sätze, faktenbasiert)",
+    "2": "Kurze Einschätzung M2",
+    "3": "Kurze Einschätzung M3",
+    "4": "Kurze Einschätzung M4",
+    "5": "Kurze Einschätzung M5",
+    "6": "Kurze Einschätzung M6",
+    "7": "Kurze Einschätzung M7",
+    "8": "Kurze Einschätzung M8"
   },
-  "recommendationContext": "2-3 Sätze Einleitung für Empfehlungen. Warum diese Lösungen? Bezug zu ${worstModules}."
+  "detailed": {
+    "1": "Ausführliche Analyse M1 (3-5 Sätze: was funktioniert, wo bestehen Schwachstellen, welche Auswirkungen hat das, was ist der erste konkrete Handlungsschritt)",
+    "2": "Ausführliche Analyse M2",
+    "3": "Ausführliche Analyse M3",
+    "4": "Ausführliche Analyse M4",
+    "5": "Ausführliche Analyse M5",
+    "6": "Ausführliche Analyse M6",
+    "7": "Ausführliche Analyse M7",
+    "8": "Ausführliche Analyse M8"
+  }
 }`;
 
   try {
-    const response = await client.messages.create({
-      model: "claude-sonnet-5",
-      max_tokens: 2000,
+    const res = await client.messages.create({
+      model: "claude-opus-5",
+      max_tokens: 4000,
       messages: [{ role: "user", content: prompt }],
     });
-
-    const raw = response.content[0].type === "text" ? response.content[0].text : "{}";
+    const raw = res.content[0].type === "text" ? res.content[0].text : "{}";
     const jsonStr = raw.replace(/^```json\n?/, "").replace(/\n?```$/, "").trim();
     const parsed = JSON.parse(jsonStr) as {
-      executiveSummary?: string;
-      moduleInsights?: Record<string, string>;
-      recommendationContext?: string;
+      insights?: Record<string, string>;
+      detailed?: Record<string, string>;
     };
 
     const moduleInsights: Record<number, string> = {};
-    for (const [k, v] of Object.entries(parsed.moduleInsights ?? {})) {
+    const moduleDetailedAnalysis: Record<number, string> = {};
+    for (const [k, v] of Object.entries(parsed.insights ?? {})) {
       moduleInsights[parseInt(k, 10)] = v;
     }
+    for (const [k, v] of Object.entries(parsed.detailed ?? {})) {
+      moduleDetailedAnalysis[parseInt(k, 10)] = v;
+    }
+    return { moduleInsights, moduleDetailedAnalysis };
+  } catch {
+    const empty: Record<number, string> = {};
+    return { moduleInsights: empty, moduleDetailedAnalysis: empty };
+  }
+}
+
+// ── Automation potentials + conclusion + recommendation context (Pages 8, 9, 10) ──
+async function generateFinalSections(data: BlueprintReportData, avgScore: number): Promise<{
+  automationPotentials: string;
+  roadmapIntro: string;
+  conclusionText: string;
+  executiveSummary: string;
+  recommendationContext: string;
+}> {
+  const recList = data.recommendations
+    .slice(0, 6)
+    .map((r) => `- ${r.name} (${r.category}, Signal: ${r.signalScore})`)
+    .join("\n");
+
+  const signalsSummary = `Workforce: ${data.signals.WORKFORCE} | Bewährt: ${data.signals.BEWAEHRTE_LOESUNG} | Individual: ${data.signals.CUSTOM_DEVELOPMENT}`;
+  const worstModules = [...data.moduleScores].sort((a, b) => a.score - b.score).slice(0, 3).map((m) => m.label).join(", ");
+  const contextHint = data.companyContext ? `\n\nUnternehmenskontext:\n${formatContextForPrompt(data)}` : "";
+
+  const prompt = `Du bist Lead-Berater bei OKUN Systems. Erstelle spezifische Berichtsabschnitte für ${data.company.name}.
+
+Score: ${avgScore}/100 | Einstufung: ${scoreLabelText(avgScore)}
+Größte Handlungsfelder: ${worstModules}
+Signalstärken: ${signalsSummary}
+Empfohlene Lösungen:
+${recList}
+Paket: ${data.packageType ?? "Standard"}${contextHint}
+
+Antworte NUR mit diesem JSON-Objekt (kein Markdown):
+{
+  "executiveSummary": "3-4 prägnante Sätze für Entscheider. Stärken und Potenziale konkret benennen — kein Marketing. Individuelle Situation von ${data.company.name} ansprechen.",
+  "automationPotentials": "3-4 Absätze Fließtext über Automatisierungs- und Digitalisierungspotenziale. Getrennte Absätze für: (1) bereits vorhandene/bewährte Lösungen, (2) Automatisierungspotenziale, (3) OKUN Workforce Einsatzmöglichkeiten. Nur Lösungen erwähnen, die OKUN tatsächlich anbietet. Keine erfundenen Produkte.",
+  "roadmapIntro": "2-3 Sätze Einleitung für den Umsetzungsfahrplan. Warum diese Reihenfolge, was kommt zuerst und warum?",
+  "conclusionText": "4 Absätze Fließtext für das Fazit. Absatz 1: wichtigste Erkenntnisse zusammenfassen. Absatz 2: größte Potenziale hervorheben. Absatz 3: priorisierte Handlungsfelder benennen. Absatz 4: sinnvoller nächster Schritt und Vorbereitung auf das Strategiegespräch.",
+  "recommendationContext": "2-3 Sätze Einleitung für Lösungsempfehlungen. Bezug zu ${worstModules}."
+}`;
+
+  try {
+    const res = await client.messages.create({
+      model: "claude-opus-5",
+      max_tokens: 4000,
+      messages: [{ role: "user", content: prompt }],
+    });
+    const raw = res.content[0].type === "text" ? res.content[0].text : "{}";
+    const jsonStr = raw.replace(/^```json\n?/, "").replace(/\n?```$/, "").trim();
+    const parsed = JSON.parse(jsonStr) as {
+      executiveSummary?: string;
+      automationPotentials?: string;
+      roadmapIntro?: string;
+      conclusionText?: string;
+      recommendationContext?: string;
+    };
 
     return {
-      executiveSummary: parsed.executiveSummary ?? "",
-      moduleInsights,
-      recommendationContext: parsed.recommendationContext ?? "",
+      executiveSummary: parsed.executiveSummary ?? `${data.company.name} hat den OKUN Blueprint™ 2.0 abgeschlossen.`,
+      automationPotentials: htmlParagraphs(parsed.automationPotentials ?? ""),
+      roadmapIntro: parsed.roadmapIntro ?? "",
+      conclusionText: htmlParagraphs(parsed.conclusionText ?? ""),
+      recommendationContext: parsed.recommendationContext ?? "Basierend auf Ihren Antworten empfehlen wir folgende Maßnahmen.",
     };
   } catch {
     return {
       executiveSummary: `${data.company.name} hat den OKUN Blueprint™ 2.0 abgeschlossen.`,
-      moduleInsights: {},
+      automationPotentials: "",
+      roadmapIntro: "",
+      conclusionText: "",
       recommendationContext: "Basierend auf Ihren Antworten empfehlen wir folgende Maßnahmen.",
     };
   }
 }
 
-// ── Öffentliche Funktion: beide Aufrufe parallel ─────────────────────────────
+// ── Helper: wrap double-newline separated paragraphs in <p> tags ─────────────
+function htmlParagraphs(text: string): string {
+  if (!text) return "";
+  if (text.startsWith("<p>")) return text;
+  return text
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => `<p>${p}</p>`)
+    .join("\n");
+}
+
+// ── Public: generate all report texts in parallel ─────────────────────────────
 export async function generateReportTexts(data: BlueprintReportData): Promise<ReportTexts> {
   const avgScore = calcAvgScore(data);
 
-  const [jsonTexts, scoreAnalysis] = await Promise.all([
-    generateJsonTexts(data, avgScore),
+  const [contextPageText, scoreAnalysis, moduleTexts, finalSections] = await Promise.all([
+    generateContextPageText(data),
     generateScoreAnalysis(data, avgScore),
+    generateModuleTexts(data, avgScore),
+    generateFinalSections(data, avgScore),
   ]);
 
-  return { ...jsonTexts, scoreAnalysis };
+  return {
+    executiveSummary: finalSections.executiveSummary,
+    contextPageText,
+    scoreAnalysis,
+    moduleInsights: moduleTexts.moduleInsights,
+    moduleDetailedAnalysis: moduleTexts.moduleDetailedAnalysis,
+    automationPotentials: finalSections.automationPotentials,
+    roadmapIntro: finalSections.roadmapIntro,
+    conclusionText: finalSections.conclusionText,
+    recommendationContext: finalSections.recommendationContext,
+  };
 }

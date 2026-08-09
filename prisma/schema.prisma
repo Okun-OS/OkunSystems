@@ -98,6 +98,7 @@ model Company {
   consentRecords      ConsentRecord[]
   invoices            Invoice[]
   closingEvents       ClosingEvent[]
+  contextSessions     CompanyContextSession[] @relation("CompanyContextSessions")
 }
 
 model Project {
@@ -297,6 +298,31 @@ model Recommendation {
 
   assessmentId String
   assessment   Assessment @relation(fields: [assessmentId], references: [id])
+}
+
+// ─── OKUN Blueprint™ Company Context ─────────────────────────────────────────
+
+model CompanyContextSession {
+  id                String    @id @default(cuid())
+  companyId         String
+  company           Company   @relation("CompanyContextSessions", fields: [companyId], references: [id])
+  status            String    @default("ACTIVE") // ACTIVE | COMPLETED
+  startedAt         DateTime  @default(now())
+  completedAt       DateTime?
+  summary           String?   // AI-generated condensed summary for report generation
+  analysisSessionId String?   @unique
+
+  entries CompanyContextEntry[]
+}
+
+model CompanyContextEntry {
+  id        String               @id @default(cuid())
+  sessionId String
+  session   CompanyContextSession @relation(fields: [sessionId], references: [id])
+  role      String               // "assistant" | "user"
+  content   String
+  order     Int
+  createdAt DateTime             @default(now())
 }
 
 // ─── OKUN Blueprint™ Engine Models ───────────────────────────────────────────
