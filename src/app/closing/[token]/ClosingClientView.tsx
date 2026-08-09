@@ -135,26 +135,32 @@ export function ClosingClientView({ session: s, token }: Props) {
     });
   }
 
-  // ── Full-screen video call layout ───────────────────────────────────────────
+  // ── In-call OKUN-shell layout ────────────────────────────────────────────────
   if (callActive && s.appointment?.meetingUrl) {
-    const showBottomBar = !isPaid && (showConsentForm || paymentReady) || (paymentResult === "success" || isPaid);
+    const hasSidebar = (paymentResult === "success" || isPaid) || showConsentForm || paymentReady || offerVisible;
 
     return (
-      <div className="fixed inset-0 z-50 bg-black flex flex-col">
-        {/* Top bar */}
-        <div className="flex items-center justify-between px-4 py-2.5 bg-[#080d14] border-b border-[#1a2840] flex-shrink-0">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/okun-logo.png"
-            alt="OKUN Systems"
-            className="h-6"
-            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-          />
+      <div className="fixed inset-0 z-50 bg-[#060a10] flex flex-col">
+
+        {/* ── OKUN header ── */}
+        <div className="flex items-center justify-between px-5 py-3 bg-[#080d14] border-b border-[#1a2840] flex-shrink-0">
+          <div className="flex items-center gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/okun-logo.png"
+              alt="OKUN Systems"
+              className="h-6"
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+            />
+            <span className="hidden sm:block text-xs text-[#444] border-l border-[#1a2840] pl-3">
+              {s.company.name}
+            </span>
+          </div>
           <div className="flex items-center gap-3">
             <StatusPill status={s.status} isPaid={isPaid} />
             <button
               onClick={() => setCallActive(false)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[rgba(239,68,68,0.12)] hover:bg-[rgba(239,68,68,0.2)] border border-[rgba(239,68,68,0.25)] text-[#ef4444] text-xs font-semibold rounded-lg transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[rgba(239,68,68,0.1)] hover:bg-[rgba(239,68,68,0.18)] border border-[rgba(239,68,68,0.22)] text-[#ef4444] text-xs font-semibold rounded-lg transition-colors"
             >
               <VideoOff size={12} />
               Verlassen
@@ -162,79 +168,127 @@ export function ClosingClientView({ session: s, token }: Props) {
           </div>
         </div>
 
-        {/* Main video — takes all remaining space */}
-        <iframe
-          src={s.appointment.meetingUrl}
-          allow="camera; microphone; fullscreen; display-capture; screen-wake-lock"
-          className="flex-1 w-full border-0"
-          title="Gespräch"
-        />
+        {/* ── Content area ── */}
+        <div className="flex flex-1 gap-3 p-3 min-h-0 overflow-hidden">
 
-        {/* Bottom action bar — only visible when action needed */}
-        {showBottomBar && (
-          <div className="flex-shrink-0 bg-[#080d14] border-t border-[#1a2840] px-4 py-3 space-y-3 max-h-52 overflow-y-auto">
-            {(paymentResult === "success" || isPaid) && (
-              <div className="flex items-center gap-2 text-[#22c55e] text-sm font-medium">
-                <span>✅</span>
-                <span>Zahlung erfolgreich — Ihr Konto wird in Kürze aktiviert.</span>
-              </div>
-            )}
-            {showConsentForm && !isPaid && (
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-[#888] uppercase tracking-wide">Einwilligungen bestätigen</p>
-                <div className="flex flex-wrap gap-3">
-                  {s.legalDocuments.map((doc) => {
-                    const checked = consented.has(doc.id);
-                    const loading = consentPending === doc.id;
-                    return (
-                      <label
-                        key={doc.id}
-                        className={`flex items-center gap-2 cursor-pointer ${loading ? "opacity-60" : ""}`}
-                        onClick={() => !checked && handleConsent(doc)}
-                      >
-                        <div
-                          className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 border transition-colors ${
-                            checked ? "bg-[#22c55e] border-[#22c55e]" : "border-[#2a3a50] hover:border-[#00b8ff]"
-                          }`}
+          {/* Video card */}
+          <div className="flex-1 flex flex-col bg-[#0c1520] border border-[#1a2840] rounded-2xl overflow-hidden min-w-0">
+            {/* Video title strip */}
+            <div className="flex items-center gap-2.5 px-4 py-2.5 border-b border-[#1a2840] bg-[#080d14] flex-shrink-0">
+              <span className="w-2 h-2 rounded-full bg-[#22c55e] animate-pulse flex-shrink-0" />
+              <span className="text-xs font-medium text-[#666]">
+                Videogespräch
+                {s.closer.name && (
+                  <span className="text-[#444]"> · {s.closer.name}</span>
+                )}
+              </span>
+              <span className="ml-auto text-[10px] text-[#333] uppercase tracking-wider">OKUN Systems</span>
+            </div>
+
+            {/* Daily.co iframe */}
+            <iframe
+              src={s.appointment.meetingUrl}
+              allow="camera; microphone; fullscreen; display-capture; screen-wake-lock"
+              className="flex-1 w-full border-0 bg-[#0c1520]"
+              title="Gespräch"
+            />
+          </div>
+
+          {/* Right sidebar — only rendered when there's something to show */}
+          {hasSidebar && (
+            <div className="w-72 flex-shrink-0 flex flex-col gap-3 overflow-y-auto pb-1">
+
+              {/* Payment success */}
+              {(paymentResult === "success" || isPaid) && (
+                <div className="rounded-xl bg-[rgba(34,197,94,0.08)] border border-[rgba(34,197,94,0.2)] p-4 text-center">
+                  <div className="text-3xl mb-2">✅</div>
+                  <p className="text-sm font-semibold text-[#22c55e]">Zahlung erfolgreich</p>
+                  <p className="text-xs text-[#888] mt-1 leading-relaxed">Ihr Konto wird in Kürze aktiviert.</p>
+                </div>
+              )}
+
+              {/* Offer summary */}
+              {offerVisible && s.activeOffer && !isPaid && (
+                <div className="rounded-xl bg-[#0c1520] border border-[rgba(245,158,11,0.2)] p-4 space-y-2">
+                  <div className="text-[10px] font-semibold text-[#f59e0b] uppercase tracking-widest">Angebot</div>
+                  <div className="text-sm font-bold text-[#f0f0f0]">
+                    {s.activeOffer.template?.name ?? "OKUN Paket"}
+                  </div>
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-xs text-[#666]">inkl. MwSt.</span>
+                    <span className="text-lg font-bold text-[#f0f0f0]">
+                      {fmtEur(Math.round(s.activeOffer.priceNet * 1.19))}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Consent form */}
+              {showConsentForm && !isPaid && (
+                <div className="rounded-xl bg-[#0c1520] border border-[#1a2840] p-4 space-y-3">
+                  <div className="text-[10px] font-semibold text-[#888] uppercase tracking-widest">Einwilligungen</div>
+                  <div className="space-y-2.5">
+                    {s.legalDocuments.map((doc) => {
+                      const checked = consented.has(doc.id);
+                      const loading = consentPending === doc.id;
+                      return (
+                        <label
+                          key={doc.id}
+                          className={`flex items-start gap-2.5 cursor-pointer group ${loading ? "opacity-60" : ""}`}
+                          onClick={() => !checked && handleConsent(doc)}
                         >
-                          {checked && (
-                            <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                              <path d="M1 4L3.5 6.5L9 1" stroke="black" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                          )}
-                        </div>
-                        <span className="text-xs text-[#ccc]">
-                          {doc.title}
-                          {doc.isRequired && <span className="text-[#ef4444] ml-0.5">*</span>}
-                        </span>
-                      </label>
-                    );
-                  })}
+                          <div
+                            className={`mt-0.5 w-4 h-4 rounded flex items-center justify-center flex-shrink-0 border transition-colors ${
+                              checked ? "bg-[#22c55e] border-[#22c55e]" : "border-[#2a3a50] group-hover:border-[#00b8ff]"
+                            }`}
+                          >
+                            {checked && (
+                              <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                                <path d="M1 4L3.5 6.5L9 1" stroke="black" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            )}
+                          </div>
+                          <span className="text-xs text-[#ccc] leading-snug">
+                            {doc.title}
+                            {doc.isRequired && <span className="text-[#ef4444] ml-0.5">*</span>}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {!allRequiredConsented && (
+                    <p className="text-[10px] text-[#555]">* Pflichtfeld vor Zahlung</p>
+                  )}
                 </div>
-              </div>
-            )}
-            {paymentReady && s.activeOffer && !isPaid && (
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-xs text-[#888]">Gesamtbetrag inkl. MwSt.</p>
-                  <p className="text-lg font-bold text-[#f0f0f0]">{fmtEur(Math.round(s.activeOffer.priceNet * 1.19))}</p>
-                </div>
-                <div className="flex flex-col items-end gap-1">
+              )}
+
+              {/* Payment CTA */}
+              {paymentReady && s.activeOffer && !isPaid && (
+                <div className="rounded-xl bg-[#0c1520] border border-[rgba(0,184,255,0.2)] p-4 space-y-3">
+                  <div className="text-[10px] font-semibold text-[#888] uppercase tracking-widest">Vertragsabschluss</div>
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-xs text-[#666]">Gesamt inkl. MwSt.</span>
+                    <span className="text-xl font-bold text-[#f0f0f0]">
+                      {fmtEur(Math.round(s.activeOffer.priceNet * 1.19))}
+                    </span>
+                  </div>
                   {showConsentForm && !allRequiredConsented && (
                     <p className="text-xs text-[#f59e0b]">Bitte alle Pflichtdokumente bestätigen.</p>
                   )}
                   <button
                     onClick={handlePay}
                     disabled={paying || (showConsentForm && !allRequiredConsented)}
-                    className="px-5 py-2.5 rounded-xl bg-[#00b8ff] hover:bg-[#0099dd] disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-sm transition-colors"
+                    className="w-full py-2.5 rounded-xl bg-[#00b8ff] hover:bg-[#0099dd] disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-sm transition-colors"
                   >
                     {paying ? "Weiterleitung…" : "Jetzt bezahlen →"}
                   </button>
+                  <p className="text-[10px] text-[#444] text-center">Sicher über Stripe</p>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+
+            </div>
+          )}
+        </div>
       </div>
     );
   }
