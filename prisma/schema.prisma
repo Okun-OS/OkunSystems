@@ -950,8 +950,8 @@ model ConsentRecord {
   company          Company        @relation(fields: [companyId], references: [id])
   closingSessionId String
   closingSession   ClosingSession @relation(fields: [closingSessionId], references: [id])
-  offerId          String
-  offer            Offer          @relation(fields: [offerId], references: [id])
+  offerId          String?
+  offer            Offer?         @relation(fields: [offerId], references: [id])
   legalDocumentId  String
   legalDocument    LegalDocument  @relation(fields: [legalDocumentId], references: [id])
 }

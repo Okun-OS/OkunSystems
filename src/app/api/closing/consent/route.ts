@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
       sessionTokenHash: tokenHash,
       companyId: closingSession.companyId,
       closingSessionId: closingSession.id,
-      offerId: closingSession.activeOfferId ?? undefined,
+      offerId: closingSession.activeOfferId ?? null,
       legalDocumentId,
     },
   });
