@@ -822,11 +822,12 @@ model CareSubscription {
 
 model LegalDocument {
   id            String   @id @default(cuid())
-  type          String   // agb | datenschutz | leistungsbedingungen | avv | recording_consent | vertragsunterlagen | sonstiges
+  type          String   // AGB | DATENSCHUTZ | WIDERRUFSRECHT | AUFTRAGSVERARBEITUNG | recording_consent | sonstiges
   title         String
   version       String
   description   String?
-  r2Key         String
+  content       String?  // inline text / HTML for the document body
+  r2Key         String?  // optional: key to a PDF file in R2
   mimeType      String   @default("application/pdf")
   isActive      Boolean  @default(false)
   isRequired    Boolean  @default(true)
