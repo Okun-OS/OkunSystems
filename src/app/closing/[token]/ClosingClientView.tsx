@@ -273,6 +273,7 @@ export function ClosingClientView({ session: s, token }: Props) {
             setRecordingChecked={setRecordingConsentChecked}
             submitting={consentModalSubmitting}
             onSubmit={handleBatchConsent}
+            token={token}
           />
         )}
 
@@ -382,29 +383,41 @@ export function ClosingClientView({ session: s, token }: Props) {
                 const checked = consented.has(doc.id);
                 const loading = consentPending === doc.id;
                 return (
-                  <label
-                    key={doc.id}
-                    className={`flex items-start gap-3 cursor-pointer group ${loading ? "opacity-60" : ""}`}
-                    onClick={() => !checked && handleConsent(doc)}
-                  >
-                    <div
-                      className={`mt-0.5 w-4 h-4 rounded flex items-center justify-center flex-shrink-0 border transition-colors ${
-                        checked ? "bg-[#22c55e] border-[#22c55e]" : "border-[#2a3a50] group-hover:border-[#00b8ff]"
-                      }`}
+                  <div key={doc.id} className="space-y-1.5">
+                    <label
+                      className={`flex items-start gap-3 cursor-pointer group ${loading ? "opacity-60" : ""}`}
+                      onClick={() => !checked && handleConsent(doc)}
                     >
-                      {checked && (
-                        <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                          <path d="M1 4L3.5 6.5L9 1" stroke="black" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      )}
-                    </div>
-                    <span className="text-sm text-[#ccc] leading-tight">
-                      Ich akzeptiere die{" "}
-                      <span className="text-[#00b8ff] font-medium">{doc.title}</span>
-                      {doc.isRequired && <span className="text-[#ef4444] ml-0.5">*</span>}
-                      <span className="text-[#555] text-xs ml-1">v{doc.version}</span>
-                    </span>
-                  </label>
+                      <div
+                        className={`mt-0.5 w-4 h-4 rounded flex items-center justify-center flex-shrink-0 border transition-colors ${
+                          checked ? "bg-[#22c55e] border-[#22c55e]" : "border-[#2a3a50] group-hover:border-[#00b8ff]"
+                        }`}
+                      >
+                        {checked && (
+                          <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                            <path d="M1 4L3.5 6.5L9 1" stroke="black" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        )}
+                      </div>
+                      <span className="text-sm text-[#ccc] leading-tight">
+                        Ich akzeptiere die{" "}
+                        <span className="text-[#00b8ff] font-medium">{doc.title}</span>
+                        {doc.isRequired && <span className="text-[#ef4444] ml-0.5">*</span>}
+                        <span className="text-[#555] text-xs ml-1">v{doc.version}</span>
+                      </span>
+                    </label>
+                    {doc.r2Key && (
+                      <a
+                        href={`/api/closing/legal-doc-pdf?token=${encodeURIComponent(token)}&id=${doc.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="ml-7 flex items-center gap-1.5 text-xs text-[#00b8ff] hover:text-[#0099dd] transition-colors w-fit"
+                      >
+                        <FileText size={10} />
+                        Dokument lesen
+                      </a>
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -580,6 +593,7 @@ function ConsentModal({
   setRecordingChecked,
   submitting,
   onSubmit,
+  token,
 }: {
   legalDocuments: LegalDoc[];
   alreadyConsented: Set<string>;
@@ -588,6 +602,7 @@ function ConsentModal({
   recordingChecked: boolean;
   setRecordingChecked: (v: boolean) => void;
   submitting: boolean;
+  token: string;
   onSubmit: () => void;
 }) {
   const requiredDocs = legalDocuments.filter((d) => d.isRequired);
@@ -651,7 +666,7 @@ function ConsentModal({
                 const alreadyDone = alreadyConsented.has(doc.id);
                 const isChecked = alreadyDone || checked.has(doc.id);
                 return (
-                  <div key={doc.id} className="space-y-2">
+                  <div key={doc.id} className="space-y-1.5">
                     <label
                       className={`flex items-start gap-3 ${alreadyDone ? "cursor-default" : "cursor-pointer group"}`}
                       onClick={() => !alreadyDone && toggleDoc(doc.id)}
@@ -674,6 +689,18 @@ function ConsentModal({
                         <span className="text-[#555] text-xs ml-1">v{doc.version}</span>
                       </span>
                     </label>
+                    {doc.r2Key && (
+                      <a
+                        href={`/api/closing/legal-doc-pdf?token=${encodeURIComponent(token)}&id=${doc.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="ml-7 flex items-center gap-1.5 text-xs text-[#00b8ff] hover:text-[#0099dd] transition-colors w-fit"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <FileText size={10} />
+                        Dokument lesen
+                      </a>
+                    )}
                   </div>
                 );
               })}

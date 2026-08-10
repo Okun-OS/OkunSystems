@@ -1,18 +1,6 @@
 import type { BlueprintReportData, ModuleScoreEntry } from "./report-assembler";
 import type { ReportTexts } from "./report-text-engine";
 
-const CATEGORY_COLORS: Record<string, string> = {
-  WORKFORCE: "#00b8ff",
-  BEWAEHRTE_LOESUNG: "#3b82f6",
-  CUSTOM_DEVELOPMENT: "#a855f7",
-};
-
-const CATEGORY_LABELS: Record<string, string> = {
-  WORKFORCE: "OKUN Workforce",
-  BEWAEHRTE_LOESUNG: "Bewährte Lösungen",
-  CUSTOM_DEVELOPMENT: "Individuelle Entwicklung",
-};
-
 function scoreColor(score: number): string {
   if (score >= 80) return "#00b8ff";
   if (score >= 65) return "#22c55e";
@@ -52,20 +40,51 @@ function compactBar(m: ModuleScoreEntry, insight: string): string {
   </div>`;
 }
 
-function moduleDetailCard(m: ModuleScoreEntry, detailed: string): string {
+function moduleFullPage(m: ModuleScoreEntry, detailed: string, composition: string, pageLabel: string): string {
   const c = scoreColor(m.score);
-  return `<div class="mdc">
-    <div class="mdc-head" style="border-left:4px solid ${c}">
-      <div class="mdc-num" style="color:${c}">M${m.moduleNumber}</div>
-      <div class="mdc-info">
-        <div class="mdc-name">${m.label}</div>
-        <div class="mdc-badge" style="color:${c}">${scoreLabel(m.score)}</div>
-      </div>
-      <div class="mdc-score" style="color:${c}">${m.score}<span class="mdc-denom">/100</span></div>
+  const lbl = scoreLabel(m.score);
+  const detailedHtml = detailed
+    ? detailed.split(/\n{2,}/).map(p => p.trim()).filter(Boolean)
+        .map(p => p.startsWith("<p>") ? p : `<p>${p}</p>`).join("\n")
+    : "";
+
+  return `
+<div class="npage">
+  ${ph(pageLabel, `M${m.moduleNumber} · ${m.label}`)}
+
+  <!-- Module score header -->
+  <div class="mfp-head" style="border-left:5px solid ${c}">
+    <div class="mfp-score-col">
+      <div class="mfp-score-num" style="color:${c}">${m.score}</div>
+      <div class="mfp-score-den">/ 100</div>
+      <div class="mfp-score-lbl" style="color:${c}">${lbl}</div>
     </div>
-    <div class="mdc-bar-track"><div class="mdc-bar-fill" style="width:${m.score}%;background:${c}"></div></div>
-    <div class="mdc-body">${detailed || ""}</div>
-  </div>`;
+    <div class="mfp-bar-col">
+      <div class="mfp-bar-track">
+        <div class="mfp-bar-fill" style="width:${m.score}%;background:${c}"></div>
+      </div>
+      <div class="mfp-scale-labels">
+        <span>0 – Dringend</span>
+        <span>35 – Handlungsbedarf</span>
+        <span>50 – Ausbaufähig</span>
+        <span>65 – Gut</span>
+        <span>80+ – Sehr gut</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Score composition box -->
+  ${composition ? `<div class="mfp-comp">
+    <div class="mfp-comp-lbl">Score-Zusammensetzung</div>
+    <div class="mfp-comp-text">${composition}</div>
+  </div>` : ""}
+
+  <!-- Detailed analysis -->
+  <div class="mfp-analysis-lbl">Detaillierte Analyse</div>
+  <div class="mfp-body">
+    ${detailedHtml || `<p>Für dieses Modul liegen keine ausführlichen Analysedaten vor.</p>`}
+  </div>
+</div>`;
 }
 
 export function renderReportHtml(data: BlueprintReportData, texts: ReportTexts, logoDataUri?: string): string {
@@ -85,38 +104,15 @@ export function renderReportHtml(data: BlueprintReportData, texts: ReportTexts, 
     .map((m) => compactBar(m, texts.moduleInsights[m.moduleNumber] ?? ""))
     .join("\n");
 
-  // ── Module detail pages: 2 per page ─────────────────────────────────────
-  const moduleDetailPages = [];
-  for (let i = 0; i < data.moduleScores.length; i += 2) {
-    const pair = data.moduleScores.slice(i, i + 2);
-    const pageNum = Math.floor(i / 2) + 1;
-    const cards = pair
-      .map((m) => moduleDetailCard(m, texts.moduleDetailedAnalysis[m.moduleNumber] ?? ""))
-      .join("\n");
-    moduleDetailPages.push(`
-<div class="npage">
-  ${ph(`Modulanalyse · Seite ${pageNum} von 4`, "Detaillierte Auswertung")}
-  <div class="mdc-grid">
-    ${cards}
-  </div>
-</div>`);
-  }
-
-  // ── Recommendation cards for Fazit page ─────────────────────────────────
-  const recCards = data.recommendations
-    .slice(0, 6)
-    .map((r) => {
-      const color = CATEGORY_COLORS[r.category] ?? "#888";
-      const catLabel = CATEGORY_LABELS[r.category] ?? r.category;
-      return `<div class="rec-card">
-        <div class="rec-hd">
-          <span class="rec-name">${r.name}</span>
-          <span class="rec-badge" style="background:${color}1a;color:${color};border:1px solid ${color}33">${catLabel}</span>
-        </div>
-        <p class="rec-desc">${r.description}</p>
-      </div>`;
-    })
-    .join("\n");
+  // ── Module detail pages: 1 per page ─────────────────────────────────────
+  const moduleDetailPages = data.moduleScores.map((m, i) =>
+    moduleFullPage(
+      m,
+      texts.moduleDetailedAnalysis[m.moduleNumber] ?? "",
+      texts.moduleScoreComposition[m.moduleNumber] ?? "",
+      `Modulanalyse · ${i + 1} von ${data.moduleScores.length}`
+    )
+  ).join("\n");
 
   // ── Logo markup ──────────────────────────────────────────────────────────
   const logoHtml = logoDataUri
@@ -150,10 +146,10 @@ body {
 }
 
 /* ── Page break utility ─────────────────────────────────────────────────── */
-.npage { page-break-before: always; padding-top: 0.3cm; }
+.npage { page-break-before: always; padding-top: 0.3cm; min-height: 240mm; display: flex; flex-direction: column; }
 
 /* ── Page header ──────────────────────────────────────────────────────────*/
-.ph { margin-bottom: 22px; }
+.ph { margin-bottom: 20px; }
 .ph-eye {
   font-size: 7.5pt;
   font-weight: 700;
@@ -188,187 +184,84 @@ body {
   justify-content: space-between;
   border-bottom: 2px solid #00b8ff;
   padding-bottom: 18px;
-  margin-bottom: 0;
 }
-.cover-logo-img {
-  height: 36px;
-  width: auto;
-  object-fit: contain;
-}
-.cover-logo {
-  font-size: 20pt;
-  font-weight: 900;
-  color: #fff;
-  letter-spacing: -1px;
-}
+.cover-logo-img { height: 36px; width: auto; object-fit: contain; }
+.cover-logo { font-size: 20pt; font-weight: 900; color: #fff; letter-spacing: -1px; }
 .cover-logo span { color: #00b8ff; }
 .cover-logo-sub { font-size: 8pt; color: #556; margin-top: 3px; letter-spacing: 0.5px; }
 .cover-confidential {
-  font-size: 7.5pt;
-  color: #334;
-  background: #0d1a2d;
-  border: 1px solid #1a2840;
-  padding: 4px 10px;
-  border-radius: 4px;
+  font-size: 7.5pt; color: #334; background: #0d1a2d;
+  border: 1px solid #1a2840; padding: 4px 10px; border-radius: 4px;
 }
-.cover-body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 1cm 0;
-}
+.cover-body { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 1cm 0; }
 .cover-report-label {
-  font-size: 8pt;
-  font-weight: 700;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: #00b8ff;
-  margin-bottom: 12px;
+  font-size: 8pt; font-weight: 700; letter-spacing: 2px;
+  text-transform: uppercase; color: #00b8ff; margin-bottom: 12px;
 }
-.cover-company {
-  font-size: 30pt;
-  font-weight: 800;
-  color: #fff;
-  margin-bottom: 6px;
-  line-height: 1.1;
-}
-.cover-title {
-  font-size: 14pt;
-  color: #8899aa;
-  font-weight: 400;
-  margin-bottom: 28px;
-}
-.cover-meta-grid {
-  display: flex;
-  gap: 32px;
-  margin-bottom: 36px;
-}
-.cover-meta-item { }
+.cover-company { font-size: 30pt; font-weight: 800; color: #fff; margin-bottom: 6px; line-height: 1.1; }
+.cover-title { font-size: 14pt; color: #8899aa; font-weight: 400; margin-bottom: 28px; }
+.cover-meta-grid { display: flex; gap: 32px; margin-bottom: 36px; }
 .cover-meta-label { font-size: 7.5pt; color: #445566; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 3px; }
 .cover-meta-val { font-size: 10pt; color: #aabbcc; font-weight: 600; }
-.cover-score-section {
-  display: flex;
-  align-items: flex-start;
-  gap: 32px;
-}
+.cover-score-section { display: flex; align-items: flex-start; gap: 32px; }
 .cover-score-circle {
-  flex-shrink: 0;
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  border: 3px solid;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  position: relative;
+  flex-shrink: 0; width: 120px; height: 120px; border-radius: 50%;
+  border: 3px solid; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; text-align: center;
 }
 .cover-score-num { font-size: 34pt; font-weight: 900; line-height: 1; }
 .cover-score-denom { font-size: 9pt; color: #556677; margin-top: 2px; }
 .cover-score-lbl { font-size: 14pt; font-weight: 700; margin-bottom: 8px; }
 .cover-score-desc { font-size: 10pt; color: #7788aa; line-height: 1.55; max-width: 380px; }
 .cover-exec-summary {
-  margin-top: 36px;
-  background: #0d1a2d;
-  border: 1px solid #1a2d4a;
-  border-left: 3px solid #00b8ff;
-  border-radius: 8px;
-  padding: 16px 20px;
-  color: #aabbcc;
-  font-size: 9.5pt;
-  line-height: 1.65;
+  margin-top: 36px; background: #0d1a2d; border: 1px solid #1a2d4a;
+  border-left: 3px solid #00b8ff; border-radius: 8px; padding: 16px 20px;
+  color: #aabbcc; font-size: 9.5pt; line-height: 1.65;
 }
 .cover-exec-label {
-  font-size: 7.5pt;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: #00b8ff;
-  margin-bottom: 8px;
+  font-size: 7.5pt; font-weight: 700; letter-spacing: 1.5px;
+  text-transform: uppercase; color: #00b8ff; margin-bottom: 8px;
 }
 .cover-footer {
-  border-top: 1px solid #0d1a2d;
-  padding-top: 14px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  color: #334455;
-  font-size: 8pt;
+  border-top: 1px solid #0d1a2d; padding-top: 14px;
+  display: flex; justify-content: space-between; align-items: center;
+  color: #334455; font-size: 8pt;
 }
 
-/* ── Context page ─────────────────────────────────────────────────────────*/
-.ctx-body {
-  font-size: 10pt;
-  line-height: 1.75;
-  color: #222;
-  text-align: justify;
-  hyphens: auto;
+/* ── Prose pages (Einleitung, Context, Digi) ─────────────────────────────*/
+.prose-page {
+  font-size: 10pt; line-height: 1.78; color: #1a1a1a;
+  text-align: justify; hyphens: auto; flex: 1;
 }
-.ctx-body p { margin-bottom: 12px; }
-.ctx-body p:last-child { margin-bottom: 0; }
-.ctx-info-bar {
-  display: flex;
-  gap: 24px;
-  margin-top: 18px;
-  padding: 12px 16px;
-  background: #f5f9ff;
-  border: 1px solid #dbeafe;
-  border-radius: 8px;
-}
-.ctx-info-item { }
-.ctx-info-label { font-size: 7.5pt; color: #6b7280; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 2px; }
-.ctx-info-val { font-size: 9.5pt; font-weight: 600; color: #1a1a2e; }
+.prose-page p { margin-bottom: 13px; }
+.prose-page p:last-child { margin-bottom: 0; }
 
-/* ── Digitalization intro page ────────────────────────────────────────────*/
-.digi-body {
-  font-size: 10pt;
-  line-height: 1.75;
-  color: #222;
-  text-align: justify;
-  hyphens: auto;
+/* ── Info bar ─────────────────────────────────────────────────────────────*/
+.info-bar {
+  display: flex; gap: 24px; margin-top: 18px; padding: 12px 16px;
+  background: #f5f9ff; border: 1px solid #dbeafe; border-radius: 8px;
 }
-.digi-body p { margin-bottom: 12px; }
-.digi-body p:last-child { margin-bottom: 0; }
+.info-item-label { font-size: 7.5pt; color: #6b7280; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 2px; }
+.info-item-val { font-size: 9.5pt; font-weight: 600; color: #1a1a2e; }
+
+/* ── Industry highlight bar ──────────────────────────────────────────────*/
 .digi-industry-bar {
-  margin-top: 18px;
-  padding: 14px 18px;
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
-  border-left: 3px solid #22c55e;
-  border-radius: 8px;
+  margin-top: 18px; padding: 14px 18px; background: #f0fdf4;
+  border: 1px solid #bbf7d0; border-left: 3px solid #22c55e; border-radius: 8px;
 }
 .digi-industry-label {
-  font-size: 7.5pt;
-  font-weight: 700;
-  letter-spacing: 1.2px;
-  text-transform: uppercase;
-  color: #16a34a;
-  margin-bottom: 6px;
+  font-size: 7.5pt; font-weight: 700; letter-spacing: 1.2px;
+  text-transform: uppercase; color: #16a34a; margin-bottom: 6px;
 }
 
 /* ── Score overview page ─────────────────────────────────────────────────*/
 .score-hero {
-  display: flex;
-  align-items: center;
-  gap: 28px;
-  margin-bottom: 24px;
-  padding: 18px 20px;
-  background: #f8faff;
-  border: 1px solid #e5eeff;
-  border-radius: 12px;
+  display: flex; align-items: center; gap: 28px; margin-bottom: 22px;
+  padding: 18px 20px; background: #f8faff; border: 1px solid #e5eeff; border-radius: 12px;
 }
 .score-circle {
-  flex-shrink: 0;
-  width: 100px;
-  height: 100px;
-  border-radius: 50%;
-  border: 4px solid;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  flex-shrink: 0; width: 100px; height: 100px; border-radius: 50%;
+  border: 4px solid; display: flex; flex-direction: column; align-items: center; justify-content: center;
 }
 .score-circle-num { font-size: 28pt; font-weight: 900; line-height: 1; }
 .score-circle-den { font-size: 8pt; color: #9ca3af; margin-top: 2px; }
@@ -376,37 +269,18 @@ body {
 .score-hero-label { font-size: 20pt; font-weight: 800; margin-bottom: 4px; }
 .score-hero-company { font-size: 9.5pt; color: #6b7280; margin-bottom: 10px; }
 .score-scale {
-  position: relative;
-  height: 10px;
+  position: relative; height: 10px;
   background: linear-gradient(to right, #ef4444 0%, #f97316 25%, #f59e0b 40%, #22c55e 60%, #00b8ff 80%);
-  border-radius: 5px;
-  margin-bottom: 5px;
+  border-radius: 5px; margin-bottom: 5px;
 }
 .score-scale-dot {
-  position: absolute;
-  top: -4px;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  border: 3px solid #fff;
-  box-shadow: 0 0 0 2px #333;
-  transform: translateX(-50%);
+  position: absolute; top: -4px; width: 18px; height: 18px; border-radius: 50%;
+  border: 3px solid #fff; box-shadow: 0 0 0 2px #333; transform: translateX(-50%);
 }
-.score-scale-labels {
-  display: flex;
-  justify-content: space-between;
-  font-size: 6.5pt;
-  color: #9ca3af;
-}
+.score-scale-labels { display: flex; justify-content: space-between; font-size: 6.5pt; color: #9ca3af; }
 
 /* ── Compact bars ─────────────────────────────────────────────────────────*/
-.cbars-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px 24px;
-  margin-bottom: 20px;
-}
-.cbar { }
+.cbars-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 11px 24px; margin-bottom: 20px; }
 .cbar-hd { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 3px; }
 .cbar-name { font-weight: 600; font-size: 9pt; color: #111; }
 .cbar-score { font-weight: 800; font-size: 10pt; }
@@ -418,106 +292,95 @@ body {
 .cbar-insight { font-size: 7.5pt; color: #6b7280; flex: 1; line-height: 1.35; }
 
 /* ── Signal tiles ─────────────────────────────────────────────────────────*/
-.signal-row { display: flex; gap: 12px; margin-bottom: 0; }
+.signal-row { display: flex; gap: 12px; }
 .signal-tile {
-  flex: 1;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 12px 14px;
-  text-align: center;
+  flex: 1; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 14px; text-align: center;
 }
 .signal-num { font-size: 24pt; font-weight: 900; line-height: 1; }
 .signal-lbl { font-size: 7.5pt; color: #6b7280; margin-top: 3px; }
 
 /* ── Score analysis page ─────────────────────────────────────────────────*/
-.prose {
-  font-size: 10pt;
-  line-height: 1.75;
-  color: #1a1a1a;
-  text-align: justify;
-  hyphens: auto;
+.score-prose {
+  font-size: 10pt; line-height: 1.78; color: #1a1a1a;
+  text-align: justify; hyphens: auto; flex: 1;
 }
-.prose p { margin-bottom: 12px; }
-.prose p:first-child { font-size: 10.5pt; font-weight: 500; }
-.prose p:last-child { margin-bottom: 0; }
+.score-prose p { margin-bottom: 13px; }
+.score-prose p:first-child { font-size: 10.5pt; font-weight: 500; }
+.score-prose p:last-child { margin-bottom: 0; }
 
-/* ── Module detail pages ─────────────────────────────────────────────────*/
-.mdc-grid { display: flex; flex-direction: column; gap: 28px; }
-.mdc {
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  overflow: hidden;
-  page-break-inside: avoid;
+/* ── Module full page ─────────────────────────────────────────────────────*/
+.mfp-head {
+  display: flex; align-items: stretch; gap: 20px;
+  padding: 16px 20px; background: #f8faff; border: 1px solid #e5eeff;
+  border-radius: 10px; margin-bottom: 16px;
 }
-.mdc-head {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 14px 18px 10px;
-  background: #f8faff;
-  border-bottom: 1px solid #e5e7eb;
+.mfp-score-col {
+  text-align: center; flex-shrink: 0; min-width: 72px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
 }
-.mdc-num { font-size: 20pt; font-weight: 900; line-height: 1; flex-shrink: 0; }
-.mdc-info { flex: 1; }
-.mdc-name { font-size: 12pt; font-weight: 700; color: #0d1117; }
-.mdc-badge { font-size: 8.5pt; font-weight: 600; margin-top: 1px; }
-.mdc-score { font-size: 22pt; font-weight: 900; line-height: 1; flex-shrink: 0; }
-.mdc-denom { font-size: 9pt; color: #9ca3af; font-weight: 400; }
-.mdc-bar-track { height: 7px; background: #e5e7eb; margin: 0; }
-.mdc-bar-fill { height: 100%; }
-.mdc-body {
-  padding: 14px 18px;
-  font-size: 9.5pt;
-  line-height: 1.7;
-  color: #333;
+.mfp-score-num { font-size: 32pt; font-weight: 900; line-height: 1; }
+.mfp-score-den { font-size: 9pt; color: #9ca3af; }
+.mfp-score-lbl { font-size: 8.5pt; font-weight: 700; margin-top: 4px; }
+.mfp-bar-col { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+.mfp-bar-track {
+  height: 12px; background: #e5e7eb; border-radius: 6px;
+  overflow: hidden; margin-bottom: 8px;
 }
-.mdc-body p { margin-bottom: 10px; }
-.mdc-body p:last-child { margin-bottom: 0; }
+.mfp-bar-fill { height: 100%; border-radius: 6px; }
+.mfp-scale-labels {
+  display: flex; justify-content: space-between;
+  font-size: 6.5pt; color: #9ca3af;
+}
 
-/* ── Recommendations ─────────────────────────────────────────────────────*/
-.rec-intro { font-size: 10pt; color: #555; margin-bottom: 16px; line-height: 1.6; }
-.rec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.rec-card {
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 11px 13px;
-  page-break-inside: avoid;
+.mfp-comp {
+  padding: 12px 16px; background: #f0fdf4; border: 1px solid #bbf7d0;
+  border-left: 4px solid #22c55e; border-radius: 8px; margin-bottom: 16px;
 }
-.rec-hd { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 5px; }
-.rec-name { font-weight: 700; font-size: 9.5pt; color: #111; }
-.rec-badge { font-size: 6.5pt; font-weight: 700; padding: 2px 7px; border-radius: 99px; white-space: nowrap; flex-shrink: 0; margin-top: 1px; }
-.rec-desc { font-size: 8pt; color: #666; line-height: 1.5; }
+.mfp-comp-lbl {
+  font-size: 7.5pt; font-weight: 700; letter-spacing: 1.3px;
+  text-transform: uppercase; color: #16a34a; margin-bottom: 7px;
+}
+.mfp-comp-text { font-size: 9.5pt; color: #1a3a1a; line-height: 1.65; }
+
+.mfp-analysis-lbl {
+  font-size: 7.5pt; font-weight: 700; letter-spacing: 1.5px;
+  text-transform: uppercase; color: #00b8ff; margin-bottom: 10px;
+}
+.mfp-body {
+  font-size: 10pt; line-height: 1.78; color: #1a1a1a;
+  text-align: justify; hyphens: auto; flex: 1;
+}
+.mfp-body p { margin-bottom: 13px; }
+.mfp-body p:last-child { margin-bottom: 0; }
+
+/* ── Section label ────────────────────────────────────────────────────────*/
+.section-lbl {
+  font-size: 7.5pt; font-weight: 700; letter-spacing: 1.5px;
+  text-transform: uppercase; color: #00b8ff; margin: 18px 0 10px;
+}
 
 /* ── Fazit ────────────────────────────────────────────────────────────────*/
 .fazit-prose {
-  font-size: 10pt;
-  line-height: 1.75;
-  color: #1a1a1a;
-  text-align: justify;
-  hyphens: auto;
+  font-size: 10pt; line-height: 1.78; color: #1a1a1a;
+  text-align: justify; hyphens: auto; flex: 1;
 }
-.fazit-prose p { margin-bottom: 12px; }
+.fazit-prose p { margin-bottom: 13px; }
 .fazit-prose p:last-child { margin-bottom: 0; }
-.fazit-closing {
-  margin-top: 24px;
-  padding: 16px 20px;
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
-  border-left: 3px solid #22c55e;
-  border-radius: 8px;
-  font-size: 9.5pt;
-  color: #166534;
-  line-height: 1.6;
+
+.orientation-box {
+  margin-top: 22px; padding: 16px 20px; background: #f5f9ff;
+  border: 1px solid #dbeafe; border-left: 4px solid #00b8ff; border-radius: 8px;
+  font-size: 9.5pt; color: #1a2e50; line-height: 1.65;
+}
+.orientation-label {
+  font-size: 7.5pt; font-weight: 700; letter-spacing: 1.3px;
+  text-transform: uppercase; color: #00b8ff; margin-bottom: 7px;
 }
 
-/* ── Section label in body ────────────────────────────────────────────────*/
-.section-lbl {
-  font-size: 7.5pt;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: #00b8ff;
-  margin: 20px 0 10px;
+.fazit-closing {
+  margin-top: 18px; padding: 14px 18px; background: #f0fdf4;
+  border: 1px solid #bbf7d0; border-left: 3px solid #22c55e;
+  border-radius: 8px; font-size: 9.5pt; color: #166534; line-height: 1.6;
 }
 </style>
 </head>
@@ -554,7 +417,7 @@ body {
       </div>
       <div>
         <div class="cover-score-lbl" style="color:${avgColor}">${avgLabel}</div>
-        <div class="cover-score-desc">Ø Digitalisierungsscore über alle 8 Blueprint-Module.</div>
+        <div class="cover-score-desc">Ø Digitalisierungsgrad über alle 8 Blueprint-Module.</div>
       </div>
     </div>
 
@@ -570,41 +433,57 @@ body {
   </div>
 </div>
 
+<!-- ══════════════════════════════════════════════════════════════════════
+     SEITE 2: EINLEITUNG
+     ══════════════════════════════════════════════════════════════════════ -->
+<div class="npage">
+  ${ph("Über diese Analyse", "Einleitung")}
+  <div class="prose-page">
+    ${texts.einleitungText || `<p>Der OKUN Blueprint™ 2.0 ist ein strukturiertes Analyse-Werkzeug zur systematischen Bewertung des Digitalisierungsstandes von ${data.company.name}. Die Analyse basiert vollständig auf den Antworten aus dem Fragebogen und gibt einen differenzierten Überblick über acht operative Module.</p>`}
+  </div>
+  <div class="info-bar" style="margin-top:auto">
+    ${data.company.industry ? `<div><div class="info-item-label">Branche</div><div class="info-item-val">${data.company.industry}</div></div>` : ""}
+    <div><div class="info-item-label">Module</div><div class="info-item-val">8 Bereiche</div></div>
+    <div><div class="info-item-label">Beantwortete Fragen</div><div class="info-item-val">${data.totalAnswered} von ${data.totalActive}</div></div>
+    <div><div class="info-item-label">Analysedatum</div><div class="info-item-val">${dateStr}</div></div>
+  </div>
+</div>
+
 ${texts.contextPageText ? `
 <!-- ══════════════════════════════════════════════════════════════════════
-     SEITE 2: UNTERNEHMENSKONTEXT
+     SEITE 3: UNTERNEHMENSKONTEXT
      ══════════════════════════════════════════════════════════════════════ -->
 <div class="npage">
   ${ph("Ihr Unternehmen", "Unternehmenskontext")}
-  <div class="ctx-body">
+  <div class="prose-page">
     ${texts.contextPageText}
   </div>
-  <div class="ctx-info-bar">
-    ${data.company.industry ? `<div class="ctx-info-item"><div class="ctx-info-label">Branche</div><div class="ctx-info-val">${data.company.industry}</div></div>` : ""}
-    <div class="ctx-info-item"><div class="ctx-info-label">Beantwortete Fragen</div><div class="ctx-info-val">${data.totalAnswered} von ${data.totalActive}</div></div>
-    <div class="ctx-info-item"><div class="ctx-info-label">Analysedatum</div><div class="ctx-info-val">${dateStr}</div></div>
-    <div class="ctx-info-item"><div class="ctx-info-label">Blueprint-Version</div><div class="ctx-info-val">2.0</div></div>
+  <div class="info-bar" style="margin-top:auto">
+    ${data.company.industry ? `<div><div class="info-item-label">Branche</div><div class="info-item-val">${data.company.industry}</div></div>` : ""}
+    <div><div class="info-item-label">Beantwortete Fragen</div><div class="info-item-val">${data.totalAnswered} von ${data.totalActive}</div></div>
+    <div><div class="info-item-label">Analysedatum</div><div class="info-item-val">${dateStr}</div></div>
+    <div><div class="info-item-label">Blueprint-Version</div><div class="info-item-val">2.0</div></div>
   </div>
 </div>
 ` : ""}
 
 <!-- ══════════════════════════════════════════════════════════════════════
-     SEITE 3: DIGITALISIERUNG & POTENZIALE
+     SEITE 4: DIGITALISIERUNG & POTENZIALE
      ══════════════════════════════════════════════════════════════════════ -->
 <div class="npage">
   ${ph("Grundlagen", "Digitalisierung & Automatisierung")}
-  <div class="digi-body">
-    ${texts.digitalizationIntro || `<p>Digitalisierung bezeichnet den Einsatz digitaler Technologien zur Optimierung von Geschäftsprozessen, Produkten und Dienstleistungen. Für Unternehmen im Mittelstand bietet die Digitalisierung erhebliche Potenziale zur Effizienzsteigerung, Kostensenkung und Wettbewerbsstärkung.</p>`}
+  <div class="prose-page">
+    ${texts.digitalizationIntro || `<p>Digitalisierung bezeichnet den Einsatz digitaler Technologien zur Optimierung von Geschäftsprozessen, Produkten und Dienstleistungen. Für Unternehmen im Mittelstand bietet sie erhebliche Potenziale zur Effizienzsteigerung, Kostensenkung und Wettbewerbsstärkung.</p>`}
   </div>
   ${data.company.industry ? `
-  <div class="digi-industry-bar">
+  <div class="digi-industry-bar" style="margin-top:auto">
     <div class="digi-industry-label">Branche: ${data.company.industry}</div>
-    <div style="font-size:9pt;color:#166534;line-height:1.6">Die oben beschriebenen Potenziale gelten insbesondere für Unternehmen in der Branche ${data.company.industry}, wo typische manuelle Prozesse besonders stark von digitaler Optimierung profitieren.</div>
+    <div style="font-size:9pt;color:#166534;line-height:1.65">Die beschriebenen Potenziale gelten insbesondere für Unternehmen in der Branche ${data.company.industry}, wo typische manuelle Prozesse besonders stark von digitaler Optimierung profitieren können.</div>
   </div>` : ""}
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════════════
-     SEITE 4: GESAMTAUSWERTUNG
+     SEITE 5: GESAMTAUSWERTUNG
      ══════════════════════════════════════════════════════════════════════ -->
 <div class="npage">
   ${ph("Ihr Ergebnis auf einen Blick", "Gesamtauswertung")}
@@ -639,7 +518,7 @@ ${texts.contextPageText ? `
   <div class="signal-row">
     <div class="signal-tile">
       <div class="signal-num" style="color:#00b8ff">${data.signals.WORKFORCE}</div>
-      <div class="signal-lbl">OKUN Workforce</div>
+      <div class="signal-lbl">OKUN Mitarbeiter-Lösungen</div>
     </div>
     <div class="signal-tile">
       <div class="signal-num" style="color:#3b82f6">${data.signals.BEWAEHRTE_LOESUNG}</div>
@@ -653,36 +532,36 @@ ${texts.contextPageText ? `
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════════════
-     SEITE 5: SCORE-ANALYSE (PROSA)
+     SEITE 6: SCORE-ANALYSE (PROSA)
      ══════════════════════════════════════════════════════════════════════ -->
 <div class="npage">
-  ${ph("Analyse Ihres Digitalisierungsstands", "Score-Analyse")}
-  <div class="prose">
-    ${texts.scoreAnalysis || `<p>${data.company.name} hat den OKUN Blueprint™ 2.0 erfolgreich abgeschlossen und einen Gesamtscore von ${avgScore}/100 erzielt. Die Auswertung zeigt ein differenziertes Bild des aktuellen Digitalisierungsstands mit konkreten Handlungsfeldern und Stärken.</p>`}
+  ${ph("Analyse des aktuellen Digitalisierungsstandes", "Score-Analyse")}
+  <div class="score-prose">
+    ${texts.scoreAnalysis || `<p>${data.company.name} hat den OKUN Blueprint™ 2.0 erfolgreich abgeschlossen und einen Gesamtdigitalisierungsgrad von ${avgScore}/100 erreicht. Die Auswertung zeigt ein differenziertes Bild des aktuellen Stands mit klaren Unterschieden zwischen den acht bewerteten Modulen.</p>`}
   </div>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════════════
-     SEITEN 6–9: MODULANALYSE (JE 2 MODULE PRO SEITE)
+     SEITEN 7–14: MODULANALYSE (JE 1 MODUL PRO SEITE)
      ══════════════════════════════════════════════════════════════════════ -->
-${moduleDetailPages.join("\n")}
+${moduleDetailPages}
 
 <!-- ══════════════════════════════════════════════════════════════════════
-     SEITE 10: FAZIT & EMPFEHLUNGEN
+     SEITE 15: FAZIT
      ══════════════════════════════════════════════════════════════════════ -->
 <div class="npage">
-  ${ph("Zusammenfassung & Empfehlungen", "Fazit")}
+  ${ph("Zusammenfassung der Analyseergebnisse", "Fazit")}
   <div class="fazit-prose">
-    ${texts.conclusionText || `<p>Die Analyse von ${data.company.name} zeigt ein klares Bild des aktuellen Digitalisierungsstands und eröffnet konkrete Wege zur Verbesserung. Der OKUN Blueprint™ 2.0 hat die wichtigsten Handlungsfelder identifiziert und priorisiert.</p>`}
+    ${texts.conclusionText || `<p>Die Analyse von ${data.company.name} zeigt ein klares Bild des aktuellen Digitalisierungsstandes. Der OKUN Blueprint™ 2.0 hat die wichtigsten Stärken und Nachholbereiche in allen acht Modulen identifiziert und strukturiert dargestellt.</p>`}
   </div>
-  ${data.recommendations.length > 0 ? `
-  <div class="section-lbl" style="margin-top:20px">Empfohlene Lösungen</div>
-  <p class="rec-intro">${texts.recommendationContext || "Basierend auf Ihren Antworten empfehlen wir folgende Maßnahmen."}</p>
-  <div class="rec-grid">
-    ${recCards}
-  </div>` : ""}
+
+  <div class="orientation-box" style="margin-top:auto">
+    <div class="orientation-label">Ausblick &amp; Orientierung</div>
+    ${texts.orientationText || "Im Strategiegespräch mit OKUN Systems werden die Analyseergebnisse vertieft und konkrete nächste Schritte gemeinsam erarbeitet."}
+  </div>
+
   <div class="fazit-closing">
-    <strong>Ihr nächster Schritt:</strong> Im Strategiegespräch mit OKUN Systems besprechen wir gemeinsam, wie Sie die identifizierten Potenziale gezielt und mit klaren Prioritäten umsetzen — individuell abgestimmt auf Ihre Situation und Ihr Unternehmen.
+    <strong>Ihr nächster Schritt:</strong> Im Strategiegespräch mit OKUN Systems besprechen wir gemeinsam die Ergebnisse dieser Analyse im Detail — individuell abgestimmt auf die Situation und die Ziele von ${data.company.name}.
   </div>
 </div>
 
