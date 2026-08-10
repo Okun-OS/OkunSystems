@@ -70,7 +70,7 @@ export default async function ClosingClientPage({
       : Promise.resolve(null),
     db.legalDocument.findMany({
       where: { isActive: true },
-      select: { id: true, title: true, type: true, version: true, isRequired: true },
+      select: { id: true, title: true, type: true, version: true, isRequired: true, r2Key: true },
       orderBy: { isRequired: "desc" },
     }),
   ]);
@@ -78,6 +78,7 @@ export default async function ClosingClientPage({
   const sessionData = {
     id: closingSession.id,
     status: closingSession.status,
+    clientPendingAction: closingSession.clientPendingAction ?? null,
     company: closingSession.company,
     closer: closingSession.closer,
     appointment: closingSession.appointment

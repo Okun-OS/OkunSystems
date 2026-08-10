@@ -24,7 +24,6 @@ import {
   updateClosingSessionStatus,
   createOfferForSession,
   presentOffer,
-  recordConsent,
   closeContract,
   resendClientInvitation,
   saveChecklistState,
@@ -261,10 +260,7 @@ export function ClosingWorkspaceClient({
   const [selectedContentId, setSelectedContentId] = useState<string | null>(null);
   const [contentTypeFilter, setContentTypeFilter] = useState<string>("all");
 
-  // Invoice
   const [invoicePending, startInvoiceTransition] = useTransition();
-  const [invoiceId, setInvoiceId] = useState<string | null>(null);
-  const [invoiceError, setInvoiceError] = useState<string | null>(null);
 
   // Resend invitation
   const [resendPending, startResendTransition] = useTransition();
@@ -273,10 +269,17 @@ export function ClosingWorkspaceClient({
   const [resendError, setResendError] = useState<string | null>(null);
 
   // Consent & payment
-  const [consentPending, startConsentTransition] = useTransition();
-  const [contractPending, startContractTransition] = useTransition();
   const [paymentPending, setPaymentPending] = useState(false);
   const [consentError, setConsentError] = useState<string | null>(null);
+
+  // Unified contract flow state
+  // null → not started, "offer_confirmed" → offer sent confirmed,
+  // "recording_consent" → consent prompt shown, "confirm" → recording done, awaiting admin confirm
+  const [contractFlowStep, setContractFlowStep] = useState<null | "offer_confirmed" | "recording_consent" | "confirm">(
+    closingSession.status === "contract_closed" ? null : null
+  );
+  const [invoiceId, setInvoiceId] = useState<string | null>(null);
+  const [invoiceError, setInvoiceError] = useState<string | null>(null);
 
   // ─── Maske state ────────────────────────────────────────────────────────────
   const [checklist, setChecklist] = useState<Record<string, boolean>>(() => {
@@ -301,7 +304,6 @@ export function ClosingWorkspaceClient({
   const resizeOrigin = useRef({ mx: 0, my: 0, w: 0, h: 0 });
 
   // Recording consent gate
-  const [showRecordingConsentPrompt, setShowRecordingConsentPrompt] = useState(false);
   const [recordingConsentChecked, setRecordingConsentChecked] = useState(false);
 
   const checkedCount = ALL_STEP_IDS.filter((id) => checklist[id]).length;
@@ -372,6 +374,13 @@ export function ClosingWorkspaceClient({
   async function handleStartRecording() {
     setRecordingPending(true);
     try {
+      // Signal client to show consent popup
+      await fetch("/api/closing/set-pending-action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ closingSessionId: closingSession.id, action: "recording_consent" }),
+      });
+      // Start recording
       const res = await fetch("/api/daily/start-recording", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -379,8 +388,8 @@ export function ClosingWorkspaceClient({
       });
       const data = (await res.json()) as { ok?: boolean; recordingStatus?: string; error?: string };
       if (data.ok) setRecordingStatus("recording");
-      else setActionError(data.error ?? "Aufzeichnung konnte nicht gestartet werden.");
-    } catch { setActionError("Netzwerkfehler beim Starten der Aufzeichnung."); }
+      else setConsentError(data.error ?? "Aufzeichnung konnte nicht gestartet werden.");
+    } catch { setConsentError("Netzwerkfehler beim Starten der Aufzeichnung."); }
     finally { setRecordingPending(false); }
   }
 
@@ -393,10 +402,46 @@ export function ClosingWorkspaceClient({
         body: JSON.stringify({ closingSessionId: closingSession.id }),
       });
       const data = (await res.json()) as { ok?: boolean; error?: string };
-      if (data.ok) setRecordingStatus("stopped");
-      else setActionError(data.error ?? "Fehler beim Stoppen der Aufzeichnung.");
-    } catch { setActionError("Netzwerkfehler beim Stoppen der Aufzeichnung."); }
+      if (data.ok) {
+        setRecordingStatus("stopped");
+        // Auto-close contract
+        const activeOffer = closingSession.offers.find((o) => o.id === closingSession.activeOfferId);
+        if (activeOffer && closingSession.status !== "contract_closed") {
+          const closeResult = await closeContract(closingSession.id, {
+            offerId: activeOffer.id,
+            packageType: closingSession.company.contractPackage ?? "custom",
+            agbVersion: legalDocuments.find((d) => d.type === "agb")?.version ?? "1.0",
+            privacyVersion: legalDocuments.find((d) => d.type === "datenschutz")?.version ?? "1.0",
+            closerName: closingSession.closer.name ?? "Closer",
+            companyName: closingSession.company.name,
+          });
+          if (closeResult?.error) {
+            setConsentError(closeResult.error);
+            return;
+          }
+        }
+        setContractFlowStep("confirm");
+        router.refresh();
+      } else {
+        setConsentError(data.error ?? "Fehler beim Stoppen der Aufzeichnung.");
+      }
+    } catch { setConsentError("Netzwerkfehler beim Stoppen der Aufzeichnung."); }
     finally { setRecordingPending(false); }
+  }
+
+  async function handleConfirmSuccess() {
+    const activeOffer = closingSession.offers.find((o) => o.id === closingSession.activeOfferId);
+    if (!activeOffer) { setInvoiceError("Kein aktives Angebot."); return; }
+    setInvoiceError(null);
+    startInvoiceTransition(async () => {
+      const result = await createInvoiceFromOffer(activeOffer.id);
+      if (result?.error) setInvoiceError(result.error);
+      else if (result?.invoiceId) {
+        setInvoiceId(result.invoiceId);
+        setContractFlowStep(null);
+        router.refresh();
+      }
+    });
   }
 
   // ─── Other handlers ─────────────────────────────────────────────────────────
@@ -438,17 +483,6 @@ export function ClosingWorkspaceClient({
     });
   }
 
-  function handleCreateInvoice() {
-    const activeOffer = closingSession.offers.find((o) => o.id === closingSession.activeOfferId);
-    if (!activeOffer) { setInvoiceError("Kein aktives Angebot."); return; }
-    setInvoiceError(null);
-    startInvoiceTransition(async () => {
-      const result = await createInvoiceFromOffer(activeOffer.id);
-      if (result?.error) setInvoiceError(result.error);
-      else if (result?.invoiceId) { setInvoiceId(result.invoiceId); router.refresh(); }
-    });
-  }
-
   function handleResendInvitation() {
     setResendError(null);
     setResendLink(null);
@@ -456,23 +490,6 @@ export function ClosingWorkspaceClient({
       const result = await resendClientInvitation(closingSession.id);
       if (result?.error) setResendError(result.error);
       else if (result?.closingUrl) setResendLink(result.closingUrl);
-    });
-  }
-
-  function handleRecordConsent(docId: string, consentType: string) {
-    const activeOffer = closingSession.offers.find((o) => o.id === closingSession.activeOfferId);
-    if (!activeOffer) { setConsentError("Kein aktives Angebot. Zuerst ein Angebot erstellen."); return; }
-    setConsentError(null);
-    startConsentTransition(async () => {
-      const result = await recordConsent(closingSession.id, {
-        offerId: activeOffer.id,
-        legalDocumentId: docId,
-        consentType,
-        displayedPriceCents: activeOffer.priceNet,
-        sessionTokenHash: closingSession.id,
-      });
-      if (result?.error) setConsentError(result.error);
-      else router.refresh();
     });
   }
 
@@ -492,24 +509,6 @@ export function ClosingWorkspaceClient({
       else if (data.url) { window.open(data.url, "_blank"); }
     } catch { setConsentError("Stripe-Checkout konnte nicht gestartet werden."); }
     finally { setPaymentPending(false); }
-  }
-
-  function handleCloseContract() {
-    const activeOffer = closingSession.offers.find((o) => o.id === closingSession.activeOfferId);
-    if (!activeOffer) { setConsentError("Kein aktives Angebot."); return; }
-    setConsentError(null);
-    startContractTransition(async () => {
-      const result = await closeContract(closingSession.id, {
-        offerId: activeOffer.id,
-        packageType: closingSession.company.contractPackage ?? "custom",
-        agbVersion: legalDocuments.find((d) => d.type === "agb")?.version ?? "1.0",
-        privacyVersion: legalDocuments.find((d) => d.type === "datenschutz")?.version ?? "1.0",
-        closerName: closingSession.closer.name ?? "Closer",
-        companyName: closingSession.company.name,
-      });
-      if (result?.error) setConsentError(result.error);
-      else router.refresh();
-    });
   }
 
   const activeOfferObj = closingSession.offers.find((o) => o.id === closingSession.activeOfferId);
@@ -751,66 +750,11 @@ export function ClosingWorkspaceClient({
                 <CreateRoomButton appointmentId={closingSession.appointment.id} />
               ) : null}
 
-              {/* Recording */}
-              {recordingStatus === "idle" && !showRecordingConsentPrompt && (
-                <button
-                  onClick={() => setShowRecordingConsentPrompt(true)}
-                  disabled={recordingPending}
-                  className="flex items-center gap-2 px-3 py-2 bg-[rgba(239,68,68,0.1)] hover:bg-[rgba(239,68,68,0.15)] border border-[rgba(239,68,68,0.2)] text-[#ef4444] text-sm font-medium rounded-lg transition-colors disabled:opacity-40"
-                >
-                  <Mic size={14} />
-                  Aufzeichnung starten
-                </button>
-              )}
-              {recordingStatus === "idle" && showRecordingConsentPrompt && (
-                <div className="flex flex-col gap-2 bg-[rgba(239,68,68,0.05)] border border-[rgba(239,68,68,0.2)] rounded-lg px-3 py-2.5">
-                  <p className="text-xs font-semibold text-[#f0f0f0]">Aufnahme-Einwilligung bestätigen</p>
-                  <label className="flex items-start gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={recordingConsentChecked}
-                      onChange={(e) => setRecordingConsentChecked(e.target.checked)}
-                      className="mt-0.5 w-3.5 h-3.5 accent-[#ef4444] flex-shrink-0"
-                    />
-                    <span className="text-xs text-[#ccc] leading-snug">Der Kunde hat der Aufzeichnung dieses Gesprächs ausdrücklich zugestimmt.</span>
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={async () => {
-                        if (recordingConsentChecked) {
-                          setShowRecordingConsentPrompt(false);
-                          await handleStartRecording();
-                        }
-                      }}
-                      disabled={!recordingConsentChecked || recordingPending}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[rgba(239,68,68,0.1)] hover:bg-[rgba(239,68,68,0.15)] border border-[rgba(239,68,68,0.2)] text-[#ef4444] text-xs font-medium rounded-lg transition-colors disabled:opacity-40"
-                    >
-                      <Mic size={12} />
-                      {recordingPending ? "Startet…" : "Aufnehmen"}
-                    </button>
-                    <button
-                      onClick={() => { setShowRecordingConsentPrompt(false); setRecordingConsentChecked(false); }}
-                      className="px-2.5 py-1.5 text-xs text-[#666] hover:text-[#f0f0f0] transition-colors"
-                    >
-                      Abbrechen
-                    </button>
-                  </div>
-                </div>
-              )}
+              {/* Recording status indicator (initiation is in Consent & Abschluss tab) */}
               {recordingStatus === "recording" && (
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2 px-3 py-2 bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.3)] rounded-lg">
-                    <span className="w-2 h-2 rounded-full bg-[#ef4444] animate-pulse" />
-                    <span className="text-sm text-[#ef4444] font-medium">Aufzeichnung läuft</span>
-                  </div>
-                  <button
-                    onClick={handleStopRecording}
-                    disabled={recordingPending}
-                    className="flex items-center gap-2 px-3 py-2 bg-[#1a2840] hover:bg-[#243550] text-[#f0f0f0] text-sm rounded-lg transition-colors disabled:opacity-40"
-                  >
-                    <Square size={13} />
-                    {recordingPending ? "Stoppt…" : "Stoppen"}
-                  </button>
+                <div className="flex items-center gap-2 px-3 py-2 bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.3)] rounded-lg">
+                  <span className="w-2 h-2 rounded-full bg-[#ef4444] animate-pulse" />
+                  <span className="text-sm text-[#ef4444] font-medium">Aufzeichnung läuft</span>
                 </div>
               )}
               {recordingStatus === "stopped" && (
@@ -818,6 +762,15 @@ export function ClosingWorkspaceClient({
                   <MicOff size={14} />
                   Aufzeichnung gespeichert
                 </div>
+              )}
+              {recordingStatus === "idle" && (
+                <button
+                  onClick={() => { setContractFlowStep("offer_confirmed"); setActiveTab("consent"); }}
+                  className="flex items-center gap-2 px-3 py-2 bg-[rgba(34,197,94,0.08)] hover:bg-[rgba(34,197,94,0.12)] border border-[rgba(34,197,94,0.2)] text-[#22c55e] text-sm font-medium rounded-lg transition-colors"
+                >
+                  <Mic size={14} />
+                  Vertragsaufnahme starten →
+                </button>
               )}
 
               <div className="ml-auto">
@@ -1106,43 +1059,188 @@ export function ClosingWorkspaceClient({
             <div className="px-4 py-3 bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.2)] rounded-lg text-[#ef4444] text-sm">{consentError}</div>
           )}
 
-          <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6">
-            <h2 className="text-sm font-semibold text-[#f0f0f0] mb-1">Dokument-Consents</h2>
-            <p className="text-xs text-[#666] mb-4">Klicken Sie für jedes Dokument, sobald der Kunde zugestimmt hat.</p>
-            {legalDocuments.length === 0 ? (
-              <p className="text-[#555] text-sm">Keine aktiven Rechtsdokumente. In den Admin-Einstellungen hinterlegen.</p>
-            ) : (
-              <div className="space-y-3">
-                {legalDocuments.map((doc) => {
-                  const alreadyConsented = closingSession.consentRecords.some((cr) => cr.legalDocument.title === doc.title);
+          {/* ── Unified contract flow ── */}
+          {closingSession.status !== "contract_closed" && (
+            <div className="bg-[#0c1520] border border-[rgba(34,197,94,0.2)] rounded-xl p-6 space-y-5">
+              <div>
+                <h2 className="text-sm font-bold text-[#f0f0f0] mb-0.5">Vertragsabschluss-Prozess</h2>
+                <p className="text-xs text-[#666]">Führt Aufzeichnung, Einwilligung und Vertragsabschluss in einem Schritt durch.</p>
+              </div>
+
+              {/* Step indicators */}
+              <div className="flex items-center gap-2 text-xs">
+                {(["Angebot besprochen", "Aufnahme & Einwilligung", "Bestätigung"] as const).map((label, i) => {
+                  const stepIdx = contractFlowStep === null ? -1 : contractFlowStep === "offer_confirmed" ? 0 : contractFlowStep === "recording_consent" ? 1 : 2;
+                  const done = i < stepIdx + 1;
+                  const current = i === stepIdx + (contractFlowStep !== null ? 0 : -1);
                   return (
-                    <div key={doc.id} className={`flex items-center justify-between p-4 rounded-xl border ${alreadyConsented ? "border-[rgba(34,197,94,0.3)] bg-[rgba(34,197,94,0.05)]" : "border-[#1a2840]"}`}>
-                      <div>
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <span className="text-sm font-medium text-[#f0f0f0]">{doc.title}</span>
-                          <span className="text-xs text-[#555]">v{doc.version}</span>
-                          {doc.isRequired && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[rgba(239,68,68,0.1)] text-[#ef4444]">Pflicht</span>}
-                        </div>
-                        {doc.checkboxLabel && <p className="text-xs text-[#666]">{doc.checkboxLabel}</p>}
+                    <div key={label} className="flex items-center gap-2">
+                      {i > 0 && <div className="h-px w-6 bg-[#1a2840]" />}
+                      <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${done ? "bg-[rgba(34,197,94,0.1)] border-[rgba(34,197,94,0.3)] text-[#22c55e]" : current ? "bg-[rgba(0,184,255,0.08)] border-[rgba(0,184,255,0.3)] text-[#00b8ff]" : "border-[#1a2840] text-[#444]"}`}>
+                        {done ? <CheckCircle size={11} /> : <span>{i + 1}</span>}
+                        <span>{label}</span>
                       </div>
-                      {alreadyConsented ? (
-                        <div className="flex items-center gap-1.5 text-[#22c55e] text-sm"><CheckCircle size={15} /><span className="text-xs">Bestätigt</span></div>
-                      ) : (
-                        <button onClick={() => handleRecordConsent(doc.id, doc.type)} disabled={consentPending}
-                          className="px-3 py-1.5 bg-[#1a2840] hover:bg-[#243550] disabled:opacity-40 text-[#f0f0f0] text-xs font-medium rounded-lg transition-colors">
-                          Consent bestätigen
-                        </button>
-                      )}
                     </div>
                   );
                 })}
               </div>
-            )}
-          </div>
 
+              {/* No flow started */}
+              {contractFlowStep === null && (
+                <div className="space-y-3">
+                  <p className="text-sm text-[#888]">Klicken Sie auf "Vertragsaufnahme starten", sobald das Angebot besprochen wurde.</p>
+                  {!closingSession.activeOfferId && (
+                    <p className="text-xs text-[#f59e0b]">Erst ein Angebot erstellen und präsentieren.</p>
+                  )}
+                  <button
+                    onClick={() => setContractFlowStep("offer_confirmed")}
+                    disabled={!closingSession.activeOfferId}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-[#22c55e] hover:bg-[#16a34a] disabled:opacity-40 text-black font-bold text-sm rounded-lg transition-colors"
+                  >
+                    <Play size={14} />
+                    Vertragsaufnahme starten
+                  </button>
+                </div>
+              )}
+
+              {/* Step 1: Offer confirmed — show recording consent prompt */}
+              {contractFlowStep === "offer_confirmed" && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-[#22c55e] text-sm">
+                    <CheckCircle size={14} />
+                    Angebot besprochen ✓
+                  </div>
+                  <div className="bg-[rgba(239,68,68,0.05)] border border-[rgba(239,68,68,0.2)] rounded-xl p-4 space-y-3">
+                    <p className="text-xs font-semibold text-[#f0f0f0]">Aufnahme-Einwilligung des Closers bestätigen</p>
+                    <label className="flex items-start gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={recordingConsentChecked}
+                        onChange={(e) => setRecordingConsentChecked(e.target.checked)}
+                        className="mt-0.5 w-3.5 h-3.5 accent-[#ef4444] flex-shrink-0"
+                      />
+                      <span className="text-xs text-[#ccc] leading-snug">Ich bestätige, dass der Kunde der Aufzeichnung dieses Gesprächs ausdrücklich zugestimmt hat. Dem Kunden wird automatisch ein Einwilligungs-Popup angezeigt.</span>
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={async () => {
+                          if (recordingConsentChecked) {
+                            setContractFlowStep("recording_consent");
+                            await handleStartRecording();
+                          }
+                        }}
+                        disabled={!recordingConsentChecked || recordingPending}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-[rgba(239,68,68,0.1)] hover:bg-[rgba(239,68,68,0.15)] border border-[rgba(239,68,68,0.2)] text-[#ef4444] text-sm font-semibold rounded-lg transition-colors disabled:opacity-40"
+                      >
+                        <Mic size={13} />
+                        {recordingPending ? "Startet…" : "Aufnahme starten"}
+                      </button>
+                      <button
+                        onClick={() => { setContractFlowStep(null); setRecordingConsentChecked(false); }}
+                        className="text-xs text-[#666] hover:text-[#f0f0f0] transition-colors"
+                      >
+                        Abbrechen
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 2: Recording active */}
+              {contractFlowStep === "recording_consent" && recordingStatus === "recording" && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 px-3 py-2 bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.3)] rounded-lg">
+                      <span className="w-2 h-2 rounded-full bg-[#ef4444] animate-pulse" />
+                      <span className="text-sm text-[#ef4444] font-medium">Aufzeichnung läuft</span>
+                    </div>
+                  </div>
+                  <div className="text-xs text-[#888] flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#8b5cf6] animate-pulse" />
+                    Dem Kunden wird ein Einwilligungs-Popup angezeigt.
+                  </div>
+                  {closingSession.consentRecords.length > 0 && (
+                    <div className="flex items-center gap-2 text-xs text-[#22c55e]">
+                      <CheckCircle size={12} />
+                      Kunde hat {closingSession.consentRecords.length} Dokument(e) bestätigt.
+                    </div>
+                  )}
+                  <button
+                    onClick={handleStopRecording}
+                    disabled={recordingPending}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-[#ef4444] hover:bg-[#dc2626] disabled:opacity-40 text-white font-bold text-sm rounded-lg transition-colors"
+                  >
+                    <Square size={13} />
+                    {recordingPending ? "Wird beendet…" : "Aufnahme stoppen & Vertrag abschließen"}
+                  </button>
+                </div>
+              )}
+
+              {/* Step 3: Recording stopped — confirm success */}
+              {contractFlowStep === "confirm" && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-[#22c55e] text-sm">
+                    <CheckCircle size={14} />
+                    Aufnahme abgeschlossen · Vertrag automatisch abgeschlossen
+                  </div>
+                  <div className="bg-[#0e1a28] rounded-xl p-4 space-y-3">
+                    <p className="text-sm font-semibold text-[#f0f0f0]">Hat die Vertragsaufnahme erfolgreich geklappt?</p>
+                    {invoiceError && <p className="text-xs text-[#ef4444]">{invoiceError}</p>}
+                    {invoiceId ? (
+                      <div className="flex items-center gap-2 text-[#22c55e] text-sm">
+                        <CheckCircle size={14} />
+                        Rechnung automatisch erstellt.{" "}
+                        <a href="/admin/sales/rechnungen" className="text-[#00b8ff] hover:underline text-xs">Zur Rechnungs-Verwaltung →</a>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={handleConfirmSuccess}
+                          disabled={invoicePending}
+                          className="flex items-center gap-2 px-4 py-2.5 bg-[#22c55e] hover:bg-[#16a34a] disabled:opacity-40 text-black font-bold text-sm rounded-lg transition-colors"
+                        >
+                          <CheckCircle size={13} />
+                          {invoicePending ? "Rechnung wird erstellt…" : "Ja, alles geklappt → Rechnung erstellen"}
+                        </button>
+                        <button
+                          onClick={() => { setContractFlowStep(null); setConsentError("Vertragsaufnahme als fehlgeschlagen markiert."); }}
+                          className="px-4 py-2.5 bg-[rgba(239,68,68,0.1)] hover:bg-[rgba(239,68,68,0.15)] border border-[rgba(239,68,68,0.2)] text-[#ef4444] text-sm font-medium rounded-lg transition-colors"
+                        >
+                          Nein, Fehler aufgetreten
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Already closed */}
+          {closingSession.status === "contract_closed" && (
+            <div className="bg-[#0c1520] border border-[rgba(34,197,94,0.2)] rounded-xl p-6 space-y-4">
+              <div className="flex items-center gap-2 text-[#22c55e] text-sm font-semibold">
+                <CheckCircle size={16} />
+                Vertrag abgeschlossen
+              </div>
+              {invoiceId || invoiceError ? (
+                invoiceId ? (
+                  <div className="flex items-center gap-2 text-[#22c55e] text-sm">
+                    <CheckCircle size={14} />
+                    Rechnung erstellt.{" "}
+                    <a href="/admin/sales/rechnungen" className="text-[#00b8ff] hover:underline text-xs">Zur Rechnungs-Verwaltung →</a>
+                  </div>
+                ) : (
+                  <p className="text-xs text-[#ef4444]">{invoiceError}</p>
+                )
+              ) : null}
+            </div>
+          )}
+
+          {/* Consent records summary */}
           {closingSession.consentRecords.length > 0 && (
             <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6">
-              <h2 className="text-sm font-semibold text-[#f0f0f0] mb-4">Consent-Protokoll</h2>
+              <h2 className="text-sm font-semibold text-[#f0f0f0] mb-4">Einwilligungs-Protokoll</h2>
               <div className="space-y-2">
                 {closingSession.consentRecords.map((cr) => (
                   <div key={cr.id} className="flex items-center justify-between text-sm">
@@ -1160,21 +1258,7 @@ export function ClosingWorkspaceClient({
             </div>
           )}
 
-          <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6">
-            <h2 className="text-sm font-semibold text-[#f0f0f0] mb-2">Vertrag abschließen</h2>
-            <p className="text-xs text-[#666] mb-4">Schließt den Vertrag ab und erstellt den ContractSnapshot. Kunden-Account wird automatisch angelegt.</p>
-            {closingSession.status === "contract_closed" ? (
-              <div className="flex items-center gap-2 text-[#22c55e] text-sm"><CheckCircle size={16} />Vertrag wurde abgeschlossen.</div>
-            ) : (
-              <button onClick={handleCloseContract} disabled={contractPending || !closingSession.activeOfferId}
-                className="flex items-center gap-2 px-5 py-2.5 bg-[#22c55e] hover:bg-[#16a34a] disabled:opacity-40 text-black font-bold text-sm rounded-lg transition-colors">
-                <CheckCircle size={15} />
-                {contractPending ? "Wird abgeschlossen…" : "Vertrag jetzt abschließen"}
-              </button>
-            )}
-            {!closingSession.activeOfferId && <p className="text-xs text-[#ef4444] mt-2">Kein aktives Angebot — erst Angebot erstellen.</p>}
-          </div>
-
+          {/* Stripe payment */}
           <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6">
             <h2 className="text-sm font-semibold text-[#f0f0f0] mb-2">Stripe-Zahlung anfordern</h2>
             <p className="text-xs text-[#666] mb-4">Öffnet den Stripe-Checkout-Link (Karte, SEPA). Nach Zahlung wird das Unternehmen automatisch aktiviert.</p>
@@ -1193,25 +1277,6 @@ export function ClosingWorkspaceClient({
                 className="flex items-center gap-2 px-5 py-2.5 bg-[#6366f1] hover:bg-[#4f46e5] disabled:opacity-40 text-white font-bold text-sm rounded-lg transition-colors">
                 <CreditCard size={15} />
                 {paymentPending ? "Wird vorbereitet…" : "Stripe-Checkout öffnen"}
-              </button>
-            )}
-          </div>
-
-          <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6">
-            <h2 className="text-sm font-semibold text-[#f0f0f0] mb-2">Rechnung erstellen</h2>
-            <p className="text-xs text-[#666] mb-4">Erstellt eine Rechnungserfassung aus dem aktiven Angebot.</p>
-            {invoiceError && <p className="text-[#ef4444] text-xs mb-3">{invoiceError}</p>}
-            {invoiceId ? (
-              <div className="flex items-center gap-2 text-[#22c55e] text-sm">
-                <CheckCircle size={15} />
-                Rechnung erstellt.{" "}
-                <a href="/admin/sales/rechnungen" className="text-[#00b8ff] hover:underline text-xs">Zur Rechnungs-Verwaltung →</a>
-              </div>
-            ) : (
-              <button onClick={handleCreateInvoice} disabled={invoicePending || !closingSession.activeOfferId}
-                className="flex items-center gap-2 px-4 py-2.5 bg-[#1a2840] hover:bg-[#243550] disabled:opacity-40 text-[#f0f0f0] font-medium text-sm rounded-lg transition-colors">
-                <FileText size={14} />
-                {invoicePending ? "Wird erstellt…" : "Rechnung aus Angebot erstellen"}
               </button>
             )}
           </div>

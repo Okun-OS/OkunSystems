@@ -846,10 +846,11 @@ model ClosingSession {
   status           String    @default("closing_scheduled")
   activeOfferId    String?
   currentStep      String?
-  recordingStatus  String    @default("idle")
-  dailyRecordingId String?
-  recordingR2Key   String?
-  clientTokenHash  String    @unique
+  recordingStatus      String    @default("idle")
+  dailyRecordingId     String?
+  recordingR2Key       String?
+  clientPendingAction  String?
+  clientTokenHash      String    @unique
   tokenExpiresAt   DateTime
   startedAt        DateTime?
   closedAt         DateTime?
