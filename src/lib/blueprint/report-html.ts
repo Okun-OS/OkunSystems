@@ -417,7 +417,7 @@ body {
       </div>
       <div>
         <div class="cover-score-lbl" style="color:${avgColor}">${avgLabel}</div>
-        <div class="cover-score-desc">Ø Digitalisierungsgrad über alle 8 Blueprint-Module.</div>
+        <div class="cover-score-desc">Ø Digitalisierungsgrad über alle ${data.moduleScores.length} Blueprint-Module.</div>
       </div>
     </div>
 
@@ -443,7 +443,7 @@ body {
   </div>
   <div class="info-bar" style="margin-top:auto">
     ${data.company.industry ? `<div><div class="info-item-label">Branche</div><div class="info-item-val">${data.company.industry}</div></div>` : ""}
-    <div><div class="info-item-label">Module</div><div class="info-item-val">8 Bereiche</div></div>
+    <div><div class="info-item-label">Module</div><div class="info-item-val">${data.moduleScores.length} Bereiche</div></div>
     <div><div class="info-item-label">Beantwortete Fragen</div><div class="info-item-val">${data.totalAnswered} von ${data.totalActive}</div></div>
     <div><div class="info-item-label">Analysedatum</div><div class="info-item-val">${dateStr}</div></div>
   </div>

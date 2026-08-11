@@ -12,6 +12,8 @@ import path from "path";
 
 // Force Node.js runtime — Puppeteer cannot run in the Edge runtime
 export const runtime = "nodejs";
+// Allow up to 5 minutes — sequential AI calls take 2-4 minutes
+export const maxDuration = 300;
 
 /**
  * POST /api/blueprint/report
