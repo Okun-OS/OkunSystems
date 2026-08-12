@@ -45,13 +45,26 @@ function formatContextForPrompt(data: BlueprintReportData): string {
   return pairs.map((p) => `Frage: ${p.q}\nAntwort: ${p.a}`).join("\n\n");
 }
 
-async function callClaude(prompt: string, maxTokens: number): Promise<string> {
-  const res = await client.messages.create({
-    model: "claude-opus-5",
-    max_tokens: maxTokens,
-    messages: [{ role: "user", content: prompt }],
-  });
-  return res.content[0].type === "text" ? res.content[0].text.trim() : "";
+async function callClaude(prompt: string, maxTokens: number, attempt = 0): Promise<string> {
+  try {
+    const res = await client.messages.create({
+      model: "claude-opus-5",
+      max_tokens: maxTokens,
+      messages: [{ role: "user", content: prompt }],
+    });
+    const text = res.content.find((b) => b.type === "text");
+    const result = text?.type === "text" ? text.text.trim() : "";
+    if (!result) throw new Error("Empty response from model");
+    return result;
+  } catch (e) {
+    if (attempt < 3) {
+      const delay = (attempt + 1) * 3000;
+      console.warn(`[Blueprint] callClaude attempt ${attempt + 1} failed, retrying in ${delay}ms:`, e);
+      await new Promise((r) => setTimeout(r, delay));
+      return callClaude(prompt, maxTokens, attempt + 1);
+    }
+    throw e;
+  }
 }
 
 // ── Einleitung (Pages 2–3) ───────────────────────────────────────────────────
@@ -194,7 +207,10 @@ Schreibe jetzt alle 7 Absätze:`;
     return htmlParagraphs(raw);
   } catch (e) {
     console.error("[Blueprint] generateScoreAnalysis failed:", e);
-    return "";
+    return `<p>${data.company.name} hat den OKUN Blueprint™ 2.0 abgeschlossen und einen Gesamtdigitalisierungsgrad von ${avgScore}/100 erreicht. Dies entspricht der Bewertungsstufe "${label}" und zeigt, in welchem Stadium der digitalen Entwicklung sich das Unternehmen aktuell befindet. Der Score setzt sich aus den Ergebnissen aller ${data.moduleScores.length} Module zusammen und bildet damit ein differenziertes Bild der verschiedenen Unternehmensbereiche ab.</p>
+<p>Die Stärkebereiche des Unternehmens zeigen sich in ${best}, wo bereits eine solide strukturelle Grundlage vorhanden ist. Diese Bereiche zeichnen sich durch klare Abläufe, definierte Verantwortlichkeiten oder etablierte Werkzeuge aus, die die tägliche Arbeit strukturieren und nachvollziehbar machen. Sie bilden eine Basis, auf der weitere Digitalisierungsschritte aufbauen können.</p>
+<p>Der größte Nachholbedarf besteht in den Bereichen ${worst}. In diesen Modulen zeigt der aktuelle Stand, dass Prozesse noch stark von manuellem Aufwand abhängen oder Informationen nicht systematisch erfasst und weitergegeben werden. Das äußert sich im Tagesgeschäft als wiederkehrender Abstimmungsaufwand, Informationsverlust oder Verzögerungen, die durch strukturiertere Abläufe vermieden werden könnten.</p>
+<p>Insgesamt befindet sich ${data.company.name} in einem Entwicklungsstadium, das für Unternehmen dieser Größenordnung und Branche typisch ist. Es gibt bereits digitale Werkzeuge im Einsatz, aber keine durchgängig vernetzten oder standardisierten Abläufe. Das Unternehmen arbeitet funktional und effektiv, aber mit einem erheblichen Potenzial zur Effizienzsteigerung durch strukturiertere digitale Prozesse.</p>`;
   }
 }
 
@@ -365,18 +381,23 @@ function htmlParagraphs(text: string): string {
     .join("\n");
 }
 
-// ── Public: generate all report texts — sequential to avoid rate limiting ─────
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// ── Public: generate all report texts — sequential with pauses to avoid rate limiting ──
 export async function generateReportTexts(data: BlueprintReportData): Promise<ReportTexts> {
   const avgScore = calcAvgScore(data);
 
-  // Sequential execution — parallel calls cause rate limiting on the Anthropic API
   const einleitungText = await generateEinleitung(data);
+  await sleep(3000);
   const contextPageText = await generateContextPageText(data);
+  await sleep(3000);
   const scoreAnalysis = await generateScoreAnalysis(data, avgScore);
+  await sleep(3000);
 
-  // Module texts split into 2 sequential calls for reliability
   const { moduleInsights, moduleDetailedAnalysis } = await generateModuleInsightsAndDetailed(data, avgScore);
+  await sleep(3000);
   const moduleScoreComposition = await generateModuleScoreComposition(data);
+  await sleep(3000);
 
   const finalSections = await generateFinalSections(data, avgScore);
 
