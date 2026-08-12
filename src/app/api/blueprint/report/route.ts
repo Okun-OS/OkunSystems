@@ -38,8 +38,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const body = await req.json().catch(() => ({})) as { sessionId?: string };
-  const { sessionId } = body;
+  const body = await req.json().catch(() => ({})) as { sessionId?: string; additionalContext?: string; specialRequests?: string };
+  const { sessionId, additionalContext, specialRequests } = body;
 
   if (!sessionId) {
     return NextResponse.json({ error: "Missing sessionId" }, { status: 400 });
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
     const reportData = await assembleBlueprintReport(sessionId);
 
     // Step 2: Generate AI narrative texts
-    const texts = await generateReportTexts(reportData);
+    const texts = await generateReportTexts(reportData, { additionalContext, specialRequests });
 
     // Step 3: Render HTML (embed logo as base64 data URI)
     let logoDataUri = "";

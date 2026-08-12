@@ -10,9 +10,13 @@ export interface ReportTexts {
   scoreAnalysis: string;
   moduleInsights: Record<number, string>;
   moduleDetailedAnalysis: Record<number, string>;
-  moduleScoreComposition: Record<number, string>;
   conclusionText: string;
   orientationText: string;
+}
+
+export interface AdminReportInput {
+  additionalContext?: string;
+  specialRequests?: string;
 }
 
 function scoreLabelText(score: number): string {
@@ -68,15 +72,20 @@ async function callClaude(prompt: string, maxTokens: number, attempt = 0): Promi
 }
 
 // ── Einleitung (Pages 2–3) ───────────────────────────────────────────────────
-async function generateEinleitung(data: BlueprintReportData): Promise<string> {
+async function generateEinleitung(data: BlueprintReportData, adminInput?: AdminReportInput): Promise<string> {
   const moduleCount = data.moduleScores.length;
   const industry = data.company.industry || "Mittelstand";
+
+  const adminHint = [
+    adminInput?.additionalContext ? `\nZusätzliche Informationen zum Unternehmen:\n${adminInput.additionalContext}` : "",
+    adminInput?.specialRequests ? `\nBesondere Hinweise:\n${adminInput.specialRequests}` : "",
+  ].filter(Boolean).join("\n");
 
   const prompt = `Du bist Senior-Berater bei OKUN Systems. Schreibe die Einleitung für einen professionellen Digitalisierungsanalysebericht — den OKUN Blueprint™ 2.0.
 
 Unternehmen: ${data.company.name}${data.company.industry ? ` | Branche: ${industry}` : ""}
 Analyse: Abgeschlossen mit ${data.totalAnswered} von ${data.totalActive} Fragen beantwortet
-Module: ${moduleCount} bewertet (Prozessqualität, Vertriebsstruktur, Führungsstruktur, Automatisierungsgrad, Unternehmensstruktur, Kommunikation, Personalmanagement)
+Module: ${moduleCount} bewertet (Prozessqualität, Vertriebsstruktur, Führungsstruktur, Automatisierungsgrad, Unternehmensstruktur, Kommunikation, Personalmanagement)${adminHint}
 
 Schreibe genau 10 Absätze als zusammenhängenden Fließtext. Kein Markdown, keine Aufzählungen, keine Überschriften.
 Sachlich, professionell, für Entscheider im Mittelstand. Direkte Ansprache: "Sie", "Ihr Unternehmen".
@@ -156,7 +165,7 @@ Schreibe jetzt die 5 Absätze:`;
 }
 
 // ── Score analysis ───────────────────────────────────────────────────────────
-async function generateScoreAnalysis(data: BlueprintReportData, avgScore: number): Promise<string> {
+async function generateScoreAnalysis(data: BlueprintReportData, avgScore: number, adminInput?: AdminReportInput): Promise<string> {
   const label = scoreLabelText(avgScore);
   const moduleList = data.moduleScores
     .map((m) => `${m.label}: ${m.score}/100 (${scoreLabelText(m.score)})`)
@@ -166,9 +175,11 @@ async function generateScoreAnalysis(data: BlueprintReportData, avgScore: number
   const best = [...data.moduleScores].sort((a, b) => b.score - a.score).slice(0, 2)
     .map((m) => `${m.label} (${m.score}/100)`).join(" und ");
 
-  const contextHint = data.companyContext
-    ? `\n\nUnternehmenskontext und Unternehmensziele:\n${formatContextForPrompt(data)}`
-    : "";
+  const contextHint = [
+    data.companyContext ? `\n\nUnternehmenskontext:\n${formatContextForPrompt(data)}` : "",
+    adminInput?.additionalContext ? `\n\nZusätzliche Informationen:\n${adminInput.additionalContext}` : "",
+    adminInput?.specialRequests ? `\n\nBesondere Hinweise:\n${adminInput.specialRequests}` : "",
+  ].filter(Boolean).join("");
 
   const prompt = `Du bist Senior-Berater bei OKUN Systems. Schreibe eine tiefgehende Analyse des AKTUELLEN Digitalisierungsstandes von ${data.company.name}.
 
@@ -236,14 +247,14 @@ ${moduleList}${contextHint}
 
 Antworte NUR mit gültigem JSON. Kein Text davor oder danach, kein Markdown.
 Erstelle für jedes Modul (Nummern: ${moduleKeys.join(", ")}) zwei Texte:
-- "insights": 2-3 Sätze Kurzeinschätzung des Ist-Zustandes
-- "detailed": 8-10 vollständige Sätze ausführliche Analyse — was zeigt dieser Score konkret, welche Auswirkungen hat der aktuelle Stand im Tagesgeschäft, was charakterisiert das Unternehmen in diesem Bereich heute
+- "insights": 2 Sätze Kurzeinschätzung des Ist-Zustandes
+- "detailed": 5-6 vollständige Sätze kompakte Analyse — was zeigt dieser Score konkret, welche Auswirkungen hat der aktuelle Stand im Tagesgeschäft, was charakterisiert das Unternehmen in diesem Bereich heute
 
 {
 ${moduleKeys.map((n) => {
   const m = data.moduleScores.find((s) => s.moduleNumber === n);
-  return `  "${n}_insights": "Kurzeinschätzung ${m?.label ?? `Modul ${n}`} (${m?.score ?? 0}/100) — nur Ist-Zustand",
-  "${n}_detailed": "Ausführliche Analyse ${m?.label ?? `Modul ${n}`} (${m?.score ?? 0}/100) — 8-10 Sätze, nur Ist-Zustand"`;
+  return `  "${n}_insights": "Kurzeinschätzung ${m?.label ?? `Modul ${n}`} (${m?.score ?? 0}/100) — 2 Sätze, nur Ist-Zustand",
+  "${n}_detailed": "Analyse ${m?.label ?? `Modul ${n}`} (${m?.score ?? 0}/100) — 5-6 Sätze, nur Ist-Zustand"`;
 }).join(",\n")}
 }`;
 
@@ -266,69 +277,19 @@ ${moduleKeys.map((n) => {
   }
 }
 
-// ── Module score composition (separate call for reliability) ─────────────────
-async function generateModuleScoreComposition(data: BlueprintReportData): Promise<Record<number, string>> {
-  const moduleList = data.moduleScores
-    .map((m) => `M${m.moduleNumber} ${m.label}: ${m.score}/100 (${scoreLabelText(m.score)})`)
-    .join("\n");
-
-  const moduleDescriptions: Record<number, string> = {
-    1: "Unternehmensprofil — Grundstruktur, Unternehmensform, Grunddaten",
-    2: "Prozessqualität — Dokumentationsgrad, Standardisierung, Qualitätssicherung",
-    3: "Vertriebsstruktur — Kundendatenverwaltung, Vertriebsprozesse, Auftragsmanagement",
-    4: "Führungsstruktur — Führungsklarheit, Entscheidungswege, Strategiemanagement",
-    5: "Automatisierungsgrad — Grad der Prozessautomatisierung, Systemnutzung, manuelle Tätigkeiten",
-    6: "Unternehmensstruktur — Organisationsstruktur, Zuständigkeiten, Ablauforganisation",
-    7: "Kommunikation — interne und externe Kommunikationswege, Dokumentenmanagement",
-    8: "Personalmanagement — Recruiting, Personalverwaltung, Zeiterfassung, Mitarbeiterentwicklung",
-  };
-
-  const moduleKeys = data.moduleScores.map((m) => m.moduleNumber);
-
-  const prompt = `Du bist Lead-Berater bei OKUN Systems. Erkläre für jedes Modul, wie sich der Score zusammensetzt.
-
-Modul-Scores:
-${moduleList}
-
-Antworte NUR mit gültigem JSON. Kein Text davor oder danach, kein Markdown.
-Erstelle für jedes Modul (Nummern: ${moduleKeys.join(", ")}) 3-4 Sätze:
-- Erkläre, welche konkreten Kriterien in diesem Modul bewertet wurden
-- Wie diese Kriterien den Score beeinflusst haben
-- Was der Score von X/100 in diesem Bereich konkret bedeutet
-
-{
-${moduleKeys.map((n) => {
-  const m = data.moduleScores.find((s) => s.moduleNumber === n);
-  const desc = moduleDescriptions[n] ?? `Modul ${n}`;
-  return `  "${n}": "Score-Zusammensetzung für ${m?.label ?? `Modul ${n}`} (${m?.score ?? 0}/100): Bewertet wurden ${desc}. 3-4 Sätze zur Score-Zusammensetzung."`;
-}).join(",\n")}
-}`;
-
-  try {
-    const raw = await callClaude(prompt, 3000);
-    const jsonStr = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
-    const parsed = JSON.parse(jsonStr) as Record<string, string>;
-
-    const result: Record<number, string> = {};
-    for (const m of data.moduleScores) {
-      if (parsed[String(m.moduleNumber)]) result[m.moduleNumber] = parsed[String(m.moduleNumber)];
-    }
-    return result;
-  } catch (e) {
-    console.error("[Blueprint] generateModuleScoreComposition failed:", e);
-    return {};
-  }
-}
-
 // ── Conclusion + executive summary + orientation ─────────────────────────────
-async function generateFinalSections(data: BlueprintReportData, avgScore: number): Promise<{
+async function generateFinalSections(data: BlueprintReportData, avgScore: number, adminInput?: AdminReportInput): Promise<{
   conclusionText: string;
   executiveSummary: string;
   orientationText: string;
 }> {
   const worstModules = [...data.moduleScores].sort((a, b) => a.score - b.score).slice(0, 3).map((m) => m.label).join(", ");
   const bestModules = [...data.moduleScores].sort((a, b) => b.score - a.score).slice(0, 2).map((m) => m.label).join(" und ");
-  const contextHint = data.companyContext ? `\n\nUnternehmenskontext:\n${formatContextForPrompt(data)}` : "";
+  const contextHint = [
+    data.companyContext ? `\n\nUnternehmenskontext:\n${formatContextForPrompt(data)}` : "",
+    adminInput?.additionalContext ? `\n\nZusätzliche Informationen:\n${adminInput.additionalContext}` : "",
+    adminInput?.specialRequests ? `\n\nBesondere Hinweise:\n${adminInput.specialRequests}` : "",
+  ].filter(Boolean).join("");
 
   const prompt = `Du bist Lead-Berater bei OKUN Systems. Erstelle das abschließende Fazit für ${data.company.name}.
 
@@ -384,22 +345,20 @@ function htmlParagraphs(text: string): string {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // ── Public: generate all report texts — sequential with pauses to avoid rate limiting ──
-export async function generateReportTexts(data: BlueprintReportData): Promise<ReportTexts> {
+export async function generateReportTexts(data: BlueprintReportData, adminInput?: AdminReportInput): Promise<ReportTexts> {
   const avgScore = calcAvgScore(data);
 
-  const einleitungText = await generateEinleitung(data);
+  const einleitungText = await generateEinleitung(data, adminInput);
   await sleep(3000);
   const contextPageText = await generateContextPageText(data);
   await sleep(3000);
-  const scoreAnalysis = await generateScoreAnalysis(data, avgScore);
+  const scoreAnalysis = await generateScoreAnalysis(data, avgScore, adminInput);
   await sleep(3000);
 
   const { moduleInsights, moduleDetailedAnalysis } = await generateModuleInsightsAndDetailed(data, avgScore);
   await sleep(3000);
-  const moduleScoreComposition = await generateModuleScoreComposition(data);
-  await sleep(3000);
 
-  const finalSections = await generateFinalSections(data, avgScore);
+  const finalSections = await generateFinalSections(data, avgScore, adminInput);
 
   return {
     einleitungText,
@@ -408,7 +367,6 @@ export async function generateReportTexts(data: BlueprintReportData): Promise<Re
     scoreAnalysis,
     moduleInsights,
     moduleDetailedAnalysis,
-    moduleScoreComposition,
     conclusionText: finalSections.conclusionText,
     orientationText: finalSections.orientationText,
   };

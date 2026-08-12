@@ -40,7 +40,7 @@ function compactBar(m: ModuleScoreEntry, insight: string): string {
   </div>`;
 }
 
-function moduleFullPage(m: ModuleScoreEntry, detailed: string, composition: string, pageLabel: string): string {
+function moduleBlock(m: ModuleScoreEntry, detailed: string): string {
   const c = scoreColor(m.score);
   const lbl = scoreLabel(m.score);
   const detailedHtml = detailed
@@ -48,12 +48,12 @@ function moduleFullPage(m: ModuleScoreEntry, detailed: string, composition: stri
         .map(p => p.startsWith("<p>") ? p : `<p>${p}</p>`).join("\n")
     : "";
 
-  return `
-<div class="npage">
-  ${ph(pageLabel, `M${m.moduleNumber} · ${m.label}`)}
-
-  <!-- Module score header -->
-  <div class="mfp-head" style="border-left:5px solid ${c}">
+  return `<div class="mod-block">
+  <div class="mod-name" style="border-left:4px solid ${c}">
+    <span class="mod-num" style="color:${c}">M${m.moduleNumber}</span> ${m.label}
+    <span class="mod-score-inline" style="color:${c}">${m.score}/100 · ${lbl}</span>
+  </div>
+  <div class="mfp-head" style="border-left:4px solid ${c}">
     <div class="mfp-score-col">
       <div class="mfp-score-num" style="color:${c}">${m.score}</div>
       <div class="mfp-score-den">/ 100</div>
@@ -72,18 +72,16 @@ function moduleFullPage(m: ModuleScoreEntry, detailed: string, composition: stri
       </div>
     </div>
   </div>
+  <div class="mfp-body">${detailedHtml || `<p>Für dieses Modul liegen keine Analysedaten vor.</p>`}</div>
+</div>`;
+}
 
-  <!-- Score composition box -->
-  ${composition ? `<div class="mfp-comp">
-    <div class="mfp-comp-lbl">Score-Zusammensetzung</div>
-    <div class="mfp-comp-text">${composition}</div>
-  </div>` : ""}
-
-  <!-- Detailed analysis -->
-  <div class="mfp-analysis-lbl">Detaillierte Analyse</div>
-  <div class="mfp-body">
-    ${detailedHtml || `<p>Für dieses Modul liegen keine ausführlichen Analysedaten vor.</p>`}
-  </div>
+function modulePairPage(modules: ModuleScoreEntry[], detailed: Record<number, string>, pairIndex: number, totalPairs: number): string {
+  const label = `Modulanalyse · ${modules.map(m => `M${m.moduleNumber}`).join(" & ")}`;
+  return `
+<div class="npage">
+  ${ph(label, `Seite ${pairIndex + 1} von ${totalPairs}`)}
+  ${modules.map(m => moduleBlock(m, detailed[m.moduleNumber] ?? "")).join('\n<div class="mod-sep"></div>\n')}
 </div>`;
 }
 
@@ -104,14 +102,13 @@ export function renderReportHtml(data: BlueprintReportData, texts: ReportTexts, 
     .map((m) => compactBar(m, texts.moduleInsights[m.moduleNumber] ?? ""))
     .join("\n");
 
-  // ── Module detail pages: 1 per page ─────────────────────────────────────
-  const moduleDetailPages = data.moduleScores.map((m, i) =>
-    moduleFullPage(
-      m,
-      texts.moduleDetailedAnalysis[m.moduleNumber] ?? "",
-      texts.moduleScoreComposition[m.moduleNumber] ?? "",
-      `Modulanalyse · ${i + 1} von ${data.moduleScores.length}`
-    )
+  // ── Module detail pages: 2 per page ─────────────────────────────────────
+  const modulePairs: ModuleScoreEntry[][] = [];
+  for (let i = 0; i < data.moduleScores.length; i += 2) {
+    modulePairs.push(data.moduleScores.slice(i, i + 2));
+  }
+  const moduleDetailPages = modulePairs.map((pair, i) =>
+    modulePairPage(pair, texts.moduleDetailedAnalysis, i, modulePairs.length)
   ).join("\n");
 
   // ── Logo markup ──────────────────────────────────────────────────────────
@@ -147,6 +144,8 @@ body {
 
 /* ── Page break utility ─────────────────────────────────────────────────── */
 .npage { page-break-before: always; padding-top: 0.3cm; min-height: 240mm; display: flex; flex-direction: column; }
+/* Prose flow pages — no forced break, no min-height; content continues from previous page */
+.flow-page { padding-top: 0.3cm; }
 
 /* ── Page header ──────────────────────────────────────────────────────────*/
 .ph { margin-bottom: 20px; }
@@ -291,14 +290,6 @@ body {
 .cbar-lbl { font-size: 7.5pt; font-weight: 700; }
 .cbar-insight { font-size: 7.5pt; color: #6b7280; flex: 1; line-height: 1.35; }
 
-/* ── Signal tiles ─────────────────────────────────────────────────────────*/
-.signal-row { display: flex; gap: 12px; }
-.signal-tile {
-  flex: 1; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 14px; text-align: center;
-}
-.signal-num { font-size: 24pt; font-weight: 900; line-height: 1; }
-.signal-lbl { font-size: 7.5pt; color: #6b7280; margin-top: 3px; }
-
 /* ── Score analysis page ─────────────────────────────────────────────────*/
 .score-prose {
   font-size: 10pt; line-height: 1.78; color: #1a1a1a;
@@ -308,49 +299,43 @@ body {
 .score-prose p:first-child { font-size: 10.5pt; font-weight: 500; }
 .score-prose p:last-child { margin-bottom: 0; }
 
-/* ── Module full page ─────────────────────────────────────────────────────*/
+/* ── Module blocks (2 per page) ───────────────────────────────────────────*/
+.mod-block { margin-bottom: 14px; }
+.mod-name {
+  font-size: 10pt; font-weight: 700; color: #0d1117;
+  padding: 6px 12px; margin-bottom: 8px; display: flex; align-items: baseline; gap: 8px;
+}
+.mod-num { font-size: 9.5pt; font-weight: 900; }
+.mod-score-inline { margin-left: auto; font-size: 8pt; font-weight: 600; }
+.mod-sep { height: 1px; background: #e5e7eb; margin: 14px 0; }
+
 .mfp-head {
-  display: flex; align-items: stretch; gap: 20px;
-  padding: 16px 20px; background: #f8faff; border: 1px solid #e5eeff;
-  border-radius: 10px; margin-bottom: 16px;
+  display: flex; align-items: center; gap: 16px;
+  padding: 10px 16px; background: #f8faff; border: 1px solid #e5eeff;
+  border-radius: 8px; margin-bottom: 10px;
 }
 .mfp-score-col {
-  text-align: center; flex-shrink: 0; min-width: 72px;
+  text-align: center; flex-shrink: 0; min-width: 58px;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
 }
-.mfp-score-num { font-size: 32pt; font-weight: 900; line-height: 1; }
-.mfp-score-den { font-size: 9pt; color: #9ca3af; }
-.mfp-score-lbl { font-size: 8.5pt; font-weight: 700; margin-top: 4px; }
+.mfp-score-num { font-size: 24pt; font-weight: 900; line-height: 1; }
+.mfp-score-den { font-size: 8pt; color: #9ca3af; }
+.mfp-score-lbl { font-size: 7.5pt; font-weight: 700; margin-top: 3px; }
 .mfp-bar-col { flex: 1; display: flex; flex-direction: column; justify-content: center; }
 .mfp-bar-track {
-  height: 12px; background: #e5e7eb; border-radius: 6px;
-  overflow: hidden; margin-bottom: 8px;
+  height: 8px; background: #e5e7eb; border-radius: 4px;
+  overflow: hidden; margin-bottom: 5px;
 }
-.mfp-bar-fill { height: 100%; border-radius: 6px; }
+.mfp-bar-fill { height: 100%; border-radius: 4px; }
 .mfp-scale-labels {
   display: flex; justify-content: space-between;
-  font-size: 6.5pt; color: #9ca3af;
-}
-
-.mfp-comp {
-  padding: 12px 16px; background: #f0fdf4; border: 1px solid #bbf7d0;
-  border-left: 4px solid #22c55e; border-radius: 8px; margin-bottom: 16px;
-}
-.mfp-comp-lbl {
-  font-size: 7.5pt; font-weight: 700; letter-spacing: 1.3px;
-  text-transform: uppercase; color: #16a34a; margin-bottom: 7px;
-}
-.mfp-comp-text { font-size: 9.5pt; color: #1a3a1a; line-height: 1.65; }
-
-.mfp-analysis-lbl {
-  font-size: 7.5pt; font-weight: 700; letter-spacing: 1.5px;
-  text-transform: uppercase; color: #00b8ff; margin-bottom: 10px;
+  font-size: 6pt; color: #9ca3af;
 }
 .mfp-body {
-  font-size: 10pt; line-height: 1.78; color: #1a1a1a;
-  text-align: justify; hyphens: auto; flex: 1;
+  font-size: 9.5pt; line-height: 1.7; color: #1a1a1a;
+  text-align: justify; hyphens: auto;
 }
-.mfp-body p { margin-bottom: 13px; }
+.mfp-body p { margin-bottom: 10px; }
 .mfp-body p:last-child { margin-bottom: 0; }
 
 /* ── Section label ────────────────────────────────────────────────────────*/
@@ -434,12 +419,12 @@ body {
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════════════
-     SEITEN 2–3: EINLEITUNG (2 Seiten)
+     SEITEN 2+: EINLEITUNG (fließt weiter, keine Zwangsseitenumbrüche)
      ══════════════════════════════════════════════════════════════════════ -->
-<div class="npage">
+<div class="flow-page">
   ${ph("Über diese Analyse", "Einleitung")}
   <div class="prose-page">
-    ${texts.einleitungText || `<p>Der OKUN Blueprint™ 2.0 ist ein strukturiertes Analyse-Werkzeug zur systematischen Bewertung des Digitalisierungsstandes von ${data.company.name}. Die Analyse basiert vollständig auf den Antworten aus dem Fragebogen und gibt einen differenzierten Überblick über acht operative Module.</p>`}
+    ${texts.einleitungText || `<p>Der OKUN Blueprint™ 2.0 ist ein strukturiertes Analyse-Werkzeug zur systematischen Bewertung des Digitalisierungsstandes von ${data.company.name}. Die Analyse basiert vollständig auf den Antworten aus dem Fragebogen und gibt einen differenzierten Überblick über die bewerteten operativen Module.</p>`}
   </div>
   <div class="info-bar">
     ${data.company.industry ? `<div><div class="info-item-label">Branche</div><div class="info-item-val">${data.company.industry}</div></div>` : ""}
@@ -450,19 +435,11 @@ body {
 </div>
 
 ${texts.contextPageText ? `
-<!-- ══════════════════════════════════════════════════════════════════════
-     SEITE 3: UNTERNEHMENSKONTEXT
-     ══════════════════════════════════════════════════════════════════════ -->
-<div class="npage">
+<!-- Unternehmenskontext fließt direkt weiter (gleiche Seite wenn Platz vorhanden) -->
+<div class="flow-page">
   ${ph("Ihr Unternehmen", "Unternehmenskontext")}
   <div class="prose-page">
     ${texts.contextPageText}
-  </div>
-  <div class="info-bar" style="margin-top:auto">
-    ${data.company.industry ? `<div><div class="info-item-label">Branche</div><div class="info-item-val">${data.company.industry}</div></div>` : ""}
-    <div><div class="info-item-label">Beantwortete Fragen</div><div class="info-item-val">${data.totalAnswered} von ${data.totalActive}</div></div>
-    <div><div class="info-item-label">Analysedatum</div><div class="info-item-val">${dateStr}</div></div>
-    <div><div class="info-item-label">Blueprint-Version</div><div class="info-item-val">2.0</div></div>
   </div>
 </div>
 ` : ""}
