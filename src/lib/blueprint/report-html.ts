@@ -185,7 +185,7 @@ body {
   border-bottom: 2px solid #00b8ff;
   padding-bottom: 18px;
 }
-.cover-logo-img { height: 36px; width: auto; object-fit: contain; }
+.cover-logo-img { height: 44px; width: auto; object-fit: contain; }
 .cover-logo { font-size: 20pt; font-weight: 900; color: #fff; letter-spacing: -1px; }
 .cover-logo span { color: #00b8ff; }
 .cover-logo-sub { font-size: 8pt; color: #556; margin-top: 3px; letter-spacing: 0.5px; }
@@ -422,7 +422,7 @@ body {
     </div>
 
     <div class="cover-exec-summary">
-      <div class="cover-exec-label">Executive Summary</div>
+      <div class="cover-exec-label">Zusammenfassung</div>
       ${texts.executiveSummary || `${data.company.name} hat den OKUN Blueprint™ 2.0 abgeschlossen.`}
     </div>
   </div>
@@ -434,14 +434,14 @@ body {
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════════════
-     SEITE 2: EINLEITUNG
+     SEITEN 2–3: EINLEITUNG (2 Seiten)
      ══════════════════════════════════════════════════════════════════════ -->
 <div class="npage">
   ${ph("Über diese Analyse", "Einleitung")}
   <div class="prose-page">
     ${texts.einleitungText || `<p>Der OKUN Blueprint™ 2.0 ist ein strukturiertes Analyse-Werkzeug zur systematischen Bewertung des Digitalisierungsstandes von ${data.company.name}. Die Analyse basiert vollständig auf den Antworten aus dem Fragebogen und gibt einen differenzierten Überblick über acht operative Module.</p>`}
   </div>
-  <div class="info-bar" style="margin-top:auto">
+  <div class="info-bar">
     ${data.company.industry ? `<div><div class="info-item-label">Branche</div><div class="info-item-val">${data.company.industry}</div></div>` : ""}
     <div><div class="info-item-label">Module</div><div class="info-item-val">${data.moduleScores.length} Bereiche</div></div>
     <div><div class="info-item-label">Beantwortete Fragen</div><div class="info-item-val">${data.totalAnswered} von ${data.totalActive}</div></div>
@@ -468,22 +468,7 @@ ${texts.contextPageText ? `
 ` : ""}
 
 <!-- ══════════════════════════════════════════════════════════════════════
-     SEITE 4: DIGITALISIERUNG & POTENZIALE
-     ══════════════════════════════════════════════════════════════════════ -->
-<div class="npage">
-  ${ph("Grundlagen", "Digitalisierung & Automatisierung")}
-  <div class="prose-page">
-    ${texts.digitalizationIntro || `<p>Digitalisierung bezeichnet den Einsatz digitaler Technologien zur Optimierung von Geschäftsprozessen, Produkten und Dienstleistungen. Für Unternehmen im Mittelstand bietet sie erhebliche Potenziale zur Effizienzsteigerung, Kostensenkung und Wettbewerbsstärkung.</p>`}
-  </div>
-  ${data.company.industry ? `
-  <div class="digi-industry-bar" style="margin-top:auto">
-    <div class="digi-industry-label">Branche: ${data.company.industry}</div>
-    <div style="font-size:9pt;color:#166534;line-height:1.65">Die beschriebenen Potenziale gelten insbesondere für Unternehmen in der Branche ${data.company.industry}, wo typische manuelle Prozesse besonders stark von digitaler Optimierung profitieren können.</div>
-  </div>` : ""}
-</div>
-
-<!-- ══════════════════════════════════════════════════════════════════════
-     SEITE 5: GESAMTAUSWERTUNG
+     SEITE 4: GESAMTAUSWERTUNG
      ══════════════════════════════════════════════════════════════════════ -->
 <div class="npage">
   ${ph("Ihr Ergebnis auf einen Blick", "Gesamtauswertung")}
@@ -514,21 +499,6 @@ ${texts.contextPageText ? `
     ${allCompactBars}
   </div>
 
-  <div class="section-lbl">Signalstärken</div>
-  <div class="signal-row">
-    <div class="signal-tile">
-      <div class="signal-num" style="color:#00b8ff">${data.signals.WORKFORCE}</div>
-      <div class="signal-lbl">OKUN Mitarbeiter-Lösungen</div>
-    </div>
-    <div class="signal-tile">
-      <div class="signal-num" style="color:#3b82f6">${data.signals.BEWAEHRTE_LOESUNG}</div>
-      <div class="signal-lbl">Bewährte Lösungen</div>
-    </div>
-    <div class="signal-tile">
-      <div class="signal-num" style="color:#a855f7">${data.signals.CUSTOM_DEVELOPMENT}</div>
-      <div class="signal-lbl">Individuelle Entwicklung</div>
-    </div>
-  </div>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════════════

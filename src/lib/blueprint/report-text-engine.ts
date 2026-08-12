@@ -7,7 +7,6 @@ export interface ReportTexts {
   einleitungText: string;
   executiveSummary: string;
   contextPageText: string;
-  digitalizationIntro: string;
   scoreAnalysis: string;
   moduleInsights: Record<number, string>;
   moduleDetailedAnalysis: Record<number, string>;
@@ -55,40 +54,56 @@ async function callClaude(prompt: string, maxTokens: number): Promise<string> {
   return res.content[0].type === "text" ? res.content[0].text.trim() : "";
 }
 
-// ── Einleitung (Page 2) ──────────────────────────────────────────────────────
+// ── Einleitung (Pages 2–3) ───────────────────────────────────────────────────
 async function generateEinleitung(data: BlueprintReportData): Promise<string> {
   const moduleCount = data.moduleScores.length;
+  const industry = data.company.industry || "Mittelstand";
+
   const prompt = `Du bist Senior-Berater bei OKUN Systems. Schreibe die Einleitung für einen professionellen Digitalisierungsanalysebericht — den OKUN Blueprint™ 2.0.
 
-Unternehmen: ${data.company.name}${data.company.industry ? ` | Branche: ${data.company.industry}` : ""}
-Analysedatum: Abgeschlossen mit ${data.totalAnswered} von ${data.totalActive} Fragen beantwortet
+Unternehmen: ${data.company.name}${data.company.industry ? ` | Branche: ${industry}` : ""}
+Analyse: Abgeschlossen mit ${data.totalAnswered} von ${data.totalActive} Fragen beantwortet
+Module: ${moduleCount} bewertet (Prozessqualität, Vertriebsstruktur, Führungsstruktur, Automatisierungsgrad, Unternehmensstruktur, Kommunikation, Personalmanagement)
 
-Schreibe genau 5 Absätze als zusammenhängenden Fließtext. Kein Markdown, keine Aufzählungen, keine Überschriften.
-Sachlich und professionell. Schreibe in der zweiten Person ("Sie", "Ihr Unternehmen").
-Jeder Absatz muss mindestens 4 vollständige Sätze enthalten. Die Einleitung muss eine Seite füllen.
+Schreibe genau 10 Absätze als zusammenhängenden Fließtext. Kein Markdown, keine Aufzählungen, keine Überschriften.
+Sachlich, professionell, für Entscheider im Mittelstand. Direkte Ansprache: "Sie", "Ihr Unternehmen".
+Jeder Absatz muss mindestens 4–5 vollständige Sätze enthalten. Ziel ist, zwei Seiten vollständig zu füllen.
+Keine englischen Begriffe. Kein Marketing-Deutsch.
 
-Absatz 1: Was ist der OKUN Blueprint™ 2.0? Beschreibe präzise, was diese Analyse ist — ein strukturiertes Analyse-Werkzeug zur Messung des Digitalisierungsstandes. Sie entsteht aus den Antworten des Unternehmens selbst, nicht aus einer externen Einschätzung.
+Absatz 1 (Was ist OKUN Systems): Wer ist OKUN Systems? Was macht OKUN Systems — Digitalisierungsberatung speziell für den Mittelstand. Welche Aufgabe hat OKUN Systems gegenüber seinen Kunden — strukturierte Standortbestimmung, keine Produkte verkaufen, sondern den Ist-Zustand klar machen, bevor Maßnahmen diskutiert werden. Wie arbeitet OKUN Systems mit Kunden zusammen.
 
-Absatz 2: Wie funktioniert die Analyse methodisch? Sie deckt ${moduleCount} operative Module ab, jedes Modul bewertet mehrere Kriterien, und aus den Antworten entsteht ein Punktescore (0–100). Der Score ist eine Standortbestimmung, kein Urteil.
+Absatz 2 (Was ist der OKUN Blueprint™ 2.0): Was ist dieser Analysebericht — ein strukturiertes Werkzeug zur Messung des Digitalisierungsstandes. Er entsteht nicht aus einer externen Einschätzung, sondern vollständig aus den Antworten des Unternehmens selbst. Der Score ist eine Standortbestimmung, kein Urteil über die Qualität der Arbeit.
 
-Absatz 3: Was sind die ${moduleCount} Module des Blueprints? Beschreibe kurz, welche Bereiche abgedeckt werden (Prozessmanagement, Vertrieb, Führungsstruktur, Automatisierungsgrad, Unternehmensstruktur, Kommunikation, Personalmanagement und weitere). Erkläre, warum genau diese Bereiche relevant sind.
+Absatz 3 (Was ist Digitalisierung): Was bedeutet Digitalisierung im Unternehmensalltag — praxisnahe, konkrete Erklärung ohne Fachbegriffe. Was passiert, wenn Prozesse digitalisiert werden? Der Unterschied zwischen analogem und digitalem Arbeiten im Tagesgeschäft: Daten, Abläufe, Kommunikation, Dokumentation. Welche Arten von Tätigkeiten können digitalisiert werden.
 
-Absatz 4: Wie ist dieser Bericht aufgebaut? Unternehmenskontext, Gesamtauswertung, Score-Analyse des Ist-Zustandes, Detailanalyse jedes Moduls mit Score-Zusammensetzung, abschließendes Fazit. Jede Seite enthält konkrete Informationen zum Ist-Zustand.
+Absatz 4 (Was ist Automatisierung): Was ist Automatisierung und wie unterscheidet sie sich von Digitalisierung. Automatisierung als nächste Stufe — wenn digitale Prozesse nicht nur dokumentiert, sondern selbstständig ausgeführt werden. Beispiele aus dem Alltag: automatische Benachrichtigungen, Dateneingaben ohne manuelle Arbeit, Systeme die miteinander kommunizieren. Was das für den Arbeitsalltag bedeutet.
 
-Absatz 5: Wie sollte dieser Bericht gelesen werden? Was bedeuten hohe und niedrige Scores, warum sind die Module mit dem größten Abstand nach unten besonders relevant, wie ist der Score im Verhältnis zum Branchenumfeld zu sehen. Das Strategiegespräch vertieft die Erkenntnisse.
+Absatz 5 (Wofür ist Digitalisierung gut): Was erreichen Unternehmen durch strukturierte Digitalisierung? Zeitersparnis, Fehlerreduktion, Skalierbarkeit, bessere Entscheidungsgrundlagen. Konkrete Beispiele aus dem Alltag — was früher eine Stunde dauerte, in Minuten erledigt. Wie sich die Qualität der Arbeit ändert, wenn manuelle Tätigkeiten wegfallen. Warum Digitalisierung nicht Stellenabbau bedeutet, sondern Kapazitätsgewinn.
 
-Schreibe jetzt die 5 Absätze:`;
+Absatz 6 (Relevanz für ${industry}): Welche typischen Herausforderungen hat ein Unternehmen in der Branche ${industry}, bei denen Digitalisierung konkret helfen kann. Typische manuelle Prozesse in dieser Branche. Welche Art von Effizienzpotenzial besteht branchentypisch. Warum gerade jetzt der richtige Zeitpunkt ist.
+
+Absatz 7 (Wie funktioniert die Analyse methodisch): Wie ist die Analyse aufgebaut? Welche ${moduleCount} Module werden bewertet und warum genau diese. Jedes Modul deckt mehrere Kriterien ab, aus den Antworten entsteht ein Score von 0 bis 100. Der Score spiegelt den Grad der strukturellen und digitalen Reife in diesem Bereich wider.
+
+Absatz 8 (Die ${moduleCount} Module): Welche Bereiche decken die ${moduleCount} Module ab — Prozessqualität, Vertriebsstruktur, Führungsstruktur, Automatisierungsgrad, Unternehmensstruktur, Kommunikation, Personalmanagement. Warum wurde genau diese Kombination gewählt — weil sie gemeinsam alle zentralen Unternehmensbereiche abbilden, in denen Digitalisierung Wirkung entfaltet.
+
+Absatz 9 (Aufbau dieses Berichts): Wie ist dieser Bericht gegliedert? Gesamtauswertung mit allen Modul-Scores auf einen Blick, danach ausführliche Score-Analyse des Ist-Zustandes, anschließend eine Detailseite pro Modul mit Score-Zusammensetzung und Analyse, abschließend das Fazit. Jede Seite enthält konkrete Informationen zum aktuellen Stand.
+
+Absatz 10 (Wie liest man den Bericht): Wie sollte dieser Bericht gelesen werden? Was bedeuten hohe Scores und niedrige Scores — niedrige Scores bedeuten nicht schlechte Arbeit, sondern zeigen, wo Digitalisierung den größten Hebeleffekt hat. Wie verhält sich der eigene Score im Branchenvergleich. Was kommt nach dem Bericht — das Strategiegespräch mit OKUN Systems, in dem die Ergebnisse gemeinsam eingeordnet werden.
+
+Schreibe jetzt alle 10 Absätze:`;
 
   try {
-    const raw = await callClaude(prompt, 2000);
+    const raw = await callClaude(prompt, 3500);
     return htmlParagraphs(raw);
   } catch (e) {
     console.error("[Blueprint] generateEinleitung failed:", e);
-    return `<p>Der OKUN Blueprint™ 2.0 ist ein strukturiertes Analyse-Werkzeug zur systematischen Bewertung des Digitalisierungsstandes von ${data.company.name}. Die Analyse basiert vollständig auf den Antworten aus dem Fragebogen und spiegelt damit die eigene Einschätzung des Unternehmens wider, nicht eine externe Bewertung von außen. Das Ergebnis ist eine differenzierte Standortbestimmung, die zeigt, wo das Unternehmen heute steht.</p>
-<p>Die Analyse deckt ${moduleCount} operative Module ab. Für jedes Modul werden mehrere Kriterien bewertet und zu einem Score von 0 bis 100 Punkten verdichtet. Je höher der Score, desto stärker ist der Digitalisierungsgrad in diesem Bereich. Der Gesamtscore ergibt sich aus dem Durchschnitt aller Module und gibt eine Übersicht über den Stand des gesamten Unternehmens.</p>
-<p>Die bewerteten Module decken die wichtigsten operativen Bereiche eines Unternehmens ab: Prozesse, Vertrieb, Führung, Automatisierung, Unternehmensstruktur, Kommunikation und Personal. Diese Auswahl wurde gewählt, weil sie gemeinsam die Bereiche abbilden, in denen Digitalisierung den größten Einfluss auf Effizienz, Skalierbarkeit und Wettbewerbsfähigkeit hat.</p>
-<p>Dieser Bericht ist wie folgt aufgebaut: Nach diesem einleitenden Abschnitt folgt die Gesamtauswertung mit allen Modul-Scores auf einen Blick, danach eine ausführliche Score-Analyse des aktuellen Standes, anschließend eine Detailseite pro Modul mit Erläuterung der Score-Zusammensetzung und abschließend das Fazit.</p>
-<p>Beim Lesen dieses Berichts ist zu beachten, dass niedrige Scores keine fachliche Schwäche bedeuten, sondern den Grad der strukturellen und digitalen Absicherung der vorhandenen Arbeit widerspiegeln. Bereiche mit besonders niedrigen Scores sind jene, in denen Digitalisierung den größten Hebeleffekt entfalten kann. Die Ergebnisse werden im Strategiegespräch mit OKUN Systems gemeinsam eingeordnet.</p>`;
+    return `<p>OKUN Systems ist eine Digitalisierungsberatung, die sich auf den deutschen Mittelstand spezialisiert hat. Die Aufgabe von OKUN Systems ist nicht, Produkte zu verkaufen, sondern gemeinsam mit Unternehmen den aktuellen Stand zu verstehen — bevor über Maßnahmen gesprochen wird. Der OKUN Blueprint™ 2.0 ist das zentrale Werkzeug dieser Standortbestimmung. Er liefert eine strukturierte, datenbasierte Grundlage für alle weiteren Gespräche und Entscheidungen.</p>
+<p>Der OKUN Blueprint™ 2.0 ist ein strukturiertes Analyse-Werkzeug zur systematischen Bewertung des Digitalisierungsstandes von ${data.company.name}. Die Analyse basiert vollständig auf den Antworten aus dem Fragebogen und spiegelt damit die eigene Einschätzung des Unternehmens wider, nicht eine externe Bewertung von außen. Das Ergebnis ist eine differenzierte Standortbestimmung, die zeigt, wo das Unternehmen heute steht. Der Score ist kein Urteil über die Qualität der Arbeit, sondern eine Messung des Grades der digitalen und strukturellen Absicherung.</p>
+<p>Digitalisierung bedeutet im Unternehmensalltag: Informationen werden digital erfasst, gespeichert und verarbeitet, anstatt auf Papier, in Tabellen oder per Handschlag. Was früher mündlich abgestimmt wurde, wird in Systemen dokumentiert. Was früher manuell übertragen wurde, fließt automatisch von einem Schritt zum nächsten. Digitalisierung schafft Transparenz, Nachvollziehbarkeit und die Möglichkeit, auf verlässliche Daten zurückzugreifen — jederzeit und von überall.</p>
+<p>Automatisierung ist die nächste Stufe nach der Digitalisierung. Wenn Prozesse nicht nur digital dokumentiert, sondern von Systemen selbstständig ausgeführt werden, spricht man von Automatisierung. Statt einer Person, die täglich eine Aufgabe manuell erledigt, erledigt ein System diese Aufgabe automatisch — zuverlässiger, schneller und ohne menschliche Fehlerquellen. Automatisierung schafft Kapazitäten, die für anspruchsvollere Tätigkeiten genutzt werden können.</p>
+<p>Die bewerteten ${moduleCount} Module decken die wichtigsten operativen Bereiche eines Unternehmens ab: Prozesse, Vertrieb, Führung, Automatisierung, Unternehmensstruktur, Kommunikation und Personal. Diese Auswahl wurde gewählt, weil sie gemeinsam die Bereiche abbilden, in denen Digitalisierung den größten Einfluss auf Effizienz, Skalierbarkeit und Wettbewerbsfähigkeit hat. Jedes Modul wird anhand mehrerer Kriterien bewertet und ergibt einen Score von 0 bis 100 Punkten.</p>
+<p>Dieser Bericht ist wie folgt aufgebaut: Nach diesem einleitenden Abschnitt folgt die Gesamtauswertung mit allen Modul-Scores auf einen Blick. Danach folgt eine ausführliche Score-Analyse des aktuellen Standes, anschließend eine Detailseite pro Modul mit Erläuterung der Score-Zusammensetzung, und abschließend das Fazit. Jede Seite enthält konkrete Informationen zum Ist-Zustand.</p>
+<p>Beim Lesen dieses Berichts ist zu beachten, dass niedrige Scores keine fachliche Schwäche bedeuten, sondern den Grad der strukturellen und digitalen Absicherung der vorhandenen Arbeit widerspiegeln. Bereiche mit besonders niedrigen Scores sind jene, in denen Digitalisierung den größten Hebeleffekt entfalten kann. Die Ergebnisse werden im Strategiegespräch mit OKUN Systems gemeinsam eingeordnet und in konkrete nächste Schritte übersetzt.</p>`;
   }
 }
 
@@ -127,41 +142,7 @@ Schreibe jetzt die 5 Absätze:`;
   }
 }
 
-// ── Digitalization intro (Page 4) ────────────────────────────────────────────
-async function generateDigitalizationIntro(data: BlueprintReportData): Promise<string> {
-  const industry = data.company.industry || "Mittelstand";
-
-  const prompt = `Du bist Senior-Berater bei OKUN Systems. Schreibe einen professionellen Einführungstext über Digitalisierung und Automatisierung für einen Analysebericht.
-
-Unternehmen: ${data.company.name} | Branche: ${industry}
-
-Schreibe genau 5 Absätze als zusammenhängenden Fließtext. Kein Markdown, keine Aufzählungen, keine Überschriften.
-Sachlich, für Entscheider im Mittelstand. Kein Marketing-Deutsch, keine englischen Begriffe.
-Jeder Absatz mindestens 4 vollständige Sätze.
-
-Absatz 1: Was ist Digitalisierung und Automatisierung — praxisnahe Definition ohne Fachbegriffe. Was bedeutet es im Unternehmensalltag, wenn Prozesse digitalisiert werden?
-
-Absatz 2: Wie wirkt Digitalisierung konkret im Tagesgeschäft? Welche Aufgaben betrifft sie, was passiert mit manuellen Tätigkeiten?
-
-Absatz 3: Was kann konkret erreicht werden? Zeitersparnis, Kostensenkung, Fehlerreduktion, Skalierbarkeit — mit konkreten Beispielen aus der Praxis.
-
-Absatz 4: Spezifisch für "${industry}" — typische Prozesse und Herausforderungen in dieser Branche, bei denen Digitalisierung besonders stark hilft. Konkrete branchenspezifische Beispiele.
-
-Absatz 5: Warum ist jetzt der richtige Zeitpunkt? Wettbewerbsdruck, Fachkräftemangel, Technologiereife, steigende Erwartungen — welche Faktoren machen Digitalisierung heute zur Notwendigkeit?
-
-Schreibe jetzt die 5 Absätze:`;
-
-  try {
-    const raw = await callClaude(prompt, 1800);
-    const result = htmlParagraphs(raw);
-    return result || `<p>${data.company.name} steht vor einer digitalen Transformation, die in der heutigen Geschäftswelt nicht mehr optional ist. Digitalisierung bedeutet die systematische Nutzung digitaler Technologien, um Prozesse effizienter, transparenter und skalierbarer zu gestalten. Was früher ausschließlich durch Personalaufwand bewältigt wurde, kann heute durch strukturierte, systemgestützte Abläufe unterstützt oder vollständig automatisiert werden.</p>`;
-  } catch (e) {
-    console.error("[Blueprint] generateDigitalizationIntro failed:", e);
-    return `<p>${data.company.name} steht vor einer digitalen Transformation, die in der heutigen Geschäftswelt nicht mehr optional ist. Digitalisierung bedeutet die systematische Nutzung digitaler Technologien, um Prozesse effizienter, transparenter und skalierbarer zu gestalten. Was früher ausschließlich durch Personalaufwand bewältigt wurde, kann heute durch strukturierte, systemgestützte Abläufe unterstützt oder vollständig automatisiert werden. Unternehmen, die diesen Schritt gehen, verschaffen sich einen messbaren Vorteil bei Reaktionsgeschwindigkeit, Skalierbarkeit und Betriebskosten.</p>`;
-  }
-}
-
-// ── Score analysis (Page 6) ──────────────────────────────────────────────────
+// ── Score analysis ───────────────────────────────────────────────────────────
 async function generateScoreAnalysis(data: BlueprintReportData, avgScore: number): Promise<string> {
   const label = scoreLabelText(avgScore);
   const moduleList = data.moduleScores
@@ -173,12 +154,12 @@ async function generateScoreAnalysis(data: BlueprintReportData, avgScore: number
     .map((m) => `${m.label} (${m.score}/100)`).join(" und ");
 
   const contextHint = data.companyContext
-    ? `\n\nUnternehmenskontext:\n${formatContextForPrompt(data)}`
+    ? `\n\nUnternehmenskontext und Unternehmensziele:\n${formatContextForPrompt(data)}`
     : "";
 
   const prompt = `Du bist Senior-Berater bei OKUN Systems. Schreibe eine tiefgehende Analyse des AKTUELLEN Digitalisierungsstandes von ${data.company.name}.
 
-NUR IST-ZUSTAND — keine Empfehlungen, keine Maßnahmen, keine nächsten Schritte.
+NUR IST-ZUSTAND — keine Empfehlungen, keine Maßnahmen, keine nächsten Schritte. Keine englischen Begriffe.
 
 Gesamtscore: ${avgScore}/100 (${label})
 Stärkste Bereiche: ${best}
@@ -188,26 +169,28 @@ Beantwortete Fragen: ${data.totalAnswered} von ${data.totalActive}
 Ergebnisse je Modul:
 ${moduleList}${contextHint}
 
-Schreibe genau 6 Absätze als Fließtext. Kein Markdown, keine Aufzählungen, keine Überschriften.
+Schreibe genau 7 Absätze als Fließtext. Kein Markdown, keine Aufzählungen, keine Überschriften.
 Direkte Ansprache ("Sie", "Ihr Unternehmen"). Sachlich. Keine englischen Begriffe.
-Jeder Absatz mindestens 4 vollständige Sätze. Die Analyse muss eine vollständige Seite füllen.
+Jeder Absatz mindestens 4–5 vollständige Sätze. Die Analyse muss eine vollständige Seite füllen.
 
-Absatz 1: Wie setzt sich der Gesamtscore von ${avgScore}/100 aus den ${data.moduleScores.length} Modulen zusammen? Was bedeutet "${label}" konkret?
+Absatz 1: Was bedeutet der Gesamtscore von ${avgScore}/100 konkret für ${data.company.name}? Was charakterisiert die Stufe "${label}" — wie sieht ein Unternehmen auf diesem Niveau typischerweise aus, was hat es bereits, was fehlt noch strukturell?
 
-Absatz 2: Analyse der Streuung zwischen den Modulen. Gibt es ein gleichmäßiges Bild oder große Unterschiede? Was sagt diese Verteilung über den aktuellen Zustand aus?
+Absatz 2: Wie setzt sich der Gesamtscore aus den ${data.moduleScores.length} Modulen zusammen? Gibt es eine gleichmäßige Verteilung oder große Unterschiede zwischen Modulen? Was sagt das über die Entwicklung des Unternehmens aus?
 
-Absatz 3: Was zeigen die Stärkebereiche (${best}) konkret? Was funktioniert gut, wie zeigt sich das im Tagesgeschäft?
+Absatz 3: Was zeigen die Stärkebereiche (${best}) konkret? Was funktioniert gut, wie zeigt sich das im Tagesgeschäft, welche strukturellen Grundlagen sind bereits vorhanden?
 
-Absatz 4: Was zeigen die Nachholbereiche (${worst}) konkret? Wie äußert sich der aktuelle Stand im Arbeitsalltag — welche Reibungspunkte, Mehraufwände, Risiken?
+Absatz 4: Was zeigen die Nachholbereiche (${worst}) konkret? Wie äußert sich der aktuelle Stand im Arbeitsalltag — welche Reibungspunkte, welcher Mehraufwand, welche Risiken entstehen daraus täglich?
 
-Absatz 5: Welches Stadium der digitalen Entwicklung befindet sich ${data.company.name} heute? Was kennzeichnet dieses Stadium typischerweise?
+Absatz 5: ${data.companyContext ? `Wie passt der Score-Profil konkret zu den Zielen und der Situation von ${data.company.name}? Was bedeutet der aktuelle Stand von ${avgScore}/100 im Hinblick auf das, was das Unternehmen erreichen möchte — was unterstützt diese Ziele bereits, was steht noch im Weg?` : `Welches Stadium der digitalen Entwicklung befindet sich ${data.company.name} heute? Was kennzeichnet dieses Stadium typischerweise und welche typischen Engpässe entstehen daraus?`}
 
-Absatz 6: Wie verhält sich der Score von ${avgScore}/100 im Branchenkontext? Welche typischen Merkmale eines Unternehmens mit diesem Score-Profil treffen auf ${data.company.name} zu?
+Absatz 6: Welches Stadium der digitalen Reife kennzeichnet ${data.company.name} insgesamt? Wie zeigt sich dieses Stadium im täglichen Betrieb — in der Art, wie Informationen fließen, wie Entscheidungen getroffen werden, wie Prozesse koordiniert werden?
 
-Schreibe jetzt die 6 Absätze:`;
+Absatz 7: Wie verhält sich der Score von ${avgScore}/100 im Branchenkontext${data.company.industry ? ` (${data.company.industry})` : ""}? Welche typischen Merkmale eines Unternehmens mit diesem Score-Profil treffen auf ${data.company.name} zu, und was sagt das über den aktuellen Wettbewerbsstand aus?
+
+Schreibe jetzt alle 7 Absätze:`;
 
   try {
-    const raw = await callClaude(prompt, 2500);
+    const raw = await callClaude(prompt, 3000);
     return htmlParagraphs(raw);
   } catch (e) {
     console.error("[Blueprint] generateScoreAnalysis failed:", e);
@@ -389,7 +372,6 @@ export async function generateReportTexts(data: BlueprintReportData): Promise<Re
   // Sequential execution — parallel calls cause rate limiting on the Anthropic API
   const einleitungText = await generateEinleitung(data);
   const contextPageText = await generateContextPageText(data);
-  const digitalizationIntro = await generateDigitalizationIntro(data);
   const scoreAnalysis = await generateScoreAnalysis(data, avgScore);
 
   // Module texts split into 2 sequential calls for reliability
@@ -402,7 +384,6 @@ export async function generateReportTexts(data: BlueprintReportData): Promise<Re
     einleitungText,
     executiveSummary: finalSections.executiveSummary,
     contextPageText,
-    digitalizationIntro,
     scoreAnalysis,
     moduleInsights,
     moduleDetailedAnalysis,
