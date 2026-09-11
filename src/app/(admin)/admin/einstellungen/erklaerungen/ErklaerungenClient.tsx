@@ -122,8 +122,9 @@ export function ErklaerungenClient({
       {!hasRecordingConsent && (
         <div className="mb-5">
           <Banner kind="info">
-            Es ist keine aktive Einwilligung vom Typ „Einwilligung Vertragsaufzeichnung"
-            konfiguriert. Ohne sie lässt sich keine Aufzeichnung starten.
+            Es ist keine aktive Einwilligung vom Typ &bdquo;Einwilligung
+            Vertragsaufzeichnung&ldquo; konfiguriert. Ohne sie l&auml;sst sich keine
+            Aufzeichnung starten.
           </Banner>
         </div>
       )}

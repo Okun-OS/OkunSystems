@@ -20,6 +20,19 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Module
+
+- **Closing Portal** — Vertragsabschluss, Beweiskette, Vertragsaufzeichnung und
+  Rechnungssystem: [`docs/closing-portal.md`](docs/closing-portal.md)
+
+### Tests
+
+```bash
+npm run test:unit    # Rechenkerne, Template Engine, Statusmaschine, Stammdaten
+npm run test:e2e     # vollständiger Closing-Durchlauf gegen PostgreSQL
+npm run test:http    # Routing, Autorisierung, Idempotenz gegen laufenden Server
+```
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

@@ -117,7 +117,8 @@ export async function startFakeDaily(): Promise<FakeDaily> {
     payload: Buffer.from("FAKE-MP4-CONTENT-FOR-TESTS"),
   };
 
-  let self: FakeDaily;
+  // Wird gesetzt, sobald der Server einen Port hat.
+  let serverPort = 0;
 
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url ?? "/", "http://localhost");
@@ -143,7 +144,7 @@ export async function startFakeDaily(): Promise<FakeDaily> {
     if (req.method === "GET" && /^\/recordings\/[^/]+\/access-link$/.test(path)) {
       if (state.failAccessLink) return json(500, { error: "temporär nicht verfügbar" });
       return json(200, {
-        download_link: `http://127.0.0.1:${self.port}/download/${state.recordingId}`,
+        download_link: `http://127.0.0.1:${serverPort}/download/${state.recordingId}`,
       });
     }
     // GET /download/<id> → eigentliche Datei
@@ -173,13 +174,12 @@ export async function startFakeDaily(): Promise<FakeDaily> {
   });
 
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
-  const port = (server.address() as { port: number }).port;
+  serverPort = (server.address() as { port: number }).port;
 
-  self = {
+  return {
     server,
-    port,
+    port: serverPort,
     state,
     close: () => new Promise<void>((resolve) => server.close(() => resolve())),
   };
-  return self;
 }

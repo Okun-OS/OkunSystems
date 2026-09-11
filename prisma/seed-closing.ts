@@ -45,12 +45,49 @@ async function seedMasterDataRequirements() {
   if (created > 0) console.log(`  ✅ ${created} Stammdaten-Pflichtfelder angelegt`);
 }
 
+const SHIPPED_NOTE = "Auslieferungsstand";
+
 async function seedDocumentTemplates() {
   for (const template of DEFAULT_TEMPLATES) {
     const existing = await prisma.documentTemplate.findFirst({
       where: { type: template.type },
+      include: { versions: true },
     });
-    if (existing) continue;
+
+    if (existing) {
+      // Unveränderte Auslieferungsvorlagen dürfen nachgezogen werden.
+      // Sobald der Admin eine eigene Version angelegt hat, wird nichts
+      // überschrieben — seine Fassung bleibt maßgeblich.
+      const untouched =
+        existing.versions.length === 1 && existing.versions[0].note === SHIPPED_NOTE;
+      if (!untouched) continue;
+
+      const shipped = existing.versions[0];
+      if (shipped.html === template.html && shipped.css === template.css) continue;
+
+      const nextVersion = existing.currentVersion + 1;
+      await prisma.documentTemplateVersion.create({
+        data: {
+          templateId: existing.id,
+          version: nextVersion,
+          html: template.html,
+          css: template.css,
+          note: SHIPPED_NOTE,
+        },
+      });
+      await prisma.documentTemplate.update({
+        where: { id: existing.id },
+        data: { currentVersion: nextVersion },
+      });
+      // Die alte Version bleibt erhalten; bereits erzeugte Dokumente
+      // verweisen weiterhin auf ihre Version.
+      await prisma.documentTemplateVersion.updateMany({
+        where: { templateId: existing.id, version: shipped.version },
+        data: { note: `${SHIPPED_NOTE} (abgelöst)` },
+      });
+      console.log(`  ✅ Dokumentvorlage aktualisiert: ${template.name} → v${nextVersion}`);
+      continue;
+    }
     const created = await prisma.documentTemplate.create({
       data: {
         type: template.type,
@@ -67,7 +104,7 @@ async function seedDocumentTemplates() {
         version: 1,
         html: template.html,
         css: template.css,
-        note: "Auslieferungsstand",
+        note: SHIPPED_NOTE,
       },
     });
     console.log(`  ✅ Dokumentvorlage angelegt: ${template.name}`);

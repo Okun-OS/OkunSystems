@@ -23,7 +23,14 @@ const SHARED_CSS = `
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  .sheet { width: 210mm; min-height: 297mm; padding: 18mm 20mm 24mm; position: relative; }
+  /* Flex-Spalte: bei kurzen Dokumenten wird die Fußzeile an den Seitenfuß
+     geschoben, bei mehrseitigen Dokumenten fließt sie hinter den Inhalt und
+     überlagert ihn nicht. */
+  .sheet {
+    width: 210mm; min-height: 297mm; padding: 18mm 20mm 14mm;
+    display: flex; flex-direction: column;
+  }
+  .sheet > * { flex-shrink: 0; }
   .letterhead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12mm; }
   .letterhead__logo img { height: 13mm; display: block; }
   .letterhead__wordmark { font-size: 17pt; font-weight: 700; letter-spacing: .12em; color: #0f1720; }
@@ -62,10 +69,12 @@ const SHARED_CSS = `
   }
   .note { background: #f5f8fb; border-left: 2pt solid #00b8ff; padding: 3mm 4mm; font-size: 9pt; margin: 6mm 0 0; }
   .footer {
-    position: absolute; left: 20mm; right: 20mm; bottom: 10mm;
-    border-top: .4pt solid #d8e0ea; padding-top: 3mm;
+    margin-top: auto; padding-top: 3mm;
+    border-top: .4pt solid #d8e0ea;
     display: flex; gap: 8mm; font-size: 7.5pt; color: #5b6b7f; line-height: 1.45;
+    break-inside: avoid;
   }
+  .footer__spacer { height: 8mm; }
   .footer__col { flex: 1; }
   .footer__title { font-weight: 700; color: #0f1720; margin-bottom: .8mm; }
   .muted { color: #5b6b7f; }
@@ -94,6 +103,7 @@ const LETTERHEAD = `
 `;
 
 const FOOTER = `
+  <div class="footer__spacer"></div>
   <div class="footer">
     <div class="footer__col">
       <div class="footer__title">{{company.name}}</div>
