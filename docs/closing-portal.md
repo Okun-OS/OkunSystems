@@ -70,15 +70,18 @@ protokolliert wird.
 | `/admin/einstellungen/closing-scripts` | Teleprompter-Texte und Platzhalterkatalog |
 | `/admin/einstellungen/vorlagen` | Vorlagen-Editor, Versionen, Custom Placeholder, Live-Vorschau |
 | `/admin/sales/leads/[id]` | Stammdatenpanel; „Closing Meeting erstellen" erst bei Vollständigkeit |
-| `/admin/sales/closing/[sessionId]` | Tab „Vertragsabschluss" mit Teleprompter und Recording-Steuerung |
+| `/admin/sales/closing/[sessionId]` | Tabs „Vertragsabschluss" (Teleprompter, Recording) und „Präsentation" (Folien vorbereiten, freigeben lassen, im Gespräch steuern) |
+| `/admin/sales/praesentationen` | Nur ADMIN: alle eingereichten Präsentationen zur Freigabe |
 | `/admin/sales/closing/[sessionId]/audit` | Read-only Abschlussnachweis |
 | `/admin/sales/rechnungen/neu`, `/[id]` | Rechnungseditor mit dynamischen Positionen und Vorschau |
-| `/closing/[token]` | Kundenseite: Angebot → Unterlagen → Bestätigen → Aufzeichnung → Zahlung → Abschluss |
+| `/closing/[token]` | Kundenseite: eingebettetes Videogespräch im OKUN-Fenster, daneben Angebot (inkl. PDF-Ansicht), Unterlagen, Erklärungen, Rechnung |
 
 ### API-Routen
 
 Neu: `/api/closing/state`, `/api/closing/confirm`, `/api/closing/document`,
+`/api/closing/offer-pdf`, `/api/closing/slide`, `/api/closing/advisor-presence`,
 `/api/admin/contract-documents/upload`, `/api/admin/contract-documents/download`,
+`/api/admin/presentations/upload`, `/api/admin/presentations/slide`,
 `/api/admin/invoices/preview`, `/api/admin/invoices/pdf`, `/api/admin/template-preview`.
 
 Entfernt, weil sie `accepted = true` ungeprüft aus dem Browser übernommen bzw.
@@ -90,7 +93,8 @@ die Einwilligungsprüfung umgangen haben:
 
 ## 3. Datenmodell
 
-**Neue Modelle:** `ContractDocument`, `ConsentDefinition`, `ConsentDefinitionRevision`,
+**Neue Modelle:** `ClosingPresentation`, `ClosingPresentationSlide`,
+`ContractDocument`, `ConsentDefinition`, `ConsentDefinitionRevision`,
 `ConsentAuditEvent`, `ClosingScript`, `ClosingScriptRevision`, `ClosingRecording`,
 `ClosingCertificate`, `DocumentTemplate`, `DocumentTemplateVersion`, `CustomPlaceholder`,
 `InvoiceNumberSequence`, `InvoicePaymentEvent`, `StripeWebhookEvent`, `MasterDataRequirement`.
@@ -146,6 +150,14 @@ nachgezogen; sobald ein Admin die Vorlage bearbeitet hat, bleibt seine Fassung m
   autorisierte Endpunkte ausgeliefert. Die Kundenseite kann ausschließlich Dokumentversionen
   öffnen, die zu ihrem Abschluss gehören. Die Aufzeichnung wird dem Kunden **nicht**
   bereitgestellt.
+* **Präsentationen.** `/api/closing/slide` liefert eine Folie nur aus, wenn sie zu einer
+  **freigegebenen** Präsentation gehört **und** der Berater genau diese Präsentation für
+  genau diesen Abschluss gestartet hat. Ein Entwurf erreicht den Kunden nie — auch dann
+  nicht, wenn seine ID bekannt wäre. Hochladen darf ein Closer nur für seine eigenen
+  Abschlüsse (`requireSessionAccess`), freigeben ausschließlich ein Administrator.
+* **Anwesenheit des Beraters.** Der Arbeitsplatz des Beraters meldet alle 30 Sekunden einen
+  Heartbeat; die Kundenseite wertet ihn nur aus, wenn er jünger als 90 Sekunden ist. Ein
+  abgestürzter Tab hinterlässt damit keinen dauerhaft „anwesenden" Berater.
 * **Idempotenz.** Unique-Constraints statt Best-Effort-Prüfungen:
   `ContractSnapshot.closingSessionId`, `ConsentAuditEvent.idempotencyKey`,
   `ClosingCertificate(closingSessionId, version)`, `Invoice.idempotencyKey`,
@@ -232,11 +244,12 @@ Server (`BASE_URL`, Default `http://localhost:3100`); `test:http` zusätzlich da
 4. **Version aktivieren** — jede Version lässt sich einzeln aktivieren. Die bisher aktive
    wird nur deaktiviert, niemals überschrieben. Bereits erteilte Zustimmungen bleiben mit
    ihrer Version verknüpft.
-5. **Checkbox konfigurieren** — *Erklärungen*: Titel, Typ, exakter Checkbox-Text,
-   Dokumentzuordnung, Pflicht/optional, Paketzuordnung, Reihenfolge. Für die Aufzeichnung
-   eine Erklärung vom Typ *Einwilligung Vertragsaufzeichnung* anlegen; ohne sie lässt sich
-   keine Aufzeichnung starten. Eine Textänderung erhöht die Version und wirkt nur auf neue
-   Abschlüsse.
+5. **Checkbox konfigurieren** — direkt beim Dokument auf derselben Seite: *Text bearbeiten*
+   öffnet Titel, exakten Checkbox-Text, Art der Erklärung, Pflicht/optional und Reihenfolge.
+   Für die Aufzeichnung steht unten der Abschnitt *Erklärungen ohne Dokument*; dort eine
+   Erklärung vom Typ *Einwilligung Vertragsaufzeichnung* anlegen — ohne sie lässt sich keine
+   Aufzeichnung starten. Eine Textänderung erhöht die Fassung und wirkt nur auf neue
+   Abschlüsse; bereits bestätigte Texte bleiben unverändert.
 6. **Closing Script erstellen** — *Closing Scripts*: mindestens eine *Allgemeine Einleitung*
    und eine *Verbindliche Annahme*. Platzhalter wie `{{package_name}}` oder
    `{{one_time_price_net}}` stehen unten auf der Seite.
@@ -251,11 +264,16 @@ Server (`BASE_URL`, Default `http://localhost:3100`); `test:http` zusätzlich da
    Schlüssel (z. B. `project_reference`), Anzeigename, Typ. Im Template als
    `{{custom.project_reference}}` verwendbar; im Rechnungseditor erscheint dafür ein
    Eingabefeld. Systemfelder wie `invoice.gross_total` sind geschützt.
-10. **Test-Closing durchführen** — Lead anlegen, Stammdaten vervollständigen, Closing Meeting
+10. **Präsentation vorbereiten** — im Closing der Tab *Präsentation*: *Neue Präsentation*
+   anlegen, Folien hochladen (PNG/JPG/WebP je Folie, oder eine PDF als scrollbares
+   Dokument), dann *Zur Freigabe*. Ein Administrator gibt sie unter
+   *Sales & Closing → Präsentationen* frei. Im Gespräch *Starten* — der Kunde sieht die
+   Folie sofort im Portal, *Zurück*/*Weiter* blättert für ihn mit.
+11. **Test-Closing durchführen** — Lead anlegen, Stammdaten vervollständigen, Closing Meeting
    erstellen, Angebot präsentieren, *Vertragsabschluss starten*, Kundenlink öffnen,
    Erklärungen bestätigen, Aufzeichnung starten und beenden, Vertrag abschließen, Rechnung
    erstellen und finalisieren, Zahlungseingang bestätigen.
-11. **Audit-Protokoll prüfen** — im Closing über *Abschlussnachweis*
+12. **Audit-Protokoll prüfen** — im Closing über *Abschlussnachweis*
     (`/admin/sales/closing/<id>/audit`): Stammdaten-Snapshot, Contract Snapshot mit
     Integritätsprüfung, jede Erklärung mit Wortlaut, Zeitstempel und Dokument-Hash, das
     gerenderte Script, die Aufzeichnung, das Abschlussprotokoll, Zahlungs- und
@@ -298,11 +316,43 @@ idempotent und läuft beim nächsten Deploy erneut.
 
 ---
 
-## 10. Bekannte offene Punkte
+## 10. Videogespräch: warum Daily.co
+
+Das Gespräch läuft eingebettet im OKUN-Fenster (`iframe` auf den Daily-Raum), umgeben von
+OKUN-Kopfzeile, Angebot, Unterlagen und Erklärungen. Der Kunde verlässt das Portal dafür
+nicht; nach außen wirkt es wie eine OKUN-Oberfläche.
+
+Ein **eigenes** Videosystem statt Daily bedeutet nicht „WebRTC einbauen", sondern eine
+eigene Infrastruktur betreiben:
+
+| Baustein | Wofür | Aufwand |
+|---|---|---|
+| Signalisierung | Teilnehmer finden sich | überschaubar |
+| STUN/TURN-Server | Verbindungen durch Firmen-Firewalls; ohne TURN scheitern je nach Netz 10–20 % der Gespräche | Server + Traffic, laufend |
+| SFU (z. B. mediasoup, LiveKit) | mehr als zwei Teilnehmer, Bildschirmfreigabe, stabile Qualität | dauerhafte Betriebsverantwortung |
+| Serverseitige Aufzeichnung | die Beweiskette hängt daran: eine Aufzeichnung, die im Browser entsteht, ist verlierbar | eigene Renderfarm |
+| Betrieb | Skalierung, Regionen, Updates, Störungsdienst während laufender Abschlüsse | dauerhaft |
+
+Technisch möglich, wirtschaftlich selten sinnvoll, solange nicht sehr viele Gespräche
+parallel laufen. Der Austausch ist bewusst klein gehalten: die Videoschicht steckt in
+`src/lib/daily.ts` (Raum anlegen/verlängern), im `iframe` der Kundenseite und in der
+Aufzeichnungsübernahme in `src/lib/closing/recording.ts`. Ein Wechsel auf **LiveKit Cloud**
+oder eine **selbst gehostete LiveKit-Instanz** berührt genau diese drei Stellen; der
+restliche Ablauf (Snapshot, Erklärungen, Protokoll, Rechnung) bleibt unberührt. Das ist der
+realistische Zwischenschritt: gleiche API-Struktur, aber der Server steht bei OKUN.
+
+---
+
+## 11. Bekannte offene Punkte
 
 * **Aufzeichnungs-Zugriff für Kunden** ist bewusst nicht implementiert — Recordings liegen
   privat in R2 und erscheinen nicht in der Kundenablage. Eine spätere Freigabe braucht eine
   eigene Berechtigungslogik.
+* **Folienformat.** Bilder werden als einzelne Folie gezeigt und lassen sich weiterblättern;
+  eine PDF erscheint als ein scrollbares Dokument. Ein serverseitiges Zerlegen einer PDF in
+  einzelne Folien bräuchte einen Rasterizer (poppler oder pdf.js) — bewusst nicht ergänzt,
+  weil der Export „als Bilder" in PowerPoint, Keynote und Google Slides ohnehin vorhanden
+  ist.
 * **Retention Policies** sind vorbereitet (`ClosingRecording.retentionUntil`,
   `dailyDeleteAfter`), aber es läuft noch kein automatischer Job. `deleteDailyCopyIfDue()`
   wird derzeit manuell bzw. aus dem Closing heraus aufgerufen.

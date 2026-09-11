@@ -41,18 +41,20 @@ model User {
   lessonProgress        LessonProgress[]
   activityLogs          ActivityLog[]
   // Sales & Closing
-  assignedLeads         Company[]        @relation("CompanyCloser")
-  closerSessions        ClosingSession[] @relation("CloserUser")
+  assignedLeads         Company[]                    @relation("CompanyCloser")
+  closerSessions        ClosingSession[]             @relation("CloserUser")
   createdOfferTemplates OfferTemplate[]
-  createdOffers         Offer[]          @relation("OfferCreatedBy")
-  createdInvoices       Invoice[]        @relation("InvoiceCreatedBy")
-  confirmedInvoices     Invoice[]        @relation("InvoiceConfirmedBy")
-  createdContractDocs   ContractDocument[]        @relation("ContractDocumentCreatedBy")
-  createdConsentDefs    ConsentDefinition[]       @relation("ConsentDefinitionCreatedBy")
-  createdClosingScripts ClosingScript[]           @relation("ClosingScriptCreatedBy")
-  invoicePaymentEvents  InvoicePaymentEvent[]     @relation("InvoicePaymentActor")
+  createdOffers         Offer[]                      @relation("OfferCreatedBy")
+  createdInvoices       Invoice[]                    @relation("InvoiceCreatedBy")
+  confirmedInvoices     Invoice[]                    @relation("InvoiceConfirmedBy")
+  createdContractDocs   ContractDocument[]           @relation("ContractDocumentCreatedBy")
+  createdConsentDefs    ConsentDefinition[]          @relation("ConsentDefinitionCreatedBy")
+  createdClosingScripts ClosingScript[]              @relation("ClosingScriptCreatedBy")
+  invoicePaymentEvents  InvoicePaymentEvent[]        @relation("InvoicePaymentActor")
   createdLegalDocs      LegalDocument[]
   closingEvents         ClosingEvent[]
+  createdPresentations  ClosingPresentation[]        @relation("PresentationCreatedBy")
+  approvedPresentations ClosingPresentation[]        @relation("PresentationApprovedBy")
 }
 
 model Company {
@@ -71,15 +73,15 @@ model Company {
   updatedAt     DateTime @updatedAt
 
   // Sales & Closing — Pre-Sale fields
-  leadStatus       String?   // prospect | closing_scheduled | in_progress | offer_presented | agreement_reached | consent_given | contract_closed | payment_pending | verloren | storniert | abgesagt
+  leadStatus       String? // prospect | closing_scheduled | in_progress | offer_presented | agreement_reached | consent_given | contract_closed | payment_pending | verloren | storniert | abgesagt
   leadSource       String?
   contractValue    Int?
   contractPackage  String?
-  paymentMethod    String?   // stripe | invoice
+  paymentMethod    String? // stripe | invoice
   convertedAt      DateTime?
   closingNotes     String?
   assignedCloserId String?
-  assignedCloser   User?    @relation("CompanyCloser", fields: [assignedCloserId], references: [id])
+  assignedCloser   User?     @relation("CompanyCloser", fields: [assignedCloserId], references: [id])
 
   // ─── Stammdaten für Vertrag / AVV / Rechnung (Closing Portal) ───────────
   legalForm          String? // GmbH | UG | AG | GmbH & Co. KG | e.K. | GbR | OHG | KG | Einzelunternehmen | Freiberufler | eG | eV | AöR | sonstige
@@ -97,7 +99,7 @@ model Company {
   contactPosition    String?
   contactEmail       String?
   contactPhone       String?
-  billingDiffers     Boolean @default(false)
+  billingDiffers     Boolean   @default(false)
   billingName        String?
   billingStreet      String?
   billingHouseNumber String?
@@ -107,7 +109,7 @@ model Company {
   billingEmail       String?
   activatedAt        DateTime?
 
-  users               User[]                      @relation("CompanyUsers")
+  users               User[]                       @relation("CompanyUsers")
   projects            Project[]
   appointments        Appointment[]
   documents           Document[]
@@ -131,19 +133,20 @@ model Company {
   invoices            Invoice[]
   closingEvents       ClosingEvent[]
   consentAuditEvents  ConsentAuditEvent[]
-  contextSessions     CompanyContextSession[] @relation("CompanyContextSessions")
+  presentations       ClosingPresentation[]
+  contextSessions     CompanyContextSession[]      @relation("CompanyContextSessions")
 }
 
 model Project {
-  id          String    @id @default(cuid())
-  title       String
-  description String?
-  status      String    @default("PLANNING")
-  phase       String?
-  startDate   DateTime?
-  endDate     DateTime?
-  progress    Int       @default(0)
-  createdAt   DateTime  @default(now())
+  id                String    @id @default(cuid())
+  title             String
+  description       String?
+  status            String    @default("PLANNING")
+  phase             String?
+  startDate         DateTime?
+  endDate           DateTime?
+  progress          Int       @default(0)
+  createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
   isVisibleToClient Boolean   @default(false)
 
@@ -183,20 +186,20 @@ model Task {
 }
 
 model Appointment {
-  id          String   @id @default(cuid())
-  title       String
-  type        String   @default("STRATEGY")
-  description String?
-  startTime   DateTime
-  endTime     DateTime
-  location    String?
-  meetingUrl  String?
-  status      String   @default("SCHEDULED")
-  notes       String?
+  id            String   @id @default(cuid())
+  title         String
+  type          String   @default("STRATEGY")
+  description   String?
+  startTime     DateTime
+  endTime       DateTime
+  location      String?
+  meetingUrl    String?
+  status        String   @default("SCHEDULED")
+  notes         String?
   bookedByName  String?
   bookedByEmail String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   companyId         String
   company           Company          @relation(fields: [companyId], references: [id])
@@ -218,7 +221,7 @@ model Document {
   isPublished Boolean  @default(false)
   isInternal  Boolean  @default(false)
   version     String?
-  r2Key       String?  // R2 object key for signed-URL generation
+  r2Key       String? // R2 object key for signed-URL generation
   visibility  String   @default("internal") // internal | customer
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -342,40 +345,40 @@ model CompanyContextSession {
   status            String    @default("ACTIVE") // ACTIVE | COMPLETED
   startedAt         DateTime  @default(now())
   completedAt       DateTime?
-  summary           String?   // AI-generated condensed summary for report generation
+  summary           String? // AI-generated condensed summary for report generation
   analysisSessionId String?   @unique
 
   entries CompanyContextEntry[]
 }
 
 model CompanyContextEntry {
-  id        String               @id @default(cuid())
+  id        String                @id @default(cuid())
   sessionId String
   session   CompanyContextSession @relation(fields: [sessionId], references: [id])
-  role      String               // "assistant" | "user"
+  role      String // "assistant" | "user"
   content   String
   order     Int
-  createdAt DateTime             @default(now())
+  createdAt DateTime              @default(now())
 }
 
 // ─── OKUN Blueprint™ Engine Models ───────────────────────────────────────────
 
 model AnalysisSession {
-  id            String    @id @default(cuid())
-  status        String    @default("ACTIVE") // ACTIVE | PAUSED | COMPLETED | ARCHIVED
-  phase         String    @default("INTRO")  // INTRO | PROFIL | PROZESSE | TIEFE | SYSTEME | GESCHAEFTSFUEHRUNG | ABSCHLUSS
-  currentArea   String?
-  completedAreas String   @default("[]")
-  hypotheses    String    @default("[]")
-  memorySnapshot String   @default("{}")
-  totalMessages Int       @default(0)
-  language      String    @default("de")
-  questionsAsked Int      @default(0)
-  lastActiveAt  DateTime?
-  startedAt     DateTime  @default(now())
-  resumedAt     DateTime?
-  completedAt   DateTime?
-  updatedAt     DateTime  @updatedAt
+  id             String    @id @default(cuid())
+  status         String    @default("ACTIVE") // ACTIVE | PAUSED | COMPLETED | ARCHIVED
+  phase          String    @default("INTRO") // INTRO | PROFIL | PROZESSE | TIEFE | SYSTEME | GESCHAEFTSFUEHRUNG | ABSCHLUSS
+  currentArea    String?
+  completedAreas String    @default("[]")
+  hypotheses     String    @default("[]")
+  memorySnapshot String    @default("{}")
+  totalMessages  Int       @default(0)
+  language       String    @default("de")
+  questionsAsked Int       @default(0)
+  lastActiveAt   DateTime?
+  startedAt      DateTime  @default(now())
+  resumedAt      DateTime?
+  completedAt    DateTime?
+  updatedAt      DateTime  @updatedAt
 
   // Blueprint 2.0 fields
   blueprintVersion   String  @default("1.0")
@@ -384,193 +387,193 @@ model AnalysisSession {
   pendingReviewCount Int     @default(0)
   reportUrl          String?
 
-  companyId String
-  company   Company               @relation(fields: [companyId], references: [id])
-  messages  ConversationMessage[]
-  processes ProcessProfile[]
-  problems  DetectedProblem[]
-  opportunities Opportunity[]
-  score     OkunScore?
-  progress  SessionProgress[]
-  evidence      ScoringEvidence[]
-  appointments  Appointment[]
+  companyId      String
+  company        Company               @relation(fields: [companyId], references: [id])
+  messages       ConversationMessage[]
+  processes      ProcessProfile[]
+  problems       DetectedProblem[]
+  opportunities  Opportunity[]
+  score          OkunScore?
+  progress       SessionProgress[]
+  evidence       ScoringEvidence[]
+  appointments   Appointment[]
   sessionAnswers SessionAnswer[]
 }
 
 model ConversationMessage {
-  id             String   @id @default(cuid())
-  role           String   // "user" | "assistant"
-  content        String
-  internalNotes  String?  // JSON: internal advisor reasoning, hypotheses formed, signals detected
-  memoryUpdates  String?  // JSON: what was stored to memory engine
-  createdAt      DateTime @default(now())
+  id            String   @id @default(cuid())
+  role          String // "user" | "assistant"
+  content       String
+  internalNotes String? // JSON: internal advisor reasoning, hypotheses formed, signals detected
+  memoryUpdates String? // JSON: what was stored to memory engine
+  createdAt     DateTime @default(now())
 
   sessionId String
   session   AnalysisSession @relation(fields: [sessionId], references: [id])
 }
 
 model ProcessProfile {
-  id            String   @id @default(cuid())
-  name          String
-  category      String   // from Process Library categories
-  libraryRef    String?  // reference to ProcessLibraryItem id if matched
-  isNew         Boolean  @default(false) // true if not in library → creates LearningProposal
-  trigger       String?  // what starts this process
-  goal          String?  // when is it successfully completed
-  roles         String   @default("[]")  // JSON array of involved roles
-  steps         String   @default("[]")  // JSON array of ProcessStep-like objects
-  systems       String   @default("[]")  // JSON array of tools/files/channels used
-  inputs        String   @default("[]")  // JSON: information sources
-  handoffs      String   @default("[]")  // JSON: handoff points
-  decisions     String   @default("[]")  // JSON: decision points
-  documentation String?  // how is this documented
-  frequency     String?  // how often does it occur
-  problems      String   @default("[]")  // JSON: observed problems in this process
-  maturityScore Int?     // 0-100 process maturity
+  id               String   @id @default(cuid())
+  name             String
+  category         String // from Process Library categories
+  libraryRef       String? // reference to ProcessLibraryItem id if matched
+  isNew            Boolean  @default(false) // true if not in library → creates LearningProposal
+  trigger          String? // what starts this process
+  goal             String? // when is it successfully completed
+  roles            String   @default("[]") // JSON array of involved roles
+  steps            String   @default("[]") // JSON array of ProcessStep-like objects
+  systems          String   @default("[]") // JSON array of tools/files/channels used
+  inputs           String   @default("[]") // JSON: information sources
+  handoffs         String   @default("[]") // JSON: handoff points
+  decisions        String   @default("[]") // JSON: decision points
+  documentation    String? // how is this documented
+  frequency        String? // how often does it occur
+  problems         String   @default("[]") // JSON: observed problems in this process
+  maturityScore    Int? // 0-100 process maturity
   officialVsActual String? // discrepancy between official and actual process
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   sessionId String
   session   AnalysisSession @relation(fields: [sessionId], references: [id])
   companyId String
-  company   Company  @relation(fields: [companyId], references: [id])
+  company   Company         @relation(fields: [companyId], references: [id])
 }
 
 model DetectedProblem {
-  id             String   @id @default(cuid())
-  symptom        String   // what the customer described
+  id               String   @id @default(cuid())
+  symptom          String // what the customer described
   operativeProblem String // what the actual operative problem is
-  rootCause      String?  // underlying root cause
-  category       String   // process | structure | leadership | automation | communication | sales | hr
-  severity       String   @default("MEDIUM") // LOW | MEDIUM | HIGH | CRITICAL
-  confidence     Int      @default(50)       // 0-100 confidence score
-  evidence       String   @default("[]")     // JSON array of evidence strings
-  libraryRef     String?  // reference to ProblemLibraryItem if matched
-  isNew          Boolean  @default(false)    // true if not in library → creates LearningProposal
-  isInternal     Boolean  @default(true)     // internal only, not shown to customer
-  processRef     String?  // reference to ProcessProfile id if applicable
-  createdAt      DateTime @default(now())
+  rootCause        String? // underlying root cause
+  category         String // process | structure | leadership | automation | communication | sales | hr
+  severity         String   @default("MEDIUM") // LOW | MEDIUM | HIGH | CRITICAL
+  confidence       Int      @default(50) // 0-100 confidence score
+  evidence         String   @default("[]") // JSON array of evidence strings
+  libraryRef       String? // reference to ProblemLibraryItem if matched
+  isNew            Boolean  @default(false) // true if not in library → creates LearningProposal
+  isInternal       Boolean  @default(true) // internal only, not shown to customer
+  processRef       String? // reference to ProcessProfile id if applicable
+  createdAt        DateTime @default(now())
 
-  sessionId String
-  session   AnalysisSession @relation(fields: [sessionId], references: [id])
-  companyId String
-  company   Company @relation(fields: [companyId], references: [id])
+  sessionId     String
+  session       AnalysisSession @relation(fields: [sessionId], references: [id])
+  companyId     String
+  company       Company         @relation(fields: [companyId], references: [id])
   opportunities Opportunity[]
 }
 
 model Opportunity {
   id           String   @id @default(cuid())
   title        String
-  type         String   // AUTOMATION | DELEGATION | STANDARDIZATION | TRANSPARENCY | SCALING
+  type         String // AUTOMATION | DELEGATION | STANDARDIZATION | TRANSPARENCY | SCALING
   description  String
-  impact       String   @default("MEDIUM")  // LOW | MEDIUM | HIGH | VERY_HIGH
-  effort       String   @default("MEDIUM")  // LOW | MEDIUM | HIGH
-  priority     Int      @default(2)          // 1=high, 2=medium, 3=low
+  impact       String   @default("MEDIUM") // LOW | MEDIUM | HIGH | VERY_HIGH
+  effort       String   @default("MEDIUM") // LOW | MEDIUM | HIGH
+  priority     Int      @default(2) // 1=high, 2=medium, 3=low
   timeSaving   String?
   okunSystem   String?
-  solutionType String?  // existing_okun_solution | configurable_solution | custom_automation | consulting_recommendation
+  solutionType String? // existing_okun_solution | configurable_solution | custom_automation | consulting_recommendation
   status       String   @default("identified") // identified | needs_review | recommended | accepted | rejected | converted_to_project
   evidence     String   @default("[]")
   isInternal   Boolean  @default(true)
   createdAt    DateTime @default(now())
 
-  sessionId   String
-  session     AnalysisSession  @relation(fields: [sessionId], references: [id])
-  companyId   String
-  company     Company @relation(fields: [companyId], references: [id])
-  problemId   String?
-  problem     DetectedProblem? @relation(fields: [problemId], references: [id])
+  sessionId String
+  session   AnalysisSession  @relation(fields: [sessionId], references: [id])
+  companyId String
+  company   Company          @relation(fields: [companyId], references: [id])
+  problemId String?
+  problem   DetectedProblem? @relation(fields: [problemId], references: [id])
 }
 
 model OkunScore {
-  id              String   @id @default(cuid())
-  totalScore      Int      // 0-100
-  maturityLevel   String   // INITIAL | DEVELOPING | DEFINED | MANAGED | OPTIMIZED
-  maturityLabel   String   // German label for customer
-  scoreProcesses  Int?     // 25% weight
-  scoreSales      Int?     // 20% weight
-  scoreLeadership Int?     // 15% weight
-  scoreAutomation Int?     // 15% weight
-  scoreStructure  Int?     // 10% weight
-  scoreCommunication Int?  // 10% weight
-  scoreHr         Int?     // 5% weight
-  strengths       String   @default("[]")   // JSON: 3-5 strengths (shown to customer)
-  potentials      String   @default("[]")   // JSON: 3-5 potential areas (shown to customer)
-  internalSummary String?  // full internal analysis summary
-  customerSummary String?  // short customer-facing summary
-  evidence        String   @default("{}")   // JSON: evidence per area
-  isPublished     Boolean  @default(false)
-  calculatedAt    DateTime @default(now())
-  publishedAt     DateTime?
+  id                 String    @id @default(cuid())
+  totalScore         Int // 0-100
+  maturityLevel      String // INITIAL | DEVELOPING | DEFINED | MANAGED | OPTIMIZED
+  maturityLabel      String // German label for customer
+  scoreProcesses     Int? // 25% weight
+  scoreSales         Int? // 20% weight
+  scoreLeadership    Int? // 15% weight
+  scoreAutomation    Int? // 15% weight
+  scoreStructure     Int? // 10% weight
+  scoreCommunication Int? // 10% weight
+  scoreHr            Int? // 5% weight
+  strengths          String    @default("[]") // JSON: 3-5 strengths (shown to customer)
+  potentials         String    @default("[]") // JSON: 3-5 potential areas (shown to customer)
+  internalSummary    String? // full internal analysis summary
+  customerSummary    String? // short customer-facing summary
+  evidence           String    @default("{}") // JSON: evidence per area
+  isPublished        Boolean   @default(false)
+  calculatedAt       DateTime  @default(now())
+  publishedAt        DateTime?
 
-  sessionId String @unique
+  sessionId String          @unique
   session   AnalysisSession @relation(fields: [sessionId], references: [id])
   companyId String
-  company   Company @relation(fields: [companyId], references: [id])
+  company   Company         @relation(fields: [companyId], references: [id])
 }
 
 model ProcessLibraryItem {
-  id          String   @id @default(cuid())
-  name        String
-  category    String   // Vertrieb | Kommunikation | Verwaltung | Personal | etc.
-  description String
-  typicalRoles String  @default("[]") // JSON
-  typicalSystems String @default("[]") // JSON
-  typicalProblems String @default("[]") // JSON
-  frequency   String?
-  isActive    Boolean  @default(true)
-  isCustom    Boolean  @default(false) // true = added via learning proposal
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-model ProblemLibraryItem {
   id              String   @id @default(cuid())
   name            String
-  symptomPatterns String   @default("[]") // JSON: keyword/phrase patterns that trigger detection
-  operativeProblem String
-  rootCause       String
-  category        String
-  severity        String   @default("MEDIUM")
-  opportunities   String   @default("[]") // JSON: typical opportunities this creates
-  okunSystems     String   @default("[]") // JSON: internal OKUN system references
+  category        String // Vertrieb | Kommunikation | Verwaltung | Personal | etc.
+  description     String
+  typicalRoles    String   @default("[]") // JSON
+  typicalSystems  String   @default("[]") // JSON
+  typicalProblems String   @default("[]") // JSON
+  frequency       String?
   isActive        Boolean  @default(true)
-  isCustom        Boolean  @default(false)
+  isCustom        Boolean  @default(false) // true = added via learning proposal
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
 
+model ProblemLibraryItem {
+  id               String   @id @default(cuid())
+  name             String
+  symptomPatterns  String   @default("[]") // JSON: keyword/phrase patterns that trigger detection
+  operativeProblem String
+  rootCause        String
+  category         String
+  severity         String   @default("MEDIUM")
+  opportunities    String   @default("[]") // JSON: typical opportunities this creates
+  okunSystems      String   @default("[]") // JSON: internal OKUN system references
+  isActive         Boolean  @default(true)
+  isCustom         Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
 model LearningProposal {
-  id          String   @id @default(cuid())
-  type        String   // NEW_PROCESS | NEW_PROBLEM | NEW_OPPORTUNITY
-  title       String
-  description String
-  proposedData String  // JSON: full proposed entity data
+  id              String    @id @default(cuid())
+  type            String // NEW_PROCESS | NEW_PROBLEM | NEW_OPPORTUNITY
+  title           String
+  description     String
+  proposedData    String // JSON: full proposed entity data
   sourceSessionId String?
   sourceCompanyId String?
-  evidence    String   @default("[]") // JSON
-  status      String   @default("PENDING") // PENDING | APPROVED | REJECTED
-  reviewNote  String?
-  reviewedAt  DateTime?
-  reviewedById String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  evidence        String    @default("[]") // JSON
+  status          String    @default("PENDING") // PENDING | APPROVED | REJECTED
+  reviewNote      String?
+  reviewedAt      DateTime?
+  reviewedById    String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   reviewedBy User? @relation(fields: [reviewedById], references: [id])
 }
 
 model CompanyMemory {
-  id          String   @id @default(cuid())
-  companyId   String   @unique
-  company     Company  @relation(fields: [companyId], references: [id])
-  profile     String   @default("{}")
-  roles       String   @default("[]")
-  systems     String   @default("[]")
-  challenges  String   @default("[]")
-  goals       String   @default("[]")
-  knowledgeDependencies String @default("[]")
-  updatedAt   DateTime @updatedAt
+  id                    String   @id @default(cuid())
+  companyId             String   @unique
+  company               Company  @relation(fields: [companyId], references: [id])
+  profile               String   @default("{}")
+  roles                 String   @default("[]")
+  systems               String   @default("[]")
+  challenges            String   @default("[]")
+  goals                 String   @default("[]")
+  knowledgeDependencies String   @default("[]")
+  updatedAt             DateTime @updatedAt
 }
 
 model QuestionTemplate {
@@ -593,61 +596,61 @@ model QuestionTemplate {
   // Blueprint 2.0 fields
   moduleNumber     Int?
   groupCode        String?
-  questionType     String   @default("B")
-  isGating         Boolean  @default(false)
-  isFollowUp       Boolean  @default(false)
+  questionType     String  @default("B")
+  isGating         Boolean @default(false)
+  isFollowUp       Boolean @default(false)
   parentExternalId String?
   internalWeight   Float?
-  activationConds  String   @default("[]")
+  activationConds  String  @default("[]")
 
-  progress         SessionProgress[]
-  answerOptions    AnswerOption[]
-  sessionAnswers   SessionAnswer[]
-  branchingFrom    BranchingRule[]  @relation("BranchingSource")
-  branchingTo      BranchingRule[]  @relation("BranchingTarget")
+  progress       SessionProgress[]
+  answerOptions  AnswerOption[]
+  sessionAnswers SessionAnswer[]
+  branchingFrom  BranchingRule[]   @relation("BranchingSource")
+  branchingTo    BranchingRule[]   @relation("BranchingTarget")
 }
 
 model AnswerOption {
-  id             String          @id @default(cuid())
-  externalId     String          @unique
+  id             String           @id @default(cuid())
+  externalId     String           @unique
   questionId     String
   question       QuestionTemplate @relation(fields: [questionId], references: [id])
   textDe         String
-  points         Int             @default(0)
-  isExclusive    Boolean         @default(false)
+  points         Int              @default(0)
+  isExclusive    Boolean          @default(false)
   signalCategory String?
-  signalValue    Int             @default(0)
-  order          Int             @default(0)
-  isActive       Boolean         @default(true)
+  signalValue    Int              @default(0)
+  order          Int              @default(0)
+  isActive       Boolean          @default(true)
 }
 
 model BranchingRule {
-  id               String          @id @default(cuid())
+  id               String           @id @default(cuid())
   sourceQuestionId String
   sourceQuestion   QuestionTemplate @relation("BranchingSource", fields: [sourceQuestionId], references: [id])
   targetQuestionId String
   targetQuestion   QuestionTemplate @relation("BranchingTarget", fields: [targetQuestionId], references: [id])
   conditionType    String
-  conditionValue   String          @default("{}")
+  conditionValue   String           @default("{}")
   action           String
-  priority         Int             @default(0)
+  priority         Int              @default(0)
   description      String?
-  createdAt        DateTime        @default(now())
+  createdAt        DateTime         @default(now())
 }
 
 model SessionAnswer {
-  id                String          @id @default(cuid())
+  id                String           @id @default(cuid())
   sessionId         String
-  session           AnalysisSession @relation(fields: [sessionId], references: [id])
+  session           AnalysisSession  @relation(fields: [sessionId], references: [id])
   questionId        String
   question          QuestionTemplate @relation(fields: [questionId], references: [id])
-  selectedOptionIds String          @default("[]")
+  selectedOptionIds String           @default("[]")
   freeText          String?
   computedScore     Int?
-  computedSignals   String          @default("{}")
-  status            String          @default("ANSWERED")
-  pendingReview     Boolean         @default(false)
-  answeredAt        DateTime        @default(now())
+  computedSignals   String           @default("{}")
+  status            String           @default("ANSWERED")
+  pendingReview     Boolean          @default(false)
+  answeredAt        DateTime         @default(now())
 
   @@unique([sessionId, questionId])
 }
@@ -666,23 +669,23 @@ model SolutionLibrary {
 }
 
 model SessionProgress {
-  id            String   @id @default(cuid())
+  id            String           @id @default(cuid())
   sessionId     String
-  session       AnalysisSession   @relation(fields: [sessionId], references: [id])
+  session       AnalysisSession  @relation(fields: [sessionId], references: [id])
   questionId    String
-  question      QuestionTemplate  @relation(fields: [questionId], references: [id])
+  question      QuestionTemplate @relation(fields: [questionId], references: [id])
   askedAt       DateTime?
   answeredAt    DateTime?
   answerSummary String?
-  skipped       Boolean  @default(false)
-  followUpsUsed Int      @default(0)
-  createdAt     DateTime @default(now())
+  skipped       Boolean          @default(false)
+  followUpsUsed Int              @default(0)
+  createdAt     DateTime         @default(now())
 
   @@unique([sessionId, questionId])
 }
 
 model ScoringEvidence {
-  id          String   @id @default(cuid())
+  id          String          @id @default(cuid())
   sessionId   String
   session     AnalysisSession @relation(fields: [sessionId], references: [id])
   category    String
@@ -690,73 +693,73 @@ model ScoringEvidence {
   weight      Int
   description String
   messageId   String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime        @default(now())
 }
 
 // ─── OKUN Client Platform Models ─────────────────────────────────────────────
 
 model Invitation {
-  id          String    @id @default(cuid())
-  token       String    @unique @default(uuid())
-  email       String
-  role        String    @default("CLIENT")
-  expiresAt   DateTime
-  usedAt      DateTime?
-  createdAt   DateTime  @default(now())
+  id        String    @id @default(cuid())
+  token     String    @unique @default(uuid())
+  email     String
+  role      String    @default("CLIENT")
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 
   companyId   String
-  company     Company   @relation(fields: [companyId], references: [id])
+  company     Company @relation(fields: [companyId], references: [id])
   createdById String
-  createdBy   User      @relation(fields: [createdById], references: [id])
+  createdBy   User    @relation(fields: [createdById], references: [id])
 }
 
 model LearningCategory {
-  id          String            @id @default(cuid())
+  id          String   @id @default(cuid())
   title       String
   description String?
-  order       Int               @default(0)
-  isActive    Boolean           @default(true)
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  chapters    LearningChapter[]
+  chapters LearningChapter[]
 }
 
 model LearningChapter {
-  id               String                       @id @default(cuid())
+  id               String   @id @default(cuid())
   title            String
   description      String?
-  contentType      String                       @default("mixed") // video | text | pdf | mixed
+  contentType      String   @default("mixed") // video | text | pdf | mixed
   thumbnailR2Key   String?
-  order            Int                          @default(0)
+  order            Int      @default(0)
   estimatedMinutes Int?
-  status           String                       @default("DRAFT") // DRAFT | PUBLISHED | ARCHIVED
-  availability     String                       @default("strategy_session") // immediate | strategy_session
-  isActive         Boolean                      @default(true)
-  createdAt        DateTime                     @default(now())
-  updatedAt        DateTime                     @updatedAt
+  status           String   @default("DRAFT") // DRAFT | PUBLISHED | ARCHIVED
+  availability     String   @default("strategy_session") // immediate | strategy_session
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  categoryId  String
-  category    LearningCategory             @relation(fields: [categoryId], references: [id])
-  lessons     LearningLesson[]
-  tags        LearningChapterTag[]
-  assignments CustomerLearningAssignment[]
+  categoryId         String
+  category           LearningCategory                   @relation(fields: [categoryId], references: [id])
+  lessons            LearningLesson[]
+  tags               LearningChapterTag[]
+  assignments        CustomerLearningAssignment[]
   packageAssignments PackageDefaultLearningAssignment[]
 }
 
 model LearningLesson {
-  id               String           @id @default(cuid())
+  id               String   @id @default(cuid())
   title            String
   description      String?
-  contentType      String           @default("video") // video | text | pdf
+  contentType      String   @default("video") // video | text | pdf
   r2Key            String?
   externalUrl      String?
-  order            Int              @default(0)
+  order            Int      @default(0)
   estimatedMinutes Int?
-  status           String           @default("DRAFT") // DRAFT | PUBLISHED | ARCHIVED
-  isActive         Boolean          @default(true)
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  status           String   @default("DRAFT") // DRAFT | PUBLISHED | ARCHIVED
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   chapterId String
   chapter   LearningChapter  @relation(fields: [chapterId], references: [id])
@@ -764,8 +767,8 @@ model LearningLesson {
 }
 
 model LearningTag {
-  id             String               @id @default(cuid())
-  name           String               @unique
+  id             String  @id @default(cuid())
+  name           String  @unique
   signalCategory String?
 
   chapters LearningChapterTag[]
@@ -787,7 +790,7 @@ model CustomerLearningAssignment {
   activatedAt   DateTime?
   rejectedAt    DateTime?
   rejectionNote String?
-  sessionId     String?   // Blueprint session that triggered the suggestion
+  sessionId     String? // Blueprint session that triggered the suggestion
 
   companyId    String
   company      Company         @relation(fields: [companyId], references: [id])
@@ -855,12 +858,12 @@ model CareSubscription {
 
 model LegalDocument {
   id            String   @id @default(cuid())
-  type          String   // AGB | DATENSCHUTZ | WIDERRUFSRECHT | AUFTRAGSVERARBEITUNG | recording_consent | sonstiges
+  type          String // AGB | DATENSCHUTZ | WIDERRUFSRECHT | AUFTRAGSVERARBEITUNG | recording_consent | sonstiges
   title         String
   version       String
   description   String?
-  content       String?  // inline text / HTML for the document body
-  r2Key         String?  // optional: key to a PDF file in R2
+  content       String? // inline text / HTML for the document body
+  r2Key         String? // optional: key to a PDF file in R2
   mimeType      String   @default("application/pdf")
   isActive      Boolean  @default(false)
   isRequired    Boolean  @default(true)
@@ -892,20 +895,20 @@ model LegalDocument {
 }
 
 model ClosingSession {
-  id               String    @id @default(cuid())
-  status           String    @default("closing_scheduled")
-  activeOfferId    String?
-  currentStep      String?
-  recordingStatus      String    @default("idle")
-  dailyRecordingId     String?
-  recordingR2Key       String?
-  clientPendingAction  String?
-  clientTokenHash      String    @unique
-  tokenExpiresAt   DateTime
-  startedAt        DateTime?
-  closedAt         DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id                  String    @id @default(cuid())
+  status              String    @default("closing_scheduled")
+  activeOfferId       String?
+  currentStep         String?
+  recordingStatus     String    @default("idle")
+  dailyRecordingId    String?
+  recordingR2Key      String?
+  clientPendingAction String?
+  clientTokenHash     String    @unique
+  tokenExpiresAt      DateTime
+  startedAt           DateTime?
+  closedAt            DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   appointmentId String?      @unique
   appointment   Appointment? @relation(fields: [appointmentId], references: [id])
@@ -923,14 +926,23 @@ model ClosingSession {
   paymentMethod       String?
   statusReason        String?
 
-  offers           Offer[]
-  consentRecords   ConsentRecord[]
-  contractSnapshot ContractSnapshot?
+  // Heartbeat: gesetzt, solange der Berater im Videoraum ist. Der Kunde sieht
+  // daran, ob er noch wartet oder beitreten kann.
+  advisorPresenceAt DateTime?
+
+  // Laufende Präsentation: der Berater steuert, der Kunde sieht mit.
+  livePresentationId String?
+  liveSlidePosition  Int?
+
+  offers             Offer[]
+  consentRecords     ConsentRecord[]
+  contractSnapshot   ContractSnapshot?
   recordings         ClosingRecording[]
   certificates       ClosingCertificate[]
   consentAuditEvents ConsentAuditEvent[]
-  invoices         Invoice[]
-  events           ClosingEvent[]
+  invoices           Invoice[]
+  events             ClosingEvent[]
+  presentations      ClosingPresentation[]
 }
 
 model OfferTemplate {
@@ -963,38 +975,38 @@ model OfferTemplate {
 }
 
 model Offer {
-  id               String    @id @default(cuid())
-  status           String    @default("draft")
-  currency         String    @default("EUR")
-  priceNet         Int
-  validUntil       DateTime
-  presentedAt      DateTime?
-  acceptedAt       DateTime?
-  pdfR2Key         String?
-  notes            String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id          String    @id @default(cuid())
+  status      String    @default("draft")
+  currency    String    @default("EUR")
+  priceNet    Int
+  validUntil  DateTime
+  presentedAt DateTime?
+  acceptedAt  DateTime?
+  pdfR2Key    String?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   companyId        String
-  company          Company        @relation(fields: [companyId], references: [id])
+  company          Company         @relation(fields: [companyId], references: [id])
   templateId       String?
-  template         OfferTemplate? @relation(fields: [templateId], references: [id])
+  template         OfferTemplate?  @relation(fields: [templateId], references: [id])
   closingSessionId String?
   closingSession   ClosingSession? @relation(fields: [closingSessionId], references: [id])
   createdById      String
-  createdBy        User           @relation("OfferCreatedBy", fields: [createdById], references: [id])
+  createdBy        User            @relation("OfferCreatedBy", fields: [createdById], references: [id])
 
   // ─── Closing Portal: eingefrorene Angebotskonditionen ────────────────────
-  offerNumber       String?  @unique
-  version           Int      @default(1)
+  offerNumber       String? @unique
+  version           Int     @default(1)
   packageType       String?
   recurringNetCents Int?
   recurringInterval String?
   minimumTermMonths Int?
   paymentTerms      String?
   vatRateBp         Int?
-  workforceIncluded Boolean  @default(false)
-  careIncluded      Boolean  @default(false)
+  workforceIncluded Boolean @default(false)
+  careIncluded      Boolean @default(false)
 
   lineItems      OfferLineItem[]
   consentRecords ConsentRecord[]
@@ -1156,11 +1168,11 @@ model ContractSnapshot {
   recurringInterval     String? // monthly | quarterly | yearly
   minimumTermMonths     Int?
   vatRateBp             Int? // Basispunkte, z. B. 1900 = 19,00 %
-  currency              String  @default("EUR")
+  currency              String    @default("EUR")
   paymentMethod         String? // stripe | invoice
   paymentTerms          String?
-  workforceIncluded     Boolean @default(false)
-  careIncluded          Boolean @default(false)
+  workforceIncluded     Boolean   @default(false)
+  careIncluded          Boolean   @default(false)
   contactPersonName     String?
   contactPersonPosition String?
   scriptRenderedAt      DateTime?
@@ -1190,7 +1202,7 @@ model PackageDefaultLearningAssignment {
 
 model SalesContent {
   id                String   @id @default(cuid())
-  type              String   // closing_script | objection | faq | package_info | guide | email_template
+  type              String // closing_script | objection | faq | package_info | guide | email_template
   category          String?
   title             String
   content           String
@@ -1535,4 +1547,65 @@ model MasterDataRequirement {
   displayOrder Int      @default(0)
   isActive     Boolean  @default(true)
   updatedAt    DateTime @updatedAt
+}
+
+/// Präsentation, die der Berater vor dem Gespräch vorbereitet und im Gespräch
+/// zeigt. Die Dateien liegen privat in R2; der Kunde sieht sie ausschließlich
+/// über kurzlebige Signed URLs und nur, solange der Berater die Präsentation
+/// gestartet hat.
+model ClosingPresentation {
+  id          String  @id @default(cuid())
+  title       String
+  description String?
+
+  /// draft | submitted | approved | archived
+  /// Nur freigegebene Präsentationen lassen sich im Gespräch starten.
+  status String @default("draft")
+
+  slideCount Int @default(0)
+
+  companyId        String?
+  company          Company?        @relation(fields: [companyId], references: [id])
+  closingSessionId String?
+  closingSession   ClosingSession? @relation(fields: [closingSessionId], references: [id])
+
+  createdById String
+  createdBy   User   @relation("PresentationCreatedBy", fields: [createdById], references: [id])
+
+  approvedAt   DateTime?
+  approvedById String?
+  approvedBy   User?     @relation("PresentationApprovedBy", fields: [approvedById], references: [id])
+  reviewNote   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  slides ClosingPresentationSlide[]
+
+  @@index([closingSessionId])
+  @@index([companyId])
+  @@index([status])
+}
+
+/// Eine Folie. Bilder werden als Folie angezeigt, eine PDF als scrollbares
+/// Dokument. Der SHA-256-Hash weist nach, dass die gezeigte Datei die
+/// freigegebene ist.
+model ClosingPresentationSlide {
+  id             String              @id @default(cuid())
+  presentationId String
+  presentation   ClosingPresentation @relation(fields: [presentationId], references: [id], onDelete: Cascade)
+
+  position Int
+  title    String?
+
+  r2Key    String
+  fileName String
+  mimeType String
+  fileSize Int
+  sha256   String
+
+  createdAt DateTime @default(now())
+
+  @@unique([presentationId, position])
+  @@index([presentationId])
 }

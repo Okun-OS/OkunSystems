@@ -100,6 +100,18 @@ export default async function ClosingWorkspacePage({
   const closure = await loadContractClosureData(sessionId);
   if (!closure) redirect("/admin/sales");
 
+  const presentations = await db.closingPresentation.findMany({
+    where: { closingSessionId: sessionId },
+    orderBy: { createdAt: "asc" },
+    include: {
+      slides: {
+        orderBy: { position: "asc" },
+        select: { id: true, position: true, title: true, fileName: true, mimeType: true },
+      },
+      approvedBy: { select: { name: true } },
+    },
+  });
+
   return (
     <ClosingWorkspaceClient
       closingSession={closingSession}
@@ -108,6 +120,19 @@ export default async function ClosingWorkspacePage({
       legalDocuments={legalDocuments}
       currentUserId={userId}
       closure={closure}
+      viewerRole={userRecord.role}
+      presentations={presentations.map((p) => ({
+        id: p.id,
+        title: p.title,
+        description: p.description,
+        status: p.status,
+        reviewNote: p.reviewNote,
+        approvedByName: p.approvedBy?.name ?? null,
+        approvedAt: p.approvedAt ? p.approvedAt.toISOString() : null,
+        slides: p.slides,
+      }))}
+      livePresentationId={closingSession.livePresentationId}
+      liveSlidePosition={closingSession.liveSlidePosition}
     />
   );
 }

@@ -15,6 +15,7 @@ import {
 
 export const TEMPLATE_TYPES = [
   "invoice",
+  "offer",
   "closing_certificate",
   "order_confirmation",
   "payment_reminder",

@@ -17,6 +17,7 @@ import {
   Package,
   Library,
   Receipt,
+  Monitor,
 } from "lucide-react";
 import { OkunLogo } from "./okun-logo";
 import { cn } from "@/lib/utils";
@@ -38,6 +39,12 @@ const salesSubItems = [
   { href: "/admin/sales/angebote", label: "Angebote", icon: Package, closer: false },
   { href: "/admin/sales/bibliothek", label: "Bibliothek", icon: Library, closer: false },
   { href: "/admin/sales/rechnungen", label: "Rechnungen", icon: Receipt, closer: false },
+  {
+    href: "/admin/sales/praesentationen",
+    label: "Präsentationen",
+    icon: Monitor,
+    closer: false,
+  },
 ];
 
 interface AdminSidebarProps {

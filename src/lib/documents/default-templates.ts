@@ -197,6 +197,92 @@ ${LETTERHEAD}
 ${FOOTER}
 </div>`;
 
+export const OFFER_TEMPLATE_HTML = `<div class="sheet">
+${LETTERHEAD}
+  <div class="addresses">
+    <div class="address">
+      <div class="address__return">{{company.returnAddressLine}}</div>
+      {{#each customer.addressLines}}<span class="address__line">{{this}}</span>{{/each}}
+    </div>
+    <div class="factbox">
+      {{#if offer.number}}<div class="factbox__row"><span class="factbox__key">Angebotsnummer</span><span class="factbox__value">{{offer.number}}</span></div>{{/if}}
+      <div class="factbox__row"><span class="factbox__key">Datum</span><span class="factbox__value">{{offer.date}}</span></div>
+      {{#if offer.validUntil}}<div class="factbox__row"><span class="factbox__key">Gültig bis</span><span class="factbox__value">{{offer.validUntil}}</span></div>{{/if}}
+      {{#if offer.closerName}}<div class="factbox__row"><span class="factbox__key">Ihr Ansprechpartner</span><span class="factbox__value">{{offer.closerName}}</span></div>{{/if}}
+      {{#if customer.vatId}}<div class="factbox__row"><span class="factbox__key">USt-IdNr. Kunde</span><span class="factbox__value">{{customer.vatId}}</span></div>{{/if}}
+    </div>
+  </div>
+
+  <h1>Angebot{{#if offer.number}} {{offer.number}}{{/if}}</h1>
+  <p class="subtitle">{{offer.packageName}}</p>
+
+  {{#if offer.hasLineItems}}
+  <table class="items">
+    <thead>
+      <tr>
+        <th class="pos">Pos.</th>
+        <th>Leistung</th>
+        <th class="num">Menge</th>
+        <th class="num">Einzelpreis</th>
+        <th class="num">Netto</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each offer.lineItems}}
+      <tr>
+        <td class="pos">{{position}}</td>
+        <td>{{description}}{{#if note}}<span class="desc__note">{{note}}</span>{{/if}}</td>
+        <td class="num">{{quantity}}{{#if unit}} {{unit}}{{/if}}</td>
+        <td class="num">{{unitPrice}}</td>
+        <td class="num">{{netAmount}}</td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+  {{/if}}
+
+  {{#if offer.hasExtras}}
+  <h2>Zusatzleistungen</h2>
+  <table class="items">
+    <tbody>
+      {{#each offer.extras}}
+      <tr>
+        <td>{{description}}{{#if note}}<span class="desc__note">{{note}}</span>{{/if}}</td>
+        <td class="num">{{netAmount}}</td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+  {{/if}}
+
+  <div class="totals">
+    <div class="totals__inner">
+      <div class="totals__row totals__row--sum"><span>Einmalige Investition netto</span><span>{{offer.oneTimeNet}}</span></div>
+      <div class="totals__row"><span>zzgl. USt. {{offer.vatRate}}</span><span>{{offer.oneTimeVat}}</span></div>
+      <div class="totals__row totals__row--grand"><span>Gesamtbetrag</span><span>{{offer.oneTimeGross}}</span></div>
+    </div>
+  </div>
+
+  {{#if offer.hasRecurring}}
+  <h2>Laufende Leistungen</h2>
+  <div class="kv"><span class="kv__key">Betrag netto</span><span class="kv__value">{{offer.recurringNet}}{{#if offer.recurringInterval}} {{offer.recurringInterval}}{{/if}}</span></div>
+  {{#if offer.minimumTerm}}<div class="kv"><span class="kv__key">Mindestlaufzeit</span><span class="kv__value">{{offer.minimumTerm}} Monate</span></div>{{/if}}
+  {{/if}}
+
+  {{#if offer.paymentTerms}}
+  <h2>Zahlung</h2>
+  <p>{{offer.paymentTerms}}</p>
+  {{/if}}
+
+  {{#if offer.hasDocuments}}
+  <h2>Vertragsgrundlagen</h2>
+  {{#each offer.documents}}
+  <div class="kv"><span class="kv__key">{{name}}</span><span class="kv__value">Version {{version}}</span></div>
+  {{/each}}
+  {{/if}}
+${FOOTER}
+</div>`;
+
 export const CLOSING_CERTIFICATE_TEMPLATE_HTML = `<div class="sheet">
 ${LETTERHEAD}
   <h1>Elektronisches Abschlussprotokoll</h1>
@@ -273,6 +359,14 @@ export const DEFAULT_TEMPLATES = [
     description:
       "OKUN-Briefbogen für Rechnungen. Alle Firmen- und Bankdaten stammen aus den Unternehmenseinstellungen.",
     html: INVOICE_TEMPLATE_HTML,
+    css: SHARED_CSS,
+  },
+  {
+    type: "offer" as const,
+    name: "OKUN Angebot",
+    description:
+      "OKUN-Briefbogen für das Angebot, das der Kunde im Closing-Portal einsehen kann. Positionen und Preise stammen aus dem eingefrorenen Vertragsstand.",
+    html: OFFER_TEMPLATE_HTML,
     css: SHARED_CSS,
   },
   {

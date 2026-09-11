@@ -79,6 +79,7 @@ async function main() {
   );
   const { saveCompanySettings } = await import("../src/lib/company-settings");
   const { buildClientClosingState } = await import("../src/lib/closing/client-view");
+  const { renderOfferPdf } = await import("../src/lib/closing/offer-document");
   const { normalizeStatus } = await import("../src/lib/closing/state-machine");
 
   const RUN = `e2e_${Date.now()}`;
@@ -816,6 +817,117 @@ async function main() {
     assert.equal(foreign, 0, "keine Zuordnung zu fremden Unternehmen");
   });
 
+  // ── Angebots-PDF ─────────────────────────────────────────────────────────
+  await step("Angebots-PDF entsteht aus dem eingefrorenen Vertragsstand", async () => {
+    const rendered = await renderOfferPdf(ids.session);
+    assert.ok(rendered, "kein Angebots-PDF erzeugt");
+    assert.equal(rendered!.source, "snapshot", "PDF muss aus dem Snapshot stammen");
+    assert.equal(
+      rendered!.buffer.subarray(0, 5).toString("latin1"),
+      "%PDF-",
+      "kein gültiges PDF"
+    );
+    assert.ok(rendered!.buffer.byteLength > 5000, "PDF verdächtig klein");
+    assert.match(rendered!.fileName, /^Angebot_.*\.pdf$/);
+  });
+
+  // ── Präsentation ─────────────────────────────────────────────────────────
+  await step("Präsentation wird erst nach Freigabe ausgeliefert", async () => {
+    const presentation = await db.closingPresentation.create({
+      data: {
+        title: "E2E-Folien",
+        status: "draft",
+        closingSessionId: ids.session,
+        companyId: ids.company,
+        createdById: ids.admin,
+        slideCount: 2,
+        slides: {
+          create: [
+            {
+              position: 1,
+              title: "Folie 1",
+              r2Key: `${RUN}/slide-1.png`,
+              fileName: "slide-1.png",
+              mimeType: "image/png",
+              fileSize: 1024,
+              sha256: "a".repeat(64),
+            },
+            {
+              position: 2,
+              title: "Folie 2",
+              r2Key: `${RUN}/slide-2.png`,
+              fileName: "slide-2.png",
+              mimeType: "image/png",
+              fileSize: 2048,
+              sha256: "b".repeat(64),
+            },
+          ],
+        },
+      },
+      include: { slides: { orderBy: { position: "asc" } } },
+    });
+
+    // Auch wenn eine nicht freigegebene Präsentation gestartet würde: der
+    // Kunde bekommt sie nicht zu sehen.
+    await db.closingSession.update({
+      where: { id: ids.session },
+      data: { livePresentationId: presentation.id, liveSlidePosition: 1 },
+    });
+    let state = await buildClientClosingState(ids.session);
+    assert.equal(state!.presentation, null, "Entwurf darf nicht ausgeliefert werden");
+
+    await db.closingPresentation.update({
+      where: { id: presentation.id },
+      data: { status: "approved", approvedAt: new Date(), approvedById: ids.admin },
+    });
+    state = await buildClientClosingState(ids.session);
+    assert.ok(state!.presentation, "freigegebene Präsentation fehlt");
+    assert.equal(state!.presentation!.position, 1);
+    assert.equal(state!.presentation!.slideCount, 2);
+    assert.equal(state!.presentation!.slideId, presentation.slides[0].id);
+
+    // Weiterblättern wirkt sofort auf der Kundenseite.
+    await db.closingSession.update({
+      where: { id: ids.session },
+      data: { liveSlidePosition: 2 },
+    });
+    state = await buildClientClosingState(ids.session);
+    assert.equal(state!.presentation!.slideId, presentation.slides[1].id);
+
+    // Beenden blendet sie wieder aus.
+    await db.closingSession.update({
+      where: { id: ids.session },
+      data: { livePresentationId: null, liveSlidePosition: null },
+    });
+    state = await buildClientClosingState(ids.session);
+    assert.equal(state!.presentation, null);
+  });
+
+  // ── Anwesenheit des Beraters ─────────────────────────────────────────────
+  await step("Kundenseite zeigt den Berater erst mit frischem Heartbeat", async () => {
+    await db.closingSession.update({
+      where: { id: ids.session },
+      data: { advisorPresenceAt: null },
+    });
+    let state = await buildClientClosingState(ids.session);
+    assert.equal(state!.advisorPresent, false, "ohne Heartbeat darf niemand anwesend sein");
+
+    await db.closingSession.update({
+      where: { id: ids.session },
+      data: { advisorPresenceAt: new Date() },
+    });
+    state = await buildClientClosingState(ids.session);
+    assert.equal(state!.advisorPresent, true);
+
+    // Ein abgestürzter Tab hinterlässt keinen dauerhaft „anwesenden" Berater.
+    await db.closingSession.update({
+      where: { id: ids.session },
+      data: { advisorPresenceAt: new Date(Date.now() - 5 * 60_000) },
+    });
+    state = await buildClientClosingState(ids.session);
+    assert.equal(state!.advisorPresent, false, "alter Heartbeat muss verfallen");
+  });
+
   // ── 30 Audit-Rekonstruktion ──────────────────────────────────────────────
   await step("30 · Audit View rekonstruiert den gesamten Vorgang", async () => {
     const session = await db.closingSession.findUnique({
@@ -883,6 +995,14 @@ async function cleanup(db: Db, run: string, ids: { admin: string; company: strin
     await db.closingCertificate.deleteMany({ where: { companyId: ids.company } });
     await db.closingRecording.deleteMany({ where: { closingSessionId: ids.session } });
     await db.closingEvent.deleteMany({ where: { companyId: ids.company } });
+    await db.closingSession.updateMany({
+      where: { id: ids.session },
+      data: { livePresentationId: null, liveSlidePosition: null },
+    });
+    await db.closingPresentationSlide.deleteMany({
+      where: { presentation: { companyId: ids.company } },
+    });
+    await db.closingPresentation.deleteMany({ where: { companyId: ids.company } });
     await db.contractSnapshot.deleteMany({ where: { companyId: ids.company } });
     await db.offerLineItem.deleteMany({ where: { offer: { companyId: ids.company } } });
     await db.offer.deleteMany({ where: { companyId: ids.company } });

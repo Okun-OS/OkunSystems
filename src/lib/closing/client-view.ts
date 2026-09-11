@@ -31,6 +31,17 @@ export type ClientConsentItem = {
   } | null;
 };
 
+/** Folie, die der Berater dem Kunden gerade zeigt. */
+export type ClientPresentation = {
+  title: string;
+  slideCount: number;
+  position: number;
+  slideId: string;
+  slideTitle: string | null;
+  /** image/* wird als Folie dargestellt, application/pdf als Dokument. */
+  mimeType: string;
+};
+
 export type ClientClosingState = {
   sessionId: string;
   status: ClosingStatus;
@@ -39,6 +50,9 @@ export type ClientClosingState = {
   contactName: string | null;
   meetingUrl: string | null;
   appointmentStart: string | null;
+  /** Der Berater ist im Videoraum (Heartbeat jünger als ADVISOR_PRESENCE_TTL_MS). */
+  advisorPresent: boolean;
+  presentation: ClientPresentation | null;
   snapshotReady: boolean;
   offer: {
     packageName: string | null;
@@ -54,6 +68,8 @@ export type ClientClosingState = {
     extras: Array<{ description: string; amount: string }>;
     validUntil: string | null;
   } | null;
+  /** Das Angebot kann als PDF geöffnet werden. */
+  offerPdfAvailable: boolean;
   consents: ClientConsentItem[];
   allRequiredConfirmed: boolean;
   recordingConsentConfirmed: boolean;
@@ -70,6 +86,13 @@ export type ClientClosingState = {
   isPaid: boolean;
   isActivated: boolean;
 };
+
+/**
+ * Wie lange der letzte Heartbeat des Beraters als „anwesend" gilt. Der
+ * Berater-Arbeitsplatz meldet sich alle 30 Sekunden; ein abgestürzter Tab
+ * lässt den Status damit nach spätestens 90 Sekunden verfallen.
+ */
+export const ADVISOR_PRESENCE_TTL_MS = 90_000;
 
 export async function buildClientClosingState(
   closingSessionId: string
@@ -211,6 +234,22 @@ export async function buildClientClosingState(
     }
   }
 
+  const advisorPresent = Boolean(
+    session.advisorPresenceAt &&
+      Date.now() - session.advisorPresenceAt.getTime() < ADVISOR_PRESENCE_TTL_MS
+  );
+
+  const presentation = await resolveLivePresentation(
+    session.livePresentationId,
+    session.liveSlidePosition
+  );
+
+  // Das PDF entsteht entweder aus einer hinterlegten Paket-Datei oder aus der
+  // Vorlage „Angebot". Ohne Angebotsdaten gibt es nichts zu zeigen.
+  const offerPdfAvailable =
+    Boolean(offer) &&
+    (await db.documentTemplate.count({ where: { type: "offer", isActive: true } })) > 0;
+
   return {
     sessionId: session.id,
     status,
@@ -224,8 +263,11 @@ export async function buildClientClosingState(
       null,
     meetingUrl: session.appointment?.meetingUrl ?? null,
     appointmentStart: session.appointment?.startTime.toISOString() ?? null,
+    advisorPresent,
+    presentation,
     snapshotReady: Boolean(data),
     offer,
+    offerPdfAvailable,
     consents,
     allRequiredConfirmed,
     recordingConsentConfirmed,
@@ -246,5 +288,46 @@ export async function buildClientClosingState(
     paymentMethod: session.paymentMethod,
     isPaid: status === "paid" || status === "customer_activated",
     isActivated: Boolean(session.company.activatedAt),
+  };
+}
+
+/**
+ * Die Folie, die der Berater gerade zeigt.
+ *
+ * Ausgeliefert werden nur Folien einer freigegebenen Präsentation. Der
+ * R2-Schlüssel bleibt auf dem Server; der Kunde erhält lediglich die Folien-ID
+ * und holt sich die Datei über eine kurzlebige Signed URL.
+ */
+async function resolveLivePresentation(
+  presentationId: string | null,
+  position: number | null
+): Promise<ClientPresentation | null> {
+  if (!presentationId) return null;
+
+  const presentation = await db.closingPresentation.findUnique({
+    where: { id: presentationId },
+    select: {
+      title: true,
+      status: true,
+      slides: {
+        orderBy: { position: "asc" },
+        select: { id: true, position: true, title: true, mimeType: true },
+      },
+    },
+  });
+  if (!presentation || presentation.status !== "approved") return null;
+  if (presentation.slides.length === 0) return null;
+
+  const wanted = position ?? presentation.slides[0].position;
+  const slide =
+    presentation.slides.find((s) => s.position === wanted) ?? presentation.slides[0];
+
+  return {
+    title: presentation.title,
+    slideCount: presentation.slides.length,
+    position: slide.position,
+    slideId: slide.id,
+    slideTitle: slide.title,
+    mimeType: slide.mimeType,
   };
 }

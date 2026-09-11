@@ -33,6 +33,7 @@ import { setSpecialStatus } from "../portal-actions";
 import { isFailure } from "@/lib/action-result";
 import { STATUS_LABELS as CLOSING_STATUS_LABELS, normalizeStatus } from "@/lib/closing/state-machine";
 import { ContractClosurePanel, type ContractClosureData } from "./ContractClosurePanel";
+import { PresentationPanel, type PresentationItem } from "./PresentationPanel";
 
 // ─── Closing checklist definition ────────────────────────────────────────────
 const CLOSING_CHECKLIST = [
@@ -232,6 +233,11 @@ interface Props {
   currentUserId: string;
   /** Serverseitig ermittelter Stand des Vertragsabschlusses. */
   closure: ContractClosureData;
+  /** Rolle des angemeldeten Benutzers — nur ADMIN gibt Präsentationen frei. */
+  viewerRole: string;
+  presentations: PresentationItem[];
+  livePresentationId: string | null;
+  liveSlidePosition: number | null;
 }
 
 // ─── Call timer ────────────────────────────────────────────────────────────────
@@ -268,10 +274,14 @@ export function ClosingWorkspaceClient({
   legalDocuments,
   currentUserId,
   closure,
+  viewerRole,
+  presentations,
+  livePresentationId,
+  liveSlidePosition,
 }: Props) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<
-    "overview" | "maske" | "skript" | "angebot" | "abschluss" | "protokoll"
+    "overview" | "maske" | "praesentation" | "skript" | "angebot" | "abschluss" | "protokoll"
   >("overview");
   const [callActive, setCallActive] = useState(false);
 
@@ -355,6 +365,46 @@ export function ClosingWorkspaceClient({
       vidPosInitialized.current = true;
     }
   }, [callActive]);
+
+  // ─── Anwesenheit melden ───────────────────────────────────────────────────
+  // Solange das Gespräch offen ist, wird alle 30 Sekunden ein Heartbeat
+  // gesendet. Der Kunde sieht dadurch „Ihr Berater ist da" statt einer leeren
+  // Warteschleife. Beim Verlassen und beim Schließen des Tabs wird abgemeldet.
+  useEffect(() => {
+    if (!callActive) return;
+    const sessionId = closingSession.id;
+
+    const announce = (present: boolean) => {
+      void fetch("/api/closing/advisor-presence", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ closingSessionId: sessionId, present }),
+        keepalive: true,
+      }).catch(() => {
+        // Ein verpasster Heartbeat ist unkritisch: der Status verfällt von
+        // selbst und der nächste Takt meldet erneut.
+      });
+    };
+
+    announce(true);
+    const interval = setInterval(() => announce(true), 30_000);
+
+    const onUnload = () => {
+      const body = JSON.stringify({ closingSessionId: sessionId, present: false });
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon("/api/closing/advisor-presence", body);
+      } else {
+        announce(false);
+      }
+    };
+    window.addEventListener("pagehide", onUnload);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("pagehide", onUnload);
+      announce(false);
+    };
+  }, [callActive, closingSession.id]);
 
   const handleChecklistChange = useCallback(
     (stepId: string, checked: boolean) => {
@@ -531,6 +581,12 @@ export function ClosingWorkspaceClient({
           [
             { key: "overview", label: "Übersicht" },
             { key: "maske", label: "Gesprächs-Maske" },
+            {
+              key: "praesentation",
+              label: livePresentationId
+                ? `Präsentation (läuft)`
+                : `Präsentation (${presentations.length})`,
+            },
             { key: "skript", label: `Bibliothek (${salesContent.length})` },
             { key: "angebot", label: `Angebote (${closingSession.offers.length})` },
             { key: "abschluss", label: "Vertragsabschluss" },
@@ -1006,6 +1062,16 @@ export function ClosingWorkspaceClient({
         </div>
       )}
 
+
+      {activeTab === "praesentation" && (
+        <PresentationPanel
+          closingSessionId={closingSession.id}
+          presentations={presentations}
+          livePresentationId={livePresentationId}
+          liveSlidePosition={liveSlidePosition}
+          isAdmin={viewerRole === "ADMIN"}
+        />
+      )}
 
       {activeTab === "protokoll" && (
         <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl overflow-hidden">
