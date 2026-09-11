@@ -15,4 +15,4 @@ cmds = [
 ]
 
 [start]
-cmd = "npx prisma db push --accept-data-loss && npx tsx prisma/seed.ts && npx tsx prisma/seed-library.ts && npx tsx prisma/seed-questions.ts && npx tsx prisma/seed-blueprint.ts && npx tsx prisma/seed-closing.ts && npm start"
+cmd = "npx prisma db push --accept-data-loss && (npx tsx prisma/seed.ts || echo \"WARNUNG: prisma/seed.ts fehlgeschlagen - Start wird fortgesetzt\") && (npx tsx prisma/seed-library.ts || echo \"WARNUNG: prisma/seed-library.ts fehlgeschlagen - Start wird fortgesetzt\") && (npx tsx prisma/seed-questions.ts || echo \"WARNUNG: prisma/seed-questions.ts fehlgeschlagen - Start wird fortgesetzt\") && (npx tsx prisma/seed-blueprint.ts || echo \"WARNUNG: prisma/seed-blueprint.ts fehlgeschlagen - Start wird fortgesetzt\") && (npx tsx prisma/seed-closing.ts || echo \"WARNUNG: prisma/seed-closing.ts fehlgeschlagen - Start wird fortgesetzt\") && npm start"

@@ -15,7 +15,9 @@
  */
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { MASTER_DATA_FIELDS } from "../src/lib/closing/master-data";
+// Nur importlose Module laden: kein @/-Alias, keine Datenbankschicht —
+// damit der Bootstrap unter `npx tsx` genauso läuft wie die übrigen Seeds.
+import { MASTER_DATA_FIELDS } from "../src/lib/closing/master-data-catalog";
 import { DEFAULT_TEMPLATES } from "../src/lib/documents/default-templates";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
@@ -218,8 +220,10 @@ async function main() {
 
 main()
   .catch((err) => {
+    // Bewusst kein Fehlercode: der Bootstrap ist idempotent und läuft beim
+    // nächsten Deploy erneut. Er darf den Start der Anwendung nicht verhindern.
     console.error("❌ Closing-Portal-Bootstrap fehlgeschlagen:", err);
-    process.exitCode = 1;
+    console.error("   Die Anwendung startet trotzdem. Bitte dieses Log prüfen.");
   })
   .finally(async () => {
     await prisma.$disconnect();

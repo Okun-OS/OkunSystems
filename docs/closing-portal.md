@@ -167,6 +167,7 @@ Neu (alle optional, mit sicheren Defaults):
 | Variable | Default | Zweck |
 |---|---|---|
 | `CLOSING_TOKEN_TTL_HOURS` | `72` | Gültigkeit des Kundenlinks |
+| `PORT` | `3000` | von Railway gesetzt |
 | `RECORDING_DAILY_DELETE_AFTER_HOURS` | `24` | Schutzfrist vor Löschen der Daily-Kopie |
 | `R2_ENDPOINT` | Cloudflare-Endpunkt | abweichender S3-kompatibler Endpunkt |
 | `R2_FORCE_PATH_STYLE` | `false` | Path-Style-Adressierung |
@@ -261,7 +262,31 @@ Server (`BASE_URL`, Default `http://localhost:3100`); `test:http` zusätzlich da
 
 ---
 
-## 9. Bekannte offene Punkte
+## 9. Deployment-Hinweise
+
+**Healthcheck.** `railway.json` enthält bewusst keinen `healthcheckPath` mehr. Grund: `/`
+liefert für einen nicht angemeldeten Aufrufer einen **307 auf `/login`** — je nach
+Prüfverhalten wertet Railway das als Fehlschlag, obwohl die Anwendung läuft.
+
+Wer den Check wieder aktivieren möchte, nimmt dafür `/api/health`. Der Endpunkt ist
+anmeldefrei, weiterleitungsfrei und berührt weder Datenbank noch Drittsysteme — er belegt
+genau das, was ein Healthcheck belegen soll: der Prozess beantwortet Anfragen.
+
+```json
+"deploy": { "healthcheckPath": "/api/health" }
+```
+
+**Startkette.** Jeder Seed-Schritt ist in `( … || echo "WARNUNG …" )` gekapselt. Ein
+scheiternder Seed schreibt damit eine Warnung ins Deploy-Log, verhindert aber nicht mehr,
+dass `npm start` ausgeführt wird. Nur `prisma db push` bleibt eine harte Voraussetzung —
+ohne passendes Schema wäre ein Start sinnlos.
+
+Der Closing-Bootstrap (`seed-closing.ts`) beendet sich zusätzlich immer mit Code 0: er ist
+idempotent und läuft beim nächsten Deploy erneut.
+
+---
+
+## 10. Bekannte offene Punkte
 
 * **Aufzeichnungs-Zugriff für Kunden** ist bewusst nicht implementiert — Recordings liegen
   privat in R2 und erscheinen nicht in der Kundenablage. Eine spätere Freigabe braucht eine
