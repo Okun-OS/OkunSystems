@@ -1,7 +1,22 @@
-import { db } from "@/lib/db";
-import { createHash } from "crypto";
-import { notFound } from "next/navigation";
+import { verifyClosingToken } from "@/lib/closing/token";
+import { buildClientClosingState } from "@/lib/closing/client-view";
 import { ClosingClientView } from "./ClosingClientView";
+import { OkunLogo } from "@/components/layout/okun-logo";
+
+const REASON_TEXT: Record<string, { title: string; body: string }> = {
+  expired: {
+    title: "Link abgelaufen",
+    body: "Dieser Zugang ist nicht mehr gültig. Bitte kontaktieren Sie Ihren Berater, um einen neuen Link zu erhalten.",
+  },
+  revoked: {
+    title: "Zugang widerrufen",
+    body: "Dieser Zugang wurde widerrufen. Bitte kontaktieren Sie Ihren Berater.",
+  },
+  not_found: {
+    title: "Link ungültig",
+    body: "Dieser Link ist uns nicht bekannt. Bitte prüfen Sie, ob Sie die vollständige Adresse aus Ihrer Einladung verwendet haben.",
+  },
+};
 
 export default async function ClosingClientPage({
   params,
@@ -9,42 +24,23 @@ export default async function ClosingClientPage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  const tokenHash = createHash("sha256").update(token).digest("hex");
+  const validation = await verifyClosingToken(token);
 
-  const closingSession = await db.closingSession.findUnique({
-    where: { clientTokenHash: tokenHash },
-    include: {
-      company: { select: { name: true } },
-      closer: { select: { name: true } },
-      appointment: {
-        select: { startTime: true, endTime: true, bookedByName: true, meetingUrl: true },
-      },
-      consentRecords: {
-        select: {
-          id: true,
-          legalDocumentId: true,
-          consentType: true,
-          agreementAt: true,
-        },
-        orderBy: { agreementAt: "asc" },
-      },
-    },
-  });
-
-  if (!closingSession) notFound();
-
-  if (new Date() > closingSession.tokenExpiresAt) {
+  if (!validation.ok) {
+    const text = REASON_TEXT[validation.reason] ?? REASON_TEXT.not_found;
     return (
-      <div className="min-h-screen bg-[#080d14] flex items-center justify-center p-6">
-        <div className="max-w-md mx-auto text-center">
-          <div className="text-5xl mb-6">⏱</div>
-          <h1 className="text-xl font-bold text-[#f0f0f0] mb-3">Link abgelaufen</h1>
-          <p className="text-[#666] text-sm leading-relaxed">
-            Dieser Einladungslink ist nicht mehr gültig. Bitte kontaktieren Sie Ihren Berater,
-            um einen neuen Link zu erhalten.
-          </p>
-          <p className="mt-4 text-xs text-[#444]">
-            <a href="mailto:info@okun-systems.de" className="hover:text-[#666] transition-colors">
+      <div className="min-h-screen bg-[#080c14] flex items-center justify-center p-6">
+        <div className="max-w-md w-full text-center">
+          <div className="flex justify-center mb-8">
+            <OkunLogo size="sm" />
+          </div>
+          <h1 className="text-xl font-bold text-[#eef2f7] mb-3">{text.title}</h1>
+          <p className="text-[#8899b4] text-sm leading-relaxed">{text.body}</p>
+          <p className="mt-6 text-xs text-[#4a5a70]">
+            <a
+              href="mailto:info@okun-systems.de"
+              className="hover:text-[#8899b4] transition-colors"
+            >
               info@okun-systems.de
             </a>
           </p>
@@ -53,46 +49,14 @@ export default async function ClosingClientPage({
     );
   }
 
-  const [activeOffer, legalDocuments] = await Promise.all([
-    closingSession.activeOfferId
-      ? db.offer.findUnique({
-          where: { id: closingSession.activeOfferId },
-          select: {
-            id: true,
-            priceNet: true,
-            currency: true,
-            validUntil: true,
-            status: true,
-            acceptedAt: true,
-            template: { select: { name: true, description: true, r2Key: true } },
-          },
-        })
-      : Promise.resolve(null),
-    db.legalDocument.findMany({
-      where: { isActive: true },
-      select: { id: true, title: true, type: true, version: true, isRequired: true, r2Key: true },
-      orderBy: { isRequired: "desc" },
-    }),
-  ]);
+  const state = await buildClientClosingState(validation.closingSessionId);
+  if (!state) {
+    return (
+      <div className="min-h-screen bg-[#080c14] flex items-center justify-center p-6">
+        <p className="text-[#8899b4] text-sm">Dieser Vorgang ist nicht mehr verfügbar.</p>
+      </div>
+    );
+  }
 
-  const sessionData = {
-    id: closingSession.id,
-    status: closingSession.status,
-    clientPendingAction: closingSession.clientPendingAction ?? null,
-    company: closingSession.company,
-    closer: closingSession.closer,
-    appointment: closingSession.appointment
-      ? {
-          startTime: closingSession.appointment.startTime,
-          endTime: closingSession.appointment.endTime,
-          bookedByName: closingSession.appointment.bookedByName,
-          meetingUrl: closingSession.appointment.meetingUrl ?? null,
-        }
-      : null,
-    activeOffer: activeOffer ?? null,
-    legalDocuments,
-    consentRecords: closingSession.consentRecords,
-  };
-
-  return <ClosingClientView session={sessionData} token={token} />;
+  return <ClosingClientView initialState={state} token={token} />;
 }

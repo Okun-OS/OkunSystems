@@ -45,6 +45,10 @@ model User {
   createdOffers         Offer[]          @relation("OfferCreatedBy")
   createdInvoices       Invoice[]        @relation("InvoiceCreatedBy")
   confirmedInvoices     Invoice[]        @relation("InvoiceConfirmedBy")
+  createdContractDocs   ContractDocument[]        @relation("ContractDocumentCreatedBy")
+  createdConsentDefs    ConsentDefinition[]       @relation("ConsentDefinitionCreatedBy")
+  createdClosingScripts ClosingScript[]           @relation("ClosingScriptCreatedBy")
+  invoicePaymentEvents  InvoicePaymentEvent[]     @relation("InvoicePaymentActor")
   createdLegalDocs      LegalDocument[]
   closingEvents         ClosingEvent[]
 }
@@ -75,6 +79,32 @@ model Company {
   assignedCloserId String?
   assignedCloser   User?    @relation("CompanyCloser", fields: [assignedCloserId], references: [id])
 
+  // ─── Stammdaten für Vertrag / AVV / Rechnung (Closing Portal) ───────────
+  legalForm          String? // GmbH | UG | AG | GmbH & Co. KG | e.K. | GbR | OHG | KG | Einzelunternehmen | Freiberufler | eG | eV | AöR | sonstige
+  street             String?
+  houseNumber        String?
+  postalCode         String?
+  city               String?
+  country            String?
+  registerCourt      String?
+  registerNumber     String?
+  vatId              String?
+  taxNumber          String?
+  contactFirstName   String?
+  contactLastName    String?
+  contactPosition    String?
+  contactEmail       String?
+  contactPhone       String?
+  billingDiffers     Boolean @default(false)
+  billingName        String?
+  billingStreet      String?
+  billingHouseNumber String?
+  billingPostalCode  String?
+  billingCity        String?
+  billingCountry     String?
+  billingEmail       String?
+  activatedAt        DateTime?
+
   users               User[]                      @relation("CompanyUsers")
   projects            Project[]
   appointments        Appointment[]
@@ -98,6 +128,7 @@ model Company {
   consentRecords      ConsentRecord[]
   invoices            Invoice[]
   closingEvents       ClosingEvent[]
+  consentAuditEvents  ConsentAuditEvent[]
   contextSessions     CompanyContextSession[] @relation("CompanyContextSessions")
 }
 
@@ -836,6 +867,23 @@ model LegalDocument {
   linkText      String?
   createdAt     DateTime @default(now())
 
+  // ─── Closing Portal: unveränderliche Versionierung + Integritätsnachweis ──
+  // Eine LegalDocument-Zeile ist EINE Version. Eine neue Version erzeugt eine
+  // neue Zeile und überschreibt niemals eine bestehende Datei.
+  sha256       String? // SHA-256 über die exakt ausgelieferten Bytes
+  fileName     String?
+  fileSize     Int?
+  validFrom    DateTime?
+  validUntil   DateTime?
+  supersedesId String?
+  packageScope Json? // string[] – null/[] = für alle Pakete gültig
+
+  contractDocumentId String?
+  contractDocument   ContractDocument? @relation(fields: [contractDocumentId], references: [id])
+
+  consentDefinitions ConsentDefinition[]
+  consentAuditEvents ConsentAuditEvent[]
+
   createdById    String
   createdBy      User            @relation(fields: [createdById], references: [id])
   consentRecords ConsentRecord[]
@@ -864,9 +912,21 @@ model ClosingSession {
   closerId      String
   closer        User         @relation("CloserUser", fields: [closerId], references: [id])
 
+  tokenRevokedAt      DateTime?
+  tokenIssuedAt       DateTime?
+  consentsConfirmedAt DateTime?
+  recordingReleasedAt DateTime?
+  contractClosedAt    DateTime?
+  activatedAt         DateTime?
+  paymentMethod       String?
+  statusReason        String?
+
   offers           Offer[]
   consentRecords   ConsentRecord[]
   contractSnapshot ContractSnapshot?
+  recordings         ClosingRecording[]
+  certificates       ClosingCertificate[]
+  consentAuditEvents ConsentAuditEvent[]
   invoices         Invoice[]
   events           ClosingEvent[]
 }
@@ -885,6 +945,15 @@ model OfferTemplate {
   version     Int      @default(1)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  // ─── Closing Portal: strukturierte Paketkonditionen ──────────────────────
+  recurringNetCents Int?
+  recurringInterval String? // monthly | quarterly | yearly
+  minimumTermMonths Int?
+  paymentTerms      String?
+  vatRateBp         Int?
+  workforceIncluded Boolean @default(false)
+  careIncluded      Boolean @default(false)
 
   createdById String
   createdBy   User    @relation(fields: [createdById], references: [id])
@@ -913,6 +982,18 @@ model Offer {
   createdById      String
   createdBy        User           @relation("OfferCreatedBy", fields: [createdById], references: [id])
 
+  // ─── Closing Portal: eingefrorene Angebotskonditionen ────────────────────
+  offerNumber       String?  @unique
+  version           Int      @default(1)
+  packageType       String?
+  recurringNetCents Int?
+  recurringInterval String?
+  minimumTermMonths Int?
+  paymentTerms      String?
+  vatRateBp         Int?
+  workforceIncluded Boolean  @default(false)
+  careIncluded      Boolean  @default(false)
+
   lineItems      OfferLineItem[]
   consentRecords ConsentRecord[]
   invoices       Invoice[]
@@ -927,6 +1008,10 @@ model OfferLineItem {
   totalCents     Int
   isExtra        Boolean @default(false)
   note           String?
+  kind           String  @default("one_time") // one_time | recurring | addon
+  unit           String?
+  quantityMilli  Int?
+  vatRateBp      Int?
 
   offerId String
   offer   Offer  @relation(fields: [offerId], references: [id])
@@ -987,6 +1072,32 @@ model Invoice {
   confirmedById    String?
   confirmedBy      User?           @relation("InvoiceConfirmedBy", fields: [confirmedById], references: [id])
 
+  // ─── Closing Portal: strukturierte Rechnung + eingefrorene Beträge ───────
+  invoiceDate        DateTime?
+  serviceDateFrom    DateTime?
+  serviceDateTo      DateTime?
+  servicePeriodText  String?
+  paymentTerms       String?
+  vatMode            String    @default("standard") // standard | reverse_charge | exempt | small_business
+  vatRateBp          Int?
+  netTotalCents      Int?
+  vatTotalCents      Int?
+  grossTotalCents    Int?
+  notes              String?
+  footerNote         String?
+  billingSnapshot    Json?
+  customPlaceholders Json?
+  templateId         String?
+  templateVersion    Int?
+  pdfSha256          String?
+  finalizedAt        DateTime?
+  finalizedById      String?
+  idempotencyKey     String?   @unique
+  contractSnapshotId String?
+  documentId         String? // verknüpftes Document in der Kundenablage
+
+  paymentEvents InvoicePaymentEvent[]
+
   items InvoiceItem[]
 }
 
@@ -997,6 +1108,16 @@ model InvoiceItem {
   quantity    Float  @default(1)
   unitPrice   Int
   totalPrice  Int
+
+  // ─── Closing Portal: exakte Beträge in Minor Units ───────────────────────
+  unit             String?
+  quantityMilli    Int? // Menge × 1000 → exakte Ganzzahl-Arithmetik
+  vatRateBp        Int?
+  discountBp       Int     @default(0)
+  netAmountCents   Int?
+  vatAmountCents   Int?
+  grossAmountCents Int?
+  sourceRef        String?
 
   invoiceId String
   invoice   Invoice @relation(fields: [invoiceId], references: [id])
@@ -1019,6 +1140,32 @@ model ContractSnapshot {
   companyName      String
   fullSnapshot     String   @default("{}")
   createdAt        DateTime @default(now())
+
+  // ─── Closing Portal: vollständig eingefrorener Vertragsstand ─────────────
+  data                  Json? // kompletter Snapshot (Organisation, Person, Angebot, Positionen, Dokumente …)
+  masterData            Json? // Stammdaten zum Abschlusszeitpunkt
+  documentVersions      Json? // [{ documentId, versionId, name, version, sha256 }]
+  renderedScript        Json? // gerenderte Script-Abschnitte inkl. Platzhalterwerten
+  snapshotHash          String? // SHA-256 über die kanonisierte Snapshot-Json
+  offerNumber           String?
+  contractDate          DateTime?
+  oneTimeNetCents       Int?
+  recurringNetCents     Int?
+  recurringInterval     String? // monthly | quarterly | yearly
+  minimumTermMonths     Int?
+  vatRateBp             Int? // Basispunkte, z. B. 1900 = 19,00 %
+  currency              String  @default("EUR")
+  paymentMethod         String? // stripe | invoice
+  paymentTerms          String?
+  workforceIncluded     Boolean @default(false)
+  careIncluded          Boolean @default(false)
+  contactPersonName     String?
+  contactPersonPosition String?
+  scriptRenderedAt      DateTime?
+  frozenAt              DateTime  @default(now())
+  idempotencyKey        String?   @unique
+
+  consentAuditEvents ConsentAuditEvent[]
 
   closingSessionId String         @unique
   closingSession   ClosingSession @relation(fields: [closingSessionId], references: [id])
@@ -1072,10 +1219,318 @@ model ClosingEvent {
   reason     String?
   occurredAt DateTime @default(now())
 
+  idempotencyKey String? @unique
+
   closingSessionId String
   closingSession   ClosingSession @relation(fields: [closingSessionId], references: [id])
   companyId        String
   company          Company        @relation(fields: [companyId], references: [id])
   actorId          String?
   actor            User?          @relation(fields: [actorId], references: [id])
+}
+
+// ─── OKUN Closing Portal ─────────────────────────────────────────────────────
+// Vertragsdokumente, Consent-Konfiguration, Audit-Trail, Closing-Scripts,
+// Recording-Archivierung, Abschlussprotokoll, Rechnungs-/Template-Engine.
+
+/// Logisches Vertragsdokument (z. B. „AGB"). Die einzelnen unveränderlichen
+/// Versionen liegen als LegalDocument-Zeilen darunter.
+model ContractDocument {
+  id           String   @id @default(cuid())
+  type         String // agb | avv | datenschutz | widerruf_b2b | anlage | sonstiges
+  name         String
+  description  String?
+  isActive     Boolean  @default(true)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  createdById String?
+  createdBy   User?   @relation("ContractDocumentCreatedBy", fields: [createdById], references: [id])
+
+  versions           LegalDocument[]
+  consentDefinitions ConsentDefinition[]
+  consentAuditEvents ConsentAuditEvent[]
+}
+
+/// Administrierbare Checkbox/Erklärung im Closing. Der Wortlaut ist frei
+/// bearbeitbar — auch der Text der Aufzeichnungs-Einwilligung.
+model ConsentDefinition {
+  id           String   @id @default(cuid())
+  key          String   @unique
+  title        String
+  checkboxText String
+  consentType  String // ACCEPTANCE | ACKNOWLEDGEMENT | RECORDING_CONSENT | OTHER
+  isRequired   Boolean  @default(true)
+  isActive     Boolean  @default(true)
+  displayOrder Int      @default(0)
+  appliesTo    Json? // string[] Paket-Keys; null/[] = alle Pakete
+  version      Int      @default(1)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  contractDocumentId String?
+  contractDocument   ContractDocument? @relation(fields: [contractDocumentId], references: [id])
+  documentVersionId  String? // optional an eine feste Version binden
+  documentVersion    LegalDocument?    @relation(fields: [documentVersionId], references: [id])
+  createdById        String?
+  createdBy          User?             @relation("ConsentDefinitionCreatedBy", fields: [createdById], references: [id])
+
+  revisions          ConsentDefinitionRevision[]
+  consentAuditEvents ConsentAuditEvent[]
+}
+
+/// Append-only Historie der Checkbox-Wortlaute.
+model ConsentDefinitionRevision {
+  id           String            @id @default(cuid())
+  definitionId String
+  definition   ConsentDefinition @relation(fields: [definitionId], references: [id])
+  version      Int
+  title        String
+  checkboxText String
+  consentType  String
+  isRequired   Boolean
+  appliesTo    Json?
+  createdById  String?
+  createdAt    DateTime          @default(now())
+
+  @@unique([definitionId, version])
+}
+
+/// Append-only Beweiskette der elektronischen Erklärungen.
+/// Wird nie über das Admin-UI verändert oder gelöscht — Korrekturen entstehen
+/// ausschließlich als Folgeevent mit supersedesEventId.
+model ConsentAuditEvent {
+  id                       String   @id @default(cuid())
+  closingSessionId         String
+  contractSnapshotId       String?
+  companyId                String
+  consentDefinitionId      String?
+  consentDefinitionVersion Int      @default(1)
+  consentType              String
+  checkboxText             String // exakter Wortlaut zum Zeitpunkt der Erklärung
+  accepted                 Boolean
+  serverTimestamp          DateTime @default(now())
+  timezone                 String
+
+  documentId           String?
+  documentVersionId    String?
+  documentName         String?
+  documentVersionLabel String?
+  documentSha256       String?
+
+  organizationName  String?
+  actingPersonName  String?
+  actingPersonEmail String?
+  sessionTokenHash  String?
+  ipAddress         String?
+  userAgent         String?
+
+  supersedesEventId String?
+  correctionReason  String?
+  idempotencyKey    String   @unique
+  createdAt         DateTime @default(now())
+
+  closingSession    ClosingSession     @relation(fields: [closingSessionId], references: [id])
+  contractSnapshot  ContractSnapshot?  @relation(fields: [contractSnapshotId], references: [id])
+  company           Company            @relation(fields: [companyId], references: [id])
+  consentDefinition ConsentDefinition? @relation(fields: [consentDefinitionId], references: [id])
+  document          ContractDocument?  @relation(fields: [documentId], references: [id])
+  documentVersion   LegalDocument?     @relation(fields: [documentVersionId], references: [id])
+
+  @@index([closingSessionId])
+  @@index([companyId])
+}
+
+/// Vom Admin verwalteter Text für die Vertragsaufzeichnung.
+model ClosingScript {
+  id           String   @id @default(cuid())
+  key          String   @unique
+  kind         String // GENERAL_INTRO | PACKAGE | ADDON | FINAL_ACCEPTANCE
+  title        String
+  body         String
+  packageType  String? // für kind = PACKAGE
+  addonKey     String? // für kind = ADDON
+  displayOrder Int      @default(0)
+  isActive     Boolean  @default(true)
+  version      Int      @default(1)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  createdById String?
+  createdBy   User?   @relation("ClosingScriptCreatedBy", fields: [createdById], references: [id])
+
+  revisions ClosingScriptRevision[]
+}
+
+model ClosingScriptRevision {
+  id          String        @id @default(cuid())
+  scriptId    String
+  script      ClosingScript @relation(fields: [scriptId], references: [id])
+  version     Int
+  title       String
+  body        String
+  createdById String?
+  createdAt   DateTime      @default(now())
+
+  @@unique([scriptId, version])
+}
+
+/// Vertragsaufzeichnung inkl. Migration Daily.co → privater R2-Bucket.
+model ClosingRecording {
+  id                 String    @id @default(cuid())
+  closingSessionId   String
+  contractSnapshotId String?
+  status             String    @default("pending") // pending | recording | stopped | migrating | archived | migration_failed
+  dailyRecordingId   String?   @unique
+  dailyRoomName      String?
+  startedAt          DateTime?
+  endedAt            DateTime?
+  durationSeconds    Int?
+  r2Key              String?
+  fileSize           Int?
+  sha256             String?
+  mimeType           String?
+  migrationAttempts  Int       @default(0)
+  lastError          String?
+  verifiedAt         DateTime?
+  dailyDeleteAfter   DateTime? // Schutzfrist – vorher darf die Daily-Kopie nicht gelöscht werden
+  dailyDeletedAt     DateTime?
+  retentionUntil     DateTime? // Vorbereitung für spätere Retention Policies
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  closingSession ClosingSession @relation(fields: [closingSessionId], references: [id])
+
+  @@index([closingSessionId])
+  @@index([status])
+}
+
+/// Elektronisches Abschlussprotokoll. Unveränderlich — eine Korrektur erzeugt
+/// eine neue Version, niemals ein Überschreiben.
+model ClosingCertificate {
+  id                 String   @id @default(cuid())
+  closingSessionId   String
+  contractSnapshotId String?
+  companyId          String
+  certificateNumber  String   @unique
+  version            Int      @default(1)
+  r2Key              String
+  sha256             String
+  fileSize           Int?
+  data               Json
+  templateId         String?
+  templateVersion    Int?
+  supersedesId       String?
+  documentId         String? // verknüpftes Document in der Kundenablage
+  generatedById      String?
+  generatedAt        DateTime @default(now())
+
+  closingSession ClosingSession @relation(fields: [closingSessionId], references: [id])
+
+  @@unique([closingSessionId, version])
+  @@index([companyId])
+}
+
+/// Zentrale Dokumentvorlage (Rechnung, Abschlussprotokoll, Auftragsbestätigung …).
+model DocumentTemplate {
+  id             String   @id @default(cuid())
+  type           String // invoice | closing_certificate | order_confirmation | payment_reminder | dunning | acceptance_protocol | strategy_protocol
+  name           String
+  description    String?
+  isActive       Boolean  @default(true)
+  isDefault      Boolean  @default(false)
+  currentVersion Int      @default(1)
+  createdById    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  versions           DocumentTemplateVersion[]
+  customPlaceholders CustomPlaceholder[]
+}
+
+model DocumentTemplateVersion {
+  id          String   @id @default(cuid())
+  templateId  String
+  version     Int
+  html        String
+  css         String   @default("")
+  settings    Json?
+  note        String?
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  template DocumentTemplate @relation(fields: [templateId], references: [id])
+
+  @@unique([templateId, version])
+}
+
+/// Vom Admin definierte Zusatzfelder ({{custom.<key>}}).
+model CustomPlaceholder {
+  id           String   @id @default(cuid())
+  templateId   String
+  key          String
+  label        String
+  type         String   @default("text") // text | multiline | number | date | currency | boolean
+  defaultValue String?
+  isRequired   Boolean  @default(false)
+  displayOrder Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  template DocumentTemplate @relation(fields: [templateId], references: [id])
+
+  @@unique([templateId, key])
+}
+
+/// Concurrency-sicherer Nummernkreis.
+model InvoiceNumberSequence {
+  id         String   @id // z. B. "invoice:2026"
+  scope      String   @default("invoice")
+  prefix     String
+  year       Int
+  lastNumber Int      @default(0)
+  padding    Int      @default(4)
+  updatedAt  DateTime @updatedAt
+}
+
+/// Append-only Audit für Zahlungsstatusänderungen.
+model InvoicePaymentEvent {
+  id             String   @id @default(cuid())
+  invoiceId      String
+  previousStatus String
+  newStatus      String
+  source         String // admin | stripe_webhook | system
+  actorId        String?
+  note           String?
+  externalRef    String?
+  amountCents    Int?
+  idempotencyKey String   @unique
+  occurredAt     DateTime @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
+  actor   User?   @relation("InvoicePaymentActor", fields: [actorId], references: [id])
+
+  @@index([invoiceId])
+}
+
+/// Idempotenz-Register für Stripe-Webhooks.
+model StripeWebhookEvent {
+  id          String   @id // Stripe event id
+  type        String
+  processedAt DateTime @default(now())
+}
+
+/// Administrierbarer Katalog der für den Vertragsabschluss nötigen Stammdaten.
+model MasterDataRequirement {
+  id           String   @id @default(cuid())
+  fieldKey     String   @unique
+  label        String
+  group        String   @default("company") // company | address | contact | billing | registry
+  helpText     String?
+  isRequired   Boolean  @default(true)
+  legalForms   Json? // string[]; null/[] = gilt für alle Rechtsformen
+  displayOrder Int      @default(0)
+  isActive     Boolean  @default(true)
+  updatedAt    DateTime @updatedAt
 }

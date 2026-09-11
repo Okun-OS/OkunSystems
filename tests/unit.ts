@@ -1,0 +1,340 @@
+/**
+ * Unit-Tests der Rechen- und Template-Kerne.
+ * Ausführen mit: npx tsx tests/unit.ts
+ */
+import assert from "node:assert/strict";
+import {
+  roundCents,
+  multiplyQuantity,
+  applyDiscountBp,
+  vatFromNet,
+  parseAmountToCents,
+  parseQuantityToMilli,
+  parseVatRateToBp,
+} from "../src/lib/money";
+import {
+  renderTemplate,
+  extractPlaceholders,
+  escapeHtml,
+} from "../src/lib/documents/template-engine";
+import { renderPlaceholders } from "../src/lib/closing/scripts";
+import {
+  normalizeStatus,
+  canTransition,
+  forwardPath,
+  allowedTransitions,
+} from "../src/lib/closing/state-machine";
+import {
+  validateMasterData,
+  MASTER_DATA_FIELDS,
+  REGISTERED_LEGAL_FORMS,
+  type ResolvedRequirement,
+} from "../src/lib/closing/master-data";
+import { calculateInvoiceTotals } from "../src/lib/invoicing/calc";
+import { sha256Canonical } from "../src/lib/documents/hash";
+
+let passed = 0;
+function test(name: string, fn: () => void) {
+  try {
+    fn();
+    passed++;
+    console.log(`  ✓ ${name}`);
+  } catch (err) {
+    console.error(`  ✗ ${name}`);
+    console.error(err);
+    process.exitCode = 1;
+  }
+}
+
+console.log("\nmoney");
+test("roundCents rundet kaufmännisch, auch negativ", () => {
+  assert.equal(roundCents(0.5), 1);
+  assert.equal(roundCents(1.4999), 1);
+  assert.equal(roundCents(-0.5), -1);
+  assert.equal(roundCents(2.5), 3);
+});
+test("multiplyQuantity ist frei von Floating-Point-Drift", () => {
+  // 0,1 × 3 × 1000 Cent → klassischer Float-Fehlerfall
+  assert.equal(multiplyQuantity(1000, 300), 300);
+  assert.equal(multiplyQuantity(3333, 3000), 9999);
+  assert.equal(multiplyQuantity(12345, 1500), 18518); // 123,45 × 1,5 = 185,175 → 185,18
+});
+test("vatFromNet rechnet in Basispunkten", () => {
+  assert.equal(vatFromNet(100000, 1900), 19000);
+  assert.equal(vatFromNet(999, 1900), 190); // 1,8981 → 1,90
+  assert.equal(vatFromNet(100000, 700), 7000);
+});
+test("applyDiscountBp", () => {
+  assert.equal(applyDiscountBp(100000, 1000), 90000);
+  assert.equal(applyDiscountBp(999, 1000), 899);
+  assert.throws(() => applyDiscountBp(1000, 20000));
+});
+test("parseAmountToCents akzeptiert deutsche und englische Schreibweise", () => {
+  assert.equal(parseAmountToCents("1.234,56"), 123456);
+  assert.equal(parseAmountToCents("1234.56"), 123456);
+  assert.equal(parseAmountToCents("1234"), 123400);
+  assert.equal(parseAmountToCents("12,5"), 1250);
+  assert.equal(parseAmountToCents("0,005"), 1); // aufrunden auf 1 Cent
+  assert.equal(parseAmountToCents("-49,99"), -4999);
+  assert.equal(parseAmountToCents("abc"), null);
+  assert.equal(parseAmountToCents(""), null);
+});
+test("parseQuantityToMilli", () => {
+  assert.equal(parseQuantityToMilli("1,5"), 1500);
+  assert.equal(parseQuantityToMilli("2"), 2000);
+  assert.equal(parseQuantityToMilli("0,125"), 125);
+  assert.equal(parseQuantityToMilli("x"), null);
+});
+test("parseVatRateToBp", () => {
+  assert.equal(parseVatRateToBp("19"), 1900);
+  assert.equal(parseVatRateToBp("7,5"), 750);
+  assert.equal(parseVatRateToBp("0"), 0);
+  assert.equal(parseVatRateToBp("120"), null);
+});
+
+console.log("\ninvoice calculation");
+test("Summen werden serverseitig exakt berechnet", () => {
+  const result = calculateInvoiceTotals({
+    vatMode: "standard",
+    defaultVatRateBp: 1900,
+    items: [
+      { description: "Paket", quantityMilli: 1000, unitPriceCents: 1250000, vatRateBp: 1900, discountBp: 0 },
+      { description: "Workshop", quantityMilli: 2500, unitPriceCents: 48000, vatRateBp: 1900, discountBp: 0 },
+      { description: "Care", quantityMilli: 12000, unitPriceCents: 29900, vatRateBp: 700, discountBp: 0 },
+    ],
+  });
+  assert.equal(result.items[0].netAmountCents, 1250000);
+  assert.equal(result.items[1].netAmountCents, 120000); // 480,00 × 2,5
+  assert.equal(result.items[2].netAmountCents, 358800); // 299,00 × 12
+  assert.equal(result.netTotalCents, 1250000 + 120000 + 358800);
+  assert.equal(result.items[0].vatAmountCents, 237500);
+  assert.equal(result.items[2].vatAmountCents, 25116);
+  assert.equal(
+    result.vatTotalCents,
+    result.items.reduce((sum, i) => sum + i.vatAmountCents, 0)
+  );
+  assert.equal(result.grossTotalCents, result.netTotalCents + result.vatTotalCents);
+  assert.equal(result.vatBreakdown.length, 2);
+});
+test("beliebig viele Positionen – genau eine bleibt genau eine", () => {
+  const one = calculateInvoiceTotals({
+    vatMode: "standard",
+    defaultVatRateBp: 1900,
+    items: [{ description: "A", quantityMilli: 1000, unitPriceCents: 100, vatRateBp: 1900, discountBp: 0 }],
+  });
+  assert.equal(one.items.length, 1);
+  const ten = calculateInvoiceTotals({
+    vatMode: "standard",
+    defaultVatRateBp: 1900,
+    items: Array.from({ length: 10 }, (_, i) => ({
+      description: `Pos ${i + 1}`,
+      quantityMilli: 1000,
+      unitPriceCents: 1000,
+      vatRateBp: 1900,
+      discountBp: 0,
+    })),
+  });
+  assert.equal(ten.items.length, 10);
+  assert.equal(ten.netTotalCents, 10000);
+  assert.equal(ten.items[9].position, 10);
+});
+test("reverse_charge erzeugt keinen Steuerbetrag", () => {
+  const result = calculateInvoiceTotals({
+    vatMode: "reverse_charge",
+    defaultVatRateBp: 1900,
+    items: [{ description: "A", quantityMilli: 1000, unitPriceCents: 100000, vatRateBp: 1900, discountBp: 0 }],
+  });
+  assert.equal(result.vatTotalCents, 0);
+  assert.equal(result.grossTotalCents, 100000);
+});
+test("leere Positionen werden abgewiesen", () => {
+  assert.throws(() =>
+    calculateInvoiceTotals({ vatMode: "standard", defaultVatRateBp: 1900, items: [] })
+  );
+});
+
+console.log("\ntemplate engine");
+test("einfache Platzhalter werden escaped", () => {
+  const out = renderTemplate("Hallo {{customer.name}}", {
+    customer: { name: '<script>alert("x")</script>' },
+  });
+  assert.equal(out, "Hallo &lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;");
+});
+test("{{#each}} erzeugt echte Wiederholung", () => {
+  const out = renderTemplate(
+    "{{#each invoice.items}}<tr><td>{{@number}}</td><td>{{description}}</td><td>{{net}}</td></tr>{{/each}}",
+    { invoice: { items: [{ description: "A", net: "1,00" }, { description: "B", net: "2,00" }] } }
+  );
+  assert.equal(
+    out,
+    "<tr><td>1</td><td>A</td><td>1,00</td></tr><tr><td>2</td><td>B</td><td>2,00</td></tr>"
+  );
+});
+test("{{#each}} sieht den äußeren Kontext", () => {
+  const out = renderTemplate("{{#each items}}{{currency}}{{amount}} {{/each}}", {
+    currency: "€",
+    items: [{ amount: "1" }, { amount: "2" }],
+  });
+  assert.equal(out, "€1 €2 ");
+});
+test("{{#if}}/{{else}}", () => {
+  const tpl = "{{#if customer.vatId}}USt-IdNr.: {{customer.vatId}}{{else}}—{{/if}}";
+  assert.equal(renderTemplate(tpl, { customer: { vatId: "DE123" } }), "USt-IdNr.: DE123");
+  assert.equal(renderTemplate(tpl, { customer: { vatId: null } }), "—");
+});
+test("dreifache Klammern rendern rohes HTML", () => {
+  assert.equal(renderTemplate("{{{block}}}", { block: "<b>x</b>" }), "<b>x</b>");
+});
+test("fehlende Platzhalter werden gemeldet, nicht geraten", () => {
+  const missing: string[] = [];
+  const out = renderTemplate("{{a}}|{{b.c}}", { a: "x" }, { collectMissing: missing, missingValue: "—" });
+  assert.equal(out, "x|—");
+  assert.deepEqual(missing, ["b.c"]);
+});
+test("extractPlaceholders findet alle Pfade", () => {
+  const found = extractPlaceholders(
+    "{{invoice.number}}{{#each invoice.items}}{{description}}{{/each}}{{#if x}}{{y}}{{/if}}"
+  );
+  assert.ok(found.includes("invoice.number"));
+  assert.ok(found.includes("invoice.items"));
+  assert.ok(found.includes("y"));
+});
+test("escapeHtml", () => {
+  assert.equal(escapeHtml("a&b<c>"), "a&amp;b&lt;c&gt;");
+});
+
+console.log("\nclosing scripts");
+test("Script-Platzhalter werden mit echten Vertragsdaten gefüllt", () => {
+  const { text, unresolved } = renderPlaceholders(
+    "Sie haben sich für {{package_name}} zu einer einmaligen Investition von {{one_time_price_net}} € netto entschieden.",
+    { package_name: "OKUN Foundation", one_time_price_net: "12.500,00" }
+  );
+  assert.equal(
+    text,
+    "Sie haben sich für OKUN Foundation zu einer einmaligen Investition von 12.500,00 € netto entschieden."
+  );
+  assert.deepEqual(unresolved, []);
+});
+test("fehlende Script-Platzhalter bleiben sichtbar stehen", () => {
+  const { text, unresolved } = renderPlaceholders("{{package_name}} / {{minimum_term}}", {
+    package_name: "OKUN Operations",
+  });
+  assert.equal(text, "OKUN Operations / {{minimum_term}}");
+  assert.deepEqual(unresolved, ["minimum_term"]);
+});
+
+console.log("\nstate machine");
+test("Legacy-Status werden normalisiert", () => {
+  assert.equal(normalizeStatus("in_progress"), "closing_in_progress");
+  assert.equal(normalizeStatus("consent_given"), "consents_confirmed");
+  assert.equal(normalizeStatus("verloren"), "lost");
+  assert.equal(normalizeStatus(null), "lead");
+});
+test("nur erlaubte Übergänge", () => {
+  assert.ok(canTransition("consent_pending", "consents_confirmed"));
+  assert.ok(!canTransition("lead", "paid"));
+  assert.ok(!canTransition("consents_confirmed", "customer_activated"));
+  assert.ok(canTransition("payment_pending", "paid"));
+  assert.ok(canTransition("paid", "customer_activated"));
+});
+test("lost/cancelled sind aus laufenden Status erreichbar", () => {
+  assert.ok(allowedTransitions("offer_presented").includes("lost"));
+  assert.ok(allowedTransitions("offer_presented").includes("cancelled"));
+  assert.ok(!allowedTransitions("customer_activated").includes("lost"));
+});
+test("forwardPath findet mehrstufige Wege", () => {
+  assert.deepEqual(forwardPath("offer_presented", "consent_pending"), [
+    "agreement_reached",
+    "consent_pending",
+  ]);
+  assert.deepEqual(forwardPath("paid", "paid"), []);
+  assert.equal(forwardPath("customer_activated", "lead"), null);
+});
+
+console.log("\nmaster data");
+const requirements: ResolvedRequirement[] = MASTER_DATA_FIELDS.map((f, i) => ({
+  ...f,
+  isRequired: f.defaultRequired,
+  legalForms: f.defaultLegalForms,
+  isActive: true,
+  displayOrder: i,
+}));
+test("GmbH benötigt Registerangaben", () => {
+  const result = validateMasterData(
+    {
+      name: "Muster GmbH",
+      legalForm: "gmbh",
+      street: "Hauptstr.",
+      houseNumber: "1",
+      postalCode: "10115",
+      city: "Berlin",
+      country: "Deutschland",
+      contactFirstName: "Max",
+      contactLastName: "Muster",
+      contactPosition: "Geschäftsführer",
+      contactEmail: "max@muster.de",
+    },
+    requirements
+  );
+  assert.equal(result.complete, false);
+  assert.deepEqual(
+    result.missing.map((m) => m.key).sort(),
+    ["registerCourt", "registerNumber"]
+  );
+});
+test("Einzelunternehmen benötigt keine Registerangaben", () => {
+  const result = validateMasterData(
+    {
+      name: "Max Muster",
+      legalForm: "einzelunternehmen",
+      street: "Hauptstr.",
+      houseNumber: "1",
+      postalCode: "10115",
+      city: "Berlin",
+      country: "Deutschland",
+      contactFirstName: "Max",
+      contactLastName: "Muster",
+      contactPosition: "Inhaber",
+      contactEmail: "max@muster.de",
+    },
+    requirements
+  );
+  assert.equal(result.complete, true, JSON.stringify(result.missing));
+});
+test("abweichende Rechnungsanschrift wird nur dann eingefordert", () => {
+  const base = {
+    name: "Muster GmbH",
+    legalForm: "gmbh",
+    street: "Hauptstr.",
+    houseNumber: "1",
+    postalCode: "10115",
+    city: "Berlin",
+    country: "Deutschland",
+    registerCourt: "AG Berlin",
+    registerNumber: "HRB 1",
+    contactFirstName: "Max",
+    contactLastName: "Muster",
+    contactPosition: "GF",
+    contactEmail: "max@muster.de",
+  };
+  assert.equal(validateMasterData(base, requirements).complete, true);
+  const withBilling = validateMasterData({ ...base, billingDiffers: true }, requirements);
+  assert.equal(withBilling.complete, false);
+  assert.ok(withBilling.missing.some((m) => m.key === "billingStreet"));
+});
+test("USt-IdNr. ist nicht pauschal Pflicht", () => {
+  assert.ok(REGISTERED_LEGAL_FORMS.includes("gmbh"));
+  assert.ok(!REGISTERED_LEGAL_FORMS.includes("gbr"));
+  const vatField = MASTER_DATA_FIELDS.find((f) => f.key === "vatId");
+  assert.equal(vatField?.defaultRequired, false);
+});
+
+console.log("\nsnapshot integrity");
+test("kanonischer Hash ist unabhängig von der Feldreihenfolge", () => {
+  const a = sha256Canonical({ b: 1, a: { d: 2, c: [1, 2] } });
+  const b = sha256Canonical({ a: { c: [1, 2], d: 2 }, b: 1 });
+  assert.equal(a, b);
+  assert.notEqual(a, sha256Canonical({ b: 1, a: { d: 3, c: [1, 2] } }));
+});
+
+console.log(`\n${passed} Tests bestanden.\n`);

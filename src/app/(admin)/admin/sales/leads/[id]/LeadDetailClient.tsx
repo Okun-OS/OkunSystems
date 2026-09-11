@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Save, Plus, ChevronRight, FileText, Video, CalendarPlus } from "lucide-react";
 import { updateLeadDetails, updateLeadStatus, addLeadNote, createClosingSession } from "../actions";
+import { StammdatenPanel, type MasterDataValues, type RequirementView } from "./StammdatenPanel";
 
 const LEAD_STATUS_LABELS: Record<string, string> = {
   prospect: "Interessent",
@@ -89,18 +90,25 @@ type Company = {
     createdAt: Date;
   }>;
   _count: { closingSessions: number; offers: number; invoices: number };
+  [key: string]: unknown;
 };
 
 type Closer = { id: string; name: string | null; role: string };
 
 interface Props {
+  /** Serverseitig geprüfte Stammdaten-Vollständigkeit. */
+  masterData: {
+    values: MasterDataValues;
+    requirements: RequirementView[];
+    missing: Array<{ key: string; label: string }>;
+  };
   company: Company;
   closers: Closer[];
   currentUserId: string;
   currentUserRole: string;
 }
 
-export function LeadDetailClient({ company, closers, currentUserId, currentUserRole }: Props) {
+export function LeadDetailClient({ company, closers, currentUserId, currentUserRole, masterData }: Props) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"details" | "notizen" | "sessions" | "rechnungen">("details");
   const [isPending, startTransition] = useTransition();
@@ -447,18 +455,37 @@ export function LeadDetailClient({ company, closers, currentUserId, currentUserR
       {/* Tab: Closing Sessions */}
       {activeTab === "sessions" && (
         <div className="space-y-4">
+          <StammdatenPanel
+            companyId={company.id}
+            values={masterData.values}
+            requirements={masterData.requirements}
+            missing={masterData.missing}
+          />
+
           <div className="flex items-center justify-between gap-4">
             <div className="flex-1">
               {sessionSuccess && (
                 <p className="text-[#22c55e] text-sm">{sessionSuccess}</p>
               )}
+              {masterData.missing.length > 0 && (
+                <p className="text-[#fbbf24] text-sm">
+                  Closing Meeting noch nicht freigegeben — bitte zuerst die Stammdaten
+                  vervollständigen.
+                </p>
+              )}
             </div>
             <button
               onClick={() => { setShowNewSession((v) => !v); setSessionError(null); setSessionSuccess(null); }}
-              className="flex items-center gap-2 px-4 py-2 bg-[#00b8ff] hover:bg-[#0099dd] text-black font-semibold text-sm rounded-lg transition-colors flex-shrink-0"
+              disabled={masterData.missing.length > 0}
+              title={
+                masterData.missing.length > 0
+                  ? `Fehlende Angaben: ${masterData.missing.map((m) => m.label).join(", ")}`
+                  : undefined
+              }
+              className="flex items-center gap-2 px-4 py-2 bg-[#00b8ff] hover:bg-[#0099dd] disabled:bg-[#16283d] disabled:text-[#4a5a70] disabled:cursor-not-allowed text-black font-semibold text-sm rounded-lg transition-colors flex-shrink-0"
             >
               <CalendarPlus size={14} />
-              Termin planen
+              Closing Meeting erstellen
             </button>
           </div>
 

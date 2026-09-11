@@ -1,195 +1,133 @@
 "use server";
 
-import { auth } from "@/auth";
-import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { db } from "@/lib/db";
+import { guarded, requireSales } from "@/lib/auth-guards";
 import { sendInvoiceEmail } from "@/lib/email";
+import { confirmInvoicePayment } from "@/lib/closing/payments";
 
-async function getAdminUser() {
-  const session = await auth();
-  if (!session?.user) return null;
-  const userId = (session.user as { id: string }).id;
-  const user = await db.user.findUnique({ where: { id: userId } });
-  if (!user || user.role !== "ADMIN") return null;
-  return { userId, user };
+/**
+ * Aktionen der Rechnungsübersicht.
+ *
+ * Erstellen und Ändern laufen ausschließlich über den Rechnungseditor
+ * (invoice-actions.ts), damit Beträge und Nummern serverseitig entstehen.
+ * Hier liegen nur noch Versand und Statusaktionen.
+ */
+
+const PATH = "/admin/sales/rechnungen";
+
+export async function markInvoicePaid(invoiceId: string, note?: string) {
+  return guarded(async () => {
+    const actor = await requireSales();
+    const result = await confirmInvoicePayment({
+      invoiceId,
+      actorId: actor.id,
+      note: note ?? null,
+    });
+    revalidatePath(PATH);
+    revalidatePath("/admin/sales");
+    return result.ok
+      ? { ok: true, alreadyPaid: result.alreadyPaid, activated: result.activated }
+      : { error: result.error ?? "Zahlung konnte nicht bestätigt werden." };
+  });
 }
 
-function generateInvoiceNumber() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const rand = Math.floor(Math.random() * 9000) + 1000;
-  return `RE-${year}${month}-${rand}`;
-}
+export async function cancelInvoice(invoiceId: string, reason: string) {
+  return guarded(async () => {
+    const actor = await requireSales();
+    if (!reason?.trim()) return { error: "Eine Begründung ist erforderlich." };
 
-export async function createInvoiceFromOffer(offerId: string) {
-  const auth_ = await getAdminUser();
-  if (!auth_) return { error: "Keine Berechtigung" };
+    const invoice = await db.invoice.findUnique({
+      where: { id: invoiceId },
+      select: { status: true },
+    });
+    if (!invoice) return { error: "Rechnung nicht gefunden." };
+    if (invoice.status === "paid") {
+      return { error: "Eine bezahlte Rechnung kann nicht storniert werden." };
+    }
 
-  const offer = await db.offer.findUnique({
-    where: { id: offerId },
-    include: {
-      company: { select: { id: true, name: true } },
-      closingSession: { select: { id: true } },
-      template: { select: { name: true } },
-    },
+    await db.$transaction([
+      db.invoice.update({ where: { id: invoiceId }, data: { status: "cancelled" } }),
+      db.invoicePaymentEvent.create({
+        data: {
+          invoiceId,
+          previousStatus: invoice.status,
+          newStatus: "cancelled",
+          source: "admin",
+          actorId: actor.id,
+          note: reason.trim(),
+          idempotencyKey: `invoice_cancelled:${invoiceId}`,
+        },
+      }),
+    ]);
+
+    revalidatePath(PATH);
+    return { ok: true };
   });
-  if (!offer) return { error: "Angebot nicht gefunden" };
-
-  const grossAmount = Math.round(offer.priceNet * 1.19);
-  const dueDate = new Date();
-  dueDate.setDate(dueDate.getDate() + 14);
-
-  const invoice = await db.invoice.create({
-    data: {
-      invoiceNumber: generateInvoiceNumber(),
-      netAmount: offer.priceNet,
-      grossAmount,
-      dueDate,
-      billingName: offer.company.name,
-      status: "draft",
-      companyId: offer.company.id,
-      offerId,
-      closingSessionId: offer.closingSession?.id ?? null,
-      createdById: auth_.userId,
-    },
-  });
-
-  revalidatePath("/admin/sales/rechnungen");
-  return { invoiceId: invoice.id };
-}
-
-export async function createManualInvoice(formData: FormData) {
-  const auth_ = await getAdminUser();
-  if (!auth_) return { error: "Keine Berechtigung" };
-
-  const companyId = (formData.get("companyId") as string)?.trim();
-  if (!companyId) return { error: "Unternehmen ist Pflichtfeld" };
-
-  const netAmountEur = parseFloat(formData.get("netAmount") as string);
-  if (isNaN(netAmountEur) || netAmountEur <= 0) return { error: "Ungültiger Betrag" };
-
-  const netAmount = Math.round(netAmountEur * 100);
-  const taxRate = parseFloat(formData.get("taxRate") as string) || 0.19;
-  const grossAmount = Math.round(netAmount * (1 + taxRate));
-
-  const dueDays = parseInt(formData.get("dueDays") as string) || 14;
-  const dueDate = new Date();
-  dueDate.setDate(dueDate.getDate() + dueDays);
-
-  const invoice = await db.invoice.create({
-    data: {
-      invoiceNumber: generateInvoiceNumber(),
-      netAmount,
-      taxRate,
-      grossAmount,
-      dueDate,
-      billingName: (formData.get("billingName") as string)?.trim() || null,
-      billingAddress: (formData.get("billingAddress") as string)?.trim() || null,
-      status: "draft",
-      companyId,
-      createdById: auth_.userId,
-    },
-  });
-
-  revalidatePath("/admin/sales/rechnungen");
-  return { invoiceId: invoice.id };
-}
-
-export async function markInvoiceSent(invoiceId: string) {
-  const auth_ = await getAdminUser();
-  if (!auth_) return { error: "Keine Berechtigung" };
-
-  await db.invoice.update({
-    where: { id: invoiceId },
-    data: { status: "sent", issuedAt: new Date() },
-  });
-
-  revalidatePath("/admin/sales/rechnungen");
-  return { ok: true };
-}
-
-export async function markInvoicePaid(invoiceId: string, paidBy?: string) {
-  const auth_ = await getAdminUser();
-  if (!auth_) return { error: "Keine Berechtigung" };
-
-  await db.invoice.update({
-    where: { id: invoiceId },
-    data: {
-      status: "paid",
-      paidAt: new Date(),
-      paidBy: paidBy || null,
-      confirmedById: auth_.userId,
-    },
-  });
-
-  revalidatePath("/admin/sales/rechnungen");
-  return { ok: true };
-}
-
-export async function cancelInvoice(invoiceId: string) {
-  const auth_ = await getAdminUser();
-  if (!auth_) return { error: "Keine Berechtigung" };
-
-  await db.invoice.update({
-    where: { id: invoiceId },
-    data: { status: "cancelled" },
-  });
-
-  revalidatePath("/admin/sales/rechnungen");
-  return { ok: true };
 }
 
 export async function sendInvoice(invoiceId: string) {
-  const auth_ = await getAdminUser();
-  if (!auth_) return { error: "Keine Berechtigung" };
+  return guarded(async () => {
+    await requireSales();
 
-  const invoice = await db.invoice.findUnique({
-    where: { id: invoiceId },
-    include: {
-      company: {
-        select: {
-          name: true,
-          users: { select: { email: true, name: true }, take: 1 },
-          appointments: {
-            select: { bookedByEmail: true, bookedByName: true },
-            orderBy: { createdAt: "desc" },
-            take: 1,
+    const invoice = await db.invoice.findUnique({
+      where: { id: invoiceId },
+      include: {
+        company: {
+          select: {
+            name: true,
+            contactEmail: true,
+            contactFirstName: true,
+            contactLastName: true,
+            billingEmail: true,
+            billingDiffers: true,
+            users: { select: { email: true, name: true }, take: 1 },
+            appointments: {
+              select: { bookedByEmail: true, bookedByName: true },
+              orderBy: { createdAt: "desc" },
+              take: 1,
+            },
           },
         },
       },
-    },
+    });
+    if (!invoice) return { error: "Rechnung nicht gefunden." };
+    if (!invoice.finalizedAt) {
+      return { error: "Die Rechnung ist noch nicht final erstellt." };
+    }
+
+    const toEmail =
+      (invoice.company.billingDiffers ? invoice.company.billingEmail : null) ??
+      invoice.company.contactEmail ??
+      invoice.company.users[0]?.email ??
+      invoice.company.appointments[0]?.bookedByEmail;
+    if (!toEmail) return { error: "Es ist keine E-Mail-Adresse hinterlegt." };
+
+    const toName =
+      [invoice.company.contactFirstName, invoice.company.contactLastName]
+        .filter(Boolean)
+        .join(" ") ||
+      invoice.company.users[0]?.name ||
+      invoice.billingName ||
+      invoice.company.name;
+
+    const appUrl = process.env.NEXTAUTH_URL ?? process.env.APP_URL ?? "https://okun-systems.de";
+    await sendInvoiceEmail({
+      toEmail,
+      toName,
+      companyName: invoice.company.name,
+      invoiceNumber: invoice.invoiceNumber,
+      grossAmount: invoice.grossTotalCents ?? invoice.grossAmount,
+      dueDate: invoice.dueDate,
+      portalUrl: `${appUrl}/portal/dokumente`,
+    });
+
+    await db.invoice.update({
+      where: { id: invoiceId },
+      data: { status: invoice.status === "paid" ? "paid" : "sent", issuedAt: invoice.issuedAt ?? new Date() },
+    });
+
+    revalidatePath(PATH);
+    return { ok: true };
   });
-  if (!invoice) return { error: "Rechnung nicht gefunden" };
-
-  const toEmail =
-    invoice.company.users[0]?.email ??
-    invoice.company.appointments[0]?.bookedByEmail;
-  const toName =
-    invoice.company.users[0]?.name ??
-    invoice.company.appointments[0]?.bookedByName ??
-    invoice.billingName ??
-    invoice.company.name;
-
-  if (!toEmail) return { error: "Keine E-Mail-Adresse für dieses Unternehmen gefunden" };
-
-  const appUrl = process.env.NEXTAUTH_URL ?? process.env.APP_URL ?? "https://okun-systems.de";
-
-  await sendInvoiceEmail({
-    toEmail,
-    toName,
-    companyName: invoice.company.name,
-    invoiceNumber: invoice.invoiceNumber,
-    grossAmount: invoice.grossAmount,
-    dueDate: invoice.dueDate,
-    portalUrl: `${appUrl}/portal`,
-  });
-
-  await db.invoice.update({
-    where: { id: invoiceId },
-    data: { status: "sent", issuedAt: new Date() },
-  });
-
-  revalidatePath("/admin/sales/rechnungen");
-  return { ok: true };
 }

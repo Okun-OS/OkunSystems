@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { ClosingWorkspaceClient } from "./ClosingWorkspaceClient";
+import { loadContractClosureData } from "./closure-data";
 
 export default async function ClosingWorkspacePage({
   params,
@@ -96,6 +97,9 @@ export default async function ClosingWorkspacePage({
     }),
   ]);
 
+  const closure = await loadContractClosureData(sessionId);
+  if (!closure) redirect("/admin/sales");
+
   return (
     <ClosingWorkspaceClient
       closingSession={closingSession}
@@ -103,6 +107,7 @@ export default async function ClosingWorkspacePage({
       offerTemplates={offerTemplates}
       legalDocuments={legalDocuments}
       currentUserId={userId}
+      closure={closure}
     />
   );
 }

@@ -19,7 +19,10 @@ function getR2Client(): S3Client {
 
   return new S3Client({
     region: "auto",
-    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+    // R2_ENDPOINT erlaubt einen abweichenden S3-kompatiblen Endpunkt
+    // (Self-Hosting, lokale Tests). Ohne Angabe gilt der Cloudflare-Endpunkt.
+    endpoint: process.env.R2_ENDPOINT || `https://${accountId}.r2.cloudflarestorage.com`,
+    forcePathStyle: process.env.R2_FORCE_PATH_STYLE === "true",
     credentials: { accessKeyId, secretAccessKey },
   });
 }

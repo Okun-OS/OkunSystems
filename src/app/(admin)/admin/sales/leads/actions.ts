@@ -3,8 +3,9 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { randomBytes, createHash } from "crypto";
 import { sendClosingInvitationEmail } from "@/lib/email";
+import { validateCompanyMasterData } from "@/lib/closing/master-data";
+import { hashToken, generateToken, CLOSING_TOKEN_TTL_HOURS, appUrl } from "@/lib/closing/token";
 
 export async function createLead(formData: FormData) {
   const session = await auth();
@@ -31,7 +32,7 @@ export async function createLead(formData: FormData) {
       contactPerson: (formData.get("contactPerson") as string)?.trim() || null,
       website: (formData.get("website") as string)?.trim() || null,
       phone: (formData.get("phone") as string)?.trim() || null,
-      leadStatus: "prospect",
+      leadStatus: "lead",
       leadSource: (formData.get("leadSource") as string)?.trim() || null,
       contractPackage: (formData.get("contractPackage") as string)?.trim() || null,
       contractValue: contractValueCents,
@@ -60,7 +61,7 @@ export async function updateLeadStatus(
     return { error: "Keine Berechtigung" };
   }
 
-  const MANUAL_STATUSES = ["verloren", "storniert", "abgesagt"];
+  const MANUAL_STATUSES = ["lost", "cancelled", "verloren", "storniert", "abgesagt"];
   if (MANUAL_STATUSES.includes(newStatus) && !reason?.trim()) {
     return { error: "Grund ist Pflichtfeld bei diesem Status" };
   }
@@ -133,13 +134,21 @@ export async function createClosingSession(
     return { error: "Keine Berechtigung" };
   }
 
-  const company = await db.company.findUnique({
-    where: { id: companyId },
-    select: { id: true, name: true, assignedCloserId: true, leadStatus: true },
-  });
+  const company = await db.company.findUnique({ where: { id: companyId } });
   if (!company) return { error: "Lead nicht gefunden" };
   if (userRecord.role === "CLOSER" && company.assignedCloserId !== userId) {
     return { error: "Keine Berechtigung" };
+  }
+
+  // Ohne vollständige Vertragsstammdaten wird kein Closing Meeting angelegt.
+  const validation = await validateCompanyMasterData(company);
+  if (!validation.complete) {
+    return {
+      error: `Für den Vertragsabschluss fehlen noch folgende Angaben: ${validation.missing
+        .map((m) => m.label)
+        .join(", ")}`,
+      missing: validation.missing,
+    };
   }
 
   const scheduledAt = new Date(data.scheduledAt);
@@ -147,9 +156,9 @@ export async function createClosingSession(
 
   const endTime = new Date(scheduledAt.getTime() + data.durationMinutes * 60 * 1000);
 
-  const token = randomBytes(24).toString("hex");
-  const tokenHash = createHash("sha256").update(token).digest("hex");
-  const tokenExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const token = generateToken();
+  const tokenHash = hashToken(token);
+  const tokenExpiresAt = new Date(Date.now() + CLOSING_TOKEN_TTL_HOURS * 60 * 60 * 1000);
 
   const closerId = company.assignedCloserId ?? userId;
 
@@ -208,6 +217,7 @@ export async function createClosingSession(
     data: {
       clientTokenHash: tokenHash,
       tokenExpiresAt,
+      tokenIssuedAt: new Date(),
       appointmentId: appointment.id,
       companyId,
       closerId,
@@ -220,8 +230,7 @@ export async function createClosingSession(
     data: { leadStatus: "closing_scheduled" },
   });
 
-  const appUrl = process.env.NEXTAUTH_URL ?? process.env.APP_URL ?? "https://okun-systems.de";
-  const closingUrl = `${appUrl}/closing/${token}`;
+  const closingUrl = `${appUrl()}/closing/${token}`;
 
   const closer = await db.user.findUnique({ where: { id: closerId }, select: { name: true } });
 
