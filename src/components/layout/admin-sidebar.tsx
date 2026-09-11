@@ -21,33 +21,40 @@ import {
 import { OkunLogo } from "./okun-logo";
 import { cn } from "@/lib/utils";
 
+/** `closer: true` = auch für die Rolle CLOSER sichtbar. */
 const navItems = [
-  { href: "/admin/dashboard", icon: LayoutDashboard, label: "Übersicht" },
-  { href: "/admin/sales", icon: TrendingUp, label: "Sales & Closing" },
-  { href: "/admin/kunden", icon: Users, label: "Kunden" },
-  { href: "/admin/lernen", icon: BookOpen, label: "Learning Library" },
-  { href: "/admin/termine", icon: Calendar, label: "Termine" },
-  { href: "/admin/dokumente", icon: FileText, label: "Dokumente" },
-  { href: "/admin/einstellungen", icon: Settings, label: "Einstellungen" },
+  { href: "/admin/dashboard", icon: LayoutDashboard, label: "Übersicht", closer: false },
+  { href: "/admin/sales", icon: TrendingUp, label: "Sales & Closing", closer: true },
+  { href: "/admin/kunden", icon: Users, label: "Kunden", closer: false },
+  { href: "/admin/lernen", icon: BookOpen, label: "Learning Library", closer: false },
+  { href: "/admin/termine", icon: Calendar, label: "Termine", closer: false },
+  { href: "/admin/dokumente", icon: FileText, label: "Dokumente", closer: false },
+  { href: "/admin/einstellungen", icon: Settings, label: "Einstellungen", closer: false },
 ];
 
 const salesSubItems = [
-  { href: "/admin/sales", label: "Dashboard", icon: TrendingUp, exact: true },
-  { href: "/admin/sales/leads", label: "Leads", icon: UserCircle },
-  { href: "/admin/sales/angebote", label: "Angebote", icon: Package },
-  { href: "/admin/sales/bibliothek", label: "Bibliothek", icon: Library },
-  { href: "/admin/sales/rechnungen", label: "Rechnungen", icon: Receipt },
+  { href: "/admin/sales", label: "Dashboard", icon: TrendingUp, exact: true, closer: true },
+  { href: "/admin/sales/leads", label: "Leads", icon: UserCircle, closer: true },
+  { href: "/admin/sales/angebote", label: "Angebote", icon: Package, closer: false },
+  { href: "/admin/sales/bibliothek", label: "Bibliothek", icon: Library, closer: false },
+  { href: "/admin/sales/rechnungen", label: "Rechnungen", icon: Receipt, closer: false },
 ];
 
 interface AdminSidebarProps {
   user: {
     name?: string | null;
     email?: string | null;
+    role?: string | null;
   };
 }
 
 export function AdminSidebar({ user }: AdminSidebarProps) {
   const pathname = usePathname();
+  const isCloser = user.role === "CLOSER";
+  // Ein Closer sieht nur seinen Bereich. Die Anzeige folgt damit derselben
+  // Regel, die serverseitig ohnehin durchgesetzt wird.
+  const visibleNav = navItems.filter((item) => !isCloser || item.closer);
+  const visibleSubItems = salesSubItems.filter((item) => !isCloser || item.closer);
 
   return (
     <aside className="fixed left-0 top-0 h-full w-[240px] bg-[#060a10] border-r border-[#111e30] flex flex-col z-40">
@@ -56,7 +63,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
       </div>
 
       <nav className="flex-1 overflow-y-auto py-4 px-3">
-        {navItems.map((item) => {
+        {visibleNav.map((item) => {
           const isSales = item.href === "/admin/sales";
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
           return (
@@ -77,7 +84,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
               {/* Sales sub-navigation */}
               {isSales && isActive && (
                 <div className="ml-4 pl-3 border-l border-[#1a2840] mb-1">
-                  {salesSubItems.map((sub) => {
+                  {visibleSubItems.map((sub) => {
                     const subActive = sub.exact
                       ? pathname === sub.href
                       : pathname === sub.href || pathname.startsWith(sub.href + "/");
@@ -113,7 +120,9 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[#eef2f7] text-xs font-medium truncate">{user.name}</p>
-            <p className="text-[#00b8ff] text-xs font-medium">Administrator</p>
+            <p className="text-[#00b8ff] text-xs font-medium">
+              {isCloser ? "Closer" : "Administrator"}
+            </p>
           </div>
           <ChevronDown size={14} className="text-[#8899b4] flex-shrink-0" />
         </div>

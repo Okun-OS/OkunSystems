@@ -28,9 +28,14 @@ export async function getActor(): Promise<Actor | null> {
 
   const user = await db.user.findUnique({
     where: { id: userId },
-    select: { id: true, role: true, name: true, email: true, companyId: true },
+    select: {
+      id: true, role: true, name: true, email: true, companyId: true,
+      deactivatedAt: true,
+    },
   });
-  if (!user) return null;
+  // Ein bereits ausgestelltes JWT darf ein deaktiviertes Konto nicht am Leben
+  // halten — deshalb wird der Zustand bei jedem Zugriff gegen die DB geprüft.
+  if (!user || user.deactivatedAt) return null;
   return {
     id: user.id,
     role: (user.role as ActorRole) ?? "CLIENT",
@@ -92,6 +97,38 @@ export async function requireLeadAccess(companyId: string): Promise<Actor> {
     throw new AuthorizationError();
   }
   return actor;
+}
+
+/**
+ * Closer dürfen nur Rechnungen bearbeiten, die aus einem ihrer Closings
+ * stammen. Eine freistehende Rechnung ohne Closing-Bezug ist Adminsache.
+ */
+export async function requireInvoiceAccess(invoiceId: string): Promise<{
+  actor: Actor;
+  companyId: string;
+  closingSessionId: string | null;
+}> {
+  const actor = await requireSales();
+  const invoice = await db.invoice.findUnique({
+    where: { id: invoiceId },
+    select: { companyId: true, closingSessionId: true },
+  });
+  if (!invoice) throw new AuthorizationError("Rechnung nicht gefunden");
+
+  if (actor.role !== "ADMIN") {
+    if (!invoice.closingSessionId) throw new AuthorizationError();
+    const session = await db.closingSession.findUnique({
+      where: { id: invoice.closingSessionId },
+      select: { closerId: true },
+    });
+    if (!session || session.closerId !== actor.id) throw new AuthorizationError();
+  }
+
+  return {
+    actor,
+    companyId: invoice.companyId,
+    closingSessionId: invoice.closingSessionId,
+  };
 }
 
 /** Kunden dürfen ausschließlich Daten des eigenen Unternehmens sehen. */

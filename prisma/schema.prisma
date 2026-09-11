@@ -23,6 +23,8 @@ model User {
   twoFactorExpiry   DateTime?
   twoFactorSentAt   DateTime?
   twoFactorAttempts Int       @default(0)
+  /// Gesetzt = Konto deaktiviert; eine Anmeldung wird abgelehnt.
+  deactivatedAt     DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 

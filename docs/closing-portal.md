@@ -51,6 +51,7 @@ protokolliert wird.
 | `closing/payments.ts`, `closing/activation.ts` | Zahlungsbestätigung und idempotente Kundenaktivierung |
 | `closing/token.ts` | Kundentoken: 32 Byte Zufall, nur Hash in der DB, 72 h, widerrufbar |
 | `closing/client-view.ts` | Aufbereiteter, gefilterter Datenstand für die Kundenseite |
+| `closing/role-access.ts` | Bereichsschranke je Rolle (welche Adminpfade eine Rolle betreten darf) |
 | `documents/template-engine.ts` | `{{pfad}}`, `{{#each}}`, `{{#if}}/{{else}}`, HTML-Escaping |
 | `documents/render.ts` | Template → HTML → PDF → SHA-256 → R2 → Verifizierung |
 | `documents/hash.ts` | SHA-256, kanonisches JSON-Hashing, R2-Download/Verify |
@@ -63,6 +64,7 @@ protokolliert wird.
 
 | Pfad | Inhalt |
 |---|---|
+| `/admin/einstellungen/team` | Interne Benutzer: Closer und Administratoren anlegen, Rolle ändern, deaktivieren |
 | `/admin/einstellungen/unternehmen` | Unternehmensdaten |
 | `/admin/einstellungen/vertragsdokumente` | Dokumente + unveränderliche Versionen + Hashes |
 | `/admin/einstellungen/erklaerungen` | Checkbox-Texte inkl. Aufzeichnungs-Einwilligung |
@@ -173,54 +175,85 @@ Neu (alle optional, mit sicheren Defaults):
 
 ---
 
-## 6. Tests
+## 6. Rollen
 
-```bash
-npm run test:unit    # Rechenkerne, Template Engine, Statusmaschine, Stammdaten
-npm run test:e2e     # vollständiger Durchlauf gegen echte PostgreSQL
-npm run test:http    # Routing, Autorisierung, Idempotenz gegen laufenden Server
-```
+| Rolle | Zugriff |
+|---|---|
+| `ADMIN` | Alles: Einstellungen, Vorlagen, Vertragsdokumente, Erklärungen, Scripts, Kunden, Rechnungen, Zahlungsbestätigung |
+| `CLOSER` | Ausschließlich `/admin/sales/**`, und dort nur die ihm zugewiesenen Leads und Closings |
+| `CLIENT` | Kein Adminbereich; ausschließlich Daten des eigenen Unternehmens |
 
-`test:e2e` startet lokale Test-Doubles für R2 und Daily.co (`tests/harness/`) und benötigt
-nur `DATABASE_URL` und ein Chromium. `test:http` erwartet einen laufenden Server
-(`BASE_URL`, Default `http://localhost:3100`) und dasselbe `STRIPE_WEBHOOK_SECRET`.
+Die Abgrenzung wirkt auf drei Ebenen:
+
+1. **Bereichsschranke** (`role-access.ts`): `proxy.ts` leitet früh um, das Admin-Layout prüft
+   denselben Pfad noch einmal gegen die **in der Datenbank** hinterlegte Rolle — ein altes JWT
+   genügt also nicht.
+2. **Zuweisungsprüfung** (`auth-guards.ts`): `requireSessionAccess`, `requireLeadAccess` und
+   `requireInvoiceAccess` lassen einen Closer nur an eigene Vorgänge. Eine Rechnung ohne
+   Closing-Bezug ist Adminsache.
+3. **Vorbehaltene Aktionen**: Zahlungseingänge bestätigt nur ein Administrator (§ 19 B).
+
+Deaktivierte Konten (`User.deactivatedAt`) können sich weder anmelden noch mit einer bereits
+bestehenden Sitzung weiterarbeiten — `getActor()` prüft den Zustand bei jedem Zugriff.
+
+Neue interne Benutzer bekommen kein Passwort, sondern einen Einrichtungslink (7 Tage).
 
 ---
 
-## 7. Admin-Anleitung
+## 7. Tests
 
-1. **Unternehmensdaten hinterlegen** — *Einstellungen → Closing Portal → Unternehmensdaten*.
+```bash
+npm run test:unit    # Rechenkerne, Template Engine, Statusmaschine, Stammdaten, Rollenpfade
+npm run test:e2e     # vollständiger Durchlauf gegen echte PostgreSQL
+npm run test:http    # Routing, Autorisierung, Idempotenz gegen laufenden Server
+npm run test:roles   # echter Login als Closer: Bereichsschranke und Isolation
+```
+
+`test:e2e` startet lokale Test-Doubles für R2 und Daily.co (`tests/harness/`) und benötigt
+nur `DATABASE_URL` und ein Chromium. `test:http` und `test:roles` erwarten einen laufenden
+Server (`BASE_URL`, Default `http://localhost:3100`); `test:http` zusätzlich dasselbe
+`STRIPE_WEBHOOK_SECRET`.
+
+---
+
+## 8. Admin-Anleitung
+
+1. **Closer anlegen** — *Einstellungen → Closing Portal → Team & Closer → Benutzer anlegen*.
+   Name, E-Mail, Rolle *Closer*. Der Closer erhält eine E-Mail mit Einrichtungslink und setzt
+   sein Passwort selbst; ist kein Mailversand konfiguriert, wird der Link angezeigt und lässt
+   sich kopieren. Danach im Lead unter *Zugewiesener Closer* auswählen.
+2. **Unternehmensdaten hinterlegen** — *Einstellungen → Closing Portal → Unternehmensdaten*.
    Ohne Firmierung, Anschrift und E-Mail erscheint auf Rechnungen „nicht konfiguriert".
-2. **Vertragsdokument hochladen** — *Vertragsdokumente → Dokument anlegen* (z. B. AGB),
+3. **Vertragsdokument hochladen** — *Vertragsdokumente → Dokument anlegen* (z. B. AGB),
    dann *Neue Version*: PDF hochladen, Versionsnummer setzen, „sofort aktivieren" aktiv
    lassen. Der SHA-256-Hash wird beim Upload über die gespeicherten Bytes gebildet.
-3. **Version aktivieren** — jede Version lässt sich einzeln aktivieren. Die bisher aktive
+4. **Version aktivieren** — jede Version lässt sich einzeln aktivieren. Die bisher aktive
    wird nur deaktiviert, niemals überschrieben. Bereits erteilte Zustimmungen bleiben mit
    ihrer Version verknüpft.
-4. **Checkbox konfigurieren** — *Erklärungen*: Titel, Typ, exakter Checkbox-Text,
+5. **Checkbox konfigurieren** — *Erklärungen*: Titel, Typ, exakter Checkbox-Text,
    Dokumentzuordnung, Pflicht/optional, Paketzuordnung, Reihenfolge. Für die Aufzeichnung
    eine Erklärung vom Typ *Einwilligung Vertragsaufzeichnung* anlegen; ohne sie lässt sich
    keine Aufzeichnung starten. Eine Textänderung erhöht die Version und wirkt nur auf neue
    Abschlüsse.
-5. **Closing Script erstellen** — *Closing Scripts*: mindestens eine *Allgemeine Einleitung*
+6. **Closing Script erstellen** — *Closing Scripts*: mindestens eine *Allgemeine Einleitung*
    und eine *Verbindliche Annahme*. Platzhalter wie `{{package_name}}` oder
    `{{one_time_price_net}}` stehen unten auf der Seite.
-6. **Script einem Paket zuordnen** — Script vom Typ *Paket-Abschnitt* anlegen und das Paket
+7. **Script einem Paket zuordnen** — Script vom Typ *Paket-Abschnitt* anlegen und das Paket
    wählen. Ohne Auswahl gilt es für alle Pakete, für die kein spezifisches Script existiert.
    *Add-on*-Blöcke greifen über den Add-on-Schlüssel (`recurring`, `workforce`, `care` oder
    die Bezeichnung einer Zusatzleistung).
-7. **Rechnungsvorlage konfigurieren** — *Dokumentvorlagen*: HTML und CSS bearbeiten,
+8. **Rechnungsvorlage konfigurieren** — *Dokumentvorlagen*: HTML und CSS bearbeiten,
    *Vorschau aktualisieren*, dann *Als neue Version speichern*. Alte Versionen bleiben
    erhalten und lassen sich wiederherstellen.
-8. **Custom Placeholder erstellen** — auf derselben Seite unter *Eigene Platzhalter*:
+9. **Custom Placeholder erstellen** — auf derselben Seite unter *Eigene Platzhalter*:
    Schlüssel (z. B. `project_reference`), Anzeigename, Typ. Im Template als
    `{{custom.project_reference}}` verwendbar; im Rechnungseditor erscheint dafür ein
    Eingabefeld. Systemfelder wie `invoice.gross_total` sind geschützt.
-9. **Test-Closing durchführen** — Lead anlegen, Stammdaten vervollständigen, Closing Meeting
+10. **Test-Closing durchführen** — Lead anlegen, Stammdaten vervollständigen, Closing Meeting
    erstellen, Angebot präsentieren, *Vertragsabschluss starten*, Kundenlink öffnen,
    Erklärungen bestätigen, Aufzeichnung starten und beenden, Vertrag abschließen, Rechnung
    erstellen und finalisieren, Zahlungseingang bestätigen.
-10. **Audit-Protokoll prüfen** — im Closing über *Abschlussnachweis*
+11. **Audit-Protokoll prüfen** — im Closing über *Abschlussnachweis*
     (`/admin/sales/closing/<id>/audit`): Stammdaten-Snapshot, Contract Snapshot mit
     Integritätsprüfung, jede Erklärung mit Wortlaut, Zeitstempel und Dokument-Hash, das
     gerenderte Script, die Aufzeichnung, das Abschlussprotokoll, Zahlungs- und
@@ -228,7 +261,7 @@ nur `DATABASE_URL` und ein Chromium. `test:http` erwartet einen laufenden Server
 
 ---
 
-## 8. Bekannte offene Punkte
+## 9. Bekannte offene Punkte
 
 * **Aufzeichnungs-Zugriff für Kunden** ist bewusst nicht implementiert — Recordings liegen
   privat in R2 und erscheinen nicht in der Kundenablage. Eine spätere Freigabe braucht eine

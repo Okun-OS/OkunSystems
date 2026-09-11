@@ -155,6 +155,11 @@ export default async function AdminEinstellungenPage() {
         <div className="grid sm:grid-cols-2 gap-3">
           {[
             {
+              href: "/admin/einstellungen/team",
+              title: "Team & Closer",
+              desc: "Interne Zugänge anlegen. Closer arbeiten nur an ihren eigenen Leads und Closings.",
+            },
+            {
               href: "/admin/einstellungen/unternehmen",
               title: "Unternehmensdaten",
               desc: "Firmierung, Anschrift, Bank, Register – Grundlage für Rechnungen und Protokolle.",

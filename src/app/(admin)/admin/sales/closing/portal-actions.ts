@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { guarded, requireLeadAccess, requireSales, requireSessionAccess } from "@/lib/auth-guards";
+import { guarded, requireAdmin, requireLeadAccess, requireSessionAccess } from "@/lib/auth-guards";
 import { createContractSnapshot } from "@/lib/closing/snapshot";
 import { renderAndFreezeScript } from "@/lib/closing/script-service";
 import { evaluateConsentState, appendConsentCorrection } from "@/lib/closing/consent";
@@ -251,9 +251,10 @@ export async function selectPaymentMethod(sessionId: string, method: "stripe" | 
   });
 }
 
+/** Zahlungseingänge bestätigt ausschließlich ein Administrator (§ 19 B). */
 export async function confirmPaymentReceived(invoiceId: string, note: string) {
   return guarded(async () => {
-    const actor = await requireSales();
+    const actor = await requireAdmin();
     const result = await confirmInvoicePayment({ invoiceId, actorId: actor.id, note });
     revalidatePath("/admin/sales/rechnungen");
     revalidatePath("/admin/sales");
@@ -395,13 +396,13 @@ export async function correctConsentEvent(
   reason: string
 ) {
   return guarded(async () => {
-    const actor = await requireSales();
     const event = await db.consentAuditEvent.findUnique({
       where: { id: eventId },
       select: { closingSessionId: true },
     });
     if (!event) return { error: "Audit Event nicht gefunden." };
-    const { companyId } = await requireSessionAccess(event.closingSessionId);
+    // Zuweisungsprüfung liefert zugleich den handelnden Benutzer.
+    const { actor, companyId } = await requireSessionAccess(event.closingSessionId);
     const result = await appendConsentCorrection({
       originalEventId: eventId,
       accepted,

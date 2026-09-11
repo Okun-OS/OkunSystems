@@ -31,6 +31,7 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 npm run test:unit    # Rechenkerne, Template Engine, Statusmaschine, Stammdaten
 npm run test:e2e     # vollständiger Closing-Durchlauf gegen PostgreSQL
 npm run test:http    # Routing, Autorisierung, Idempotenz gegen laufenden Server
+npm run test:roles   # Rollenabgrenzung: echter Login als Closer
 ```
 
 ## Learn More

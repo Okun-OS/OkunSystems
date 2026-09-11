@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { guarded, requireSales } from "@/lib/auth-guards";
+import { guarded, requireAdmin, requireInvoiceAccess } from "@/lib/auth-guards";
 import { sendInvoiceEmail } from "@/lib/email";
 import { confirmInvoicePayment } from "@/lib/closing/payments";
 
@@ -16,9 +16,10 @@ import { confirmInvoicePayment } from "@/lib/closing/payments";
 
 const PATH = "/admin/sales/rechnungen";
 
+/** Zahlungseingänge bestätigt ausschließlich ein Administrator (§ 19 B). */
 export async function markInvoicePaid(invoiceId: string, note?: string) {
   return guarded(async () => {
-    const actor = await requireSales();
+    const actor = await requireAdmin();
     const result = await confirmInvoicePayment({
       invoiceId,
       actorId: actor.id,
@@ -34,7 +35,7 @@ export async function markInvoicePaid(invoiceId: string, note?: string) {
 
 export async function cancelInvoice(invoiceId: string, reason: string) {
   return guarded(async () => {
-    const actor = await requireSales();
+    const { actor } = await requireInvoiceAccess(invoiceId);
     if (!reason?.trim()) return { error: "Eine Begründung ist erforderlich." };
 
     const invoice = await db.invoice.findUnique({
@@ -68,7 +69,7 @@ export async function cancelInvoice(invoiceId: string, reason: string) {
 
 export async function sendInvoice(invoiceId: string) {
   return guarded(async () => {
-    await requireSales();
+    await requireInvoiceAccess(invoiceId);
 
     const invoice = await db.invoice.findUnique({
       where: { id: invoiceId },

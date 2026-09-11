@@ -32,6 +32,12 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
             return null;
           }
 
+          // Deaktivierte Konten dürfen sich nicht anmelden — unabhängig davon,
+          // ob das Passwort noch stimmt.
+          if (user.deactivatedAt) {
+            return null;
+          }
+
           const isValid = await bcryptjs.compare(
             credentials.password as string,
             user.password

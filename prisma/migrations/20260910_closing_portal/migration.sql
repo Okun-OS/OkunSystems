@@ -7,6 +7,9 @@
 -- NULL-bar oder besitzen einen Default. Es werden keine Spalten entfernt.
 
 -- AlterTable
+ALTER TABLE "User" ADD COLUMN     "deactivatedAt" TIMESTAMP(3);
+
+-- AlterTable
 ALTER TABLE "Company" ADD COLUMN     "activatedAt" TIMESTAMP(3),
 ADD COLUMN     "billingCity" TEXT,
 ADD COLUMN     "billingCountry" TEXT,
@@ -48,7 +51,9 @@ ADD COLUMN     "consentsConfirmedAt" TIMESTAMP(3),
 ADD COLUMN     "contractClosedAt" TIMESTAMP(3),
 ADD COLUMN     "paymentMethod" TEXT,
 ADD COLUMN     "recordingReleasedAt" TIMESTAMP(3),
-ADD COLUMN     "statusReason" TEXT;
+ADD COLUMN     "statusReason" TEXT,
+ADD COLUMN     "tokenIssuedAt" TIMESTAMP(3),
+ADD COLUMN     "tokenRevokedAt" TIMESTAMP(3);
 
 -- AlterTable
 ALTER TABLE "OfferTemplate" ADD COLUMN     "careIncluded" BOOLEAN NOT NULL DEFAULT false,

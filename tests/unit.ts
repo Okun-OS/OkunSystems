@@ -31,6 +31,7 @@ import {
   type ResolvedRequirement,
 } from "../src/lib/closing/master-data";
 import { calculateInvoiceTotals } from "../src/lib/invoicing/calc";
+import { canAccessAdminPath, homeFor } from "../src/lib/closing/role-access";
 import { sha256Canonical } from "../src/lib/documents/hash";
 
 let passed = 0;
@@ -327,6 +328,44 @@ test("USt-IdNr. ist nicht pauschal Pflicht", () => {
   assert.ok(!REGISTERED_LEGAL_FORMS.includes("gbr"));
   const vatField = MASTER_DATA_FIELDS.find((f) => f.key === "vatId");
   assert.equal(vatField?.defaultRequired, false);
+});
+
+console.log("\nRollen-Zugriff");
+test("CLOSER erreicht ausschließlich den Sales-Bereich", () => {
+  assert.ok(canAccessAdminPath("CLOSER", "/admin/sales"));
+  assert.ok(canAccessAdminPath("CLOSER", "/admin/sales/leads/abc"));
+  assert.ok(canAccessAdminPath("CLOSER", "/admin/sales/closing/abc/audit"));
+  assert.ok(canAccessAdminPath("CLOSER", "/admin/sales/rechnungen/abc"));
+  for (const path of [
+    "/admin/dashboard",
+    "/admin/kunden",
+    "/admin/kunden/abc/dokumente",
+    "/admin/lernen",
+    "/admin/methodik",
+    "/admin/strategy",
+    "/admin/dokumente",
+    "/admin/termine",
+    "/admin/einstellungen",
+    "/admin/einstellungen/team",
+    "/admin/einstellungen/vertragsdokumente",
+  ]) {
+    assert.equal(canAccessAdminPath("CLOSER", path), false, `CLOSER darf ${path} nicht sehen`);
+  }
+});
+test("Präfix-Prüfung lässt sich nicht durch ähnliche Pfade umgehen", () => {
+  assert.equal(canAccessAdminPath("CLOSER", "/admin/sales-intern"), false);
+  assert.equal(canAccessAdminPath("CLOSER", "/admin/salesx/leads"), false);
+});
+test("ADMIN erreicht alles, CLIENT nichts im Adminbereich", () => {
+  assert.ok(canAccessAdminPath("ADMIN", "/admin/einstellungen/team"));
+  assert.equal(canAccessAdminPath("CLIENT", "/admin/sales"), false);
+  assert.equal(canAccessAdminPath("", "/admin/sales"), false);
+});
+test("Startseite je Rolle", () => {
+  assert.equal(homeFor("ADMIN"), "/admin/dashboard");
+  assert.equal(homeFor("CLOSER"), "/admin/sales");
+  assert.equal(homeFor("CLIENT"), "/dashboard");
+  assert.equal(homeFor("unbekannt"), "/dashboard");
 });
 
 console.log("\nsnapshot integrity");

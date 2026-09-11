@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { guarded, requireSales } from "@/lib/auth-guards";
+import { guarded, requireInvoiceAccess, requireSales } from "@/lib/auth-guards";
 import { parseAmountToCents, parseQuantityToMilli, parseVatRateToBp } from "@/lib/money";
 import {
   buildDraftFromClosing,
@@ -99,7 +99,19 @@ export type SaveInvoicePayload = {
 
 export async function saveInvoice(payload: SaveInvoicePayload) {
   return guarded(async () => {
-    const actor = await requireSales();
+    const actor = payload.invoiceId
+      ? (await requireInvoiceAccess(payload.invoiceId)).actor
+      : await requireSales();
+
+    // Ein Closer darf nur aus einem eigenen Closing heraus eine neue Rechnung
+    // anlegen — nicht frei für beliebige Unternehmen.
+    if (!payload.invoiceId && actor.role !== "ADMIN") {
+      if (!payload.closingSessionId) {
+        return { error: "Freie Rechnungen können nur von Administratoren angelegt werden." };
+      }
+      const { requireSessionAccess } = await import("@/lib/auth-guards");
+      await requireSessionAccess(payload.closingSessionId);
+    }
 
     const defaultVatRateBp = parseVatRateToBp(payload.vatRate) ?? 1900;
     const parsed = parseItems(payload.items, defaultVatRateBp);
@@ -169,7 +181,8 @@ export async function recalculateInvoice(items: ClientInvoiceItem[], vatMode: st
 
 export async function createInvoiceDraftFromClosing(closingSessionId: string) {
   return guarded(async () => {
-    await requireSales();
+    const { requireSessionAccess } = await import("@/lib/auth-guards");
+    await requireSessionAccess(closingSessionId);
     const result = await buildDraftFromClosing(closingSessionId);
     return result.ok ? { ok: true, draft: result.draft } : { error: result.error };
   });
@@ -177,7 +190,7 @@ export async function createInvoiceDraftFromClosing(closingSessionId: string) {
 
 export async function finalizeInvoiceAction(invoiceId: string) {
   return guarded(async () => {
-    const actor = await requireSales();
+    const { actor } = await requireInvoiceAccess(invoiceId);
     const result = await finalizeInvoice(invoiceId, actor.id);
     if (!result.ok) return { error: result.error };
 
@@ -209,7 +222,7 @@ export async function finalizeInvoiceAction(invoiceId: string) {
 
 export async function regeneratePdfAction(invoiceId: string) {
   return guarded(async () => {
-    const actor = await requireSales();
+    const { actor } = await requireInvoiceAccess(invoiceId);
     const result = await regenerateInvoicePdf(invoiceId, actor.id);
     revalidatePath(`${LIST_PATH}/${invoiceId}`);
     return result.ok ? { ok: true } : { error: result.error };
@@ -218,7 +231,7 @@ export async function regeneratePdfAction(invoiceId: string) {
 
 export async function cancelInvoiceAction(invoiceId: string, reason: string) {
   return guarded(async () => {
-    const actor = await requireSales();
+    const { actor } = await requireInvoiceAccess(invoiceId);
     if (!reason.trim()) return { error: "Eine Begründung ist erforderlich." };
     const invoice = await db.invoice.findUnique({
       where: { id: invoiceId },
@@ -252,7 +265,7 @@ export async function cancelInvoiceAction(invoiceId: string, reason: string) {
 
 export async function deleteInvoiceDraft(invoiceId: string) {
   return guarded(async () => {
-    await requireSales();
+    await requireInvoiceAccess(invoiceId);
     const invoice = await db.invoice.findUnique({
       where: { id: invoiceId },
       select: { status: true, finalizedAt: true },
