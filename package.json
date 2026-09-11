@@ -15,6 +15,7 @@
     "test:e2e": "tsx tests/e2e-closing.ts",
     "test:http": "tsx tests/http-closing.ts",
     "test:roles": "tsx tests/http-roles.ts",
+    "test:daily": "tsx tests/daily-rooms.ts",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "postgenerate": "node -e \"require('fs').writeFileSync('src/generated/prisma/index.ts', \\\"export * from './client';\\\\n\\\")\"",

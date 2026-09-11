@@ -97,6 +97,7 @@ export type FakeDaily = {
   port: number;
   /** Steuert das Verhalten für Fehlerfall-Tests. */
   state: {
+    rooms: Map<string, { name: string; url: string; exp: number }>;
     recordingId: string;
     status: string;
     failAccessLink: boolean;
@@ -108,7 +109,11 @@ export type FakeDaily = {
 };
 
 export async function startFakeDaily(): Promise<FakeDaily> {
+  /** Bereits angelegte Räume — modelliert Dailys Verhalten bei Namenskollisionen. */
+  const rooms = new Map<string, { name: string; url: string; exp: number }>();
+
   const state = {
+    rooms,
     recordingId: "rec_test_0001",
     status: "finished",
     failAccessLink: false,
@@ -166,9 +171,54 @@ export async function startFakeDaily(): Promise<FakeDaily> {
       state.deleted = true;
       return json(200, { deleted: true });
     }
-    // POST /rooms → Raum anlegen
+    // POST /rooms → Raum anlegen (Daily lehnt doppelte Namen und exp in der
+    // Vergangenheit ab — beides wird hier nachgebildet)
     if (req.method === "POST" && path === "/rooms") {
-      return json(200, { url: "https://okun.daily.co/closing-test" });
+      const body = JSON.parse((await readBody(req)).toString() || "{}") as {
+        name?: string;
+        properties?: { exp?: number };
+      };
+      const name = body.name ?? `room-${rooms.size}`;
+      const exp = body.properties?.exp ?? 0;
+      if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
+        return json(400, {
+          error: "invalid-request-error",
+          info: "name can only contain letters, numbers, dash and underscore",
+        });
+      }
+      if (exp && exp < Math.floor(Date.now() / 1000)) {
+        return json(400, {
+          error: "invalid-request-error",
+          info: "exp must be in the future",
+        });
+      }
+      if (rooms.has(name)) {
+        return json(400, {
+          error: "invalid-request-error",
+          info: `a room named ${name} already exists`,
+        });
+      }
+      const url = `https://okun.daily.co/${name}`;
+      rooms.set(name, { name, url, exp });
+      return json(200, { name, url, config: { exp } });
+    }
+    // GET /rooms/<name> → vorhandenen Raum lesen
+    if (req.method === "GET" && /^\/rooms\/[^/]+$/.test(path)) {
+      const name = decodeURIComponent(path.split("/")[2]);
+      const room = rooms.get(name);
+      if (!room) return json(404, { error: "not-found" });
+      return json(200, { name: room.name, url: room.url, config: { exp: room.exp } });
+    }
+    // POST /rooms/<name> → Ablaufzeit verlängern
+    if (req.method === "POST" && /^\/rooms\/[^/]+$/.test(path)) {
+      const name = decodeURIComponent(path.split("/")[2]);
+      const room = rooms.get(name);
+      if (!room) return json(404, { error: "not-found" });
+      const body = JSON.parse((await readBody(req)).toString() || "{}") as {
+        properties?: { exp?: number };
+      };
+      room.exp = body.properties?.exp ?? room.exp;
+      return json(200, { name: room.name, url: room.url, config: { exp: room.exp } });
     }
     return json(404, { error: "not found" });
   });

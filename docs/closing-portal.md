@@ -172,6 +172,7 @@ Neu (alle optional, mit sicheren Defaults):
 | `R2_ENDPOINT` | Cloudflare-Endpunkt | abweichender S3-kompatibler Endpunkt |
 | `R2_FORCE_PATH_STYLE` | `false` | Path-Style-Adressierung |
 | `DAILY_API_BASE` | `https://api.daily.co/v1` | abweichende Daily-Basis-URL |
+| `DAILY_ROOM_MIN_LIFETIME_HOURS` | `4` | Mindestgültigkeit eines neu angelegten Videoraums |
 | `PUPPETEER_EXECUTABLE_PATH` | automatisch gesucht | Chromium für die PDF-Erzeugung |
 
 ---
@@ -208,6 +209,7 @@ npm run test:unit    # Rechenkerne, Template Engine, Statusmaschine, Stammdaten,
 npm run test:e2e     # vollständiger Durchlauf gegen echte PostgreSQL
 npm run test:http    # Routing, Autorisierung, Idempotenz gegen laufenden Server
 npm run test:roles   # echter Login als Closer: Bereichsschranke und Isolation
+npm run test:daily   # Videoräume: vergangene Termine, Namenskollisionen, Fehlermeldungen
 ```
 
 `test:e2e` startet lokale Test-Doubles für R2 und Daily.co (`tests/harness/`) und benötigt
@@ -275,6 +277,17 @@ genau das, was ein Healthcheck belegen soll: der Prozess beantwortet Anfragen.
 ```json
 "deploy": { "healthcheckPath": "/api/health" }
 ```
+
+**Videoräume.** Daily.co lehnt Räume ab, deren Ablaufzeit in der Vergangenheit liegt, und
+ebenso einen bereits vergebenen Raumnamen. Beides fängt `src/lib/daily.ts` ab: die
+Ablaufzeit wird auf mindestens `DAILY_ROOM_MIN_LIFETIME_HOURS` ab jetzt angehoben, ein
+vorhandener Raum wird weiterverwendet und bei Bedarf verlängert. Fehlermeldungen von Daily
+werden unverändert an die Oberfläche gereicht, statt hinter einem allgemeinen Text zu
+verschwinden.
+
+Scheitert die Raumerstellung beim Anlegen eines Closings, entsteht die Session trotzdem —
+mit einem Hinweis. Der Raum lässt sich im Termin jederzeit nachträglich anlegen. Ohne
+Videoraum gibt `checkRecordingRelease()` die Aufzeichnung allerdings nicht frei.
 
 **Startkette.** Jeder Seed-Schritt ist in `( … || echo "WARNUNG …" )` gekapselt. Ein
 scheiternder Seed schreibt damit eine Warnung ins Deploy-Log, verhindert aber nicht mehr,

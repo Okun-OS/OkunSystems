@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { sendClosingInvitationEmail } from "@/lib/email";
 import { validateCompanyMasterData } from "@/lib/closing/master-data";
 import { hashToken, generateToken, CLOSING_TOKEN_TTL_HOURS, appUrl } from "@/lib/closing/token";
+import { buildRoomName, ensureDailyRoom, isDailyConfigured } from "@/lib/daily";
 
 export async function createLead(formData: FormData) {
   const session = await auth();
@@ -174,43 +175,25 @@ export async function createClosingSession(
     },
   });
 
-  // Auto-create Daily.co video room
-  const dailyApiKey = process.env.DAILY_API_KEY;
-  if (dailyApiKey) {
-    try {
-      const roomName = `closing-${appointment.id.slice(-8)}`;
-      const exp = Math.floor(endTime.getTime() / 1000) + 7200;
-      const dailyRes = await fetch("https://api.daily.co/v1/rooms", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${dailyApiKey}`,
-        },
-        body: JSON.stringify({
-          name: roomName,
-          properties: {
-            exp,
-            enable_screenshare: true,
-            enable_chat: true,
-            start_video_off: false,
-            start_audio_off: false,
-          },
-        }),
+  // Videoraum anlegen. Schlägt das fehl, entsteht die Closing Session trotzdem —
+  // der Raum lässt sich im Termin jederzeit nachträglich erstellen.
+  let roomWarning: string | null = null;
+  if (isDailyConfigured()) {
+    const room = await ensureDailyRoom({
+      name: buildRoomName("closing", appointment.id),
+      endsAt: endTime,
+    });
+    if (room.ok) {
+      await db.appointment.update({
+        where: { id: appointment.id },
+        data: { meetingUrl: room.url },
       });
-      if (dailyRes.ok) {
-        const room = (await dailyRes.json()) as { url?: string };
-        if (room.url) {
-          await db.appointment.update({
-            where: { id: appointment.id },
-            data: { meetingUrl: room.url },
-          });
-        }
-      } else {
-        console.warn("[createClosingSession] Daily.co room creation failed:", await dailyRes.text());
-      }
-    } catch (e) {
-      console.error("[createClosingSession] Daily.co error:", e);
+    } else {
+      roomWarning = room.error;
+      console.warn("[createClosingSession] Videoraum:", room.error);
     }
+  } else {
+    roomWarning = "Daily.co ist nicht konfiguriert (DAILY_API_KEY fehlt).";
   }
 
   const closingSession = await db.closingSession.create({
@@ -246,7 +229,7 @@ export async function createClosingSession(
   revalidatePath(`/admin/sales/leads/${companyId}`);
   revalidatePath("/admin/sales");
   revalidatePath("/admin/sales/leads");
-  return { sessionId: closingSession.id, token, closingUrl };
+  return { sessionId: closingSession.id, token, closingUrl, roomWarning };
 }
 
 export async function addLeadNote(companyId: string, content: string) {

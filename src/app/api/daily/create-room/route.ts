@@ -1,74 +1,66 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { requireSales, AuthorizationError } from "@/lib/auth-guards";
+import { buildRoomName, ensureDailyRoom, isDailyConfigured } from "@/lib/daily";
 
+export const dynamic = "force-dynamic";
+
+/**
+ * Legt den Videoraum zu einem Termin an — oder verwendet einen bereits
+ * vorhandenen weiter. Fehlermeldungen von Daily.co werden durchgereicht, damit
+ * im Admin erkennbar ist, woran es liegt.
+ */
 export async function POST(req: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: "Nicht autorisiert" }, { status: 401 });
-    }
-    const role = (session.user as { role?: string }).role;
-    if (role !== "ADMIN" && role !== "CLOSER") {
-      return NextResponse.json({ error: "Keine Berechtigung" }, { status: 403 });
-    }
-
-    const { appointmentId } = await req.json();
-    if (!appointmentId) {
-      return NextResponse.json({ error: "appointmentId fehlt" }, { status: 400 });
-    }
-
-    const apiKey = process.env.DAILY_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: "Daily.co nicht konfiguriert (DAILY_API_KEY fehlt)" }, { status: 503 });
-    }
-
-    const appointment = await db.appointment.findUnique({
-      where: { id: appointmentId },
-      select: { id: true, startTime: true, endTime: true },
-    });
-    if (!appointment) {
-      return NextResponse.json({ error: "Termin nicht gefunden" }, { status: 404 });
-    }
-
-    const roomName = `strategiegespraech-${appointmentId.slice(-8)}`;
-    const exp = Math.floor(new Date(appointment.endTime).getTime() / 1000) + 3600;
-
-    const dailyRes = await fetch("https://api.daily.co/v1/rooms", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        name: roomName,
-        properties: {
-          exp,
-          enable_screenshare: true,
-          enable_chat: true,
-          start_video_off: false,
-          start_audio_off: false,
-        },
-      }),
-    });
-
-    if (!dailyRes.ok) {
-      const err = await dailyRes.text();
-      console.error("Daily.co error:", err);
-      return NextResponse.json({ error: "Daily.co Raum konnte nicht erstellt werden" }, { status: 502 });
-    }
-
-    const room = await dailyRes.json();
-    const meetingUrl = room.url as string;
-
-    await db.appointment.update({
-      where: { id: appointmentId },
-      data: { meetingUrl },
-    });
-
-    return NextResponse.json({ meetingUrl });
-  } catch (error) {
-    console.error("create-room error:", error);
-    return NextResponse.json({ error: "Interner Fehler" }, { status: 500 });
+    await requireSales();
+  } catch (err) {
+    const status = err instanceof AuthorizationError ? 403 : 500;
+    return NextResponse.json({ error: "Keine Berechtigung" }, { status });
   }
+
+  let body: { appointmentId?: string };
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Ungültige Anfrage" }, { status: 400 });
+  }
+  if (!body.appointmentId) {
+    return NextResponse.json({ error: "appointmentId fehlt" }, { status: 400 });
+  }
+
+  if (!isDailyConfigured()) {
+    return NextResponse.json(
+      { error: "Daily.co ist nicht konfiguriert (DAILY_API_KEY fehlt)." },
+      { status: 503 }
+    );
+  }
+
+  const appointment = await db.appointment.findUnique({
+    where: { id: body.appointmentId },
+    select: { id: true, endTime: true, meetingUrl: true, type: true },
+  });
+  if (!appointment) {
+    return NextResponse.json({ error: "Termin nicht gefunden" }, { status: 404 });
+  }
+
+  const prefix = appointment.type === "CLOSING_CALL" ? "closing" : "strategiegespraech";
+  const result = await ensureDailyRoom({
+    name: buildRoomName(prefix, appointment.id),
+    endsAt: appointment.endTime,
+  });
+
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error }, { status: 502 });
+  }
+
+  await db.appointment.update({
+    where: { id: appointment.id },
+    data: { meetingUrl: result.url },
+  });
+
+  return NextResponse.json({
+    meetingUrl: result.url,
+    reused: result.reused,
+    extended: result.extended,
+  });
 }

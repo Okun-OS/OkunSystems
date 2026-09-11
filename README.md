@@ -32,6 +32,7 @@ npm run test:unit    # Rechenkerne, Template Engine, Statusmaschine, Stammdaten
 npm run test:e2e     # vollständiger Closing-Durchlauf gegen PostgreSQL
 npm run test:http    # Routing, Autorisierung, Idempotenz gegen laufenden Server
 npm run test:roles   # Rollenabgrenzung: echter Login als Closer
+npm run test:daily   # Daily.co-Videoräume gegen einen Nachbau
 ```
 
 ## Learn More

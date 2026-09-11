@@ -191,7 +191,12 @@ export function LeadDetailClient({ company, closers, currentUserId, currentUserR
       if (result?.error) {
         setSessionError(result.error);
       } else {
-        setSessionSuccess("Termin erstellt. Einladung wurde versandt.");
+        const warning = (result as { roomWarning?: string | null }).roomWarning;
+        setSessionSuccess(
+          warning
+            ? `Termin erstellt und Einladung versandt. Achtung: Der Videoraum konnte nicht angelegt werden (${warning}). Ohne Videoraum lässt sich keine Vertragsaufzeichnung starten — im Termin nachträglich über die Schaltfläche Videoraum erstellen anlegen.`
+            : "Termin erstellt. Einladung wurde versandt."
+        );
         if (result.closingUrl) setSessionLink(result.closingUrl);
         setShowNewSession(false);
         router.refresh();
