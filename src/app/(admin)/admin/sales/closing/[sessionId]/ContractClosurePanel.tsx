@@ -236,10 +236,10 @@ export function ContractClosurePanel({ data }: { data: ContractClosureData }) {
               <p className="text-[#8899b4] text-sm">
                 Es ist keine Erklärung konfiguriert. Bitte unter{" "}
                 <Link
-                  href="/admin/einstellungen/erklaerungen"
+                  href="/admin/einstellungen/vertragsdokumente"
                   className="text-[#00b8ff] hover:underline"
                 >
-                  Einstellungen → Erklärungen
+                  Einstellungen → Rechtliche Dokumente & Erklärungen
                 </Link>{" "}
                 anlegen.
               </p>

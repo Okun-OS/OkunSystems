@@ -13,6 +13,7 @@
  * Widerrufsbelehrungen oder Closing-Scripts — diese Inhalte hinterlegt OKUN
  * administrativ.
  */
+import { createHash } from "node:crypto";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 // Nur importlose Module laden: kein @/-Alias, keine Datenbankschicht —
@@ -150,6 +151,94 @@ async function backfillContractDocuments() {
   }
 }
 
+/**
+ * Aus den bereits gepflegten Rechtsdokumenten die Checkbox-Konfiguration
+ * übernehmen.
+ *
+ * Im Altbestand hängt der Checkbox-Text als `checkboxLabel` direkt am Dokument.
+ * Daraus entsteht je Dokument eine ConsentDefinition, damit die bisherige
+ * Einrichtung ohne erneutes Hochladen weiterläuft.
+ */
+async function backfillConsentDefinitions() {
+  const documents = await prisma.contractDocument.findMany({
+    include: { versions: { orderBy: { createdAt: "desc" } } },
+  });
+
+  let created = 0;
+  for (const document of documents) {
+    const existing = await prisma.consentDefinition.findFirst({
+      where: { contractDocumentId: document.id },
+    });
+    if (existing) continue;
+
+    // Erste Version mit hinterlegtem Checkbox-Text gewinnt.
+    const source = document.versions.find((v) => v.checkboxLabel?.trim());
+    if (!source?.checkboxLabel?.trim()) continue;
+
+    const isRecording =
+      document.type === "recording_consent" ||
+      document.type === "aufzeichnung" ||
+      /aufzeichnung|recording/i.test(document.name);
+
+    let key = `legacy_${document.type}`.toLowerCase().replace(/[^a-z0-9_]/g, "_");
+    for (let i = 2; await prisma.consentDefinition.findUnique({ where: { key } }); i++) {
+      key = `legacy_${document.type}_${i}`.toLowerCase().replace(/[^a-z0-9_]/g, "_");
+    }
+
+    const definition = await prisma.consentDefinition.create({
+      data: {
+        key,
+        title: document.name,
+        checkboxText: source.checkboxLabel.trim(),
+        consentType: isRecording ? "RECORDING_CONSENT" : "ACCEPTANCE",
+        isRequired: source.isRequired,
+        isActive: true,
+        displayOrder: document.displayOrder,
+        // Aufzeichnungs-Einwilligungen brauchen kein Dokument.
+        contractDocumentId: isRecording ? null : document.id,
+        createdById: source.createdById,
+        version: 1,
+      },
+    });
+    await prisma.consentDefinitionRevision.create({
+      data: {
+        definitionId: definition.id,
+        version: 1,
+        title: definition.title,
+        checkboxText: definition.checkboxText,
+        consentType: definition.consentType,
+        isRequired: definition.isRequired,
+        createdById: source.createdById,
+      },
+    });
+    created++;
+  }
+  if (created > 0) console.log(`  ✅ ${created} Checkbox-Text(e) aus dem Altbestand übernommen`);
+}
+
+/**
+ * Prüfsummen für Versionen mit hinterlegtem Text sofort berechnen.
+ * PDF-Versionen werden beim ersten Zugriff gehasht, weil dafür die Datei aus
+ * R2 gelesen werden muss.
+ */
+async function backfillContentHashes() {
+  const versions = await prisma.legalDocument.findMany({
+    where: { sha256: null, content: { not: null } },
+    select: { id: true, content: true },
+  });
+  for (const version of versions) {
+    if (!version.content) continue;
+    await prisma.legalDocument.update({
+      where: { id: version.id },
+      data: {
+        sha256: createHash("sha256").update(version.content, "utf8").digest("hex"),
+        fileSize: Buffer.byteLength(version.content, "utf8"),
+      },
+    });
+  }
+  if (versions.length > 0) console.log(`  ✅ ${versions.length} Prüfsumme(n) berechnet`);
+}
+
 /** Alte Statusbezeichnungen auf die Closing State Machine normalisieren. */
 async function normalizeStatuses() {
   const sessionMap: Record<string, string> = {
@@ -213,6 +302,8 @@ async function main() {
   await seedMasterDataRequirements();
   await seedDocumentTemplates();
   await backfillContractDocuments();
+  await backfillConsentDefinitions();
+  await backfillContentHashes();
   await normalizeStatuses();
   await backfillInvoiceAmounts();
   console.log("✅ Closing Portal bereit");

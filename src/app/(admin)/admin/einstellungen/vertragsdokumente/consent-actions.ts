@@ -17,8 +17,13 @@ import { CONSENT_TYPES } from "@/lib/closing/consent-resolver";
  * erhöht die Version und wird als Revision archiviert.
  */
 
-const PATH = "/admin/einstellungen/erklaerungen";
+const PATH = "/admin/einstellungen/vertragsdokumente";
 
+/**
+ * Paketzuordnung. Ohne Angabe gilt die Erklärung für alle Pakete — das ist der
+ * Normalfall (AGB, Datenschutz, AVV). Das Feld bleibt im Datenmodell erhalten,
+ * wird in der Oberfläche aber nicht abgefragt.
+ */
 function parseAppliesTo(raw: string | null): string[] | null {
   if (!raw?.trim()) return null;
   const list = raw

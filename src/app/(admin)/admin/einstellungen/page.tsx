@@ -166,13 +166,8 @@ export default async function AdminEinstellungenPage() {
             },
             {
               href: "/admin/einstellungen/vertragsdokumente",
-              title: "Vertragsdokumente",
-              desc: "AGB, AVV & Anlagen mit unveränderlicher Versionierung und SHA-256-Nachweis.",
-            },
-            {
-              href: "/admin/einstellungen/erklaerungen",
-              title: "Erklärungen & Checkboxen",
-              desc: "Wortlaut aller Checkboxen – inklusive der Einwilligung zur Aufzeichnung.",
+              title: "Rechtliche Dokumente & Erklärungen",
+              desc: "AGB, AVV & Anlagen mit versionierten Dateien – und der Wortlaut der Checkbox, die der Kunde dazu abhakt.",
             },
             {
               href: "/admin/einstellungen/closing-scripts",
@@ -198,27 +193,6 @@ export default async function AdminEinstellungenPage() {
             </Link>
           ))}
         </div>
-      </div>
-
-      {/* Legal documents */}
-      <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6 mb-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <FileText size={16} className="text-[#888]" />
-            <h2 className="text-[#f0f0f0] font-semibold text-sm">Rechtliche Dokumente</h2>
-          </div>
-          <Link
-            href="/admin/einstellungen/rechtliches"
-            className="flex items-center gap-1.5 text-[#00b8ff] text-sm hover:underline"
-          >
-            Verwalten
-            <ArrowRight size={14} />
-          </Link>
-        </div>
-        <p className="text-[#888] text-xs mt-2 leading-relaxed">
-          Alter Bestand aus der Zeit vor der Dokumentversionierung. Für neue Abschlüsse gilt
-          ausschlie&szlig;lich &bdquo;Vertragsdokumente&ldquo; im Closing Portal.
-        </p>
       </div>
 
       {/* Integrations */}

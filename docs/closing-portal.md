@@ -66,8 +66,7 @@ protokolliert wird.
 |---|---|
 | `/admin/einstellungen/team` | Interne Benutzer: Closer und Administratoren anlegen, Rolle ändern, deaktivieren |
 | `/admin/einstellungen/unternehmen` | Unternehmensdaten |
-| `/admin/einstellungen/vertragsdokumente` | Dokumente + unveränderliche Versionen + Hashes |
-| `/admin/einstellungen/erklaerungen` | Checkbox-Texte inkl. Aufzeichnungs-Einwilligung |
+| `/admin/einstellungen/vertragsdokumente` | Dokumente, unveränderliche Versionen, Prüfsummen **und** die zugehörigen Checkbox-Texte inkl. Aufzeichnungs-Einwilligung — auf einer Seite |
 | `/admin/einstellungen/closing-scripts` | Teleprompter-Texte und Platzhalterkatalog |
 | `/admin/einstellungen/vorlagen` | Vorlagen-Editor, Versionen, Custom Placeholder, Live-Vorschau |
 | `/admin/sales/leads/[id]` | Stammdatenpanel; „Closing Meeting erstellen" erst bei Vollständigkeit |
