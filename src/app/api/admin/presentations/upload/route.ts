@@ -2,27 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireSessionAccess, AuthorizationError } from "@/lib/auth-guards";
 import { uploadToR2 } from "@/lib/storage";
 import { sha256Buffer, verifyR2Object } from "@/lib/documents/hash";
+import { isDisplayable, rejectionMessage } from "@/lib/closing/upload-formats";
 
 export const dynamic = "force-dynamic";
 
 const MAX_BYTES = 25 * 1024 * 1024;
 
 /**
- * Zulässige Folienformate.
+ * Lädt eine Folie hoch. Der Hash wird über exakt die gespeicherten Bytes
+ * gebildet.
  *
- * Bilder werden im Gespräch als einzelne Folie angezeigt und lassen sich
- * weiterblättern. Eine PDF wird als ein Dokument dargestellt, durch das der
- * Kunde scrollen kann.
+ * Angenommen wird, was ein Browser darstellen kann: Bilder werden im Gespräch
+ * als einzelne Folie gezeigt, eine PDF seitenweise gerendert und Seite für
+ * Seite weitergeblättert.
  */
-const ALLOWED = [
-  "image/png",
-  "image/jpeg",
-  "image/webp",
-  "image/gif",
-  "application/pdf",
-];
-
-/** Lädt eine Folie hoch. Der Hash wird über exakt die gespeicherten Bytes gebildet. */
 export async function POST(request: NextRequest) {
   let formData: FormData;
   try {
@@ -48,11 +41,8 @@ export async function POST(request: NextRequest) {
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "Keine Datei angegeben" }, { status: 400 });
   }
-  if (!ALLOWED.includes(file.type)) {
-    return NextResponse.json(
-      { error: "Zulässig sind PNG, JPG, WebP, GIF und PDF." },
-      { status: 400 }
-    );
+  if (!isDisplayable(file.type)) {
+    return NextResponse.json({ error: rejectionMessage(file.type) }, { status: 400 });
   }
   if (file.size > MAX_BYTES) {
     return NextResponse.json({ error: "Die Datei ist größer als 25 MB." }, { status: 400 });

@@ -484,7 +484,14 @@ export function ClosingClientView({ initialState, token }: Props) {
         </p>
       </footer>
 
-      {offerOpen && <PdfViewer url={offerPdfUrl} title="Angebot" onClose={() => setOfferOpen(false)} />}
+      {offerOpen && (
+        <DocumentViewer
+          url={offerPdfUrl}
+          title="Angebot"
+          kind={state.offerDocumentKind ?? "pdf"}
+          onClose={() => setOfferOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -576,13 +583,16 @@ function WaitingRoom({
  * Ein eingebetteter Browser-Viewer zoomt nach eigenem Gutdünken hinein; das
  * hilft niemandem, der ein Angebot überblicken will.
  */
-export function PdfViewer({
+export function DocumentViewer({
   url,
   title,
+  kind,
   onClose,
 }: {
   url: string;
   title: string;
+  /** Ein Bild wird als Ganzes gezeigt, eine PDF seitenweise. */
+  kind: "pdf" | "image";
   onClose: () => void;
 }) {
   const [page, setPage] = useState(1);
@@ -591,12 +601,13 @@ export function PdfViewer({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
+      if (kind !== "pdf") return;
       if (e.key === "ArrowRight") setPage((p) => Math.min(p + 1, pageCount));
       if (e.key === "ArrowLeft") setPage((p) => Math.max(p - 1, 1));
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose, pageCount]);
+  }, [onClose, pageCount, kind]);
 
   return (
     <div className="fixed inset-0 z-50 bg-[#04070c]/95 backdrop-blur-sm flex flex-col p-3 sm:p-6">
@@ -620,14 +631,21 @@ export function PdfViewer({
         </div>
       </div>
 
-      <PdfPage
-        src={url}
-        page={page}
-        onDocumentLoad={setPageCount}
-        className="flex-1 min-h-0 rounded-xl bg-[#0a111c] border border-[#12203a]"
-      />
+      {kind === "image" ? (
+        <div className="flex-1 min-h-0 rounded-xl bg-[#0a111c] border border-[#12203a] flex items-center justify-center overflow-hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={url} alt={title} className="max-w-full max-h-full object-contain" />
+        </div>
+      ) : (
+        <PdfPage
+          src={url}
+          page={page}
+          onDocumentLoad={setPageCount}
+          className="flex-1 min-h-0 rounded-xl bg-[#0a111c] border border-[#12203a]"
+        />
+      )}
 
-      <div className="mt-3 flex items-center justify-center gap-3">
+      <div className="mt-3 flex items-center justify-center gap-3" hidden={kind === "image"}>
         <button
           onClick={() => setPage((p) => Math.max(p - 1, 1))}
           disabled={page <= 1}

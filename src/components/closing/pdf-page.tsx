@@ -21,14 +21,20 @@ type PdfModule = typeof import("pdfjs-dist");
 
 let pdfjsPromise: Promise<PdfModule> | null = null;
 
+/**
+ * Der Worker wird als eigene Datei aus `public/` geladen, nicht als Modul
+ * importiert: `pdf.worker.min.mjs` hat keinen Default-Export, sondern ist
+ * Worker-Code zum Ausführen. Ein Import davon ergibt keinen Worker-Konstruktor.
+ *
+ * Die Datei kopiert `scripts/copy-pdf-worker.mjs` bei jeder Installation und
+ * vor jedem Build aus `node_modules`, damit sie zur eingesetzten Fassung passt.
+ */
+const WORKER_SRC = "/pdf.worker.min.mjs";
+
 async function loadPdfjs(): Promise<PdfModule> {
   if (!pdfjsPromise) {
-    pdfjsPromise = import("pdfjs-dist").then(async (module) => {
-      const worker = await import("pdfjs-dist/build/pdf.worker.min.mjs");
-      // Der Worker bringt sich selbst mit; pdf.js erwartet ihn als Port.
-      module.GlobalWorkerOptions.workerPort = new (
-        worker as unknown as { default: new () => Worker }
-      ).default();
+    pdfjsPromise = import("pdfjs-dist").then((module) => {
+      module.GlobalWorkerOptions.workerSrc = WORKER_SRC;
       return module;
     });
   }

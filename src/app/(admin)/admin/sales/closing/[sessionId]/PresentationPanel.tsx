@@ -18,9 +18,13 @@ import {
 import { isFailure } from "@/lib/action-result";
 import {
   PRESENTATION_STATUS_LABELS,
-  SLIDE_ACCEPT,
   type SlideUpload,
 } from "@/lib/closing/presentation-types";
+import {
+  DISPLAYABLE_ACCEPT,
+  DISPLAYABLE_LABELS,
+  OFFICE_HINT,
+} from "@/lib/closing/upload-formats";
 import {
   addSlides,
   approvePresentation,
@@ -390,7 +394,7 @@ export function PresentationPanel({
                 <input
                   ref={fileRef}
                   type="file"
-                  accept={SLIDE_ACCEPT}
+                  accept={DISPLAYABLE_ACCEPT}
                   multiple
                   disabled={uploading}
                   onChange={(e) => {
@@ -400,10 +404,11 @@ export function PresentationPanel({
                   className="text-[#888] text-xs file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-[#1a2840] file:text-[#f0f0f0] file:text-xs"
                 />
                 <p className="text-[#555] text-xs mt-2">
-                  Mehrfachauswahl möglich — die Folien werden in der gewählten Reihenfolge
-                  angehängt. In PowerPoint, Keynote und Google Slides über „Exportieren als
-                  Bilder“.
+                  {DISPLAYABLE_LABELS}. Mehrfachauswahl möglich — die Folien werden in der
+                  gewählten Reihenfolge angehängt. Eine PDF wird im Gespräch seitenweise
+                  geblättert.
                 </p>
+                <p className="text-[#555] text-xs mt-1.5">{OFFICE_HINT}</p>
                 {uploading && (
                   <p className="text-[#00b8ff] text-xs mt-2 flex items-center gap-1.5">
                     <Loader2 size={12} className="animate-spin" /> Folien werden hochgeladen…

@@ -139,6 +139,31 @@ const NEXT_STEP_MAP: Record<
   },
 };
 
+/** Fenstergröße, auf die beim Start einer Präsentation aufgezogen wird. */
+const PRESENTATION_SIZE = { w: 820, h: 560 };
+
+/**
+ * Hält das Gesprächsfenster im Sichtbaren.
+ *
+ * Verschoben werden darf es überall hin — aber nie so weit, dass die
+ * Titelleiste und damit der Griff zum Zurückholen verschwindet.
+ */
+function clampToViewport(
+  pos: { x: number; y: number },
+  size: { w: number; h: number }
+): { x: number; y: number } {
+  if (typeof window === "undefined") return pos;
+  const MARGIN = 8;
+  const VISIBLE = 200; // so viel Fenster bleibt mindestens greifbar
+  return {
+    x: Math.min(
+      Math.max(pos.x, VISIBLE - size.w),
+      Math.max(window.innerWidth - VISIBLE, MARGIN)
+    ),
+    y: Math.min(Math.max(pos.y, MARGIN), Math.max(window.innerHeight - 48, MARGIN)),
+  };
+}
+
 const CONTENT_TYPE_LABELS: Record<string, string> = {
   closing_script: "Skript",
   objection: "Einwand",
@@ -292,6 +317,15 @@ export function ClosingWorkspaceClient({
   const [callActive, setCallActive] = useState(false);
   const [callExpanded, setCallExpanded] = useState(false);
 
+  // ─── Draggable + resizable video overlay ──────────────────────────────────
+  const [vidPos, setVidPos] = useState({ x: 0, y: 0 });
+  const [vidSize, setVidSize] = useState({ w: 420, h: 300 });
+  const vidPosInitialized = useRef(false);
+  const isDragging = useRef(false);
+  const isResizing = useRef(false);
+  const dragOrigin = useRef({ mx: 0, my: 0, x: 0, y: 0, w: 0, h: 0 });
+  const resizeOrigin = useRef({ mx: 0, my: 0, w: 0, h: 0 });
+
   // ─── Präsentationssteuerung ────────────────────────────────────────────────
   // Der Berater blättert zuerst lokal und dann auf dem Server: die Bedienung
   // reagiert sofort, und ein Neuaufbau der Seite fasst das laufende Gespräch
@@ -319,8 +353,18 @@ export function ClosingWorkspaceClient({
       page: liveSlidePage && liveSlidePage > 0 ? liveSlidePage : 1,
       pageCount: 1,
     });
-    // Eine startende Präsentation soll man auch sehen.
-    if (justStarted) setCallExpanded(true);
+    // Eine startende Präsentation braucht Platz — aber das Fenster bleibt
+    // verschiebbar. Vollbild gibt es weiterhin über die Schaltfläche; es
+    // ungefragt zu erzwingen, nahm dem Berater die Kontrolle über sein Bild.
+    if (justStarted) {
+      const grown = vidSize.w < PRESENTATION_SIZE.w ? PRESENTATION_SIZE : vidSize;
+      if (grown !== vidSize) {
+        setVidSize(grown);
+        // Ein breiteres Fenster an der alten Stelle ragt rechts hinaus —
+        // also mitziehen, statt den Berater hinterherschieben zu lassen.
+        setVidPos((pos) => clampToViewport(pos, grown));
+      }
+    }
   }
 
   const liveIndex = liveSlides.findIndex((slide) => slide.position === slideView.position);
@@ -420,14 +464,6 @@ export function ClosingWorkspaceClient({
   const notesTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const checklistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ─── Draggable + resizable video overlay ──────────────────────────────────
-  const [vidPos, setVidPos] = useState({ x: 0, y: 0 });
-  const [vidSize, setVidSize] = useState({ w: 420, h: 300 });
-  const vidPosInitialized = useRef(false);
-  const isDragging = useRef(false);
-  const isResizing = useRef(false);
-  const dragOrigin = useRef({ mx: 0, my: 0, x: 0, y: 0 });
-  const resizeOrigin = useRef({ mx: 0, my: 0, w: 0, h: 0 });
 
   const checkedCount = ALL_STEP_IDS.filter((id) => checklist[id]).length;
   const totalCount = ALL_STEP_IDS.length;
@@ -437,10 +473,16 @@ export function ClosingWorkspaceClient({
   useEffect(() => {
     function onMove(e: MouseEvent) {
       if (isDragging.current) {
-        setVidPos({
-          x: dragOrigin.current.x + (e.clientX - dragOrigin.current.mx),
-          y: dragOrigin.current.y + (e.clientY - dragOrigin.current.my),
-        });
+        const origin = dragOrigin.current;
+        setVidPos(
+          clampToViewport(
+            {
+              x: origin.x + (e.clientX - origin.mx),
+              y: origin.y + (e.clientY - origin.my),
+            },
+            { w: origin.w, h: origin.h }
+          )
+        );
       }
       if (isResizing.current) {
         setVidSize({
@@ -1146,7 +1188,7 @@ export function ClosingWorkspaceClient({
                         className="flex items-center gap-1.5 px-4 py-2 border-t border-[#1a2840] text-xs text-[#888] hover:text-[#00b8ff] transition-colors"
                       >
                         <FileText size={11} />
-                        PDF anzeigen
+                        Angebot anzeigen
                       </a>
                     )}
                   </div>
@@ -1246,7 +1288,14 @@ export function ClosingWorkspaceClient({
             className="flex items-center justify-between px-3 py-2 bg-[#0c1520] border-b border-[#1a2840] flex-shrink-0 cursor-grab active:cursor-grabbing select-none"
             onMouseDown={(e) => {
               isDragging.current = true;
-              dragOrigin.current = { mx: e.clientX, my: e.clientY, x: vidPos.x, y: vidPos.y };
+              dragOrigin.current = {
+                mx: e.clientX,
+                my: e.clientY,
+                x: vidPos.x,
+                y: vidPos.y,
+                w: vidSize.w,
+                h: vidSize.h,
+              };
               e.preventDefault();
             }}
           >

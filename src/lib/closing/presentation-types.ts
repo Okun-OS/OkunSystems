@@ -15,6 +15,3 @@ export const PRESENTATION_STATUS_LABELS: Record<string, string> = {
   approved: "Freigegeben",
   archived: "Archiviert",
 };
-
-/** Zulässige Folienformate — Bilder als Folie, PDF als Dokument. */
-export const SLIDE_ACCEPT = "image/png,image/jpeg,image/webp,image/gif,application/pdf";

@@ -75,6 +75,21 @@ export async function proxy(req: NextRequest) {
   return NextResponse.next({ request: { headers } });
 }
 
+/**
+ * Statische Dateien bleiben außen vor.
+ *
+ * Vorher waren nur PNG-Dateien ausgenommen. Alles andere aus `public/` lief
+ * durch die Anmeldeschranke und wurde für nicht angemeldete Besucher auf
+ * `/login` umgeleitet — was auf der Kundenseite des Closings zuschlägt: der
+ * Kunde ist nicht angemeldet, sein Zugang läuft über das Token. Der
+ * PDF-Worker kam dort als Anmeldeseite an, und die Folie ließ sich nicht
+ * anzeigen.
+ *
+ * Alles in `public/` ist ohnehin öffentlich; Privates läuft über API-Routen
+ * mit eigener Prüfung.
+ */
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.png$).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpe?g|gif|webp|avif|svg|ico|mjs|js|css|map|pdf|txt|xml|json|woff2?|ttf|otf|eot|mp4|webm|wasm)$).*)",
+  ],
 };

@@ -69,8 +69,10 @@ export type ClientClosingState = {
     extras: Array<{ description: string; amount: string }>;
     validUntil: string | null;
   } | null;
-  /** Das Angebot kann als PDF geöffnet werden. */
+  /** Das Angebot kann geöffnet werden. */
   offerPdfAvailable: boolean;
+  /** Womit das Angebot dargestellt wird: als Seite oder als Bild. */
+  offerDocumentKind: "pdf" | "image" | null;
   /**
    * Der Berater hat das Angebot vorgestellt. Vorher zeigt die Kundenseite
    * bewusst nichts Vertriebliches — für den Kunden ist das zunächst ein
@@ -229,9 +231,26 @@ export async function buildClientClosingState(
 
   // Das PDF entsteht entweder aus einer hinterlegten Paket-Datei oder aus der
   // Vorlage „Angebot". Ohne Angebotsdaten gibt es nichts zu zeigen.
+  // Eine hochgeladene Paketdatei kann auch ein Bild sein; ohne sie wird das
+  // Angebot aus der Vorlage als PDF gerendert.
+  const uploadedOffer = session.activeOfferId
+    ? await db.offer.findUnique({
+        where: { id: session.activeOfferId },
+        select: { template: { select: { r2Key: true } } },
+      })
+    : null;
+  const uploadedKey = uploadedOffer?.template?.r2Key ?? null;
+
   const offerPdfAvailable =
     Boolean(offer) &&
-    (await db.documentTemplate.count({ where: { type: "offer", isActive: true } })) > 0;
+    (Boolean(uploadedKey) ||
+      (await db.documentTemplate.count({ where: { type: "offer", isActive: true } })) > 0);
+
+  const offerDocumentKind: "pdf" | "image" | null = !offerPdfAvailable
+    ? null
+    : uploadedKey && /\.(png|jpe?g|webp|avif|gif|bmp)$/i.test(uploadedKey)
+      ? "image"
+      : "pdf";
 
   return {
     sessionId: session.id,
@@ -251,6 +270,7 @@ export async function buildClientClosingState(
     snapshotReady: Boolean(data),
     offer,
     offerPdfAvailable,
+    offerDocumentKind,
     offerPresented: Boolean(offer),
     consents,
     allRequiredConfirmed,

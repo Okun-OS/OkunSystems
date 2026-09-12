@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     where: { id: templateId },
     select: { r2Key: true },
   });
-  if (!template?.r2Key) return NextResponse.json({ error: "Kein PDF vorhanden" }, { status: 404 });
+  if (!template?.r2Key) return NextResponse.json({ error: "Kein Dokument vorhanden" }, { status: 404 });
 
   const url = await getPresignedReadUrl(template.r2Key, 300);
   return NextResponse.redirect(url);

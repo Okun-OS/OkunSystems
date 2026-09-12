@@ -4,6 +4,12 @@ import { useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Edit2, Archive, Check, FileText, Upload, Loader2 } from "lucide-react";
 import { createOfferTemplate, updateOfferTemplate, archiveOfferTemplate } from "./actions";
+import {
+  DISPLAYABLE_ACCEPT,
+  DISPLAYABLE_LABELS,
+  isDisplayable,
+  rejectionMessage,
+} from "@/lib/closing/upload-formats";
 
 const PACKAGE_TYPES = [
   { value: "foundation", label: "Foundation" },
@@ -70,18 +76,18 @@ export function AngeboteClient({ templates, archivedTemplates }: Props) {
     });
   }
 
-  function triggerPdfUpload(templateId: string) {
+  function triggerDocumentUpload(templateId: string) {
     uploadTargetId.current = templateId;
     setUploadError(null);
     fileInputRef.current?.click();
   }
 
-  async function handlePdfFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleDocumentFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     const templateId = uploadTargetId.current;
     if (!file || !templateId) return;
-    if (file.type !== "application/pdf") {
-      setUploadError("Nur PDF-Dateien erlaubt.");
+    if (!isDisplayable(file.type)) {
+      setUploadError(rejectionMessage(file.type));
       return;
     }
     e.target.value = "";
@@ -108,13 +114,13 @@ export function AngeboteClient({ templates, archivedTemplates }: Props) {
 
   return (
     <div className="max-w-[1200px] mx-auto">
-      {/* Hidden file input for PDF uploads */}
+      {/* Verstecktes Dateifeld — wird aus den Template-Karten ausgelöst. */}
       <input
         ref={fileInputRef}
         type="file"
-        accept="application/pdf"
+        accept={DISPLAYABLE_ACCEPT}
         className="hidden"
-        onChange={handlePdfFileSelected}
+        onChange={handleDocumentFileSelected}
       />
 
       <div className="flex items-center justify-between mb-8">
@@ -213,7 +219,7 @@ export function AngeboteClient({ templates, archivedTemplates }: Props) {
                       {template.r2Key && (
                         <span className="flex items-center gap-1 text-xs text-[#22c55e]">
                           <FileText size={11} />
-                          PDF hochgeladen
+                          Angebot hinterlegt
                         </span>
                       )}
                     </div>
@@ -230,17 +236,17 @@ export function AngeboteClient({ templates, archivedTemplates }: Props) {
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <button
-                      onClick={() => triggerPdfUpload(template.id)}
+                      onClick={() => triggerDocumentUpload(template.id)}
                       disabled={uploadingId === template.id}
                       className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-[#888] hover:text-[#f0f0f0] border border-[#1a2840] hover:border-[#243550] rounded-lg transition-colors disabled:opacity-40"
-                      title="PDF hochladen"
+                      title={`Angebotsdokument hochladen — ${DISPLAYABLE_LABELS}`}
                     >
                       {uploadingId === template.id ? (
                         <Loader2 size={12} className="animate-spin" />
                       ) : (
                         <Upload size={12} />
                       )}
-                      {template.r2Key ? "PDF ersetzen" : "PDF hochladen"}
+                      {template.r2Key ? "Dokument ersetzen" : "Dokument hochladen"}
                     </button>
                     <button
                       onClick={() => setEditId(template.id)}

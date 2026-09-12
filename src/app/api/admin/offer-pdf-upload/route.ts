@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { randomBytes } from "crypto";
+import { extensionFor, isDisplayable, rejectionMessage } from "@/lib/closing/upload-formats";
 
 function getR2Client() {
   const accountId = process.env.R2_ACCOUNT_ID;
@@ -41,14 +42,16 @@ export async function POST(request: NextRequest) {
   if (!templateId || !file) {
     return NextResponse.json({ error: "templateId und file erforderlich" }, { status: 400 });
   }
-  if (file.type !== "application/pdf") {
-    return NextResponse.json({ error: "Nur PDF-Dateien erlaubt" }, { status: 400 });
+  if (!isDisplayable(file.type)) {
+    return NextResponse.json({ error: rejectionMessage(file.type) }, { status: 400 });
   }
 
   const template = await db.offerTemplate.findUnique({ where: { id: templateId } });
   if (!template) return NextResponse.json({ error: "Template nicht gefunden" }, { status: 404 });
 
-  const key = `offer-templates/${templateId}/${randomBytes(8).toString("hex")}.pdf`;
+  // Endung und Medientyp aus der Datei übernehmen, damit der Kunde sie später
+  // richtig angezeigt bekommt — vorher wurde alles als PDF abgelegt.
+  const key = `offer-templates/${templateId}/${randomBytes(8).toString("hex")}.${extensionFor(file.type)}`;
   const buffer = Buffer.from(await file.arrayBuffer());
 
   const client = getR2Client();
@@ -57,7 +60,7 @@ export async function POST(request: NextRequest) {
       Bucket: process.env.R2_BUCKET_NAME!,
       Key: key,
       Body: buffer,
-      ContentType: "application/pdf",
+      ContentType: file.type,
     })
   );
 

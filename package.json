@@ -19,7 +19,10 @@
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "postgenerate": "node -e \"require('fs').writeFileSync('src/generated/prisma/index.ts', \\\"export * from './client';\\\\n\\\")\"",
-    "engines": "node >=20.19.0"
+    "engines": "node >=20.19.0",
+    "copy:pdf-worker": "node scripts/copy-pdf-worker.mjs",
+    "postinstall": "node scripts/copy-pdf-worker.mjs",
+    "prebuild": "node scripts/copy-pdf-worker.mjs"
   },
   "engines": {
     "node": ">=20.19.0"

@@ -43,3 +43,7 @@ next-env.d.ts
 /src/generated/prisma
 dev.db
 prisma/dev.db
+
+# pdf.js-Worker — wird bei postinstall und vor jedem Build aus node_modules
+# kopiert, damit die ausgelieferte Datei zur installierten Fassung passt.
+/public/pdf.worker.min.mjs
