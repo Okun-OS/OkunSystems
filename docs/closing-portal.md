@@ -74,7 +74,7 @@ protokolliert wird.
 | `/admin/sales/praesentationen` | Nur ADMIN: alle eingereichten Präsentationen zur Freigabe |
 | `/admin/sales/closing/[sessionId]/audit` | Read-only Abschlussnachweis |
 | `/admin/sales/rechnungen/neu`, `/[id]` | Rechnungseditor mit dynamischen Positionen und Vorschau |
-| `/closing/[token]` | Kundenseite: eingebettetes Videogespräch im OKUN-Fenster, daneben Angebot (inkl. PDF-Ansicht), Unterlagen, Erklärungen, Rechnung |
+| `/closing/[token]` | Kundenseite: Videogespräch in eigener OKUN-Oberfläche, daneben — sobald sie an der Reihe sind — Angebot (inkl. PDF-Ansicht), Unterlagen, Erklärungen, Rechnung |
 
 ### API-Routen
 
@@ -155,6 +155,16 @@ nachgezogen; sobald ein Admin die Vorlage bearbeitet hat, bleibt seine Fassung m
   genau diesen Abschluss gestartet hat. Ein Entwurf erreicht den Kunden nie — auch dann
   nicht, wenn seine ID bekannt wäre. Hochladen darf ein Closer nur für seine eigenen
   Abschlüsse (`requireSessionAccess`), freigeben ausschließlich ein Administrator.
+* **Zurückhaltung vor dem Abschluss.** Die Kundenseite zeigt nichts Vertriebliches, bevor es
+  so weit ist: kein Angebot, solange der Berater es nicht vorgestellt hat (`Offer.presentedAt`),
+  und keine Erklärungen, solange der Vertragsabschluss nicht eröffnet ist (kein Contract
+  Snapshot). Die frühere Vorschau der Checkbox-Texte ist entfallen — sie nahm dem Gespräch
+  seinen Charakter als Strategiegespräch vorweg. Auch die Schrittanzeige erscheint erst
+  mit dem Angebot.
+* **Folienbytes über den eigenen Endpunkt.** `/api/closing/slide` und das Angebots-PDF
+  liefern die Datei selbst aus, statt auf eine Signed URL weiterzuleiten: pdf.js liest die
+  Bytes per Skript, und eine Weiterleitung auf eine andere Domain hinge an der CORS-Regel des
+  Buckets. So bleibt alles gleiche Herkunft, und die R2-Adresse erreicht den Browser nie.
 * **Anwesenheit des Beraters.** Der Arbeitsplatz des Beraters meldet alle 30 Sekunden einen
   Heartbeat; die Kundenseite wertet ihn nur aus, wenn er jünger als 90 Sekunden ist. Ein
   abgestürzter Tab hinterlässt damit keinen dauerhaft „anwesenden" Berater.
@@ -264,11 +274,12 @@ Server (`BASE_URL`, Default `http://localhost:3100`); `test:http` zusätzlich da
    Schlüssel (z. B. `project_reference`), Anzeigename, Typ. Im Template als
    `{{custom.project_reference}}` verwendbar; im Rechnungseditor erscheint dafür ein
    Eingabefeld. Systemfelder wie `invoice.gross_total` sind geschützt.
-10. **Präsentation vorbereiten** — im Closing der Tab *Präsentation*: *Neue Präsentation*
-   anlegen, Folien hochladen (PNG/JPG/WebP je Folie, oder eine PDF als scrollbares
-   Dokument), dann *Zur Freigabe*. Ein Administrator gibt sie unter
-   *Sales & Closing → Präsentationen* frei. Im Gespräch *Starten* — der Kunde sieht die
-   Folie sofort im Portal, *Zurück*/*Weiter* blättert für ihn mit.
+10. **Präsentation vorbereiten und halten** — im Closing der Tab *Präsentation*:
+   *Neue Präsentation* anlegen, Folien hochladen (PNG/JPG/WebP je Folie, oder eine PDF, die
+   seitenweise gezeigt wird), dann *Zur Freigabe*. Ein Administrator gibt sie unter
+   *Sales & Closing → Präsentationen* frei. Im Gespräch *Starten*: das Gesprächsfenster geht
+   auf, die Folie steht groß, die Teilnehmer daneben. *Zurück*/*Weiter* blättert für beide
+   Seiten mit, *Zeigen* schaltet den Laserpointer ein.
 11. **Test-Closing durchführen** — Lead anlegen, Stammdaten vervollständigen, Closing Meeting
    erstellen, Angebot präsentieren, *Vertragsabschluss starten*, Kundenlink öffnen,
    Erklärungen bestätigen, Aufzeichnung starten und beenden, Vertrag abschließen, Rechnung
@@ -318,9 +329,15 @@ idempotent und läuft beim nächsten Deploy erneut.
 
 ## 10. Videogespräch: warum Daily.co
 
-Das Gespräch läuft eingebettet im OKUN-Fenster (`iframe` auf den Daily-Raum), umgeben von
-OKUN-Kopfzeile, Angebot, Unterlagen und Erklärungen. Der Kunde verlässt das Portal dafür
-nicht; nach außen wirkt es wie eine OKUN-Oberfläche.
+Das Gespräch läuft in einer **eigenen Oberfläche** (`src/components/closing/okun-call.tsx`)
+auf Basis von `@daily-co/daily-react`. Kacheln, Steuerleiste und Präsentationsbühne gehören
+zu OKUN; Dailys fertige Oberfläche („Prebuilt") wird nicht verwendet. Daily liefert nur den
+Transport — Raum, Medienströme, Datenkanal und die serverseitige Aufzeichnung.
+
+Die Bühne kennt drei Zustände, in dieser Reihenfolge: geteilter Bildschirm, laufende
+Präsentation (Folie groß, Teilnehmer als Streifen), sonst das Gegenüber groß und man selbst
+klein. Über der Folie kann der Berater zeigen; die Zeigerposition läuft über Dailys
+Datenkanal (`sendAppMessage`) in Anteilen der Folienfläche und wird nirgends gespeichert.
 
 Ein **eigenes** Videosystem statt Daily bedeutet nicht „WebRTC einbauen", sondern eine
 eigene Infrastruktur betreiben:
@@ -335,8 +352,9 @@ eigene Infrastruktur betreiben:
 
 Technisch möglich, wirtschaftlich selten sinnvoll, solange nicht sehr viele Gespräche
 parallel laufen. Der Austausch ist bewusst klein gehalten: die Videoschicht steckt in
-`src/lib/daily.ts` (Raum anlegen/verlängern), im `iframe` der Kundenseite und in der
-Aufzeichnungsübernahme in `src/lib/closing/recording.ts`. Ein Wechsel auf **LiveKit Cloud**
+`src/lib/daily.ts` (Raum anlegen/verlängern), in `src/components/closing/okun-call.tsx`
+(Beitritt, Kacheln, Datenkanal) und in der Aufzeichnungsübernahme in
+`src/lib/closing/recording.ts`. Die Oberfläche selbst bleibt bei einem Wechsel bestehen. Ein Wechsel auf **LiveKit Cloud**
 oder eine **selbst gehostete LiveKit-Instanz** berührt genau diese drei Stellen; der
 restliche Ablauf (Snapshot, Erklärungen, Protokoll, Rechnung) bleibt unberührt. Das ist der
 realistische Zwischenschritt: gleiche API-Struktur, aber der Server steht bei OKUN.
@@ -348,11 +366,12 @@ realistische Zwischenschritt: gleiche API-Struktur, aber der Server steht bei OK
 * **Aufzeichnungs-Zugriff für Kunden** ist bewusst nicht implementiert — Recordings liegen
   privat in R2 und erscheinen nicht in der Kundenablage. Eine spätere Freigabe braucht eine
   eigene Berechtigungslogik.
-* **Folienformat.** Bilder werden als einzelne Folie gezeigt und lassen sich weiterblättern;
-  eine PDF erscheint als ein scrollbares Dokument. Ein serverseitiges Zerlegen einer PDF in
-  einzelne Folien bräuchte einen Rasterizer (poppler oder pdf.js) — bewusst nicht ergänzt,
-  weil der Export „als Bilder" in PowerPoint, Keynote und Google Slides ohnehin vorhanden
-  ist.
+* **Folienformat.** Bilder werden als einzelne Folie gezeigt; eine PDF wird seitenweise mit
+  pdf.js gerendert und im Gespräch Seite für Seite weitergeblättert — „Weiter" geht erst
+  durch die Seiten der aktuellen Folie und dann zur nächsten Folie. Dass pdf.js im Browser
+  rendert statt der eingebaute PDF-Betrachter, hat drei Gründe: die Seite ist immer
+  vollständig im Bild, das Blättern liegt beim Berater, und über einer gezeichneten Seite
+  lässt sich zeigen — über einem `iframe` nicht.
 * **Retention Policies** sind vorbereitet (`ClosingRecording.retentionUntil`,
   `dailyDeleteAfter`), aber es läuft noch kein automatischer Job. `deleteDailyCopyIfDue()`
   wird derzeit manuell bzw. aus dem Closing heraus aufgerufen.

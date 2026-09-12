@@ -350,6 +350,33 @@ async function main() {
     });
   });
 
+  // ── Zurückhaltung vor dem Abschluss ──────────────────────────────────────
+  await step("Kundenseite hält Angebot und Erklärungen bis zu ihrem Zeitpunkt zurück", async () => {
+    // Ein angelegtes, aber noch nicht vorgestelltes Angebot bleibt unsichtbar:
+    // für den Kunden ist das Gespräch bis dahin ein Strategiegespräch.
+    await db.offer.update({
+      where: { id: ids.offer },
+      data: { presentedAt: null, status: "draft" },
+    });
+    let view = await buildClientClosingState(ids.session);
+    assert.ok(view);
+    assert.equal(view!.offer, null, "Angebot darf vor dem Vorstellen nicht erscheinen");
+    assert.equal(view!.offerPresented, false);
+    assert.equal(view!.consents.length, 0, "Checkboxen dürfen hier noch nicht erscheinen");
+
+    await db.offer.update({
+      where: { id: ids.offer },
+      data: { presentedAt: new Date(), status: "presented" },
+    });
+    view = await buildClientClosingState(ids.session);
+    assert.ok(view!.offer, "nach dem Vorstellen gehört das Angebot auf die Seite");
+    assert.equal(view!.offerPresented, true);
+    // Die Erklärungen bleiben trotzdem weg, solange der Vertragsabschluss nicht
+    // eröffnet ist — sonst wäre der Kunde einen Schritt weiter, als er ist.
+    assert.equal(view!.consents.length, 0, "Checkboxen erst mit dem Vertragsabschluss");
+    assert.equal(view!.snapshotReady, false);
+  });
+
   // ── 6 Contract Snapshot ──────────────────────────────────────────────────
   let snapshotId = "";
   await step("6 · Contract Snapshot erzeugen (idempotent)", async () => {

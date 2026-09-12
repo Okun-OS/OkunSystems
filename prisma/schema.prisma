@@ -933,6 +933,8 @@ model ClosingSession {
   // Laufende Präsentation: der Berater steuert, der Kunde sieht mit.
   livePresentationId String?
   liveSlidePosition  Int?
+  /// Seite innerhalb einer PDF-Folie, 1-basiert.
+  liveSlidePage      Int?
 
   offers             Offer[]
   consentRecords     ConsentRecord[]

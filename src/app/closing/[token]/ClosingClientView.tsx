@@ -6,21 +6,27 @@ import {
   ExternalLink,
   FileText,
   Loader2,
-  Lock,
   Radio,
   ShieldCheck,
   Video,
   X,
 } from "lucide-react";
 import { OkunLogo } from "@/components/layout/okun-logo";
-import type { ClientClosingState, ClientPresentation } from "@/lib/closing/client-view";
+import { OkunCall, type CallSlide } from "@/components/closing/okun-call";
+import { PdfPage } from "@/components/closing/pdf-page";
+import type { ClientClosingState } from "@/lib/closing/client-view";
 
 /**
  * Kundenseite des Closings.
  *
- * Der Kunde bleibt durchgehend im OKUN-Fenster: das Videogespräch läuft
- * eingebettet, daneben stehen Angebot, Unterlagen und Erklärungen. Vor dem
- * Beitritt sieht er, ob sein Berater bereits da ist.
+ * Der Kunde bleibt durchgehend im OKUN-Fenster: das Gespräch läuft in unserer
+ * eigenen Oberfläche, daneben stehen — sobald sie an der Reihe sind — Angebot,
+ * Unterlagen und Erklärungen.
+ *
+ * Bewusst zurückhaltend am Anfang: Für den Kunden ist das zunächst ein
+ * Strategiegespräch. Erst wenn der Berater ein Angebot vorstellt, erscheint
+ * überhaupt etwas Vertriebliches; die Erklärungen kommen erst, wenn der
+ * Vertragsabschluss eröffnet ist.
  *
  * Sämtliche Checkbox-Texte — einschließlich der Einwilligung in die
  * Vertragsaufzeichnung — stammen aus der Admin-Konfiguration und werden hier
@@ -45,7 +51,6 @@ function stepIndexFor(state: ClientClosingState): number {
   if (state.status === "recording" || state.status === "recording_completed") return 3;
   if (state.snapshotReady && !state.allRequiredConfirmed) return 2;
   if (state.allRequiredConfirmed) return 3;
-  if (state.offer) return 1;
   return 0;
 }
 
@@ -72,16 +77,15 @@ export function ClosingClientView({ initialState, token }: Props) {
     }
   }, [token]);
 
-  // Während einer laufenden Präsentation wird häufiger abgefragt, damit der
-  // Folienwechsel des Beraters ohne spürbare Verzögerung ankommt.
-  const livePresentation = Boolean(state.presentation);
+  // Der Berater meldet Änderungen über den Datenkanal des Gesprächs; die
+  // Abfrage ist nur die Rückfallebene, falls jemand noch nicht beigetreten ist.
   useEffect(() => {
-    const interval = state.isActivated ? 60_000 : livePresentation ? 2_500 : 8_000;
+    const interval = state.isActivated ? 60_000 : joined ? 15_000 : 8_000;
     pollRef.current = setInterval(refresh, interval);
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [refresh, state.isActivated, livePresentation]);
+  }, [refresh, state.isActivated, joined]);
 
   const pendingConsents = useMemo(
     () => state.consents.filter((c) => !c.accepted),
@@ -95,11 +99,20 @@ export function ClosingClientView({ initialState, token }: Props) {
 
   const activeStep = stepIndexFor(state);
   const offerPdfUrl = `/api/closing/offer-pdf?token=${encodeURIComponent(token)}`;
-
-  // Die Bühne bleibt erhalten, solange ein Videoraum existiert und der Abschluss
-  // noch läuft. Der iframe wird dadurch nie neu geladen.
   const showStage = Boolean(state.meetingUrl) && !state.isActivated;
-  const presentation = state.presentation;
+
+  const slide: CallSlide | null = state.presentation
+    ? {
+        slideId: state.presentation.slideId,
+        mimeType: state.presentation.mimeType,
+        title: state.presentation.title,
+        slideTitle: state.presentation.slideTitle,
+        position: state.presentation.position,
+        slideCount: state.presentation.slideCount,
+        page: state.presentation.page,
+        src: `/api/closing/slide?token=${encodeURIComponent(token)}&slideId=${encodeURIComponent(state.presentation.slideId)}`,
+      }
+    : null;
 
   async function handleConfirm() {
     if (!canSubmit || submitting) return;
@@ -137,11 +150,16 @@ export function ClosingClientView({ initialState, token }: Props) {
     }
   }
 
+  // Vor dem Angebot hat die rechte Spalte nichts zu zeigen — dann bekommt das
+  // Gespräch die ganze Breite.
+  const hasSidebar =
+    state.offerPresented || state.consents.length > 0 || Boolean(state.invoice);
+
   return (
     <div className="min-h-screen bg-[#060a10] flex flex-col">
       {state.recordingActive && (
         <div className="bg-[#7f1d1d] border-b border-[#ef4444]/40">
-          <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 py-2 flex flex-wrap items-center gap-2">
+          <div className="mx-auto w-full max-w-[1500px] px-4 sm:px-6 py-2 flex flex-wrap items-center gap-2">
             <Radio size={14} className="text-[#fca5a5] animate-pulse" />
             <span className="text-[#fee2e2] text-xs font-bold">Aufzeichnung läuft</span>
             <span className="text-[#fca5a5] text-xs">
@@ -152,7 +170,7 @@ export function ClosingClientView({ initialState, token }: Props) {
       )}
 
       <header className="sticky top-0 z-20 border-b border-[#12203a] bg-[#080d16]/95 backdrop-blur">
-        <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 py-3 flex flex-wrap items-center gap-x-5 gap-y-3">
+        <div className="mx-auto w-full max-w-[1500px] px-4 sm:px-6 py-3 flex flex-wrap items-center gap-x-5 gap-y-3">
           <div className="w-[116px] flex-shrink-0">
             <OkunLogo size="sm" />
           </div>
@@ -162,39 +180,51 @@ export function ClosingClientView({ initialState, token }: Props) {
               <p className="truncate text-[#5b6b7f] text-xs">Ihr Berater: {state.closerName}</p>
             )}
           </div>
-          <CompactSteps active={activeStep} />
+          {/* Die Schrittanzeige erscheint erst, wenn es tatsächlich Schritte gibt. */}
+          {state.offerPresented && <CompactSteps active={activeStep} />}
         </div>
       </header>
 
-      <main className="flex-1 w-full max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_390px] items-start">
-          <div className="space-y-5 min-w-0">
-            {presentation && <SlideStage presentation={presentation} token={token} />}
-
-            {showStage && (
-              <div className={presentation ? "lg:max-w-[420px]" : ""}>
-                <CallStage
-                  meetingUrl={state.meetingUrl!}
+      <main className="flex-1 w-full max-w-[1500px] mx-auto px-4 sm:px-6 py-5">
+        <div
+          className={`grid gap-5 items-start ${
+            hasSidebar ? "lg:grid-cols-[minmax(0,1fr)_390px]" : ""
+          }`}
+        >
+          <div className="min-w-0 space-y-5">
+            {showStage &&
+              (joined ? (
+                <div
+                  className="rounded-2xl border border-[#12203a] bg-[#0a111c] overflow-hidden"
+                  style={{ height: "min(calc(100vh - 190px), 720px)" }}
+                >
+                  <OkunCall
+                    roomUrl={state.meetingUrl!}
+                    userName={state.contactName ?? state.companyName}
+                    role="client"
+                    slide={slide}
+                    onLeave={() => setJoined(false)}
+                    onRemoteChange={refresh}
+                  />
+                </div>
+              ) : (
+                <WaitingRoom
                   advisorPresent={state.advisorPresent}
                   appointmentStart={state.appointmentStart}
                   closerName={state.closerName}
-                  joined={joined}
-                  compact={Boolean(presentation)}
                   onJoin={() => setJoined(true)}
-                  onLeave={() => setJoined(false)}
                 />
-              </div>
-            )}
+              ))}
 
             {!showStage && !state.isActivated && (
               <Card>
-                <div className="px-5 py-8 text-center">
+                <div className="px-5 py-10 text-center">
                   <Loader2 size={20} className="text-[#5b6b7f] animate-spin mx-auto mb-3" />
                   <p className="text-[#eef2f7] text-sm font-semibold">
-                    Ihr Berater richtet den Videoraum ein
+                    Ihr Berater richtet den Gesprächsraum ein
                   </p>
                   <p className="text-[#8899b4] text-xs mt-1">
-                    Sobald der Raum bereitsteht, erscheint das Gespräch hier automatisch.
+                    Sobald er bereitsteht, erscheint das Gespräch hier automatisch.
                   </p>
                 </div>
               </Card>
@@ -216,254 +246,235 @@ export function ClosingClientView({ initialState, token }: Props) {
             )}
           </div>
 
-          <aside className="space-y-5 min-w-0">
-            {state.offer ? (
-              <Card>
-                <CardHead
-                  title="Ihr Angebot"
-                  meta={state.offer.offerNumber ?? undefined}
-                />
-                <div className="px-5 py-4 space-y-2.5">
-                  <Row label="Paket" value={state.offer.packageName ?? "—"} strong />
-                  <Row label="Einmalig (netto)" value={state.offer.oneTimeNet} />
-                  <Row
-                    label={`zzgl. USt. ${state.offer.vatRateLabel}`}
-                    value={state.offer.oneTimeVat}
-                  />
-                  <Row label="Gesamtbetrag (brutto)" value={state.offer.oneTimeGross} strong />
-                  {state.offer.recurring && (
+          {hasSidebar && (
+            <aside className="space-y-5 min-w-0">
+              {state.offer && (
+                <Card>
+                  <CardHead title="Ihr Angebot" meta={state.offer.offerNumber ?? undefined} />
+                  <div className="px-5 py-4 space-y-2.5">
+                    <Row label="Paket" value={state.offer.packageName ?? "—"} strong />
+                    <Row label="Einmalig (netto)" value={state.offer.oneTimeNet} />
                     <Row
-                      label={`Laufend${state.offer.recurringInterval ? ` (${state.offer.recurringInterval})` : ""}`}
-                      value={state.offer.recurring}
+                      label={`zzgl. USt. ${state.offer.vatRateLabel}`}
+                      value={state.offer.oneTimeVat}
                     />
-                  )}
-                  {state.offer.minimumTermMonths && (
-                    <Row
-                      label="Mindestlaufzeit"
-                      value={`${state.offer.minimumTermMonths} Monate`}
-                    />
-                  )}
-                  {state.offer.extras.length > 0 && (
-                    <div className="pt-2 border-t border-[#101b2c]">
-                      <p className="text-[#5b6b7f] text-[11px] uppercase tracking-wider mb-2">
-                        Zusatzleistungen
-                      </p>
-                      {state.offer.extras.map((extra, i) => (
-                        <Row key={i} label={extra.description} value={extra.amount} />
-                      ))}
+                    <Row label="Gesamtbetrag (brutto)" value={state.offer.oneTimeGross} strong />
+                    {state.offer.recurring && (
+                      <Row
+                        label={`Laufend${state.offer.recurringInterval ? ` (${state.offer.recurringInterval})` : ""}`}
+                        value={state.offer.recurring}
+                      />
+                    )}
+                    {state.offer.minimumTermMonths && (
+                      <Row
+                        label="Mindestlaufzeit"
+                        value={`${state.offer.minimumTermMonths} Monate`}
+                      />
+                    )}
+                    {state.offer.extras.length > 0 && (
+                      <div className="pt-2 border-t border-[#101b2c]">
+                        <p className="text-[#5b6b7f] text-[11px] uppercase tracking-wider mb-2">
+                          Zusatzleistungen
+                        </p>
+                        {state.offer.extras.map((extra, i) => (
+                          <Row key={i} label={extra.description} value={extra.amount} />
+                        ))}
+                      </div>
+                    )}
+                    {state.offer.paymentTerms && (
+                      <Row label="Zahlungsbedingungen" value={state.offer.paymentTerms} />
+                    )}
+                  </div>
+
+                  {state.offerPdfAvailable && (
+                    <div className="px-5 py-3.5 border-t border-[#12203a] bg-[#070d15] flex flex-wrap gap-2">
+                      <button
+                        onClick={() => setOfferOpen(true)}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[rgba(0,184,255,0.12)] border border-[#00b8ff]/30 text-[#00b8ff] text-xs font-semibold hover:bg-[rgba(0,184,255,0.2)] transition-colors"
+                      >
+                        <FileText size={13} /> Angebot ansehen
+                      </button>
+                      <a
+                        href={offerPdfUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#16283d] text-[#8899b4] text-xs hover:text-[#eef2f7] transition-colors"
+                      >
+                        <ExternalLink size={13} /> In neuem Tab
+                      </a>
                     </div>
                   )}
-                  {state.offer.paymentTerms && (
-                    <Row label="Zahlungsbedingungen" value={state.offer.paymentTerms} />
-                  )}
-                </div>
+                </Card>
+              )}
 
-                {state.offerPdfAvailable && (
-                  <div className="px-5 py-3.5 border-t border-[#12203a] bg-[#070d15] flex flex-wrap gap-2">
-                    <button
-                      onClick={() => setOfferOpen(true)}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[rgba(0,184,255,0.12)] border border-[#00b8ff]/30 text-[#00b8ff] text-xs font-semibold hover:bg-[rgba(0,184,255,0.2)] transition-colors"
-                    >
-                      <FileText size={13} /> Angebot ansehen
-                    </button>
-                    <a
-                      href={offerPdfUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#16283d] text-[#8899b4] text-xs hover:text-[#eef2f7] transition-colors"
-                    >
-                      <ExternalLink size={13} /> In neuem Tab
-                    </a>
-                  </div>
-                )}
-              </Card>
-            ) : (
-              <Card>
-                <div className="px-5 py-8 text-center">
-                  <Loader2 size={18} className="text-[#5b6b7f] animate-spin mx-auto mb-3" />
-                  <p className="text-[#eef2f7] text-sm font-semibold">
-                    Ihr Berater bereitet das Angebot vor
-                  </p>
-                  <p className="text-[#8899b4] text-xs mt-1">
-                    Sobald es freigegeben ist, erscheint es hier automatisch.
-                  </p>
-                </div>
-              </Card>
-            )}
-
-            {state.consents.length > 0 && (
-              <Card>
-                <CardHead
-                  title="Unterlagen & Erklärungen"
-                  subtitle="Bitte öffnen Sie die Unterlagen und bestätigen Sie die erforderlichen Erklärungen."
-                />
-
-                <div className="divide-y divide-[#101b2c]">
-                  {state.consents.map((consent) => {
-                    const isChecked = consent.accepted || checked.has(consent.definitionId);
-                    return (
-                      <div key={consent.definitionId} className="px-5 py-4">
-                        {consent.document && (
-                          <a
-                            href={
-                              consent.document.openable
-                                ? `/api/closing/document?token=${encodeURIComponent(token)}&versionId=${consent.document.versionId}`
-                                : undefined
-                            }
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={`inline-flex items-center gap-2 mb-2.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-colors ${
-                              consent.document.openable
-                                ? "border-[#00b8ff]/30 bg-[rgba(0,184,255,0.08)] text-[#00b8ff] hover:bg-[rgba(0,184,255,0.16)]"
-                                : "border-[#16283d] text-[#5b6b7f] cursor-not-allowed"
-                            }`}
-                          >
-                            <FileText size={12} />
-                            {consent.document.name} Version {consent.document.versionLabel}
-                          </a>
-                        )}
-
-                        <label
-                          className={`flex items-start gap-3 ${
-                            consent.accepted || !state.snapshotReady
-                              ? "cursor-default"
-                              : "cursor-pointer"
-                          }`}
-                        >
-                          <span
-                            className={`mt-0.5 w-[18px] h-[18px] rounded flex-shrink-0 border flex items-center justify-center transition-colors ${
-                              isChecked
-                                ? "bg-[#00b8ff] border-[#00b8ff]"
-                                : "border-[#2a3a55] bg-[#070d15]"
-                            }`}
-                          >
-                            {isChecked && (
-                              <Check size={12} className="text-[#041018]" strokeWidth={3} />
-                            )}
-                            <input
-                              type="checkbox"
-                              className="sr-only"
-                              checked={isChecked}
-                              disabled={consent.accepted || !state.snapshotReady || submitting}
-                              onChange={(e) => {
-                                setChecked((prev) => {
-                                  const next = new Set(prev);
-                                  if (e.target.checked) next.add(consent.definitionId);
-                                  else next.delete(consent.definitionId);
-                                  return next;
-                                });
-                              }}
-                            />
-                          </span>
-                          <span className="flex-1">
-                            {/* Wortlaut exakt aus der Admin-Konfiguration */}
-                            <span className="text-[#c9d4e4] text-sm leading-relaxed">
-                              {consent.checkboxText}
-                            </span>
-                            {!consent.isRequired && (
-                              <span className="ml-2 text-[#5b6b7f] text-xs">(optional)</span>
-                            )}
-                            {consent.accepted && consent.acceptedAt && (
-                              <span className="block mt-1 text-[#22c55e] text-xs">
-                                Bestätigt am{" "}
-                                {new Date(consent.acceptedAt).toLocaleString("de-DE", {
-                                  day: "2-digit",
-                                  month: "2-digit",
-                                  year: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}{" "}
-                                Uhr
-                              </span>
-                            )}
-                          </span>
-                        </label>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="px-5 py-4 border-t border-[#12203a] bg-[#070d15]">
-                  {!state.snapshotReady ? (
-                    <p className="text-[#8899b4] text-xs flex items-start gap-2">
-                      <Lock size={13} className="mt-0.5 flex-shrink-0" />
-                      Ihr Berater startet den Vertragsabschluss gleich — danach können Sie
-                      verbindlich bestätigen.
-                    </p>
-                  ) : state.allRequiredConfirmed ? (
-                    <p className="text-[#22c55e] text-sm font-semibold flex items-center gap-2">
-                      <ShieldCheck size={16} />
-                      Alle erforderlichen Erklärungen wurden protokolliert.
-                    </p>
-                  ) : (
-                    <>
-                      {error && (
-                        <div className="mb-3 px-3 py-2.5 rounded-lg bg-[rgba(239,68,68,0.1)] border border-[#ef4444]/25">
-                          <p className="text-[#fca5a5] text-xs">{error}</p>
-                          {missing.length > 0 && (
-                            <ul className="mt-1.5 text-[#fca5a5] text-xs list-disc list-inside">
-                              {missing.map((m) => (
-                                <li key={m}>{m}</li>
-                              ))}
-                            </ul>
-                          )}
-                        </div>
-                      )}
-                      <button
-                        onClick={handleConfirm}
-                        disabled={!canSubmit || submitting}
-                        className="w-full px-6 py-3 rounded-lg bg-[#00b8ff] text-[#041018] text-sm font-bold disabled:bg-[#16283d] disabled:text-[#4a5a70] disabled:cursor-not-allowed hover:bg-[#0099d6] transition-colors flex items-center justify-center gap-2"
-                      >
-                        {submitting && <Loader2 size={15} className="animate-spin" />}
-                        Verbindlich bestätigen
-                      </button>
-                      <p className="mt-2.5 text-[#5b6b7f] text-xs">
-                        Der Zeitpunkt Ihrer Bestätigung wird serverseitig protokolliert.
-                      </p>
-                    </>
-                  )}
-                </div>
-              </Card>
-            )}
-
-            {state.allRequiredConfirmed && !state.isPaid && (
-              <Card>
-                <div className="px-5 py-4">
-                  <h2 className="text-[#eef2f7] text-sm font-bold mb-1.5">Vertragsaufzeichnung</h2>
-                  <p className="text-[#8899b4] text-xs leading-relaxed">
-                    {state.recordingActive
-                      ? "Die Aufzeichnung läuft. Ihr Berater führt Sie durch die verbindliche Annahme."
-                      : state.recordingArchived
-                        ? "Die Aufzeichnung wurde beendet und revisionssicher archiviert."
-                        : "Ihr Berater startet die Aufzeichnung, sobald Sie bereit sind."}
-                  </p>
-                </div>
-              </Card>
-            )}
-
-            {state.invoice && (
-              <Card>
-                <CardHead title={`Rechnung ${state.invoice.number}`} />
-                <div className="px-5 py-4 space-y-2.5">
-                  <Row label="Gesamtbetrag" value={state.invoice.grossTotal} strong />
-                  {state.invoice.dueDate && (
-                    <Row
-                      label="Fällig bis"
-                      value={new Date(state.invoice.dueDate).toLocaleDateString("de-DE")}
-                    />
-                  )}
-                  <Row
-                    label="Status"
-                    value={state.invoice.status === "paid" ? "Bezahlt" : "Offen"}
+              {state.consents.length > 0 && (
+                <Card>
+                  <CardHead
+                    title="Unterlagen & Erklärungen"
+                    subtitle="Bitte öffnen Sie die Unterlagen und bestätigen Sie die erforderlichen Erklärungen."
                   />
-                  <p className="text-[#5b6b7f] text-xs pt-1">
-                    Die Rechnung finden Sie nach der Freischaltung jederzeit in Ihrem Kundenportal
-                    unter &bdquo;Dokumente&ldquo;.
-                  </p>
-                </div>
-              </Card>
-            )}
-          </aside>
+
+                  <div className="divide-y divide-[#101b2c]">
+                    {state.consents.map((consent) => {
+                      const isChecked = consent.accepted || checked.has(consent.definitionId);
+                      return (
+                        <div key={consent.definitionId} className="px-5 py-4">
+                          {consent.document && (
+                            <a
+                              href={
+                                consent.document.openable
+                                  ? `/api/closing/document?token=${encodeURIComponent(token)}&versionId=${consent.document.versionId}`
+                                  : undefined
+                              }
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`inline-flex items-center gap-2 mb-2.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-colors ${
+                                consent.document.openable
+                                  ? "border-[#00b8ff]/30 bg-[rgba(0,184,255,0.08)] text-[#00b8ff] hover:bg-[rgba(0,184,255,0.16)]"
+                                  : "border-[#16283d] text-[#5b6b7f] cursor-not-allowed"
+                              }`}
+                            >
+                              <FileText size={12} />
+                              {consent.document.name} Version {consent.document.versionLabel}
+                            </a>
+                          )}
+
+                          <label
+                            className={`flex items-start gap-3 ${
+                              consent.accepted ? "cursor-default" : "cursor-pointer"
+                            }`}
+                          >
+                            <span
+                              className={`mt-0.5 w-[18px] h-[18px] rounded flex-shrink-0 border flex items-center justify-center transition-colors ${
+                                isChecked
+                                  ? "bg-[#00b8ff] border-[#00b8ff]"
+                                  : "border-[#2a3a55] bg-[#070d15]"
+                              }`}
+                            >
+                              {isChecked && (
+                                <Check size={12} className="text-[#041018]" strokeWidth={3} />
+                              )}
+                              <input
+                                type="checkbox"
+                                className="sr-only"
+                                checked={isChecked}
+                                disabled={consent.accepted || submitting}
+                                onChange={(e) => {
+                                  setChecked((prev) => {
+                                    const next = new Set(prev);
+                                    if (e.target.checked) next.add(consent.definitionId);
+                                    else next.delete(consent.definitionId);
+                                    return next;
+                                  });
+                                }}
+                              />
+                            </span>
+                            <span className="flex-1">
+                              {/* Wortlaut exakt aus der Admin-Konfiguration */}
+                              <span className="text-[#c9d4e4] text-sm leading-relaxed">
+                                {consent.checkboxText}
+                              </span>
+                              {!consent.isRequired && (
+                                <span className="ml-2 text-[#5b6b7f] text-xs">(optional)</span>
+                              )}
+                              {consent.accepted && consent.acceptedAt && (
+                                <span className="block mt-1 text-[#22c55e] text-xs">
+                                  Bestätigt am{" "}
+                                  {new Date(consent.acceptedAt).toLocaleString("de-DE", {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}{" "}
+                                  Uhr
+                                </span>
+                              )}
+                            </span>
+                          </label>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="px-5 py-4 border-t border-[#12203a] bg-[#070d15]">
+                    {state.allRequiredConfirmed ? (
+                      <p className="text-[#22c55e] text-sm font-semibold flex items-center gap-2">
+                        <ShieldCheck size={16} />
+                        Alle erforderlichen Erklärungen wurden protokolliert.
+                      </p>
+                    ) : (
+                      <>
+                        {error && (
+                          <div className="mb-3 px-3 py-2.5 rounded-lg bg-[rgba(239,68,68,0.1)] border border-[#ef4444]/25">
+                            <p className="text-[#fca5a5] text-xs">{error}</p>
+                            {missing.length > 0 && (
+                              <ul className="mt-1.5 text-[#fca5a5] text-xs list-disc list-inside">
+                                {missing.map((m) => (
+                                  <li key={m}>{m}</li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        )}
+                        <button
+                          onClick={handleConfirm}
+                          disabled={!canSubmit || submitting}
+                          className="w-full px-6 py-3 rounded-lg bg-[#00b8ff] text-[#041018] text-sm font-bold disabled:bg-[#16283d] disabled:text-[#4a5a70] disabled:cursor-not-allowed hover:bg-[#0099d6] transition-colors flex items-center justify-center gap-2"
+                        >
+                          {submitting && <Loader2 size={15} className="animate-spin" />}
+                          Verbindlich bestätigen
+                        </button>
+                        <p className="mt-2.5 text-[#5b6b7f] text-xs">
+                          Der Zeitpunkt Ihrer Bestätigung wird serverseitig protokolliert.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </Card>
+              )}
+
+              {state.allRequiredConfirmed && !state.isPaid && (
+                <Card>
+                  <div className="px-5 py-4">
+                    <h2 className="text-[#eef2f7] text-sm font-bold mb-1.5">
+                      Vertragsaufzeichnung
+                    </h2>
+                    <p className="text-[#8899b4] text-xs leading-relaxed">
+                      {state.recordingActive
+                        ? "Die Aufzeichnung läuft. Ihr Berater führt Sie durch die verbindliche Annahme."
+                        : state.recordingArchived
+                          ? "Die Aufzeichnung wurde beendet und revisionssicher archiviert."
+                          : "Ihr Berater startet die Aufzeichnung, sobald Sie bereit sind."}
+                    </p>
+                  </div>
+                </Card>
+              )}
+
+              {state.invoice && (
+                <Card>
+                  <CardHead title={`Rechnung ${state.invoice.number}`} />
+                  <div className="px-5 py-4 space-y-2.5">
+                    <Row label="Gesamtbetrag" value={state.invoice.grossTotal} strong />
+                    {state.invoice.dueDate && (
+                      <Row
+                        label="Fällig bis"
+                        value={new Date(state.invoice.dueDate).toLocaleDateString("de-DE")}
+                      />
+                    )}
+                    <Row
+                      label="Status"
+                      value={state.invoice.status === "paid" ? "Bezahlt" : "Offen"}
+                    />
+                    <p className="text-[#5b6b7f] text-xs pt-1">
+                      Die Rechnung finden Sie nach der Freischaltung jederzeit in Ihrem
+                      Kundenportal unter &bdquo;Dokumente&ldquo;.
+                    </p>
+                  </div>
+                </Card>
+              )}
+            </aside>
+          )}
         </div>
       </main>
 
@@ -473,7 +484,7 @@ export function ClosingClientView({ initialState, token }: Props) {
         </p>
       </footer>
 
-      {offerOpen && <OfferViewer url={offerPdfUrl} onClose={() => setOfferOpen(false)} />}
+      {offerOpen && <PdfViewer url={offerPdfUrl} title="Angebot" onClose={() => setOfferOpen(false)} />}
     </div>
   );
 }
@@ -505,169 +516,92 @@ function CompactSteps({ active }: { active: number }) {
   );
 }
 
-/**
- * Videogespräch im OKUN-Fenster.
- *
- * Vor dem Beitritt steht hier die Warteansicht — der Kunde sieht, ob sein
- * Berater bereits im Raum ist. Der iframe wird erst beim Beitreten eingehängt
- * und danach nicht mehr ausgetauscht, damit das Gespräch nicht abreißt.
- */
-function CallStage({
-  meetingUrl,
+/** Wartezustand vor dem Beitritt — zeigt, ob der Berater schon da ist. */
+function WaitingRoom({
   advisorPresent,
   appointmentStart,
   closerName,
-  joined,
-  compact,
   onJoin,
-  onLeave,
 }: {
-  meetingUrl: string;
   advisorPresent: boolean;
   appointmentStart: string | null;
   closerName: string | null;
-  joined: boolean;
-  compact: boolean;
   onJoin: () => void;
-  onLeave: () => void;
 }) {
   return (
-    <section className="rounded-2xl border border-[#12203a] bg-[#0a111c] overflow-hidden">
-      <div className="px-4 py-2.5 border-b border-[#12203a] flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 min-w-0">
+    <Card>
+      <div className="px-6 py-14 text-center">
+        <div className="relative w-14 h-14 mx-auto mb-4">
           <span
-            className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-              joined
-                ? "bg-[#22c55e] animate-pulse"
-                : advisorPresent
-                  ? "bg-[#00b8ff]"
-                  : "bg-[#5b6b7f]"
+            className={`absolute inset-0 rounded-full ${
+              advisorPresent ? "bg-[#00b8ff]/20 animate-ping" : "bg-[#16283d] animate-pulse"
             }`}
           />
-          <span className="text-[#c9d4e4] text-xs font-semibold truncate">
-            {joined
-              ? "Gespräch läuft"
-              : advisorPresent
-                ? "Ihr Berater ist bereit"
-                : "Warten auf Ihren Berater"}
+          <span className="absolute inset-0 rounded-full bg-[#0c1520] border border-[#1a2840] flex items-center justify-center">
+            <Video size={20} className={advisorPresent ? "text-[#00b8ff]" : "text-[#5b6b7f]"} />
           </span>
         </div>
-        {joined && (
-          <button
-            onClick={onLeave}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[#16283d] text-[#8899b4] text-xs hover:text-[#fca5a5] hover:border-[#ef4444]/40 transition-colors flex-shrink-0"
-          >
-            <X size={11} /> Verlassen
-          </button>
-        )}
+
+        <h2 className="text-[#eef2f7] text-base font-bold mb-1.5">
+          {advisorPresent
+            ? `${closerName ?? "Ihr Berater"} wartet im Gespräch auf Sie`
+            : "Gleich geht es los"}
+        </h2>
+        <p className="text-[#8899b4] text-sm max-w-sm mx-auto">
+          {advisorPresent
+            ? "Sie können jetzt beitreten. Ihr Browser fragt anschließend nach Kamera und Mikrofon."
+            : appointmentStart
+              ? `Ihr Termin beginnt um ${new Date(appointmentStart).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr. Sobald Ihr Berater den Raum betritt, erscheint das hier.`
+              : "Sobald Ihr Berater den Raum betritt, erscheint das hier."}
+        </p>
+
+        <button
+          onClick={onJoin}
+          className={`mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-colors ${
+            advisorPresent
+              ? "bg-[#00b8ff] text-[#041018] hover:bg-[#0099d6]"
+              : "border border-[#16283d] text-[#8899b4] hover:text-[#eef2f7] hover:border-[#2a3a55]"
+          }`}
+        >
+          <Video size={15} />
+          {advisorPresent ? "Gespräch beitreten" : "Schon jetzt beitreten"}
+        </button>
       </div>
-
-      {joined ? (
-        <iframe
-          src={meetingUrl}
-          allow="camera; microphone; fullscreen; display-capture; screen-wake-lock"
-          className="w-full border-0 bg-[#0c1520] block"
-          style={{ height: compact ? "280px" : "min(calc(100vh - 260px), 640px)" }}
-          title="Gespräch"
-        />
-      ) : (
-        <div className="px-6 py-10 text-center">
-          <div className="relative w-14 h-14 mx-auto mb-4">
-            <span
-              className={`absolute inset-0 rounded-full ${
-                advisorPresent ? "bg-[#00b8ff]/20" : "bg-[#16283d]"
-              } ${advisorPresent ? "animate-ping" : "animate-pulse"}`}
-            />
-            <span className="absolute inset-0 rounded-full bg-[#0c1520] border border-[#1a2840] flex items-center justify-center">
-              <Video size={20} className={advisorPresent ? "text-[#00b8ff]" : "text-[#5b6b7f]"} />
-            </span>
-          </div>
-
-          <h2 className="text-[#eef2f7] text-base font-bold mb-1.5">
-            {advisorPresent
-              ? `${closerName ?? "Ihr Berater"} wartet im Gespräch auf Sie`
-              : "Gleich geht es los"}
-          </h2>
-          <p className="text-[#8899b4] text-sm max-w-sm mx-auto">
-            {advisorPresent
-              ? "Sie können jetzt beitreten. Ihr Browser fragt anschließend nach Kamera und Mikrofon."
-              : appointmentStart
-                ? `Ihr Termin beginnt um ${new Date(appointmentStart).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr. Sobald Ihr Berater den Raum betritt, erscheint das hier.`
-                : "Sobald Ihr Berater den Raum betritt, erscheint das hier."}
-          </p>
-
-          <button
-            onClick={onJoin}
-            className={`mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-colors ${
-              advisorPresent
-                ? "bg-[#00b8ff] text-[#041018] hover:bg-[#0099d6]"
-                : "border border-[#16283d] text-[#8899b4] hover:text-[#eef2f7] hover:border-[#2a3a55]"
-            }`}
-          >
-            <Video size={15} />
-            {advisorPresent ? "Gespräch beitreten" : "Schon jetzt beitreten"}
-          </button>
-        </div>
-      )}
-    </section>
+    </Card>
   );
 }
 
-/** Folie, die der Berater gerade zeigt. */
-function SlideStage({
-  presentation,
-  token,
+/**
+ * PDF im Overlay — immer eine ganze Seite im Bild, geblättert wird seitenweise.
+ * Ein eingebetteter Browser-Viewer zoomt nach eigenem Gutdünken hinein; das
+ * hilft niemandem, der ein Angebot überblicken will.
+ */
+export function PdfViewer({
+  url,
+  title,
+  onClose,
 }: {
-  presentation: ClientPresentation;
-  token: string;
+  url: string;
+  title: string;
+  onClose: () => void;
 }) {
-  const src = `/api/closing/slide?token=${encodeURIComponent(token)}&slideId=${encodeURIComponent(presentation.slideId)}`;
-  const isPdf = presentation.mimeType === "application/pdf";
+  const [page, setPage] = useState(1);
+  const [pageCount, setPageCount] = useState(1);
 
-  return (
-    <section className="rounded-2xl border border-[#12203a] bg-[#0a111c] overflow-hidden">
-      <div className="px-4 py-2.5 border-b border-[#12203a] flex items-center justify-between gap-3">
-        <span className="text-[#c9d4e4] text-xs font-semibold truncate">
-          {presentation.slideTitle ?? presentation.title}
-        </span>
-        <span className="text-[#5b6b7f] text-xs flex-shrink-0">
-          {presentation.position} / {presentation.slideCount}
-        </span>
-      </div>
-      {isPdf ? (
-        <iframe
-          src={src}
-          className="w-full border-0 bg-white block"
-          style={{ height: "min(calc(100vh - 240px), 700px)" }}
-          title={presentation.slideTitle ?? presentation.title}
-        />
-      ) : (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          key={presentation.slideId}
-          src={src}
-          alt={presentation.slideTitle ?? `Folie ${presentation.position}`}
-          className="w-full block bg-[#05080d]"
-        />
-      )}
-    </section>
-  );
-}
-
-/** Angebots-PDF im Overlay — der Kunde verlässt das Portal dafür nicht. */
-function OfferViewer({ url, onClose }: { url: string; onClose: () => void }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
+      if (e.key === "ArrowRight") setPage((p) => Math.min(p + 1, pageCount));
+      if (e.key === "ArrowLeft") setPage((p) => Math.max(p - 1, 1));
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [onClose, pageCount]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#04070c]/90 backdrop-blur-sm flex flex-col p-3 sm:p-6">
+    <div className="fixed inset-0 z-50 bg-[#04070c]/95 backdrop-blur-sm flex flex-col p-3 sm:p-6">
       <div className="flex items-center justify-between gap-3 mb-3">
-        <p className="text-[#eef2f7] text-sm font-semibold">Angebot</p>
+        <p className="text-[#eef2f7] text-sm font-semibold">{title}</p>
         <div className="flex items-center gap-2">
           <a
             href={url}
@@ -685,11 +619,33 @@ function OfferViewer({ url, onClose }: { url: string; onClose: () => void }) {
           </button>
         </div>
       </div>
-      <iframe
+
+      <PdfPage
         src={url}
-        className="flex-1 w-full rounded-xl border border-[#12203a] bg-white"
-        title="Angebot"
+        page={page}
+        onDocumentLoad={setPageCount}
+        className="flex-1 min-h-0 rounded-xl bg-[#0a111c] border border-[#12203a]"
       />
+
+      <div className="mt-3 flex items-center justify-center gap-3">
+        <button
+          onClick={() => setPage((p) => Math.max(p - 1, 1))}
+          disabled={page <= 1}
+          className="px-4 py-2 rounded-lg border border-[#16283d] text-[#8899b4] text-xs hover:text-[#eef2f7] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        >
+          Zurück
+        </button>
+        <span className="text-[#8899b4] text-xs tabular-nums">
+          Seite {Math.min(page, pageCount)} von {pageCount}
+        </span>
+        <button
+          onClick={() => setPage((p) => Math.min(p + 1, pageCount))}
+          disabled={page >= pageCount}
+          className="px-4 py-2 rounded-lg border border-[#16283d] text-[#8899b4] text-xs hover:text-[#eef2f7] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        >
+          Weiter
+        </button>
+      </div>
     </div>
   );
 }

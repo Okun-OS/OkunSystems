@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireSessionAccess, AuthorizationError } from "@/lib/auth-guards";
-import { getPresignedReadUrl } from "@/lib/storage";
+import { getObjectStream } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
     where: { id: slideId },
     select: {
       r2Key: true,
+      mimeType: true,
       presentation: { select: { closingSessionId: true } },
     },
   });
@@ -28,6 +29,23 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Keine Berechtigung" }, { status });
   }
 
-  const url = await getPresignedReadUrl(slide.r2Key, 300);
-  return NextResponse.redirect(url);
+  return streamObject(slide.r2Key, slide.mimeType);
 }
+
+/** Liefert das Objekt über den eigenen Endpunkt aus — gleiche Herkunft, kein CORS. */
+async function streamObject(key: string, fallbackType: string): Promise<NextResponse> {
+  const object = await getObjectStream(key);
+  if (!object) {
+    return NextResponse.json({ error: "Datei nicht gefunden" }, { status: 404 });
+  }
+  const headers = new Headers({
+    "Content-Type": object.contentType ?? fallbackType,
+    "Cache-Control": "private, no-store",
+    "Content-Disposition": "inline",
+  });
+  if (object.contentLength !== null) {
+    headers.set("Content-Length", String(object.contentLength));
+  }
+  return new NextResponse(object.body, { headers });
+}
+

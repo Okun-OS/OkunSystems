@@ -1,7 +1,6 @@
 import { db } from "@/lib/db";
 import { formatCents } from "@/lib/money";
 import { evaluateConsentState } from "./consent";
-import { resolveLiveConsents } from "./consent-resolver";
 import { getSnapshotData, type ContractSnapshotData } from "./snapshot";
 import { normalizeStatus, type ClosingStatus } from "./state-machine";
 import { RECURRING_INTERVAL_LABELS } from "./scripts";
@@ -38,8 +37,10 @@ export type ClientPresentation = {
   position: number;
   slideId: string;
   slideTitle: string | null;
-  /** image/* wird als Folie dargestellt, application/pdf als Dokument. */
+  /** image/* wird als Folie dargestellt, application/pdf seitenweise gerendert. */
   mimeType: string;
+  /** Seite innerhalb einer PDF-Folie, 1-basiert. */
+  page: number;
 };
 
 export type ClientClosingState = {
@@ -70,6 +71,12 @@ export type ClientClosingState = {
   } | null;
   /** Das Angebot kann als PDF geöffnet werden. */
   offerPdfAvailable: boolean;
+  /**
+   * Der Berater hat das Angebot vorgestellt. Vorher zeigt die Kundenseite
+   * bewusst nichts Vertriebliches — für den Kunden ist das zunächst ein
+   * Strategiegespräch, kein Abschlusstermin.
+   */
+  offerPresented: boolean;
   consents: ClientConsentItem[];
   allRequiredConfirmed: boolean;
   recordingConsentConfirmed: boolean;
@@ -149,34 +156,6 @@ export async function buildClientClosingState(
           }
         : null,
     }));
-  } else if (status === "offer_presented" || status === "agreement_reached") {
-    // Vorschau vor dem Einfrieren: der Kunde sieht bereits, was verlangt wird.
-    const offer = session.activeOfferId
-      ? await db.offer.findUnique({
-          where: { id: session.activeOfferId },
-          select: { packageType: true, template: { select: { packageType: true } } },
-        })
-      : null;
-    const live = await resolveLiveConsents(
-      offer?.packageType ?? offer?.template?.packageType ?? null
-    );
-    consents = live.consents.map((c) => ({
-      definitionId: c.definitionId,
-      title: c.title,
-      checkboxText: c.checkboxText,
-      consentType: c.consentType,
-      isRequired: c.isRequired,
-      accepted: false,
-      acceptedAt: null,
-      document: c.document
-        ? {
-            versionId: c.document.versionId,
-            name: c.document.name,
-            versionLabel: c.document.versionLabel,
-            openable: c.document.hasFile || c.document.hasInlineContent,
-          }
-        : null,
-    }));
   }
 
   const currency = data?.offer?.currency ?? "EUR";
@@ -211,7 +190,10 @@ export async function buildClientClosingState(
       where: { id: session.activeOfferId },
       include: { template: { select: { name: true } } },
     });
-    if (raw) {
+    // Erst wenn der Berater das Angebot tatsächlich vorgestellt hat. Vorher ist
+    // das Gespräch für den Kunden ein Strategiegespräch — ein Angebot, das
+    // schon im Portal steht, würde dem vorgreifen.
+    if (raw?.presentedAt) {
       const vatRateBp = raw.vatRateBp ?? 1900;
       const vat = Math.round((raw.priceNet * vatRateBp) / 10000);
       offer = {
@@ -241,7 +223,8 @@ export async function buildClientClosingState(
 
   const presentation = await resolveLivePresentation(
     session.livePresentationId,
-    session.liveSlidePosition
+    session.liveSlidePosition,
+    session.liveSlidePage
   );
 
   // Das PDF entsteht entweder aus einer hinterlegten Paket-Datei oder aus der
@@ -268,6 +251,7 @@ export async function buildClientClosingState(
     snapshotReady: Boolean(data),
     offer,
     offerPdfAvailable,
+    offerPresented: Boolean(offer),
     consents,
     allRequiredConfirmed,
     recordingConsentConfirmed,
@@ -300,7 +284,8 @@ export async function buildClientClosingState(
  */
 async function resolveLivePresentation(
   presentationId: string | null,
-  position: number | null
+  position: number | null,
+  page: number | null
 ): Promise<ClientPresentation | null> {
   if (!presentationId) return null;
 
@@ -329,5 +314,6 @@ async function resolveLivePresentation(
     slideId: slide.id,
     slideTitle: slide.title,
     mimeType: slide.mimeType,
+    page: page && page > 0 ? page : 1,
   };
 }

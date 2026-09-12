@@ -19,6 +19,8 @@ import {
   MicOff,
   Video,
   Square,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import {
   startClosingConversation,
@@ -34,6 +36,8 @@ import { isFailure } from "@/lib/action-result";
 import { STATUS_LABELS as CLOSING_STATUS_LABELS, normalizeStatus } from "@/lib/closing/state-machine";
 import { ContractClosurePanel, type ContractClosureData } from "./ContractClosurePanel";
 import { PresentationPanel, type PresentationItem } from "./PresentationPanel";
+import { OkunCall, type CallSlide } from "@/components/closing/okun-call";
+import { showSlide, stopPresentation } from "./presentation-actions";
 
 // ─── Closing checklist definition ────────────────────────────────────────────
 const CLOSING_CHECKLIST = [
@@ -238,6 +242,7 @@ interface Props {
   presentations: PresentationItem[];
   livePresentationId: string | null;
   liveSlidePosition: number | null;
+  liveSlidePage: number | null;
 }
 
 // ─── Call timer ────────────────────────────────────────────────────────────────
@@ -278,12 +283,109 @@ export function ClosingWorkspaceClient({
   presentations,
   livePresentationId,
   liveSlidePosition,
+  liveSlidePage,
 }: Props) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<
     "overview" | "maske" | "praesentation" | "skript" | "angebot" | "abschluss" | "protokoll"
   >("overview");
   const [callActive, setCallActive] = useState(false);
+  const [callExpanded, setCallExpanded] = useState(false);
+
+  // ─── Präsentationssteuerung ────────────────────────────────────────────────
+  // Der Berater blättert zuerst lokal und dann auf dem Server: die Bedienung
+  // reagiert sofort, und ein Neuaufbau der Seite fasst das laufende Gespräch
+  // nicht an. Sobald der Serverstand nachgezogen ist, stimmen beide überein.
+  const livePresentation = presentations.find((p) => p.id === livePresentationId) ?? null;
+  const liveSlides = livePresentation?.slides ?? [];
+
+  const serverKey = `${livePresentationId ?? ""}|${liveSlidePosition ?? ""}|${liveSlidePage ?? ""}`;
+  const [slideView, setSlideView] = useState(() => ({
+    key: serverKey,
+    presentationId: livePresentationId,
+    position: liveSlidePosition,
+    page: liveSlidePage && liveSlidePage > 0 ? liveSlidePage : 1,
+    pageCount: 1,
+  }));
+
+  // Der Serverstand hat sich geändert (Start, Stopp, oder jemand anderes hat
+  // geblättert) — Anzeige daran ausrichten.
+  if (slideView.key !== serverKey) {
+    const justStarted = Boolean(livePresentationId) && slideView.presentationId !== livePresentationId;
+    setSlideView({
+      key: serverKey,
+      presentationId: livePresentationId,
+      position: liveSlidePosition,
+      page: liveSlidePage && liveSlidePage > 0 ? liveSlidePage : 1,
+      pageCount: 1,
+    });
+    // Eine startende Präsentation soll man auch sehen.
+    if (justStarted) setCallExpanded(true);
+  }
+
+  const liveIndex = liveSlides.findIndex((slide) => slide.position === slideView.position);
+  const currentSlide = liveIndex >= 0 ? liveSlides[liveIndex] : null;
+  const currentIsPdf = currentSlide?.mimeType === "application/pdf";
+
+  const liveSlide: CallSlide | null =
+    currentSlide && livePresentation
+      ? {
+          slideId: currentSlide.id,
+          mimeType: currentSlide.mimeType,
+          title: livePresentation.title,
+          slideTitle: currentSlide.title,
+          position: currentSlide.position,
+          slideCount: liveSlides.length,
+          page: slideView.page,
+          src: `/api/admin/presentations/slide?slideId=${encodeURIComponent(currentSlide.id)}`,
+        }
+      : null;
+
+  const canNextSlide = Boolean(
+    currentSlide &&
+      ((currentIsPdf && slideView.page < slideView.pageCount) ||
+        liveIndex < liveSlides.length - 1)
+  );
+  const canPrevSlide = Boolean(
+    currentSlide && ((currentIsPdf && slideView.page > 1) || liveIndex > 0)
+  );
+
+  function moveTo(position: number, page: number) {
+    setSlideView((view) => ({
+      ...view,
+      // Auf den Stand vorgreifen, den der Server gleich meldet — sonst würde
+      // die Rückmeldung die eigene Eingabe wieder überschreiben.
+      key: `${livePresentationId ?? ""}|${position}|${page}`,
+      position,
+      page,
+      pageCount: position === view.position ? view.pageCount : 1,
+    }));
+    void showSlide(closingSession.id, position, page);
+  }
+
+  function notePageCount(pageCount: number) {
+    setSlideView((view) => (view.pageCount === pageCount ? view : { ...view, pageCount }));
+  }
+
+  function goToNextSlide() {
+    if (!currentSlide) return;
+    if (currentIsPdf && slideView.page < slideView.pageCount) {
+      moveTo(currentSlide.position, slideView.page + 1);
+      return;
+    }
+    const next = liveSlides[liveIndex + 1];
+    if (next) moveTo(next.position, 1);
+  }
+
+  function goToPreviousSlide() {
+    if (!currentSlide) return;
+    if (currentIsPdf && slideView.page > 1) {
+      moveTo(currentSlide.position, slideView.page - 1);
+      return;
+    }
+    const previous = liveSlides[liveIndex - 1];
+    if (previous) moveTo(previous.position, 1);
+  }
 
   // Status actions
   const [statusPending, startStatusTransition] = useTransition();
@@ -1119,13 +1221,25 @@ export function ClosingWorkspaceClient({
         </div>
       )}
 
-      {/* ─── Embedded video overlay — draggable + resizable ───────────────────
-          Rendered once (never unmounted) so the call stays alive when switching
-          tabs. Drag via title bar, resize via corner handle. */}
+      {/* ─── Gesprächsfenster ─────────────────────────────────────────────────
+          Einmal gerendert und nie ausgehängt, damit das Gespräch beim
+          Tabwechsel nicht abreißt. Verschiebbar über die Titelleiste,
+          vergrößerbar über die Ecke — und für die Präsentation auf Vollbild. */}
       {callActive && closingSession.appointment?.meetingUrl && (
         <div
-          className="fixed z-50 flex flex-col shadow-2xl border border-[#1a2840] bg-[#080d14] rounded-xl overflow-hidden"
-          style={{ left: `${vidPos.x}px`, top: `${vidPos.y}px`, width: `${vidSize.w}px`, height: `${vidSize.h}px` }}
+          className={`fixed z-50 flex flex-col shadow-2xl border border-[#1a2840] bg-[#080d14] overflow-hidden ${
+            callExpanded ? "inset-3 rounded-2xl" : "rounded-xl"
+          }`}
+          style={
+            callExpanded
+              ? undefined
+              : {
+                  left: `${vidPos.x}px`,
+                  top: `${vidPos.y}px`,
+                  width: `${vidSize.w}px`,
+                  height: `${vidSize.h}px`,
+                }
+          }
         >
           {/* Title bar — drag handle */}
           <div
@@ -1149,23 +1263,45 @@ export function ClosingWorkspaceClient({
                 </button>
               )}
             </div>
-            <button
-              onClick={() => setCallActive(false)}
-              className="text-[#666] hover:text-[#ef4444] transition-colors"
-              title="Gespräch verlassen"
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              <Square size={11} />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCallExpanded((v) => !v)}
+                className="text-[#666] hover:text-[#00b8ff] transition-colors"
+                title={callExpanded ? "Verkleinern" : "Vergrößern"}
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                {callExpanded ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+              </button>
+              <button
+                onClick={() => setCallActive(false)}
+                className="text-[#666] hover:text-[#ef4444] transition-colors"
+                title="Gespräch verlassen"
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                <Square size={11} />
+              </button>
+            </div>
           </div>
-          <iframe
-            src={closingSession.appointment.meetingUrl}
-            allow="camera; microphone; fullscreen; display-capture; screen-wake-lock"
-            className="w-full flex-1 border-0"
-            title="Closing-Gespräch"
-          />
+          <div className="flex-1 min-h-0">
+            <OkunCall
+              roomUrl={closingSession.appointment.meetingUrl}
+              userName={closingSession.closer.name ?? "Berater"}
+              role="advisor"
+              slide={liveSlide}
+              onLeave={() => setCallActive(false)}
+              onPrev={goToPreviousSlide}
+              onNext={goToNextSlide}
+              canPrev={canPrevSlide}
+              canNext={canNextSlide}
+              onStopPresentation={() => {
+                void stopPresentation(closingSession.id).then(() => router.refresh());
+              }}
+              onPageCount={notePageCount}
+            />
+          </div>
           {/* Resize handle — bottom-right corner */}
           <div
+            hidden={callExpanded}
             className="absolute bottom-0 right-0 w-5 h-5 cursor-se-resize z-10"
             onMouseDown={(e) => {
               isResizing.current = true;

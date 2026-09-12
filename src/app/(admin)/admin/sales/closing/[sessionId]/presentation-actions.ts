@@ -305,6 +305,7 @@ export async function startPresentation(closingSessionId: string, presentationId
       data: {
         livePresentationId: presentationId,
         liveSlidePosition: presentation.slides[0].position,
+        liveSlidePage: 1,
       },
     });
 
@@ -321,8 +322,11 @@ export async function startPresentation(closingSessionId: string, presentationId
   });
 }
 
-/** Blättert zur angegebenen Folie. */
-export async function showSlide(closingSessionId: string, position: number) {
+/**
+ * Blättert zur angegebenen Folie — und innerhalb einer PDF-Folie zur
+ * angegebenen Seite.
+ */
+export async function showSlide(closingSessionId: string, position: number, page = 1) {
   return guarded(async () => {
     await requireSessionAccess(closingSessionId);
 
@@ -340,7 +344,10 @@ export async function showSlide(closingSessionId: string, position: number) {
 
     await db.closingSession.update({
       where: { id: closingSessionId },
-      data: { liveSlidePosition: slide.position },
+      data: {
+        liveSlidePosition: slide.position,
+        liveSlidePage: Number.isFinite(page) && page > 0 ? Math.floor(page) : 1,
+      },
     });
 
     revalidatePath(pathFor(closingSessionId));
@@ -360,7 +367,7 @@ export async function stopPresentation(closingSessionId: string) {
 
     await db.closingSession.update({
       where: { id: closingSessionId },
-      data: { livePresentationId: null, liveSlidePosition: null },
+      data: { livePresentationId: null, liveSlidePosition: null, liveSlidePage: null },
     });
 
     if (session?.livePresentationId) {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { verifyClosingToken } from "@/lib/closing/token";
-import { getPresignedReadUrl } from "@/lib/storage";
+import { getObjectStream } from "@/lib/storage";
 import { renderOfferPdf } from "@/lib/closing/offer-document";
 
 export const dynamic = "force-dynamic";
@@ -41,8 +41,18 @@ export async function GET(request: NextRequest) {
   });
 
   if (offer?.template?.r2Key) {
-    const url = await getPresignedReadUrl(offer.template.r2Key, 300);
-    return NextResponse.redirect(url);
+    const object = await getObjectStream(offer.template.r2Key);
+    if (object) {
+      const headers = new Headers({
+        "Content-Type": object.contentType ?? "application/pdf",
+        "Cache-Control": "private, no-store",
+        "Content-Disposition": "inline",
+      });
+      if (object.contentLength !== null) {
+        headers.set("Content-Length", String(object.contentLength));
+      }
+      return new NextResponse(object.body, { headers });
+    }
   }
 
   try {

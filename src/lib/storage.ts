@@ -46,6 +46,33 @@ export async function getPresignedReadUrl(
   );
 }
 
+/**
+ * Liest ein R2-Objekt als Datenstrom.
+ *
+ * Wird gebraucht, wo der Browser die Bytes selbst verarbeitet (etwa beim
+ * seitenweisen Rendern einer PDF): eine Weiterleitung auf eine Signed URL
+ * wäre dort ein Zugriff über Domaingrenzen hinweg und damit von der
+ * CORS-Regel des Buckets abhängig. Über den eigenen Endpunkt ausgeliefert,
+ * bleibt alles gleiche Herkunft — und der R2-Schlüssel verlässt den Server
+ * ohnehin nie.
+ */
+export async function getObjectStream(key: string): Promise<{
+  body: ReadableStream<Uint8Array>;
+  contentType: string | null;
+  contentLength: number | null;
+} | null> {
+  const client = getR2Client();
+  const result = await client.send(
+    new GetObjectCommand({ Bucket: getBucket(), Key: key })
+  );
+  if (!result.Body) return null;
+  return {
+    body: result.Body.transformToWebStream() as ReadableStream<Uint8Array>,
+    contentType: result.ContentType ?? null,
+    contentLength: typeof result.ContentLength === "number" ? result.ContentLength : null,
+  };
+}
+
 /** Generate a presigned PUT URL for uploading directly to R2 from the client. */
 export async function getPresignedUploadUrl(
   key: string,

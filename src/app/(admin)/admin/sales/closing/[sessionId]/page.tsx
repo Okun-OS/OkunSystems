@@ -133,6 +133,7 @@ export default async function ClosingWorkspacePage({
       }))}
       livePresentationId={closingSession.livePresentationId}
       liveSlidePosition={closingSession.liveSlidePosition}
+      liveSlidePage={closingSession.liveSlidePage}
     />
   );
 }
