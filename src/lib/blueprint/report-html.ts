@@ -1,4 +1,5 @@
 import type { BlueprintReportData, ModuleScoreEntry } from "./report-assembler";
+import type { SolutionRecommendation } from "./types";
 import type { ReportTexts } from "./report-text-engine";
 
 function scoreColor(score: number): string {
@@ -76,12 +77,89 @@ function moduleBlock(m: ModuleScoreEntry, detailed: string): string {
 </div>`;
 }
 
-function modulePairPage(modules: ModuleScoreEntry[], detailed: Record<number, string>, pairIndex: number, totalPairs: number): string {
+function modulePairPage(modules: ModuleScoreEntry[], detailed: Record<number, string>): string {
   const label = `Modulanalyse · ${modules.map(m => `M${m.moduleNumber}`).join(" & ")}`;
+  // Überschrift sind die Modulnamen — eine Seitenzählung als Titel sagt dem
+  // Leser nichts darüber, was auf der Seite steht.
+  const title = modules.map((m) => m.label).join(" & ");
   return `
 <div class="npage">
-  ${ph(label, `Seite ${pairIndex + 1} von ${totalPairs}`)}
+  ${ph(label, title)}
   ${modules.map(m => moduleBlock(m, detailed[m.moduleNumber] ?? "")).join('\n<div class="mod-sep"></div>\n')}
+</div>`;
+}
+
+
+function formatPercent(share: number): string {
+  return `${(share * 100).toLocaleString("de-DE", { maximumFractionDigits: 0 })} %`;
+}
+
+function formatDecimal(value: number): string {
+  return value.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
+
+const SOLUTION_CATEGORY_LABELS: Record<string, string> = {
+  WORKFORCE: "OKUN Workforce",
+  BEWAEHRTE_LOESUNG: "Bewährte Lösung",
+  CUSTOM_DEVELOPMENT: "Individuelle Entwicklung",
+};
+
+const SOLUTION_CATEGORY_COLORS: Record<string, string> = {
+  WORKFORCE: "#00b8ff",
+  BEWAEHRTE_LOESUNG: "#22c55e",
+  CUSTOM_DEVELOPMENT: "#f59e0b",
+};
+
+function solutionCard(solution: SolutionRecommendation): string {
+  const color = SOLUTION_CATEGORY_COLORS[solution.category] ?? "#00b8ff";
+  const label = SOLUTION_CATEGORY_LABELS[solution.category] ?? solution.category;
+  return `<div class="sol-card" style="border-left:3px solid ${color}">
+    <div class="sol-head">
+      <span class="sol-name">${solution.name}</span>
+      <span class="sol-cat" style="color:${color}">${label}</span>
+    </div>
+    <div class="sol-desc">${solution.description}</div>
+  </div>`;
+}
+
+/**
+ * Empfehlungen und Roadmap.
+ *
+ * Die Zuordnung entsteht aus den Antworten des Fragebogens und wird hier nur
+ * dargestellt — der Bericht endete bisher mit der Diagnose und ließ den Kunden
+ * ohne einen einzigen Vorschlag zurück.
+ */
+function recommendationPage(data: BlueprintReportData): string {
+  const phases = data.roadmap.filter((phase) => phase.solutions.length > 0);
+
+  if (phases.length === 0 && data.recommendations.length === 0) {
+    return `
+<div class="npage">
+  ${ph("Was wir daraus ableiten", "Empfehlungen")}
+  <p class="sol-empty">Aus den Antworten lässt sich noch keine belastbare Empfehlung ableiten.
+  Die Einordnung erfolgt im Strategiegespräch.</p>
+</div>`;
+  }
+
+  const body =
+    phases.length > 0
+      ? phases
+          .map(
+            (phase) => `<div class="sol-phase">
+      <div class="sol-phase-label">${phase.phaseLabel}</div>
+      ${phase.solutions.map(solutionCard).join("\n")}
+    </div>`
+          )
+          .join("\n")
+      : data.recommendations.map(solutionCard).join("\n");
+
+  return `
+<div class="npage">
+  ${ph("Was wir daraus ableiten", "Empfehlungen")}
+  <p class="sol-intro">Die folgenden Ansätze ergeben sich unmittelbar aus Ihren Antworten.
+  Die Reihenfolge ist eine Empfehlung, keine Verpflichtung — welche Schritte in welcher
+  Reihenfolge sinnvoll sind, klären wir gemeinsam im Strategiegespräch.</p>
+  ${body}
 </div>`;
 }
 
@@ -90,12 +168,31 @@ export function renderReportHtml(data: BlueprintReportData, texts: ReportTexts, 
     ? new Date(data.completedAt).toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric" })
     : new Date().toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric" });
 
-  const avgScore = data.moduleScores.length > 0
-    ? Math.round(data.moduleScores.reduce((s, m) => s + m.score, 0) / data.moduleScores.length)
-    : 0;
-
+  // Gewichteter Gesamtwert. Er wird im Assembler gerechnet, damit Umschlag,
+  // Tabelle und Fließtext dieselbe Zahl nennen.
+  const avgScore = data.totalScore;
   const avgColor = scoreColor(avgScore);
   const avgLabel = scoreLabel(avgScore);
+
+  const compositionRows = data.moduleScores
+    .map((m) => {
+      const c = scoreColor(m.score);
+      return `<tr>
+        <td class="comp-mod"><span class="comp-num" style="color:${c}">M${m.moduleNumber}</span> ${m.label}</td>
+        <td class="comp-val" style="color:${c}">${m.score}</td>
+        <td class="comp-val comp-weight">${formatPercent(m.weight)}</td>
+        <td class="comp-val comp-contrib">${formatDecimal(m.contribution)}</td>
+      </tr>`;
+    })
+    .join("\n");
+
+  // Aus den *angezeigten* Beiträgen summieren, damit die Spalte für den Leser
+  // aufgeht. Der gerundete Gesamtwert auf dem Umschlag kann dadurch um ein
+  // Zehntel abweichen — darauf weist die Fußnote hin.
+  const compositionSum = data.moduleScores.reduce(
+    (sum, m) => sum + Math.round(m.contribution * 10) / 10,
+    0
+  );
 
   // ── All 8 compact bars for overview page ────────────────────────────────
   const allCompactBars = data.moduleScores
@@ -107,9 +204,9 @@ export function renderReportHtml(data: BlueprintReportData, texts: ReportTexts, 
   for (let i = 0; i < data.moduleScores.length; i += 2) {
     modulePairs.push(data.moduleScores.slice(i, i + 2));
   }
-  const moduleDetailPages = modulePairs.map((pair, i) =>
-    modulePairPage(pair, texts.moduleDetailedAnalysis, i, modulePairs.length)
-  ).join("\n");
+  const moduleDetailPages = modulePairs
+    .map((pair) => modulePairPage(pair, texts.moduleDetailedAnalysis))
+    .join("\n");
 
   // ── Logo markup ──────────────────────────────────────────────────────────
   const logoHtml = logoDataUri
@@ -352,6 +449,36 @@ body {
 .fazit-prose p { margin-bottom: 13px; }
 .fazit-prose p:last-child { margin-bottom: 0; }
 
+/* ── Zusammensetzung des Gesamtwerts ──────────────────────────────────────*/
+.comp-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 8.5pt; }
+.comp-table th {
+  text-align: left; font-size: 7pt; font-weight: 700; letter-spacing: 1px;
+  text-transform: uppercase; color: #64748b; padding: 0 0 5px; border-bottom: 1px solid #e2e8f0;
+}
+.comp-table th.comp-right, .comp-table td.comp-val { text-align: right; }
+.comp-table td { padding: 4.5px 0; border-bottom: 1px solid #f1f5f9; }
+.comp-mod { color: #0d1117; }
+.comp-num { font-weight: 800; margin-right: 4px; }
+.comp-val { font-weight: 700; font-variant-numeric: tabular-nums; }
+.comp-weight { color: #64748b; font-weight: 600; }
+.comp-contrib { color: #0d1117; }
+.comp-total td { border-bottom: 0; border-top: 1.5px solid #0d1117; padding-top: 7px; font-weight: 800; }
+.comp-note { font-size: 7.5pt; color: #64748b; margin-top: 7px; line-height: 1.5; }
+
+/* ── Empfehlungen ─────────────────────────────────────────────────────────*/
+.sol-intro { font-size: 9pt; color: #334155; line-height: 1.6; margin-bottom: 16px; }
+.sol-empty { font-size: 9pt; color: #64748b; line-height: 1.6; }
+.sol-phase { margin-bottom: 18px; }
+.sol-phase-label {
+  font-size: 7.5pt; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase;
+  color: #00b8ff; margin-bottom: 8px;
+}
+.sol-card { background: #f8fafc; border-radius: 4px; padding: 9px 12px; margin-bottom: 7px; }
+.sol-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.sol-name { font-size: 9.5pt; font-weight: 700; color: #0d1117; }
+.sol-cat { font-size: 7pt; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; white-space: nowrap; }
+.sol-desc { font-size: 8.5pt; color: #475569; line-height: 1.55; margin-top: 3px; }
+
 .orientation-box {
   margin-top: 22px; padding: 16px 20px; background: #f5f9ff;
   border: 1px solid #dbeafe; border-left: 4px solid #00b8ff; border-radius: 8px;
@@ -402,7 +529,7 @@ body {
       </div>
       <div>
         <div class="cover-score-lbl" style="color:${avgColor}">${avgLabel}</div>
-        <div class="cover-score-desc">Ø Digitalisierungsgrad über alle ${data.moduleScores.length} Blueprint-Module.</div>
+        <div class="cover-score-desc">Gewichteter Digitalisierungsgrad über ${data.moduleScores.length} bewertete Blueprint-Module.</div>
       </div>
     </div>
 
@@ -476,6 +603,31 @@ ${texts.contextPageText ? `
     ${allCompactBars}
   </div>
 
+  <div class="section-lbl">So setzt sich Ihr Wert zusammen</div>
+  <table class="comp-table">
+    <thead>
+      <tr>
+        <th>Modul</th>
+        <th class="comp-right">Wert</th>
+        <th class="comp-right">Gewicht</th>
+        <th class="comp-right">Beitrag</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${compositionRows}
+      <tr class="comp-total">
+        <td>Gesamtwert</td>
+        <td class="comp-val"></td>
+        <td class="comp-val">100 %</td>
+        <td class="comp-val" style="color:${avgColor}">${formatDecimal(compositionSum)}</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="comp-note">Nicht jedes Modul wiegt gleich schwer — Prozessqualität bestimmt den
+  Alltag eines Betriebs stärker als Personalmanagement. Bereiche, die Ihr Unternehmen nicht
+  betreffen, fließen nicht in die Bewertung ein; ihr Gewicht verteilt sich auf die übrigen
+  Module. Auf dem Umschlag steht der gerundete Gesamtwert ${avgScore}.</p>
+
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════════════
@@ -494,7 +646,12 @@ ${texts.contextPageText ? `
 ${moduleDetailPages}
 
 <!-- ══════════════════════════════════════════════════════════════════════
-     SEITE 15: FAZIT
+     EMPFEHLUNGEN UND ROADMAP
+     ══════════════════════════════════════════════════════════════════════ -->
+${recommendationPage(data)}
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     FAZIT
      ══════════════════════════════════════════════════════════════════════ -->
 <div class="npage">
   ${ph("Zusammenfassung der Analyseergebnisse", "Fazit")}

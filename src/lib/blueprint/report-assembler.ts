@@ -15,7 +15,34 @@ export interface ModuleScoreEntry {
   moduleNumber: number;
   label: string;
   score: number;
+  /** Anteil dieses Moduls am Gesamtwert, bezogen auf die tatsächlich bewerteten Module. */
+  weight: number;
+  /** score × weight — die Summe aller Beiträge ergibt den Gesamtwert. */
+  contribution: number;
 }
+
+/**
+ * Gewichtung der Module am Gesamtwert.
+ *
+ * Nicht jedes Modul wiegt gleich schwer: Prozessqualität bestimmt den Alltag
+ * eines Betriebs stärker als Personalmanagement. Die Verteilung stammt aus dem
+ * Fragenkatalog und ist dieselbe, die im Datenmodell (`OkunScore`) hinterlegt
+ * ist. Modul 1 ist reines Unternehmensprofil und wird nicht bewertet.
+ *
+ * Module ohne Bewertung — etwa weil der Bereich den Betrieb nicht betrifft —
+ * werden aus der Rechnung genommen und ihr Gewicht auf die übrigen verteilt.
+ * Dasselbe Prinzip greift schon innerhalb von Modul 5 auf Gruppenebene: es
+ * wird niemand an Dingen gemessen, die ihn nicht betreffen.
+ */
+export const MODULE_WEIGHTS: Record<number, number> = {
+  2: 0.25, // Prozessqualität
+  3: 0.20, // Vertriebsstruktur
+  4: 0.15, // Führungsstruktur
+  5: 0.15, // Automatisierungsgrad
+  6: 0.10, // Unternehmensstruktur
+  7: 0.10, // Kommunikation
+  8: 0.05, // Personalmanagement
+};
 
 export interface CompanyContextData {
   summary: string | null;
@@ -31,6 +58,8 @@ export interface BlueprintReportData {
   completedAt: Date | null;
   packageType: string | null;
   moduleScores: ModuleScoreEntry[];
+  /** Gewichteter Gesamtwert 0–100. Summe der Modulbeiträge. */
+  totalScore: number;
   m5NormalizedScore: number;
   m5GroupScores: BlueprintScores["m5GroupScores"];
   signals: SignalTotals;
@@ -83,11 +112,28 @@ export async function assembleBlueprintReport(
   const totalActive = activeQuestions.length;
   const totalAnswered = activeQuestions.filter((q) => q.status === "ANSWERED").length;
 
-  const moduleScores: ModuleScoreEntry[] = scores.moduleScores.map((m) => ({
-    moduleNumber: m.moduleNumber,
-    label: MODULE_LABELS[m.moduleNumber] ?? `Modul ${m.moduleNumber}`,
-    score: m.score,
-  }));
+  // Gewichte auf die tatsächlich bewerteten Module normieren, damit die
+  // Beiträge in Summe exakt den Gesamtwert ergeben.
+  const weightSum = scores.moduleScores.reduce(
+    (sum, m) => sum + (MODULE_WEIGHTS[m.moduleNumber] ?? 0),
+    0
+  );
+
+  const moduleScores: ModuleScoreEntry[] = scores.moduleScores.map((m) => {
+    const weight =
+      weightSum > 0 ? (MODULE_WEIGHTS[m.moduleNumber] ?? 0) / weightSum : 0;
+    return {
+      moduleNumber: m.moduleNumber,
+      label: MODULE_LABELS[m.moduleNumber] ?? `Modul ${m.moduleNumber}`,
+      score: m.score,
+      weight,
+      contribution: m.score * weight,
+    };
+  });
+
+  const totalScore = Math.round(
+    moduleScores.reduce((sum, m) => sum + m.contribution, 0)
+  );
 
   return {
     sessionId,
@@ -98,6 +144,7 @@ export async function assembleBlueprintReport(
     completedAt: analysisSession.completedAt,
     packageType: analysisSession.packageType,
     moduleScores,
+    totalScore,
     m5NormalizedScore: scores.m5NormalizedScore,
     m5GroupScores: scores.m5GroupScores,
     signals,

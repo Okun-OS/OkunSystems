@@ -27,10 +27,15 @@ function scoreLabelText(score: number): string {
   return "Dringend";
 }
 
+/**
+ * Der gewichtete Gesamtwert aus dem Assembler.
+ *
+ * Bewusst keine eigene Rechnung an dieser Stelle: Umschlag, Tabelle und
+ * Fließtext müssen dieselbe Zahl nennen. Vorher stand hier ein ungewichteter
+ * Mittelwert, der von der ausgewiesenen Zusammensetzung abwich.
+ */
 function calcAvgScore(data: BlueprintReportData): number {
-  return data.moduleScores.length > 0
-    ? Math.round(data.moduleScores.reduce((s, m) => s + m.score, 0) / data.moduleScores.length)
-    : 0;
+  return data.totalScore;
 }
 
 function formatContextForPrompt(data: BlueprintReportData): string {
