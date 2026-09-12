@@ -42,6 +42,27 @@ import type {
   EvaluatedQuestion,
   SolutionInput,
 } from "../src/lib/blueprint/types";
+import {
+  analyseFlow,
+  analyseSystems,
+  evaluatePillar3,
+  minutesPerMonth,
+  selectFlows,
+  summariseFlows,
+  summariseTasks,
+  type FlowRecord,
+  type SystemRecord,
+  type TaskRecord,
+} from "../src/lib/blueprint/pillar3-engine";
+import {
+  DURATION_BANDS,
+  FREQUENCY_BANDS,
+  MAX_TASKS,
+  PURPOSES,
+  STATIONS,
+  TASK_CATALOG,
+  flowByKey,
+} from "../src/lib/blueprint/pillar3-catalog";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -511,6 +532,209 @@ test("ohne Verweise greift die Kategorie weiter — alte Sitzungen gehen nicht l
   );
   assert.deepEqual(result.map((r) => r.externalId).sort(), ["SOL-B-001", "SOL-B-006"]);
   assert.ok(result.every((r) => !r.fromAnswers));
+});
+
+console.log("\nBlueprint, dritte Säule");
+
+function system(
+  id: string,
+  name: string,
+  purposes: string[],
+  category = "Kundenverwaltung"
+): SystemRecord {
+  return { id, catalogKey: id, name, category, purposes, isCustom: false };
+}
+
+function task(
+  key: string,
+  frequencyBand: string,
+  durationBand: string,
+  systemIds: string[] = []
+): TaskRecord {
+  const entry = TASK_CATALOG.find((t) => t.key === key)!;
+  return {
+    id: `db_${key}`,
+    catalogKey: key,
+    label: entry.label,
+    area: entry.area,
+    frequencyBand,
+    durationBand,
+    systemIds,
+    minutesPerMonth: minutesPerMonth(frequencyBand, durationBand) ?? 0,
+  };
+}
+
+test("Katalog ist in sich schlüssig", () => {
+  assert.equal(TASK_CATALOG.length, 40);
+  assert.equal(PURPOSES.length, 11);
+  assert.equal(STATIONS.length, 9);
+  assert.equal(MAX_TASKS, 10);
+  // Jede Aufgabe zeigt auf einen Ablauf, den es gibt.
+  for (const entry of TASK_CATALOG) {
+    assert.ok(flowByKey(entry.flowKey), `unbekannter Ablauf: ${entry.flowKey}`);
+  }
+  // Schlüssel sind eindeutig.
+  assert.equal(new Set(TASK_CATALOG.map((t) => t.key)).size, TASK_CATALOG.length);
+  assert.equal(new Set(STATIONS.map((s) => s.key)).size, STATIONS.length);
+  assert.equal(new Set(FREQUENCY_BANDS.map((b) => b.key)).size, FREQUENCY_BANDS.length);
+  assert.equal(new Set(DURATION_BANDS.map((b) => b.key)).size, DURATION_BANDS.length);
+});
+
+test("Stunden pro Monat rechnen sich aus den Bändern", () => {
+  // täglich (5 / Woche) × 10 Minuten × 4,33 Wochen = 216,5 → 217 Minuten
+  assert.equal(minutesPerMonth("freq_daily", "dur_5_15"), 217);
+  assert.equal(minutesPerMonth("freq_monthly", "dur_under5"), 3);
+  assert.equal(minutesPerMonth("unbekannt", "dur_5_15"), null, "kein Band, keine Schätzung");
+});
+
+test("Aufgabensumme und Übergabekandidaten", () => {
+  const summary = summariseTasks([
+    task("t02", "freq_daily", "dur_5_15", ["a", "b"]),
+    task("t12", "freq_weekly", "dur_30_60", ["a"]),
+    task("t17", "freq_weekly_multi", "dur_15_30", ["a", "b", "c"]),
+  ]);
+  // Einsatzpläne (3 × / Woche à 22 min) kosten mehr als Kundendaten übertragen
+  // (5 × / Woche à 10 min) — 286 gegen 217 Minuten im Monat.
+  assert.equal(summary.entries[0].task.catalogKey, "t17", "die teuerste Aufgabe steht oben");
+  assert.equal(summary.entries[0].hoursPerMonth, 4.8);
+  assert.equal(summary.entries[2].task.catalogKey, "t12", "die günstigste steht unten");
+  assert.equal(summary.handoffCandidates, 2, "zwei Aufgaben berühren mehr als ein Programm");
+  // 217 + 195 + 286 = 698 Minuten = 11,6 Stunden
+  assert.equal(summary.totalHoursPerMonth, 11.6);
+});
+
+test("Medienbruch, Lücke und Behelfslösung fallen aus der Matrix", () => {
+  const finding = analyseSystems([
+    system("s1", "Excel", [
+      "pur_customers",
+      "pur_offers",
+      "pur_orders",
+      "pur_scheduling",
+      "pur_time",
+      "pur_reports",
+    ]),
+    system("s2", "HubSpot", ["pur_customers"]),
+    system("s3", "Lexoffice", ["pur_invoices"]),
+  ]);
+
+  const customers = finding.rows.find((r) => r.purposeKey === "pur_customers")!;
+  assert.equal(customers.isMediaBreak, true, "Excel und HubSpot pflegen beide Kundendaten");
+  assert.deepEqual(customers.systemNames.sort(), ["Excel", "HubSpot"]);
+
+  const documents = finding.rows.find((r) => r.purposeKey === "pur_documents")!;
+  assert.equal(documents.isGap, true, "für Dokumente gibt es nichts");
+
+  assert.equal(finding.overloaded.length, 1);
+  assert.equal(finding.overloaded[0].name, "Excel");
+  assert.equal(finding.overloaded[0].purposeCount, 6);
+});
+
+test("Handarbeitsquote, Programmwechsel und Trägerperson", () => {
+  const flow: FlowRecord = {
+    id: "f1",
+    catalogKey: "flow_inquiry",
+    title: "Eine Kundenanfrage kommt herein",
+    position: 0,
+    stations: [
+      { stationKey: "st_receive", position: 0, role: "Büro", systemId: "s1", systemLabel: null, mode: "manual" },
+      { stationKey: "st_route", position: 1, role: "Büro", systemId: null, systemLabel: "none", mode: "manual" },
+      { stationKey: "st_transfer", position: 2, role: "Büro", systemId: "s2", systemLabel: null, mode: "manual" },
+      { stationKey: "st_create", position: 3, role: "Büro", systemId: "s2", systemLabel: null, mode: "manual" },
+      { stationKey: "st_document", position: 4, role: "Meister", systemId: "s3", systemLabel: null, mode: "manual" },
+      { stationKey: "st_reply", position: 5, role: "Büro", systemId: "s1", systemLabel: null, mode: "manual" },
+      { stationKey: "st_inform", position: 6, role: "Büro", systemId: null, systemLabel: "paper", mode: "partial" },
+      { stationKey: "st_followup", position: 7, role: "Büro", systemId: null, systemLabel: "none", mode: "manual" },
+      { stationKey: "st_archive", position: 8, role: null, systemId: null, systemLabel: null, mode: "none" },
+    ],
+  };
+
+  const finding = analyseFlow(flow);
+  assert.equal(finding.relevantStations, 8, "die entfallende Station zählt nicht mit");
+  assert.equal(finding.manualStations, 7);
+  assert.equal(finding.manualShare, 88);
+  // s1, s2, s3 und Papier = vier Werkzeuge → drei Wechsel
+  assert.equal(finding.systemSwitches, 3);
+  assert.equal(finding.carrier?.role, "Büro");
+  assert.equal(finding.carrier?.stations, 7);
+  assert.ok(
+    !finding.takeoverStations.includes("st_route"),
+    "die Entscheidung über die Zuständigkeit bleibt beim Menschen"
+  );
+  assert.ok(!finding.takeoverStations.includes("st_reply"), "der Inhalt der Antwort auch");
+  assert.ok(finding.takeoverStations.includes("st_transfer"));
+});
+
+test("ein vollständig automatisierter Ablauf ergibt Quote null", () => {
+  const flow: FlowRecord = {
+    id: "f2",
+    catalogKey: "flow_invoice",
+    title: "Eine Rechnung muss geschrieben werden",
+    position: 0,
+    stations: STATIONS.map((station, index) => ({
+      stationKey: station.key,
+      position: index,
+      role: "System",
+      systemId: "s1",
+      systemLabel: null,
+      mode: "automatic",
+    })),
+  };
+  const summary = summariseFlows([flow]);
+  assert.equal(summary.overallManualShare, 0);
+  assert.equal(summary.findings[0].takeoverStations.length, 0);
+});
+
+test("Abläufe folgen den teuersten Aufgaben, nicht der Reihenfolge im Katalog", () => {
+  const selected = selectFlows(
+    [
+      task("t38", "freq_monthly", "dur_under5"),      // Einkauf, sehr wenig
+      task("t12", "freq_daily", "dur_30_60"),          // Rechnungen, viel
+      task("t17", "freq_weekly_multi", "dur_over60"),  // Planung, am meisten
+    ],
+    null
+  );
+  assert.deepEqual(selected, ["flow_scheduling", "flow_invoice", "flow_purchase"]);
+});
+
+test("ohne genug Aufgaben füllt der Branchenstandard auf", () => {
+  // M1.1-OPT-3 ist Gebäudereinigung → flow_sickness
+  const selected = selectFlows([task("t12", "freq_weekly", "dur_5_15")], "M1.1-OPT-3");
+  assert.deepEqual(selected, ["flow_invoice", "flow_sickness"]);
+
+  const empty = selectFlows([], null);
+  assert.deepEqual(empty, ["flow_inquiry"], "ohne alles bleibt der Standardablauf");
+});
+
+test("Gesamtbild trennt Reifegrad und Stunden", () => {
+  const result = evaluatePillar3({
+    systems: [system("s1", "Excel", ["pur_customers"])],
+    tasks: [task("t02", "freq_daily", "dur_5_15", ["s1", "s2"])],
+    flows: [
+      {
+        id: "f1",
+        catalogKey: "flow_inquiry",
+        title: "Eine Kundenanfrage kommt herein",
+        position: 0,
+        stations: [
+          { stationKey: "st_receive", position: 0, role: "Büro", systemId: "s1", systemLabel: null, mode: "manual" },
+          { stationKey: "st_reply", position: 1, role: "Büro", systemId: "s1", systemLabel: null, mode: "automatic" },
+        ],
+      },
+    ],
+  });
+  assert.equal(result.hasData, true);
+  assert.equal(result.flows.overallManualShare, 50);
+  assert.equal(result.flowMaturity, 50);
+  assert.equal(result.tasks.totalHoursPerMonth, 3.6);
+  assert.equal(result.systems.gaps.length, 10, "zehn Zwecke ohne Programm");
+});
+
+test("ohne Eingaben bleibt alles bei null statt zu raten", () => {
+  const result = evaluatePillar3({ systems: [], tasks: [], flows: [] });
+  assert.equal(result.hasData, false);
+  assert.equal(result.tasks.totalHoursPerMonth, 0);
+  assert.equal(result.flows.overallManualShare, 0);
+  assert.equal(result.flowMaturity, 100);
 });
 
 console.log(`\n${passed} Tests bestanden.\n`);

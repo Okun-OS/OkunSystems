@@ -381,10 +381,12 @@ model AnalysisSession {
   updatedAt      DateTime  @updatedAt
 
   // Blueprint 2.0 fields
-  blueprintVersion   String  @default("1.0")
+  blueprintVersion   String    @default("1.0")
+  /// Abschluss der dritten Säule (Systeme, Aufgaben, Abläufe).
+  pillar3CompletedAt DateTime?
   packageType        String?
-  activeGroupWeights String  @default("{}")
-  pendingReviewCount Int     @default(0)
+  activeGroupWeights String    @default("{}")
+  pendingReviewCount Int       @default(0)
   reportUrl          String?
 
   companyId      String
@@ -394,6 +396,9 @@ model AnalysisSession {
   problems       DetectedProblem[]
   opportunities  Opportunity[]
   score          OkunScore?
+  pillar3Systems BlueprintSystem[]
+  pillar3Tasks   BlueprintTask[]
+  pillar3Flows   BlueprintFlow[]
   progress       SessionProgress[]
   evidence       ScoringEvidence[]
   appointments   Appointment[]
@@ -1614,4 +1619,96 @@ model ClosingPresentationSlide {
 
   @@unique([presentationId, position])
   @@index([presentationId])
+}
+
+// ─── Blueprint, dritte Säule ─────────────────────────────────────────────────
+// Systeme, wiederkehrende Aufgaben und Abläufe. Bewusst eigene Modelle statt
+// weiterer Fragen im Katalog: Die drei Blöcke sind keine Einzelfragen, sondern
+// Listen, deren Einträge sich gegenseitig als Auswahl dienen — Programme aus
+// Block 1 sind die Auswahl in Block 2 und 3. Der bewertete Fragebogen der
+// Module bleibt davon unberührt, und die Reifezahl verschiebt sich nicht.
+
+/// Ein Programm, das der Betrieb nutzt — samt Zwecken, für die es genutzt wird.
+model BlueprintSystem {
+  id        String          @id @default(cuid())
+  sessionId String
+  session   AnalysisSession @relation(fields: [sessionId], references: [id])
+
+  /// Schlüssel aus dem Katalog, oder null bei einem selbst eingetragenen Programm.
+  catalogKey String?
+  name       String
+  category   String
+  /// JSON-Liste der Zweck-Schlüssel.
+  purposes   String  @default("[]")
+  /// Selbst eingetragen — geht nicht in die Auswertung, sondern zur Prüfung.
+  isCustom   Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([sessionId])
+}
+
+/// Eine wiederkehrende Aufgabe mit Häufigkeit, Dauer und beteiligten Programmen.
+model BlueprintTask {
+  id        String          @id @default(cuid())
+  sessionId String
+  session   AnalysisSession @relation(fields: [sessionId], references: [id])
+
+  catalogKey String
+  label      String
+  area       String
+
+  frequencyBand String
+  durationBand  String
+  /// JSON-Liste von BlueprintSystem-IDs.
+  systemIds     String @default("[]")
+
+  /// Aus Häufigkeit und Dauer gerechnet — gespeichert, damit der Bericht nicht
+  /// von der Bänder-Tabelle abhängt, die später einmal anders aussehen könnte.
+  minutesPerMonth Int @default(0)
+  position        Int @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@unique([sessionId, catalogKey])
+  @@index([sessionId])
+}
+
+/// Ein durchgegangener Ablauf.
+model BlueprintFlow {
+  id        String          @id @default(cuid())
+  sessionId String
+  session   AnalysisSession @relation(fields: [sessionId], references: [id])
+
+  catalogKey String
+  title      String
+  position   Int    @default(0)
+
+  createdAt DateTime @default(now())
+
+  stations BlueprintFlowStation[]
+
+  @@unique([sessionId, catalogKey])
+  @@index([sessionId])
+}
+
+/// Eine Station innerhalb eines Ablaufs: wer, womit, und wie weit von Hand.
+model BlueprintFlowStation {
+  id     String        @id @default(cuid())
+  flowId String
+  flow   BlueprintFlow @relation(fields: [flowId], references: [id], onDelete: Cascade)
+
+  stationKey String
+  position   Int
+
+  role        String?
+  /// BlueprintSystem-ID, sofern ein Programm gewählt wurde.
+  systemId    String?
+  /// Bezeichnung für Papier, „gar nichts" oder ein entferntes Programm.
+  systemLabel String?
+  /// manual | partial | automatic | none
+  mode        String  @default("manual")
+
+  @@unique([flowId, stationKey])
+  @@index([flowId])
 }
