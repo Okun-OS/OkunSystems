@@ -8,6 +8,7 @@ import {
 } from "./recommendation-engine";
 import { buildRoadmap } from "./roadmap-engine";
 import { loadBlueprintQuestions, loadSessionAnswers, loadSolutions } from "./loader";
+import { evaluatePillar3, type Pillar3Result } from "./pillar3-engine";
 import type {
   BlueprintScores,
   RoadmapPhase,
@@ -72,6 +73,10 @@ export interface BlueprintReportData {
   totalAnswered: number;
   totalActive: number;
   companyContext: CompanyContextData | null;
+  /** Dritte Säule — null, solange sie nicht durchlaufen wurde. */
+  pillar3: Pillar3Result | null;
+  /** Modul-5-Gruppen, die den Betrieb nicht betreffen. */
+  skippedGroups: string[];
 }
 
 const MODULE_LABELS: Record<number, string> = {
@@ -103,6 +108,16 @@ export async function assembleBlueprintReport(
       where: { companyId: analysisSession.companyId, status: "COMPLETED" },
       include: { entries: { orderBy: { order: "asc" } } },
       orderBy: { completedAt: "desc" },
+    }),
+  ]);
+
+  const [systems, tasks, flows] = await Promise.all([
+    db.blueprintSystem.findMany({ where: { sessionId }, orderBy: { createdAt: "asc" } }),
+    db.blueprintTask.findMany({ where: { sessionId }, orderBy: { position: "asc" } }),
+    db.blueprintFlow.findMany({
+      where: { sessionId },
+      include: { stations: { orderBy: { position: "asc" } } },
+      orderBy: { position: "asc" },
     }),
   ]);
 
@@ -144,6 +159,71 @@ export async function assembleBlueprintReport(
     moduleScores.reduce((sum, m) => sum + m.contribution, 0)
   );
 
+  const parseList = (raw: string): string[] => {
+    try {
+      const parsed: unknown = JSON.parse(raw || "[]");
+      return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === "string") : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const pillar3 =
+    systems.length > 0 || tasks.length > 0 || flows.length > 0
+      ? evaluatePillar3({
+          systems: systems.map((system) => ({
+            id: system.id,
+            catalogKey: system.catalogKey,
+            name: system.name,
+            category: system.category,
+            purposes: parseList(system.purposes),
+            isCustom: system.isCustom,
+          })),
+          tasks: tasks.map((task) => ({
+            id: task.id,
+            catalogKey: task.catalogKey,
+            label: task.label,
+            area: task.area,
+            frequencyBand: task.frequencyBand,
+            durationBand: task.durationBand,
+            systemIds: parseList(task.systemIds),
+            minutesPerMonth: task.minutesPerMonth,
+          })),
+          flows: flows.map((flow) => ({
+            id: flow.id,
+            catalogKey: flow.catalogKey,
+            title: flow.title,
+            position: flow.position,
+            stations: flow.stations.map((station) => ({
+              stationKey: station.stationKey,
+              position: station.position,
+              role: station.role,
+              systemId: station.systemId,
+              systemLabel: station.systemLabel,
+              mode: station.mode,
+            })),
+          })),
+        })
+      : null;
+
+  // Modul-5-Gruppen, die gar nicht erst gestellt wurden: Bereiche, die den
+  // Betrieb nicht betreffen. Dass daran nicht gemessen wurde, gehört in den
+  // Bericht — es ist eine Stärke der Auswertung, die bisher niemand sah.
+  const askedGroups = new Set(
+    evaluated
+      .filter((q) => q.moduleNumber === 5 && q.isActive && q.groupCode)
+      .map((q) => q.groupCode!)
+  );
+  const skippedGroups = [
+    ...new Set(
+      evaluated
+        .filter((q) => q.moduleNumber === 5 && !q.isActive && q.groupCode)
+        .map((q) => q.groupCode!)
+    ),
+  ]
+    .filter((code) => !askedGroups.has(code))
+    .sort();
+
   return {
     sessionId,
     company: {
@@ -161,6 +241,8 @@ export async function assembleBlueprintReport(
     roadmap,
     totalAnswered,
     totalActive,
+    pillar3,
+    skippedGroups,
     companyContext: contextSession
       ? {
           summary: contextSession.summary,

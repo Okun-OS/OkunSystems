@@ -1,5 +1,7 @@
 import type { BlueprintReportData, ModuleScoreEntry } from "./report-assembler";
 import type { SolutionRecommendation } from "./types";
+import { bandLabel, formatHours, stationLabel } from "./pillar3-engine";
+import { STATIONS_OKUN_TAKES } from "./pillar3-catalog";
 import type { ReportTexts } from "./report-text-engine";
 
 function scoreColor(score: number): string {
@@ -161,6 +163,196 @@ function recommendationPage(data: BlueprintReportData): string {
   Reihenfolge sinnvoll sind, klären wir gemeinsam im Strategiegespräch.</p>
   ${body}
 </div>`;
+}
+
+/**
+ * Die dritte Säule im Bericht: Ist-Ablauf, Stundentabelle, Systemmatrix.
+ *
+ * Alle Zahlen kommen fertig gerechnet aus der Auswertung — hier wird nur
+ * dargestellt. Damit kann die Textgenerierung den Zahlen nicht widersprechen.
+ */
+function pillar3Pages(data: BlueprintReportData): string {
+  const p3 = data.pillar3;
+  if (!p3 || !p3.hasData) return "";
+
+  const flowPages = p3.flows.findings
+    .map((finding) => {
+      const stations = finding.flow.stations
+        .map((station) => {
+          const label = stationLabel(station.stationKey);
+          if (station.mode === "none") {
+            return `<span class="flow-station flow-station--none">${label}</span>`;
+          }
+          const isTakeover =
+            station.mode === "manual" && STATIONS_OKUN_TAKES.includes(station.stationKey);
+          const cls = isTakeover
+            ? "flow-station flow-station--takeover"
+            : station.mode === "manual"
+              ? "flow-station flow-station--manual"
+              : "flow-station";
+          return `<span class="${cls}">${label}</span>`;
+        })
+        .join("");
+
+      const carrier = finding.carrier
+        ? `${finding.carrier.role} — an ${finding.carrier.stations} von ${finding.relevantStations} Stationen beteiligt`
+        : "keine Rolle benannt";
+
+      return `<div class="flow">
+        <div class="flow-title">${finding.flow.title}</div>
+        <div class="flow-meta">
+          ${finding.manualStations} von ${finding.relevantStations} Stationen von Hand
+          · ${finding.systemSwitches} Programmwechsel
+          · ${carrier}
+        </div>
+        <div class="flow-stations">${stations}</div>
+      </div>`;
+    })
+    .join("\n");
+
+  const taskRows = p3.tasks.entries
+    .map(
+      (entry) => `<tr>
+        <td>${entry.task.label}${entry.isHandoffCandidate ? '<span class="p3-badge">Übergabe</span>' : ""}</td>
+        <td>${bandLabel("frequency", entry.task.frequencyBand)}</td>
+        <td>${bandLabel("duration", entry.task.durationBand)}</td>
+        <td class="comp-val">${formatHours(entry.hoursPerMonth)}</td>
+      </tr>`
+    )
+    .join("\n");
+
+  const matrixRows = p3.systems.rows
+    .map((row) => {
+      const flag = row.isMediaBreak
+        ? '<span class="matrix-flag matrix-flag--break">Medienbruch</span>'
+        : row.isGap
+          ? '<span class="matrix-flag matrix-flag--gap">Lücke</span>'
+          : "";
+      return `<tr>
+        <td>${row.purposeLabel}</td>
+        <td class="matrix-sys">${row.systemNames.join(", ") || "—"}</td>
+        <td>${flag}</td>
+      </tr>`;
+    })
+    .join("\n");
+
+  const overloaded = p3.systems.overloaded
+    .map((entry) => `${entry.name} (${entry.purposeCount} Zwecke)`)
+    .join(", ");
+
+  return `
+<div class="npage">
+  ${ph("Wie bei Ihnen gearbeitet wird", "Abläufe und Handarbeit")}
+
+  <div class="p3-hero">
+    <div class="p3-figure">
+      <div><span class="p3-figure-num">${formatHours(p3.tasks.totalHoursPerMonth)}</span><span class="p3-figure-unit">Stunden / Monat</span></div>
+      <div class="p3-figure-lbl">gehen für wiederkehrende Handarbeit drauf</div>
+    </div>
+    <div class="p3-figure">
+      <div><span class="p3-figure-num">${p3.flows.overallManualShare}</span><span class="p3-figure-unit">%</span></div>
+      <div class="p3-figure-lbl">der Stationen laufen von Hand</div>
+    </div>
+    <div class="p3-figure">
+      <div><span class="p3-figure-num">${p3.systems.mediaBreaks.length}</span><span class="p3-figure-unit">Medienbrüche</span></div>
+      <div class="p3-figure-lbl">bei ${p3.systems.systemCount} eingesetzten Programmen</div>
+    </div>
+  </div>
+
+  <div class="section-lbl">Ihre Abläufe, Station für Station</div>
+  ${flowPages}
+  <div class="flow-legend">
+    <span class="lg-takeover">von Hand — hier setzt Automatisierung an</span>
+    <span class="lg-manual">von Hand — bleibt bewusst beim Menschen</span>
+    <span class="lg-auto">läuft bereits ohne Handarbeit</span>
+  </div>
+  <p class="p3-note">Durchgestrichene Stationen gibt es in Ihrem Betrieb nicht und zählen
+  nirgends mit. Welche Abläufe hier stehen, ergibt sich aus den Aufgaben mit dem größten
+  Zeitaufwand — nicht aus einer Auswahl.</p>
+</div>
+
+<div class="npage">
+  ${ph("Woher die Stunden kommen", "Wiederkehrende Aufgaben")}
+  <div class="table-scroll">
+    <table class="p3-table">
+      <thead>
+        <tr>
+          <th class="col-wide">Aufgabe</th>
+          <th class="col-band">Wie oft</th>
+          <th class="col-band">Wie lange</th>
+          <th class="col-num comp-right">Std. / Monat</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${taskRows}
+        <tr class="comp-total">
+          <td>Summe</td>
+          <td></td>
+          <td></td>
+          <td class="comp-val">${formatHours(p3.tasks.totalHoursPerMonth)}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="comp-note">Gerechnet mit der Mitte des angegebenen Bandes und 4,33 Wochen je Monat.
+  ${p3.tasks.handoffCandidates > 0
+    ? `${p3.tasks.handoffCandidates} dieser Aufgaben berühren mehr als ein Programm — das sind
+       die Stellen, an denen jemand Daten transportiert statt zu entscheiden.`
+    : ""}</p>
+
+  <div class="section-lbl" style="margin-top:22px">Welches Programm wofür</div>
+  <div class="table-scroll">
+    <table class="p3-table p3-matrix">
+      <thead>
+        <tr>
+          <th class="col-purpose">Wofür</th>
+          <th class="col-systems">Womit</th>
+          <th class="col-finding">Befund</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${matrixRows}
+      </tbody>
+    </table>
+  </div>
+  <p class="comp-note">
+    <strong>Medienbruch</strong> heißt: derselbe Zweck wird von mehreren Programmen bedient,
+    jemand hält sie im Gleichstand. <strong>Lücke</strong> heißt: dafür gibt es kein Programm —
+    der Vorgang läuft auf Papier oder im Kopf.
+    ${overloaded ? ` Auffällig: ${overloaded} trägt mehr, als ein einzelnes Werkzeug tragen sollte.` : ""}
+  </p>
+</div>`;
+}
+
+/** Bezeichnungen der Modul-5-Gruppen für den Hinweis im Bericht. */
+const M5_GROUP_LABELS: Record<string, string> = {
+  "5.1": "Einsatz- und Dienstplanung",
+  "5.2": "Arbeitszeit und Lohnvorbereitung",
+  "5.3": "Abwesenheiten und Urlaub",
+  "5.4": "Information und Wissen",
+  "5.5": "Formulare und Freigaben",
+  "5.6": "Vertrieb und Kundenprozesse",
+  "5.7": "Backoffice und wiederkehrende Aufgaben",
+  "5.8": "Systemlandschaft und Schnittstellen",
+};
+
+/**
+ * Was nicht gefragt wurde, weil es den Betrieb nicht betrifft.
+ *
+ * Der Blueprint überspringt Gruppen, die nicht zutreffen, und normiert die
+ * Bewertung auf den Rest. Das steht dem Leser zu — es erklärt, warum eine
+ * Auswertung kürzer ausfällt, und belegt, dass nicht an Fremdem gemessen wurde.
+ */
+function skippedGroupsNote(data: BlueprintReportData): string {
+  if (data.skippedGroups.length === 0) return "";
+  const names = data.skippedGroups
+    .map((code) => M5_GROUP_LABELS[code] ?? `Gruppe ${code}`)
+    .join(", ");
+  return `<div class="skipped-note">
+    <strong>Nicht bewertet, weil nicht zutreffend:</strong> ${names}.
+    Diese Bereiche wurden anhand Ihrer Angaben übersprungen und fließen nicht in die Bewertung
+    ein — Sie werden nicht an Anforderungen gemessen, die Ihr Betrieb nicht hat.
+  </div>`;
 }
 
 export function renderReportHtml(data: BlueprintReportData, texts: ReportTexts, logoDataUri?: string): string {
@@ -479,6 +671,65 @@ body {
 .sol-cat { font-size: 7pt; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; white-space: nowrap; }
 .sol-desc { font-size: 8.5pt; color: #475569; line-height: 1.55; margin-top: 3px; }
 
+/* ── Dritte Säule ─────────────────────────────────────────────────────────*/
+.p3-hero { display: flex; gap: 28px; align-items: stretch; margin-bottom: 18px; }
+.p3-figure {
+  flex: 1; background: #f8fafc; border-radius: 5px; padding: 14px 18px;
+  border-left: 3px solid #00b8ff;
+}
+.p3-figure-num { font-size: 26pt; font-weight: 800; color: #0d1117; line-height: 1; }
+.p3-figure-unit { font-size: 9pt; color: #64748b; margin-left: 3px; font-weight: 600; }
+.p3-figure-lbl {
+  font-size: 7.5pt; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+  color: #64748b; margin-top: 6px;
+}
+.p3-note { font-size: 8pt; color: #64748b; line-height: 1.5; margin-top: 10px; }
+
+.flow { margin-bottom: 14px; break-inside: avoid; }
+.flow-title { font-size: 10pt; font-weight: 700; color: #0d1117; margin-bottom: 2px; }
+.flow-meta { font-size: 8pt; color: #64748b; margin-bottom: 7px; }
+.flow-stations { display: flex; flex-wrap: wrap; gap: 4px; }
+.flow-station {
+  font-size: 8pt; padding: 3.5px 8px; border-radius: 3px;
+  border: .6pt solid #e2e8f0; background: #f8fafc; color: #475569;
+}
+.flow-station--manual { border-color: #fbbf24; background: #fffbeb; color: #92400e; font-weight: 600; }
+.flow-station--takeover { border-color: #00b8ff; background: #e6f6fe; color: #075985; font-weight: 600; }
+.flow-station--none { opacity: .45; text-decoration: line-through; }
+.flow-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 7.5pt; color: #64748b; margin-top: 10px; }
+.flow-legend span::before {
+  content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 2px;
+  margin-right: 5px; vertical-align: -1px;
+}
+.flow-legend .lg-manual::before { background: #fbbf24; }
+.flow-legend .lg-takeover::before { background: #00b8ff; }
+.flow-legend .lg-auto::before { background: #e2e8f0; }
+
+.matrix-sys { color: #0d1117; }
+.matrix-flag { font-size: 7.5pt; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; }
+.matrix-flag--break { color: #92400e; }
+.matrix-flag--gap { color: #b91c1c; }
+
+.p3-table { table-layout: fixed; }
+.p3-table td:first-child, .p3-table th:first-child { padding-right: 14px; }
+.p3-table .col-wide { width: 44%; }
+.p3-table .col-band { width: 19%; white-space: nowrap; }
+.p3-table .col-num { width: 18%; }
+.p3-matrix .col-purpose { width: 30%; }
+.p3-matrix .col-systems { width: 48%; }
+.p3-matrix .col-finding { width: 22%; }
+.p3-badge {
+  display: inline-block; font-size: 7pt; font-weight: 700; letter-spacing: .6px;
+  text-transform: uppercase; color: #92400e; background: #fffbeb;
+  border: .5pt solid #fbbf24; border-radius: 2px; padding: 0 4px; margin-left: 6px;
+  vertical-align: 1px;
+}
+
+.skipped-note {
+  background: #f8fafc; border-left: 3px solid #cbd5e1; padding: 12px 16px;
+  font-size: 8.5pt; color: #475569; line-height: 1.55; margin-top: 16px; border-radius: 0 3px 3px 0;
+}
+
 .orientation-box {
   margin-top: 22px; padding: 16px 20px; background: #f5f9ff;
   border: 1px solid #dbeafe; border-left: 4px solid #00b8ff; border-radius: 8px;
@@ -624,19 +875,20 @@ ${texts.contextPageText ? `
     </tbody>
   </table>
   <p class="comp-note">Nicht jedes Modul wiegt gleich schwer — Prozessqualität bestimmt den
-  Alltag eines Betriebs stärker als Personalmanagement. Bereiche, die Ihr Unternehmen nicht
-  betreffen, fließen nicht in die Bewertung ein; ihr Gewicht verteilt sich auf die übrigen
-  Module. Auf dem Umschlag steht der gerundete Gesamtwert ${avgScore}.</p>
+  Alltag eines Betriebs stärker als Personalmanagement. Auf dem Umschlag steht der gerundete
+  Gesamtwert ${avgScore}.</p>
+
+  ${skippedGroupsNote(data)}
 
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════════════
-     SEITE 6: SCORE-ANALYSE (PROSA)
+     SCORE-ANALYSE — fließt weiter, statt eine halbe Seite frei zu lassen
      ══════════════════════════════════════════════════════════════════════ -->
-<div class="npage">
+<div class="flow-page">
   ${ph("Analyse des aktuellen Digitalisierungsstandes", "Score-Analyse")}
   <div class="score-prose">
-    ${texts.scoreAnalysis || `<p>${data.company.name} hat den OKUN Blueprint™ 2.0 erfolgreich abgeschlossen und einen Gesamtdigitalisierungsgrad von ${avgScore}/100 erreicht. Die Auswertung zeigt ein differenziertes Bild des aktuellen Stands mit klaren Unterschieden zwischen den acht bewerteten Modulen.</p>`}
+    ${texts.scoreAnalysis || `<p>${data.company.name} hat den OKUN Blueprint™ 2.0 erfolgreich abgeschlossen und einen Gesamtdigitalisierungsgrad von ${avgScore}/100 erreicht. Die Auswertung zeigt ein differenziertes Bild des aktuellen Stands mit klaren Unterschieden zwischen den bewerteten Modulen.</p>`}
   </div>
 </div>
 
@@ -646,6 +898,11 @@ ${texts.contextPageText ? `
 ${moduleDetailPages}
 
 <!-- ══════════════════════════════════════════════════════════════════════
+     DRITTE SÄULE: ABLÄUFE, AUFGABEN, SYSTEME
+     ══════════════════════════════════════════════════════════════════════ -->
+${pillar3Pages(data)}
+
+<!-- ══════════════════════════════════════════════════════════════════════
      EMPFEHLUNGEN UND ROADMAP
      ══════════════════════════════════════════════════════════════════════ -->
 ${recommendationPage(data)}
@@ -653,13 +910,13 @@ ${recommendationPage(data)}
 <!-- ══════════════════════════════════════════════════════════════════════
      FAZIT
      ══════════════════════════════════════════════════════════════════════ -->
-<div class="npage">
+<div class="flow-page">
   ${ph("Zusammenfassung der Analyseergebnisse", "Fazit")}
   <div class="fazit-prose">
-    ${texts.conclusionText || `<p>Die Analyse von ${data.company.name} zeigt ein klares Bild des aktuellen Digitalisierungsstandes. Der OKUN Blueprint™ 2.0 hat die wichtigsten Stärken und Nachholbereiche in allen acht Modulen identifiziert und strukturiert dargestellt.</p>`}
+    ${texts.conclusionText || `<p>Die Analyse von ${data.company.name} zeigt ein klares Bild des aktuellen Digitalisierungsstandes. Der OKUN Blueprint™ 2.0 hat die wichtigsten Stärken und Nachholbereiche in den bewerteten Modulen identifiziert und strukturiert dargestellt.</p>`}
   </div>
 
-  <div class="orientation-box" style="margin-top:auto">
+  <div class="orientation-box" style="margin-top:18px">
     <div class="orientation-label">Ausblick &amp; Orientierung</div>
     ${texts.orientationText || "Im Strategiegespräch mit OKUN Systems werden die Analyseergebnisse vertieft und konkrete nächste Schritte gemeinsam erarbeitet."}
   </div>

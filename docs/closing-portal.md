@@ -361,7 +361,44 @@ realistische Zwischenschritt: gleiche API-Struktur, aber der Server steht bei OK
 
 ---
 
-## 11. Bekannte offene Punkte
+## 11. Blueprint: dritte Säule
+
+Die Module bewerten, wie gut ein Betrieb aufgestellt ist. Die dritte Säule erfasst, **wie er
+arbeitet** — in drei aufeinander aufbauenden Blöcken unter `/blueprint/<session>/ablaeufe`,
+zwischen dem letzten Modul und dem Abschluss.
+
+| Block | Was erfasst wird | Wo |
+|---|---|---|
+| Programme | 43 Einträge in zehn Bereichen, je Programm bis zu elf Verwendungszwecke | `BlueprintSystem` |
+| Wiederkehrende Aufgaben | 40 Aufgaben, bis zu zehn wählbar, mit Häufigkeits- und Dauerband | `BlueprintTask` |
+| Abläufe | neun Stationen je Ablauf, je Station wer, womit und wie viel von Hand | `BlueprintFlow`, `BlueprintFlowStation` |
+
+Katalog und Auswertung liegen in `src/lib/blueprint/pillar3-catalog.ts` und
+`pillar3-engine.ts`. Die Engine besteht aus reinen Funktionen ohne Datenbankzugriff und ist
+in `tests/unit.ts` abgedeckt.
+
+**Kein Freitext in der Auswertung.** Die einzige freie Eingabe ist der Name einer
+Branchensoftware; er wird nicht gerechnet. Alles andere entsteht aus Auswahlfeldern und
+festen Bändern — gleiche Eingabe, gleiches Ergebnis.
+
+**Abgeleitete Befunde**, alle durch Zählen und Rechnen:
+
+* *Medienbruch* — ein Zweck, mehrere Programme
+* *Lücke* — ein Zweck ohne Programm
+* *Behelfslösung* — ein Programm für mehr als fünf Zwecke
+* *Stunden pro Monat* — Häufigkeit × Dauer × 4,33
+* *Übergabekandidat* — eine Aufgabe berührt mehr als ein Programm
+* *Handarbeitsquote*, *Programmwechsel* und *Trägerperson* je Ablauf
+
+**Welche Abläufe durchgegangen werden**, entscheidet eine Regel: die Aufgaben mit den meisten
+Stunden. Reichen sie nicht für zwei, füllt der Standardablauf der Branche aus `M1.1` auf.
+
+Die Säule verschiebt die Reifezahl **nicht**. Reifegrad und Stundenzahl sind verschiedene
+Einheiten und stehen im Bericht nebeneinander.
+
+---
+
+## 12. Bekannte offene Punkte
 
 * **Aufzeichnungs-Zugriff für Kunden** ist bewusst nicht implementiert — Recordings liegen
   privat in R2 und erscheinen nicht in der Kundenablage. Eine spätere Freigabe braucht eine
