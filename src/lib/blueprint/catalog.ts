@@ -8,6 +8,8 @@ interface OptionDef {
   isExclusive?: boolean;
   signalCategory?: string | null;
   signalValue?: number;
+  /** Lösungen, die genau diese Antwort auslöst. */
+  solutionRefs?: string[];
   order: number;
 }
 
@@ -666,12 +668,12 @@ export const QUESTIONS: QuestionDef[] = [
     intent: "Ursachen häufiger Planänderungen — Empfehlungssignal",
     questionDe: "Welches sind die häufigsten Ursachen für die kurzfristigen Planänderungen? (Mehrfachauswahl möglich)",
     options: [
-      { externalId: "5.1.3-a-OPT-1", textDe: "Krankheitsausfälle oder unerwartete Abwesenheiten", points: 0, signalCategory: "WORKFORCE", signalValue: 10, order: 1 },
-      { externalId: "5.1.3-a-OPT-2", textDe: "Neue oder geänderte Kundenaufträge im laufenden Betrieb", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, order: 2 },
-      { externalId: "5.1.3-a-OPT-3", textDe: "Fehlende oder unvollständige Verfügbarkeitsabfrage im Vorfeld", points: 0, signalCategory: "WORKFORCE", signalValue: 10, order: 3 },
-      { externalId: "5.1.3-a-OPT-4", textDe: "Falsch oder unvollständig erfasste Qualifikationen und Zertifikate", points: 0, signalCategory: "WORKFORCE", signalValue: 10, order: 4 },
-      { externalId: "5.1.3-a-OPT-5", textDe: "Kein Echtzeit-Abgleich zwischen Planungs- und anderen Systemen", points: 0, signalCategory: "CUSTOM_DEVELOPMENT", signalValue: 15, order: 5 },
-      { externalId: "5.1.3-a-OPT-6", textDe: "Kommunikationsfehler zwischen disponierender Stelle und Mitarbeitenden", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, order: 6 },
+      { externalId: "5.1.3-a-OPT-1", textDe: "Krankheitsausfälle oder unerwartete Abwesenheiten", points: 0, signalCategory: "WORKFORCE", signalValue: 10, solutionRefs: ["SOL-W-001", "SOL-W-003"], order: 1 },
+      { externalId: "5.1.3-a-OPT-2", textDe: "Neue oder geänderte Kundenaufträge im laufenden Betrieb", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, solutionRefs: ["SOL-W-001", "SOL-B-001"], order: 2 },
+      { externalId: "5.1.3-a-OPT-3", textDe: "Fehlende oder unvollständige Verfügbarkeitsabfrage im Vorfeld", points: 0, signalCategory: "WORKFORCE", signalValue: 10, solutionRefs: ["SOL-W-001"], order: 3 },
+      { externalId: "5.1.3-a-OPT-4", textDe: "Falsch oder unvollständig erfasste Qualifikationen und Zertifikate", points: 0, signalCategory: "WORKFORCE", signalValue: 10, solutionRefs: ["SOL-W-005"], order: 4 },
+      { externalId: "5.1.3-a-OPT-5", textDe: "Kein Echtzeit-Abgleich zwischen Planungs- und anderen Systemen", points: 0, signalCategory: "CUSTOM_DEVELOPMENT", signalValue: 15, solutionRefs: ["SOL-C-001"], order: 5 },
+      { externalId: "5.1.3-a-OPT-6", textDe: "Kommunikationsfehler zwischen disponierender Stelle und Mitarbeitenden", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, solutionRefs: ["SOL-W-006"], order: 6 },
     ],
   },
   {
@@ -962,12 +964,12 @@ export const QUESTIONS: QuestionDef[] = [
     intent: "Informationsarten nachgefragt — Empfehlungssignal",
     questionDe: "Welche Arten von Informationen werden von Mitarbeitenden am häufigsten aktiv nachgefragt oder aufwendig gesucht? (Mehrfachauswahl möglich)",
     options: [
-      { externalId: "5.4.2-a-OPT-1", textDe: "Aktuelle Dienstpläne, Schichtzeiten oder Einsatzinformationen", points: 0, signalCategory: "WORKFORCE", signalValue: 10, order: 1 },
-      { externalId: "5.4.2-a-OPT-2", textDe: "Kundendaten oder Auftragsinformationen", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, order: 2 },
-      { externalId: "5.4.2-a-OPT-3", textDe: "Interne Richtlinien, Prozessbeschreibungen oder Betriebshandbücher", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 15, order: 3 },
-      { externalId: "5.4.2-a-OPT-4", textDe: "Status laufender Aufgaben oder Projekte", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, order: 4 },
-      { externalId: "5.4.2-a-OPT-5", textDe: "Personalinformationen (Urlaub, Erreichbarkeit, Zuständigkeiten)", points: 0, signalCategory: "WORKFORCE", signalValue: 10, order: 5 },
-      { externalId: "5.4.2-a-OPT-6", textDe: "Allgemeine Unternehmensinformationen und Ankündigungen", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 5, order: 6 },
+      { externalId: "5.4.2-a-OPT-1", textDe: "Aktuelle Dienstpläne, Schichtzeiten oder Einsatzinformationen", points: 0, signalCategory: "WORKFORCE", signalValue: 10, solutionRefs: ["SOL-W-001", "SOL-W-006"], order: 1 },
+      { externalId: "5.4.2-a-OPT-2", textDe: "Kundendaten oder Auftragsinformationen", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, solutionRefs: ["SOL-B-001"], order: 2 },
+      { externalId: "5.4.2-a-OPT-3", textDe: "Interne Richtlinien, Prozessbeschreibungen oder Betriebshandbücher", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 15, solutionRefs: ["SOL-B-006"], order: 3 },
+      { externalId: "5.4.2-a-OPT-4", textDe: "Status laufender Aufgaben oder Projekte", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, solutionRefs: ["SOL-B-003"], order: 4 },
+      { externalId: "5.4.2-a-OPT-5", textDe: "Personalinformationen (Urlaub, Erreichbarkeit, Zuständigkeiten)", points: 0, signalCategory: "WORKFORCE", signalValue: 10, solutionRefs: ["SOL-W-003", "SOL-W-005"], order: 5 },
+      { externalId: "5.4.2-a-OPT-6", textDe: "Allgemeine Unternehmensinformationen und Ankündigungen", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 5, solutionRefs: ["SOL-B-004", "SOL-W-006"], order: 6 },
     ],
   },
   {
@@ -1049,12 +1051,12 @@ export const QUESTIONS: QuestionDef[] = [
     intent: "Systeme mit Doppelerfassung — Empfehlungssignal",
     questionDe: "In welchen Bereichen werden dieselben Daten am häufigsten manuell mehrfach erfasst? (Mehrfachauswahl möglich)",
     options: [
-      { externalId: "5.5.2-a-OPT-1", textDe: "Zeiterfassung und Lohnvorbereitung", points: 0, signalCategory: "WORKFORCE", signalValue: 15, order: 1 },
-      { externalId: "5.5.2-a-OPT-2", textDe: "Kundendaten zwischen CRM und anderen Systemen", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, order: 2 },
-      { externalId: "5.5.2-a-OPT-3", textDe: "Auftrags- und Projektdaten in mehreren Tools parallel", points: 0, signalCategory: "CUSTOM_DEVELOPMENT", signalValue: 15, order: 3 },
-      { externalId: "5.5.2-a-OPT-4", textDe: "Personalstammdaten (Adressen, Verträge, Qualifikationen)", points: 0, signalCategory: "WORKFORCE", signalValue: 10, order: 4 },
-      { externalId: "5.5.2-a-OPT-5", textDe: "Rechnungs- und Buchhaltungsdaten", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, order: 5 },
-      { externalId: "5.5.2-a-OPT-6", textDe: "Dienstplaninformationen und Kommunikationssystem separat", points: 0, signalCategory: "WORKFORCE", signalValue: 10, order: 6 },
+      { externalId: "5.5.2-a-OPT-1", textDe: "Zeiterfassung und Lohnvorbereitung", points: 0, signalCategory: "WORKFORCE", signalValue: 15, solutionRefs: ["SOL-W-002", "SOL-W-004"], order: 1 },
+      { externalId: "5.5.2-a-OPT-2", textDe: "Kundendaten zwischen CRM und anderen Systemen", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, solutionRefs: ["SOL-B-001", "SOL-C-001"], order: 2 },
+      { externalId: "5.5.2-a-OPT-3", textDe: "Auftrags- und Projektdaten in mehreren Tools parallel", points: 0, signalCategory: "CUSTOM_DEVELOPMENT", signalValue: 15, solutionRefs: ["SOL-C-001", "SOL-B-003"], order: 3 },
+      { externalId: "5.5.2-a-OPT-4", textDe: "Personalstammdaten (Adressen, Verträge, Qualifikationen)", points: 0, signalCategory: "WORKFORCE", signalValue: 10, solutionRefs: ["SOL-W-005", "SOL-B-002"], order: 4 },
+      { externalId: "5.5.2-a-OPT-5", textDe: "Rechnungs- und Buchhaltungsdaten", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, solutionRefs: ["SOL-B-005", "SOL-C-001"], order: 5 },
+      { externalId: "5.5.2-a-OPT-6", textDe: "Dienstplaninformationen und Kommunikationssystem separat", points: 0, signalCategory: "WORKFORCE", signalValue: 10, solutionRefs: ["SOL-W-001", "SOL-W-006"], order: 6 },
     ],
   },
   {
@@ -1205,16 +1207,16 @@ export const QUESTIONS: QuestionDef[] = [
     intent: "Top-3 manuelle Verwaltungsaufgaben — Empfehlungssignal",
     questionDe: "Welche drei Verwaltungsaufgaben binden den größten manuellen Aufwand pro Woche? (Bitte bis zu 3 auswählen)",
     options: [
-      { externalId: "5.7.1-a-OPT-1", textDe: "Dienst-/Einsatzplanung erstellen und kommunizieren", points: 0, signalCategory: "WORKFORCE", signalValue: 10, order: 1 },
-      { externalId: "5.7.1-a-OPT-2", textDe: "Arbeitszeiten erfassen, prüfen und zusammenfassen", points: 0, signalCategory: "WORKFORCE", signalValue: 10, order: 2 },
-      { externalId: "5.7.1-a-OPT-3", textDe: "Lohnvorbereitung und Stundenabrechnung aufbereiten", points: 0, signalCategory: "WORKFORCE", signalValue: 15, order: 3 },
-      { externalId: "5.7.1-a-OPT-4", textDe: "Angebote erstellen und an Kunden versenden", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, order: 4 },
-      { externalId: "5.7.1-a-OPT-5", textDe: "Rechnungen schreiben und Zahlungseingänge verfolgen", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, order: 5 },
-      { externalId: "5.7.1-a-OPT-6", textDe: "Urlaubs- und Abwesenheitsanträge bearbeiten und dokumentieren", points: 0, signalCategory: "WORKFORCE", signalValue: 10, order: 6 },
-      { externalId: "5.7.1-a-OPT-7", textDe: "Mitarbeiterdokumente verwalten und aktualisieren", points: 0, signalCategory: "WORKFORCE", signalValue: 10, order: 7 },
-      { externalId: "5.7.1-a-OPT-8", textDe: "Termine koordinieren und Erinnerungen manuell auslösen", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, order: 8 },
-      { externalId: "5.7.1-a-OPT-9", textDe: "Kundenanfragen bearbeiten und intern weiterleiten", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, order: 9 },
-      { externalId: "5.7.1-a-OPT-10", textDe: "Auswertungen und Berichte manuell erstellen", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, order: 10 },
+      { externalId: "5.7.1-a-OPT-1", textDe: "Dienst-/Einsatzplanung erstellen und kommunizieren", points: 0, signalCategory: "WORKFORCE", signalValue: 10, solutionRefs: ["SOL-W-001"], order: 1 },
+      { externalId: "5.7.1-a-OPT-2", textDe: "Arbeitszeiten erfassen, prüfen und zusammenfassen", points: 0, signalCategory: "WORKFORCE", signalValue: 10, solutionRefs: ["SOL-W-002"], order: 2 },
+      { externalId: "5.7.1-a-OPT-3", textDe: "Lohnvorbereitung und Stundenabrechnung aufbereiten", points: 0, signalCategory: "WORKFORCE", signalValue: 15, solutionRefs: ["SOL-W-004"], order: 3 },
+      { externalId: "5.7.1-a-OPT-4", textDe: "Angebote erstellen und an Kunden versenden", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, solutionRefs: ["SOL-C-004", "SOL-B-001"], order: 4 },
+      { externalId: "5.7.1-a-OPT-5", textDe: "Rechnungen schreiben und Zahlungseingänge verfolgen", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, solutionRefs: ["SOL-B-005"], order: 5 },
+      { externalId: "5.7.1-a-OPT-6", textDe: "Urlaubs- und Abwesenheitsanträge bearbeiten und dokumentieren", points: 0, signalCategory: "WORKFORCE", signalValue: 10, solutionRefs: ["SOL-W-003"], order: 6 },
+      { externalId: "5.7.1-a-OPT-7", textDe: "Mitarbeiterdokumente verwalten und aktualisieren", points: 0, signalCategory: "WORKFORCE", signalValue: 10, solutionRefs: ["SOL-W-005", "SOL-B-002"], order: 7 },
+      { externalId: "5.7.1-a-OPT-8", textDe: "Termine koordinieren und Erinnerungen manuell auslösen", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, solutionRefs: ["SOL-C-004", "SOL-B-003"], order: 8 },
+      { externalId: "5.7.1-a-OPT-9", textDe: "Kundenanfragen bearbeiten und intern weiterleiten", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, solutionRefs: ["SOL-C-004", "SOL-B-001"], order: 9 },
+      { externalId: "5.7.1-a-OPT-10", textDe: "Auswertungen und Berichte manuell erstellen", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, solutionRefs: ["SOL-C-003"], order: 10 },
     ],
   },
   {
@@ -1295,12 +1297,12 @@ export const QUESTIONS: QuestionDef[] = [
     intent: "Konkrete Prozesslücken — Empfehlungssignal (Custom-Development-Indikator)",
     questionDe: "Welche Prozesse können mit der vorhandenen Software nicht oder nur unzureichend abgebildet werden? (Mehrfachauswahl möglich; branchenspezifische Besonderheiten im Freitext ergänzbar)",
     options: [
-      { externalId: "5.8.2-a-OPT-1", textDe: "Dienstplanung unter Berücksichtigung aller Anforderungen (Qualifikationen, Regeln, Verfügbarkeiten)", points: 0, signalCategory: "WORKFORCE", signalValue: 15, order: 1 },
-      { externalId: "5.8.2-a-OPT-2", textDe: "Automatisierte Zeiterfassung mit Lohnübergabe", points: 0, signalCategory: "WORKFORCE", signalValue: 15, order: 2 },
-      { externalId: "5.8.2-a-OPT-3", textDe: "Kundenspezifische Angebots- und Vertragsprozesse", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, order: 3 },
-      { externalId: "5.8.2-a-OPT-4", textDe: "Qualifikations-, Zertifikats- und Fristenverwaltung der Mitarbeitenden", points: 0, signalCategory: "WORKFORCE", signalValue: 15, order: 4 },
-      { externalId: "5.8.2-a-OPT-5", textDe: "Übergreifende Auswertungen und Reporting", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, order: 5 },
-      { externalId: "5.8.2-a-OPT-6", textDe: "Branchenspezifische Sonderlogik (Freitext)", points: 0, signalCategory: "CUSTOM_DEVELOPMENT", signalValue: 20, order: 6 },
+      { externalId: "5.8.2-a-OPT-1", textDe: "Dienstplanung unter Berücksichtigung aller Anforderungen (Qualifikationen, Regeln, Verfügbarkeiten)", points: 0, signalCategory: "WORKFORCE", signalValue: 15, solutionRefs: ["SOL-W-001"], order: 1 },
+      { externalId: "5.8.2-a-OPT-2", textDe: "Automatisierte Zeiterfassung mit Lohnübergabe", points: 0, signalCategory: "WORKFORCE", signalValue: 15, solutionRefs: ["SOL-W-002", "SOL-W-004"], order: 2 },
+      { externalId: "5.8.2-a-OPT-3", textDe: "Kundenspezifische Angebots- und Vertragsprozesse", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, solutionRefs: ["SOL-C-004", "SOL-C-002"], order: 3 },
+      { externalId: "5.8.2-a-OPT-4", textDe: "Qualifikations-, Zertifikats- und Fristenverwaltung der Mitarbeitenden", points: 0, signalCategory: "WORKFORCE", signalValue: 15, solutionRefs: ["SOL-W-005"], order: 4 },
+      { externalId: "5.8.2-a-OPT-5", textDe: "Übergreifende Auswertungen und Reporting", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, solutionRefs: ["SOL-C-003"], order: 5 },
+      { externalId: "5.8.2-a-OPT-6", textDe: "Branchenspezifische Sonderlogik (Freitext)", points: 0, signalCategory: "CUSTOM_DEVELOPMENT", signalValue: 20, solutionRefs: ["SOL-C-002"], order: 6 },
     ],
   },
   {
@@ -1340,12 +1342,12 @@ export const QUESTIONS: QuestionDef[] = [
     intent: "Unstrukturierte Datenquellen — Aufwandsfaktor Empfehlungssystem",
     questionDe: "In welchen Bereichen liegen relevante Daten unstrukturiert, uneinheitlich oder nicht maschinell verarbeitbar vor? (Mehrfachauswahl möglich)",
     options: [
-      { externalId: "5.8.3-a-OPT-1", textDe: "Mitarbeiterstammdaten (Papier, Excel, verteilt auf verschiedene Orte)", points: 0, signalCategory: "WORKFORCE", signalValue: 10, order: 1 },
-      { externalId: "5.8.3-a-OPT-2", textDe: "Zeiterfassungsdaten (Zettel, Fotos, handschriftliche Listen)", points: 0, signalCategory: "WORKFORCE", signalValue: 15, order: 2 },
-      { externalId: "5.8.3-a-OPT-3", textDe: "Kundendaten und Kontaktinformationen", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, order: 3 },
-      { externalId: "5.8.3-a-OPT-4", textDe: "Auftrags- und Projektdaten", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, order: 4 },
-      { externalId: "5.8.3-a-OPT-5", textDe: "Qualifikationsnachweise und Zertifikate", points: 0, signalCategory: "WORKFORCE", signalValue: 10, order: 5 },
-      { externalId: "5.8.3-a-OPT-6", textDe: "Finanz- und Buchhaltungsdaten", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, order: 6 },
+      { externalId: "5.8.3-a-OPT-1", textDe: "Mitarbeiterstammdaten (Papier, Excel, verteilt auf verschiedene Orte)", points: 0, signalCategory: "WORKFORCE", signalValue: 10, solutionRefs: ["SOL-W-005", "SOL-B-002"], order: 1 },
+      { externalId: "5.8.3-a-OPT-2", textDe: "Zeiterfassungsdaten (Zettel, Fotos, handschriftliche Listen)", points: 0, signalCategory: "WORKFORCE", signalValue: 15, solutionRefs: ["SOL-W-002"], order: 2 },
+      { externalId: "5.8.3-a-OPT-3", textDe: "Kundendaten und Kontaktinformationen", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, solutionRefs: ["SOL-B-001"], order: 3 },
+      { externalId: "5.8.3-a-OPT-4", textDe: "Auftrags- und Projektdaten", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, solutionRefs: ["SOL-B-003", "SOL-C-004"], order: 4 },
+      { externalId: "5.8.3-a-OPT-5", textDe: "Qualifikationsnachweise und Zertifikate", points: 0, signalCategory: "WORKFORCE", signalValue: 10, solutionRefs: ["SOL-W-005"], order: 5 },
+      { externalId: "5.8.3-a-OPT-6", textDe: "Finanz- und Buchhaltungsdaten", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, solutionRefs: ["SOL-B-005"], order: 6 },
     ],
   },
 
@@ -1768,4 +1770,5 @@ export const SOLUTIONS = [
   { externalId: "SOL-C-001", name: "Systemintegrationen und Schnittstellen", category: "CUSTOM_DEVELOPMENT", description: "Individuelle API-Integrationen zwischen vorhandenen Systemen zur Eliminierung von Medienbrüchen und Doppelerfassung.", packageTypes: ["custom"] },
   { externalId: "SOL-C-002", name: "Branchenspezifische Sonderlösungen", category: "CUSTOM_DEVELOPMENT", description: "Entwicklung individueller Module für branchenspezifische Anforderungen, die durch Standardsoftware nicht abgedeckt werden.", packageTypes: ["custom"] },
   { externalId: "SOL-C-003", name: "Reporting- und BI-Dashboard", category: "CUSTOM_DEVELOPMENT", description: "Maßgeschneidertes Auswertungs-Dashboard mit systemübergreifenden Kennzahlen und Echtzeit-Daten.", packageTypes: ["custom"] },
+  { externalId: "SOL-C-004", name: "Eingangsverarbeitung und Vorgangsautomatisierung", category: "CUSTOM_DEVELOPMENT", description: "Eingehende Anfragen werden automatisch ausgelesen, die Daten in die vorhandenen Systeme übernommen, ein Vorgang angelegt, Dokument und Antwort vorbereitet, die zuständige Person informiert und der gesamte Ablauf protokolliert. Der Mensch entscheidet, statt zu übertragen.", packageTypes: ["operations", "custom"] },
 ];

@@ -90,6 +90,17 @@ function computeQuestionScore(
  *
  * Returns one EvaluatedQuestion per input question, in the same order.
  */
+/** Lösungsverweise einer Antwortoption. Fehlt das Feld, greift die Kategorie. */
+function parseSolutionRefs(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
 export function evaluateSession(
   questions: QuestionInput[],
   sessionAnswers: SessionAnswerInput[]
@@ -149,7 +160,11 @@ export function evaluateSession(
 
         signals = selectedOpts
           .filter((opt) => opt.signalCategory !== null && opt.signalValue > 0)
-          .map((opt) => ({ category: opt.signalCategory!, value: opt.signalValue }));
+          .map((opt) => ({
+            category: opt.signalCategory!,
+            value: opt.signalValue,
+            solutionRefs: parseSolutionRefs(opt.solutionRefs),
+          }));
       }
     }
 

@@ -1,7 +1,11 @@
 import { db } from "@/lib/db";
 import { evaluateSession } from "./branching-engine";
 import { computeBlueprintScores } from "./scoring-engine";
-import { aggregateSignals, matchSolutions } from "./recommendation-engine";
+import {
+  aggregateSignals,
+  aggregateSolutionRefs,
+  matchSolutions,
+} from "./recommendation-engine";
 import { buildRoadmap } from "./roadmap-engine";
 import { loadBlueprintQuestions, loadSessionAnswers, loadSolutions } from "./loader";
 import type {
@@ -105,7 +109,12 @@ export async function assembleBlueprintReport(
   const evaluated = evaluateSession(questions, sessionAnswers);
   const scores = computeBlueprintScores(evaluated);
   const signals = aggregateSignals(evaluated);
-  const recommendations = matchSolutions(signals, solutions, analysisSession.packageType);
+  const recommendations = matchSolutions(
+    signals,
+    solutions,
+    analysisSession.packageType,
+    aggregateSolutionRefs(evaluated)
+  );
   const roadmap = buildRoadmap(recommendations, analysisSession.packageType);
 
   const activeQuestions = evaluated.filter((q) => q.isActive);

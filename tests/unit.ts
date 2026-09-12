@@ -33,6 +33,15 @@ import {
 import { calculateInvoiceTotals } from "../src/lib/invoicing/calc";
 import { canAccessAdminPath, homeFor } from "../src/lib/closing/role-access";
 import { sha256Canonical } from "../src/lib/documents/hash";
+import {
+  aggregateSignals,
+  aggregateSolutionRefs,
+  matchSolutions,
+} from "../src/lib/blueprint/recommendation-engine";
+import type {
+  EvaluatedQuestion,
+  SolutionInput,
+} from "../src/lib/blueprint/types";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -374,6 +383,134 @@ test("kanonischer Hash ist unabhängig von der Feldreihenfolge", () => {
   const b = sha256Canonical({ a: { c: [1, 2], d: 2 }, b: 1 });
   assert.equal(a, b);
   assert.notEqual(a, sha256Canonical({ b: 1, a: { d: 3, c: [1, 2] } }));
+});
+
+console.log("\nBlueprint-Empfehlungen");
+
+/** Antwort mit Signal und konkreten Lösungsverweisen. */
+function answered(
+  externalId: string,
+  signals: Array<{ category: string; value: number; solutionRefs: string[] }>
+): EvaluatedQuestion {
+  return {
+    questionId: externalId,
+    externalId,
+    moduleNumber: 5,
+    groupCode: null,
+    questionType: "A",
+    isGating: false,
+    isFollowUp: true,
+    internalWeight: null,
+    order: 1,
+    isActive: true,
+    status: "ANSWERED",
+    selectedOptionExternalIds: [],
+    computedScore: null,
+    signals,
+  };
+}
+
+function solution(externalId: string, category: string, tiers: string[]): SolutionInput {
+  return {
+    id: `db_${externalId}`,
+    externalId,
+    name: externalId,
+    category,
+    description: "",
+    packageTypes: JSON.stringify(tiers),
+    isActive: true,
+  };
+}
+
+const SOLUTIONS: SolutionInput[] = [
+  solution("SOL-B-001", "BEWAEHRTE_LOESUNG", ["foundation", "operations", "custom"]),
+  solution("SOL-B-006", "BEWAEHRTE_LOESUNG", ["foundation", "operations", "custom"]),
+  solution("SOL-C-004", "CUSTOM_DEVELOPMENT", ["operations", "custom"]),
+  solution("SOL-W-001", "WORKFORCE", ["operations", "custom"]),
+];
+
+test("nur die Lösungen, auf die eine Antwort tatsächlich verweist", () => {
+  const evaluated = [
+    answered("5.7.1-a", [
+      { category: "BEWAEHRTE_LOESUNG", value: 10, solutionRefs: ["SOL-C-004", "SOL-B-001"] },
+    ]),
+  ];
+  const result = matchSolutions(
+    aggregateSignals(evaluated),
+    SOLUTIONS,
+    "operations",
+    aggregateSolutionRefs(evaluated)
+  );
+  assert.deepEqual(
+    result.map((r) => r.externalId).sort(),
+    ["SOL-B-001", "SOL-C-004"],
+    "das Wiki aus derselben Kategorie darf nicht mitkommen"
+  );
+  assert.ok(result.every((r) => r.fromAnswers));
+});
+
+test("mehrfach ausgelöste Lösungen stehen oben", () => {
+  const evaluated = [
+    answered("5.5.2-a", [
+      { category: "BEWAEHRTE_LOESUNG", value: 10, solutionRefs: ["SOL-B-001"] },
+    ]),
+    answered("5.7.1-a", [
+      { category: "BEWAEHRTE_LOESUNG", value: 10, solutionRefs: ["SOL-B-001", "SOL-C-004"] },
+    ]),
+  ];
+  const result = matchSolutions(
+    aggregateSignals(evaluated),
+    SOLUTIONS,
+    "operations",
+    aggregateSolutionRefs(evaluated)
+  );
+  assert.equal(result[0].externalId, "SOL-B-001");
+  assert.equal(result[0].signalScore, 20);
+  assert.equal(result[1].externalId, "SOL-C-004");
+});
+
+test("Lösungen außerhalb des gebuchten Pakets bleiben draußen", () => {
+  const evaluated = [
+    answered("5.7.1-a", [
+      { category: "CUSTOM_DEVELOPMENT", value: 15, solutionRefs: ["SOL-C-004"] },
+    ]),
+  ];
+  const result = matchSolutions(
+    aggregateSignals(evaluated),
+    SOLUTIONS,
+    "foundation",
+    aggregateSolutionRefs(evaluated)
+  );
+  assert.deepEqual(result, [], "SOL-C-004 gibt es erst ab operations");
+});
+
+test("unbeantwortete und inaktive Fragen lösen nichts aus", () => {
+  const pending = answered("5.7.1-a", [
+    { category: "BEWAEHRTE_LOESUNG", value: 10, solutionRefs: ["SOL-B-001"] },
+  ]);
+  pending.status = "PENDING";
+  const inactive = answered("5.5.2-a", [
+    { category: "WORKFORCE", value: 10, solutionRefs: ["SOL-W-001"] },
+  ]);
+  inactive.isActive = false;
+  const refs = aggregateSolutionRefs([pending, inactive]);
+  assert.equal(refs.size, 0);
+});
+
+test("ohne Verweise greift die Kategorie weiter — alte Sitzungen gehen nicht leer aus", () => {
+  const evaluated = [
+    answered("5.7.1-a", [
+      { category: "BEWAEHRTE_LOESUNG", value: 10, solutionRefs: [] },
+    ]),
+  ];
+  const result = matchSolutions(
+    aggregateSignals(evaluated),
+    SOLUTIONS,
+    "operations",
+    aggregateSolutionRefs(evaluated)
+  );
+  assert.deepEqual(result.map((r) => r.externalId).sort(), ["SOL-B-001", "SOL-B-006"]);
+  assert.ok(result.every((r) => !r.fromAnswers));
 });
 
 console.log(`\n${passed} Tests bestanden.\n`);

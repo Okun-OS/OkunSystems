@@ -1,6 +1,9 @@
 // @ts-nocheck
+import { createHash } from "node:crypto";
 import { db } from "@/lib/db";
 import { QUESTIONS, SOLUTIONS } from "./catalog";
+
+const CATALOG_FINGERPRINT_KEY = "blueprint.catalogFingerprint";
 
 /**
  * Seeds Blueprint 2.0 questions and solutions using the app's own db client.
@@ -77,6 +80,7 @@ export async function seedBlueprintCatalog(): Promise<{
           isExclusive: opt.isExclusive ?? false,
           signalCategory: opt.signalCategory ?? null,
           signalValue: opt.signalValue ?? 0,
+          solutionRefs: JSON.stringify(opt.solutionRefs ?? []),
           order: opt.order,
           isActive: true,
         },
@@ -87,6 +91,7 @@ export async function seedBlueprintCatalog(): Promise<{
           isExclusive: opt.isExclusive ?? false,
           signalCategory: opt.signalCategory ?? null,
           signalValue: opt.signalValue ?? 0,
+          solutionRefs: JSON.stringify(opt.solutionRefs ?? []),
           order: opt.order,
         },
       });
@@ -121,20 +126,43 @@ export async function seedBlueprintCatalog(): Promise<{
 }
 
 /**
- * Seeds Blueprint catalog only if no Blueprint questions exist yet.
- * Called from instrumentation.ts at server startup.
+ * Gleicht den Katalog mit der Datenbank ab, sobald er sich geändert hat.
+ *
+ * Vorher wurde der Abgleich übersprungen, sobald irgendeine Blueprint-Frage in
+ * der Datenbank stand. Damit erreichten Änderungen am Katalog — neue Lösungen,
+ * geänderte Antworttexte, die Zuordnung von Antworten zu Lösungen — eine
+ * bestehende Installation nie. Jetzt entscheidet ein Fingerabdruck des
+ * Katalogs: ist er unverändert, passiert nichts; sonst läuft der Abgleich.
+ * Alle Schreibvorgänge sind Upserts, ein erneuter Lauf ist also folgenlos.
  */
 export async function seedBlueprintIfEmpty(): Promise<void> {
-  const count = await db.questionTemplate.count({
-    where: { phase: { startsWith: "BLUEPRINT_" } },
+  const fingerprint = createHash("sha256")
+    .update(JSON.stringify({ questions: QUESTIONS, solutions: SOLUTIONS }))
+    .digest("hex");
+
+  const stored = await db.systemSetting.findUnique({
+    where: { key: CATALOG_FINGERPRINT_KEY },
   });
-  if (count > 0) {
-    console.log(`[blueprint] ${count} Fragen bereits in DB — Seed übersprungen`);
+
+  if (stored?.value === fingerprint) {
+    console.log("[blueprint] Katalog unverändert — Abgleich übersprungen");
     return;
   }
-  console.log("[blueprint] Keine Blueprint-Fragen gefunden — starte Seed...");
+
+  console.log("[blueprint] Katalog hat sich geändert — gleiche ab...");
   const result = await seedBlueprintCatalog();
+
+  await db.systemSetting.upsert({
+    where: { key: CATALOG_FINGERPRINT_KEY },
+    create: {
+      key: CATALOG_FINGERPRINT_KEY,
+      value: fingerprint,
+      label: "Blueprint-Katalog: Stand des letzten Abgleichs",
+    },
+    update: { value: fingerprint },
+  });
+
   console.log(
-    `[blueprint] Seed abgeschlossen: ${result.questions} Fragen, ${result.options} Optionen, ${result.solutions} Lösungen`
+    `[blueprint] Abgleich fertig: ${result.questions} Fragen, ${result.options} Optionen, ${result.solutions} Lösungen`
   );
 }

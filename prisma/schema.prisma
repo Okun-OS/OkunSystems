@@ -620,6 +620,10 @@ model AnswerOption {
   isExclusive    Boolean          @default(false)
   signalCategory String?
   signalValue    Int              @default(0)
+  /// JSON-Liste konkreter Lösungen (externalId aus SolutionLibrary), die genau
+  /// diese Antwort auslöst. Ohne Einträge greift die gröbere Zuordnung über
+  /// signalCategory.
+  solutionRefs   String           @default("[]")
   order          Int              @default(0)
   isActive       Boolean          @default(true)
 }
