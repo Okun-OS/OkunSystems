@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { getObjectStream } from "@/lib/storage";
 import { formatCents, formatQuantity, formatVatRateBp } from "@/lib/money";
 import {
   billingAddressLines,
@@ -26,7 +27,8 @@ import { RECURRING_INTERVAL_LABELS } from "./scripts";
 
 const DEFAULT_VAT_RATE_BP = 1900;
 
-export type OfferDocumentSource = "snapshot" | "live";
+/** Woher die Angebotsdaten stammen — „upload“ ist das hinterlegte Paket-PDF. */
+export type OfferDocumentSource = "snapshot" | "live" | "upload";
 
 type OfferDocument = {
   context: TemplateContext;
@@ -217,4 +219,45 @@ export async function renderOfferHtml(closingSessionId: string): Promise<string 
     title: document.offerNumber ? `Angebot ${document.offerNumber}` : "Angebot",
   });
   return rendered?.html ?? null;
+}
+
+
+/**
+ * Das Angebot als PDF-Datei — in derselben Reihenfolge wie auf der Kundenseite:
+ * zuerst das vom Admin hinterlegte Paket-PDF, sonst das gerenderte Angebot.
+ *
+ * Gedacht für den Versand per E-Mail, damit der Kunde genau das Dokument
+ * bekommt, das er im Gespräch gesehen hat.
+ */
+export async function loadOfferPdf(closingSessionId: string): Promise<RenderedOffer | null> {
+  const session = await db.closingSession.findUnique({
+    where: { id: closingSessionId },
+    select: { activeOfferId: true },
+  });
+
+  if (session?.activeOfferId) {
+    const offer = await db.offer.findUnique({
+      where: { id: session.activeOfferId },
+      select: { offerNumber: true, template: { select: { r2Key: true } } },
+    });
+
+    if (offer?.template?.r2Key) {
+      try {
+        const object = await getObjectStream(offer.template.r2Key);
+        if (object) {
+          const buffer = Buffer.from(await new Response(object.body).arrayBuffer());
+          const suffix = (offer.offerNumber ?? closingSessionId.slice(-8)).replace(
+            /[^a-zA-Z0-9._-]/g,
+            "_"
+          );
+          return { buffer, fileName: `Angebot_${suffix}.pdf`, source: "upload" };
+        }
+      } catch (error) {
+        // Fehlt die Datei im Speicher, wird das Angebot stattdessen gerendert.
+        console.warn("[closing] Hinterlegtes Angebots-PDF nicht lesbar:", error);
+      }
+    }
+  }
+
+  return renderOfferPdf(closingSessionId);
 }

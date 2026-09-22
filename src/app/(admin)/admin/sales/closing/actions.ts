@@ -7,7 +7,8 @@ import { forwardPath, normalizeStatus, type ClosingStatus } from "@/lib/closing/
 import { issueClosingToken } from "@/lib/closing/token";
 import { reserveOfferNumber } from "@/lib/invoicing/numbering";
 import { multiplyQuantity } from "@/lib/money";
-import { sendClosingInvitationEmail } from "@/lib/email";
+import { sendClosingInvitationEmail, sendOfferEmail } from "@/lib/email";
+import { loadOfferPdf } from "@/lib/closing/offer-document";
 
 /**
  * Ereignisgesteuerte Statusübergänge des Closings.
@@ -260,8 +261,104 @@ export async function presentOffer(sessionId: string, offerId: string) {
       "offer_presented",
       { offerId }
     );
+
+    // Ein Wechsel des gezeigten Angebots ist auch später noch erlaubt — etwa
+    // wenn im Gespräch eine zweite Variante auf den Tisch kommt. Der Ablauf
+    // ist dann schon weiter, der Statusübergang also nicht mehr möglich; das
+    // gezeigte Angebot hat trotzdem gewechselt und wird nur protokolliert.
+    if ("error" in result) {
+      await db.closingEvent.create({
+        data: {
+          closingSessionId: sessionId,
+          companyId,
+          actorId: actor.id,
+          eventType: "offer_presented",
+          metadata: JSON.stringify({ offerId, switched: true }),
+        },
+      });
+      revalidateSession(sessionId, companyId);
+      return { ok: true as const };
+    }
+
     revalidateSession(sessionId, companyId);
     return result;
+  });
+}
+
+/**
+ * Schickt dem Kunden das aktive Angebot als PDF per E-Mail.
+ *
+ * Derselbe Inhalt, der im Gespräch gezeigt wird: erst das hinterlegte
+ * Paket-PDF, sonst das gerenderte Angebot.
+ */
+export async function emailOfferToClient(sessionId: string) {
+  return guarded(async () => {
+    const { actor, companyId } = await requireSessionAccess(sessionId);
+
+    const session = await db.closingSession.findUnique({
+      where: { id: sessionId },
+      select: {
+        activeOfferId: true,
+        company: { select: { name: true, contactPerson: true } },
+        closer: { select: { name: true } },
+        appointment: { select: { bookedByName: true, bookedByEmail: true } },
+      },
+    });
+    if (!session) return { error: "Closing Session nicht gefunden." };
+    if (!session.activeOfferId) {
+      return { error: "Es ist kein Angebot aktiv. Bitte zuerst ein Angebot präsentieren." };
+    }
+
+    const toEmail = session.appointment?.bookedByEmail?.trim();
+    if (!toEmail) {
+      return { error: "Für diesen Kunden ist keine E-Mail-Adresse hinterlegt." };
+    }
+
+    const offer = await db.offer.findUnique({
+      where: { id: session.activeOfferId },
+      select: { offerNumber: true },
+    });
+
+    let pdf;
+    try {
+      pdf = await loadOfferPdf(sessionId);
+    } catch (error) {
+      console.error("[closing] Angebots-PDF für den Versand fehlgeschlagen:", error);
+      return { error: "Das Angebots-PDF konnte nicht erzeugt werden." };
+    }
+    if (!pdf) return { error: "Das Angebots-PDF konnte nicht erzeugt werden." };
+
+    const sent = await sendOfferEmail({
+      toEmail,
+      toName:
+        session.appointment?.bookedByName ??
+        session.company?.contactPerson ??
+        session.company?.name ??
+        "",
+      companyName: session.company?.name ?? "",
+      offerNumber: offer?.offerNumber ?? null,
+      closerName: session.closer?.name ?? null,
+      portalUrl: null,
+      attachment: { filename: pdf.fileName, content: pdf.buffer },
+    });
+    if (!sent.ok) return { error: sent.error };
+
+    await db.closingEvent.create({
+      data: {
+        closingSessionId: sessionId,
+        companyId,
+        actorId: actor.id,
+        eventType: "offer_emailed",
+        metadata: JSON.stringify({
+          offerId: session.activeOfferId,
+          offerNumber: offer?.offerNumber ?? null,
+          toEmail,
+        }),
+      },
+    });
+
+    revalidateSession(sessionId, companyId);
+    return { ok: true as const, toEmail };
   });
 }
 

@@ -334,6 +334,69 @@ export async function sendClosingInvitationEmail({
   });
 }
 
+/**
+ * Das Angebot als PDF an den Kunden — auf Knopfdruck aus dem Closing heraus.
+ *
+ * Gedacht für den Moment im Gespräch, in dem jemand sagt: „Schicken Sie mir
+ * das bitte nochmal." Der Anhang ist dasselbe Dokument, das im Gespräch auf
+ * dem Schirm lag.
+ */
+export async function sendOfferEmail({
+  toEmail,
+  toName,
+  companyName,
+  offerNumber,
+  closerName,
+  portalUrl,
+  attachment,
+}: {
+  toEmail: string;
+  toName: string;
+  companyName: string;
+  offerNumber: string | null;
+  closerName: string | null;
+  portalUrl: string | null;
+  attachment: { filename: string; content: Buffer };
+}) {
+  if (!resend) {
+    console.warn("[email] RESEND_API_KEY not set — skipping sendOfferEmail");
+    return { ok: false as const, error: "E-Mail-Versand ist nicht konfiguriert (RESEND_API_KEY fehlt)." };
+  }
+
+  const result = await resend.emails.send({
+    from: FROM_ADDRESS,
+    to: toEmail,
+    subject: offerNumber ? `Ihr Angebot ${offerNumber} – OKUN Systems` : "Ihr Angebot – OKUN Systems",
+    html: `
+      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#080c14;color:#f0f0f0;padding:32px;border-radius:12px;">
+        <h1 style="font-size:20px;font-weight:700;color:#f0f0f0;margin:0 0 8px;">Ihr Angebot</h1>
+        <p style="color:#888;font-size:14px;margin:0 0 24px;">
+          Hallo ${toName}, wie besprochen${closerName ? ` mit <strong style="color:#f0f0f0;">${closerName}</strong>` : ""} erhalten Sie Ihr Angebot im Anhang.
+        </p>
+        <div style="background:#0c1520;border:1px solid #1a2840;border-radius:8px;padding:20px;margin-bottom:24px;">
+          <p style="margin:0 0 8px;font-weight:600;color:#f0f0f0;">${companyName}</p>
+          ${offerNumber ? `<p style="margin:4px 0;color:#888;font-size:14px;">Angebotsnummer: <span style="color:#f0f0f0;">${offerNumber}</span></p>` : ""}
+          <p style="margin:4px 0;color:#888;font-size:14px;">📎 ${attachment.filename}</p>
+          ${portalUrl ? `<a href="${portalUrl}" style="display:inline-block;margin-top:12px;background:#00b8ff;color:#000;font-weight:700;font-size:14px;text-decoration:none;padding:12px 24px;border-radius:8px;">Zum Gesprächsportal</a>` : ""}
+        </div>
+        <p style="color:#555;font-size:12px;line-height:1.6;">
+          Bei Fragen zum Angebot antworten Sie einfach auf diese E-Mail.
+        </p>
+        <div style="margin-top:24px;padding-top:16px;border-top:1px solid #111e30;">
+          <p style="color:#444;font-size:11px;margin:0;">OKUN Systems · <a href="https://okun-systems.de" style="color:#444;">okun-systems.de</a></p>
+        </div>
+      </div>
+    `,
+    attachments: [{ filename: attachment.filename, content: attachment.content }],
+  });
+
+  if (result.error) {
+    console.error("[email] sendOfferEmail fehlgeschlagen:", result.error);
+    return { ok: false as const, error: result.error.message ?? "Der Versand wurde abgelehnt." };
+  }
+  return { ok: true as const };
+}
+
 export async function sendPasswordResetEmail({
   toEmail,
   resetUrl,

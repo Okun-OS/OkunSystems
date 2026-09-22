@@ -500,7 +500,7 @@ function PeopleStage({
   if (remoteIds.length === 1) {
     return (
       <div className="relative h-full">
-        <Tile sessionId={remoteIds[0]} className="h-full" />
+        <Tile sessionId={remoteIds[0]} className="h-full" fit="contain" />
         {localSessionId && (
           <div className="absolute bottom-3 right-3 w-[150px] aspect-video shadow-lg">
             <Tile sessionId={localSessionId} isLocal />
@@ -514,22 +514,33 @@ function PeopleStage({
   return (
     <div className="h-full grid gap-2 grid-cols-1 sm:grid-cols-2 auto-rows-fr">
       {all.map((id) => (
-        <Tile key={id} sessionId={id} isLocal={id === localSessionId} />
+        <Tile key={id} sessionId={id} isLocal={id === localSessionId} fit="contain" />
       ))}
     </div>
   );
 }
 
+/**
+ * Eine Teilnehmerkachel.
+ *
+ * `fit` entscheidet über den Bildausschnitt: „contain“ zeigt das Kamerabild
+ * vollständig, „cover“ füllt die Kachel und schneidet dafür ab. Auf der großen
+ * Bühne gilt „contain“ — ein Hochkant-Handybild sonst so weit beschnitten, dass
+ * vom Gegenüber nur noch ein Ausschnitt des Gesichts übrig bleibt. Für die
+ * kleinen Vorschaukacheln bleibt „cover“, dort zählt die gefüllte Fläche.
+ */
 function Tile({
   sessionId,
   isLocal,
   compact,
   className,
+  fit = "cover",
 }: {
   sessionId: string;
   isLocal?: boolean;
   compact?: boolean;
   className?: string;
+  fit?: "cover" | "contain";
 }) {
   const name = useParticipantProperty(sessionId, "user_name");
   const audioOn = useParticipantProperty(sessionId, "audio");
@@ -545,9 +556,9 @@ function Tile({
         <DailyVideo
           sessionId={sessionId}
           type="video"
-          fit="cover"
+          fit={fit}
           automirror
-          className="w-full h-full object-cover"
+          className={`w-full h-full ${fit === "contain" ? "object-contain" : "object-cover"}`}
         />
       ) : (
         <div className="w-full h-full flex items-center justify-center">

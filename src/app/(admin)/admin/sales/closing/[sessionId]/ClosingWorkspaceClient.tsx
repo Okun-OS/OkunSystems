@@ -18,6 +18,7 @@ import {
   Mic,
   MicOff,
   Video,
+  Mail,
   Square,
   Maximize2,
   Minimize2,
@@ -27,6 +28,7 @@ import {
   markAgreementReached,
   createOfferForSession,
   presentOffer,
+  emailOfferToClient,
   resendClientInvitation,
   saveChecklistState,
   saveClosingNotes,
@@ -318,6 +320,10 @@ export function ClosingWorkspaceClient({
   const [callExpanded, setCallExpanded] = useState(false);
   // Geprüfte Raum-URL aus dem Beitritt; sie hat Vorrang vor der gespeicherten.
   const [callUrl, setCallUrl] = useState<string | null>(null);
+  const [offerMailPending, setOfferMailPending] = useState(false);
+  const [offerMailResult, setOfferMailResult] = useState<
+    { ok: true; toEmail: string } | { ok: false; error: string } | null
+  >(null);
   const [callJoinPending, setCallJoinPending] = useState(false);
   const [callJoinError, setCallJoinError] = useState<string | null>(null);
 
@@ -654,6 +660,27 @@ export function ClosingWorkspaceClient({
     });
   }
 
+  // „Schicken Sie mir das nochmal per Mail" — genau dafür, mitten im Gespräch.
+  function handleEmailOffer() {
+    setOfferMailPending(true);
+    setOfferMailResult(null);
+    void (async () => {
+      try {
+        const result = await emailOfferToClient(closingSession.id);
+        if (isFailure(result as object)) {
+          setOfferMailResult({ ok: false, error: (result as { error: string }).error });
+        } else {
+          setOfferMailResult({ ok: true, toEmail: (result as { toEmail: string }).toEmail });
+          router.refresh();
+        }
+      } catch {
+        setOfferMailResult({ ok: false, error: "Der Versand ist fehlgeschlagen." });
+      } finally {
+        setOfferMailPending(false);
+      }
+    })();
+  }
+
   function handleResendInvitation() {
     setResendError(null);
     setResendLink(null);
@@ -942,6 +969,26 @@ export function ClosingWorkspaceClient({
                 <CreateRoomButton appointmentId={closingSession.appointment.id} />
               ) : null}
 
+              {/* Im Gespräch der kürzeste Weg zu „schicken Sie mir das nochmal". */}
+              {closingSession.activeOfferId && (
+                <button
+                  onClick={handleEmailOffer}
+                  disabled={offerMailPending}
+                  className="flex items-center gap-2 px-3 py-2 border border-[#1a2840] bg-[#0c1520] hover:bg-[#16283d] disabled:opacity-40 text-[#f0f0f0] text-sm font-medium rounded-lg transition-colors"
+                >
+                  <Mail size={14} />
+                  {offerMailPending ? "Wird gesendet…" : "Angebot per E-Mail"}
+                </button>
+              )}
+
+              {offerMailResult && (
+                <p className={`text-xs ${offerMailResult.ok ? "text-[#22c55e]" : "text-[#ef4444]"}`}>
+                  {offerMailResult.ok
+                    ? `Angebot an ${offerMailResult.toEmail} gesendet.`
+                    : offerMailResult.error}
+                </p>
+              )}
+
               {callJoinError && (
                 <p className="text-[#ef4444] text-xs w-full">{callJoinError}</p>
               )}
@@ -1195,16 +1242,36 @@ export function ClosingWorkspaceClient({
                       {offer.presentedAt && <span>Gezeigt: {new Date(offer.presentedAt).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>}
                     </div>
                   </div>
-                  {offer.status === "draft" && (
-                    <button onClick={() => handlePresentOffer(offer.id)} disabled={offerPending}
-                      className="flex items-center gap-2 px-3 py-2 bg-[#f59e0b] hover:bg-[#d97706] disabled:opacity-40 text-black font-semibold text-xs rounded-lg transition-colors">
-                      <Eye size={13} />
-                      Präsentieren
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {/* Auch ein bereits gezeigtes Angebot lässt sich wieder
+                        aufrufen — im Gespräch kommt oft eine zweite Variante
+                        auf den Tisch, und dann zurück zur ersten. */}
+                    {offer.id !== closingSession.activeOfferId && offer.status !== "accepted" && (
+                      <button onClick={() => handlePresentOffer(offer.id)} disabled={offerPending}
+                        className="flex items-center gap-2 px-3 py-2 bg-[#f59e0b] hover:bg-[#d97706] disabled:opacity-40 text-black font-semibold text-xs rounded-lg transition-colors">
+                        <Eye size={13} />
+                        {offer.status === "draft" ? "Präsentieren" : "Erneut zeigen"}
+                      </button>
+                    )}
+                    {offer.id === closingSession.activeOfferId && (
+                      <button onClick={handleEmailOffer} disabled={offerMailPending}
+                        className="flex items-center gap-2 px-3 py-2 bg-[#1a2840] hover:bg-[#243550] disabled:opacity-40 text-[#f0f0f0] font-semibold text-xs rounded-lg transition-colors">
+                        <Mail size={13} />
+                        {offerMailPending ? "Wird gesendet…" : "Per E-Mail senden"}
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
+          )}
+
+          {offerMailResult && (
+            <p className={`text-xs ${offerMailResult.ok ? "text-[#22c55e]" : "text-[#ef4444]"}`}>
+              {offerMailResult.ok
+                ? `Angebot an ${offerMailResult.toEmail} gesendet.`
+                : offerMailResult.error}
+            </p>
           )}
 
           <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6">
