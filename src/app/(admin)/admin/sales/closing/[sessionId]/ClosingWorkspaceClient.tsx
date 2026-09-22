@@ -316,6 +316,10 @@ export function ClosingWorkspaceClient({
   >("overview");
   const [callActive, setCallActive] = useState(false);
   const [callExpanded, setCallExpanded] = useState(false);
+  // Geprüfte Raum-URL aus dem Beitritt; sie hat Vorrang vor der gespeicherten.
+  const [callUrl, setCallUrl] = useState<string | null>(null);
+  const [callJoinPending, setCallJoinPending] = useState(false);
+  const [callJoinError, setCallJoinError] = useState<string | null>(null);
 
   // ─── Draggable + resizable video overlay ──────────────────────────────────
   const [vidPos, setVidPos] = useState({ x: 0, y: 0 });
@@ -325,6 +329,34 @@ export function ClosingWorkspaceClient({
   const isResizing = useRef(false);
   const dragOrigin = useRef({ mx: 0, my: 0, x: 0, y: 0, w: 0, h: 0 });
   const resizeOrigin = useRef({ mx: 0, my: 0, w: 0, h: 0 });
+
+  // Vor dem Beitritt den Videoraum sicherstellen: ein abgelaufener Raum wird
+  // dabei neu angelegt. Sonst bleibt das Gespräch auf beiden Seiten bei
+  // „wird verbunden…“ stehen, ohne dass jemand den Grund sieht.
+  const joinCall = useCallback(async () => {
+    const appointmentId = closingSession.appointment?.id;
+    if (!appointmentId || callJoinPending) return;
+    setCallJoinPending(true);
+    setCallJoinError(null);
+    try {
+      const res = await fetch("/api/daily/create-room", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appointmentId }),
+      });
+      const data = (await res.json()) as { meetingUrl?: string; error?: string };
+      if (!res.ok || !data.meetingUrl) {
+        setCallJoinError(data.error ?? "Der Gesprächsraum konnte nicht geöffnet werden.");
+        return;
+      }
+      setCallUrl(data.meetingUrl);
+      setCallActive(true);
+    } catch {
+      setCallJoinError("Keine Verbindung zum Server. Bitte erneut versuchen.");
+    } finally {
+      setCallJoinPending(false);
+    }
+  }, [closingSession.appointment?.id, callJoinPending]);
 
   // ─── Präsentationssteuerung ────────────────────────────────────────────────
   // Der Berater blättert zuerst lokal und dann auf dem Server: die Bedienung
@@ -817,11 +849,19 @@ export function ClosingWorkspaceClient({
                 )}
                 {closingSession.appointment.meetingUrl ? (
                   <button
-                    onClick={() => { setCallActive(true); setActiveTab("maske"); }}
-                    className="mt-3 flex items-center gap-2 text-xs text-[#00b8ff] hover:underline"
+                    onClick={() => {
+                      setActiveTab("maske");
+                      if (!callActive) void joinCall();
+                    }}
+                    disabled={callJoinPending}
+                    className="mt-3 flex items-center gap-2 text-xs text-[#00b8ff] hover:underline disabled:opacity-60"
                   >
                     <Video size={12} />
-                    {callActive ? "Gespräch läuft" : "Gespräch beitreten"}
+                    {callActive
+                      ? "Gespräch läuft"
+                      : callJoinPending
+                        ? "Gesprächsraum wird geöffnet…"
+                        : "Gespräch beitreten"}
                   </button>
                 ) : (
                   <CreateRoomButton appointmentId={closingSession.appointment.id} />
@@ -883,19 +923,28 @@ export function ClosingWorkspaceClient({
             <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-4 flex items-center gap-4 flex-wrap">
               {closingSession.appointment?.meetingUrl ? (
                 <button
-                  onClick={() => setCallActive((v) => !v)}
-                  className={`flex items-center gap-2 px-3 py-2 border text-sm font-medium rounded-lg transition-colors ${
+                  onClick={() => (callActive ? setCallActive(false) : void joinCall())}
+                  disabled={callJoinPending}
+                  className={`flex items-center gap-2 px-3 py-2 border text-sm font-medium rounded-lg transition-colors disabled:opacity-60 ${
                     callActive
                       ? "bg-[rgba(239,68,68,0.1)] border-[rgba(239,68,68,0.3)] text-[#ef4444] hover:bg-[rgba(239,68,68,0.15)]"
                       : "bg-[rgba(0,184,255,0.1)] border-[rgba(0,184,255,0.2)] text-[#00b8ff] hover:bg-[rgba(0,184,255,0.15)]"
                   }`}
                 >
                   <Video size={14} />
-                  {callActive ? "Gespräch verlassen" : "Gespräch beitreten"}
+                  {callActive
+                    ? "Gespräch verlassen"
+                    : callJoinPending
+                      ? "Gesprächsraum wird geöffnet…"
+                      : "Gespräch beitreten"}
                 </button>
               ) : closingSession.appointment ? (
                 <CreateRoomButton appointmentId={closingSession.appointment.id} />
               ) : null}
+
+              {callJoinError && (
+                <p className="text-[#ef4444] text-xs w-full">{callJoinError}</p>
+              )}
 
               {/* Recording status indicator (initiation is in Consent & Abschluss tab) */}
               {recordingStatus === "recording" && (
@@ -1267,7 +1316,7 @@ export function ClosingWorkspaceClient({
           Einmal gerendert und nie ausgehängt, damit das Gespräch beim
           Tabwechsel nicht abreißt. Verschiebbar über die Titelleiste,
           vergrößerbar über die Ecke — und für die Präsentation auf Vollbild. */}
-      {callActive && closingSession.appointment?.meetingUrl && (
+      {callActive && (callUrl ?? closingSession.appointment?.meetingUrl) && (
         <div
           className={`fixed z-50 flex flex-col shadow-2xl border border-[#1a2840] bg-[#080d14] overflow-hidden ${
             callExpanded ? "inset-3 rounded-2xl" : "rounded-xl"
@@ -1333,7 +1382,7 @@ export function ClosingWorkspaceClient({
           </div>
           <div className="flex-1 min-h-0">
             <OkunCall
-              roomUrl={closingSession.appointment.meetingUrl}
+              roomUrl={(callUrl ?? closingSession.appointment?.meetingUrl)!}
               userName={closingSession.closer.name ?? "Berater"}
               role="advisor"
               slide={liveSlide}

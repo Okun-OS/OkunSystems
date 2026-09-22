@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
 import { requireSales, AuthorizationError } from "@/lib/auth-guards";
-import { buildRoomName, ensureDailyRoom, isDailyConfigured } from "@/lib/daily";
+import { ensureAppointmentRoom, isDailyConfigured } from "@/lib/daily";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +8,9 @@ export const dynamic = "force-dynamic";
  * Legt den Videoraum zu einem Termin an — oder verwendet einen bereits
  * vorhandenen weiter. Fehlermeldungen von Daily.co werden durchgereicht, damit
  * im Admin erkennbar ist, woran es liegt.
+ *
+ * Der Berater-Arbeitsplatz ruft das auch unmittelbar vor jedem Beitritt auf:
+ * ein abgelaufener Raum wird dabei neu angelegt.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -35,28 +37,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const appointment = await db.appointment.findUnique({
-    where: { id: body.appointmentId },
-    select: { id: true, endTime: true, meetingUrl: true, type: true },
-  });
-  if (!appointment) {
-    return NextResponse.json({ error: "Termin nicht gefunden" }, { status: 404 });
-  }
-
-  const prefix = appointment.type === "CLOSING_CALL" ? "closing" : "strategiegespraech";
-  const result = await ensureDailyRoom({
-    name: buildRoomName(prefix, appointment.id),
-    endsAt: appointment.endTime,
-  });
-
+  const result = await ensureAppointmentRoom(body.appointmentId);
   if (!result.ok) {
-    return NextResponse.json({ error: result.error }, { status: 502 });
+    const status = result.error === "Termin nicht gefunden." ? 404 : 502;
+    return NextResponse.json({ error: result.error }, { status });
   }
-
-  await db.appointment.update({
-    where: { id: appointment.id },
-    data: { meetingUrl: result.url },
-  });
 
   return NextResponse.json({
     meetingUrl: result.url,

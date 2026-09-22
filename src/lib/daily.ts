@@ -1,7 +1,9 @@
+import { db } from "@/lib/db";
+
 /**
  * Daily.co-Videoräume.
  *
- * Zwei Stolpersteine, die hier zentral abgefangen werden:
+ * Drei Stolpersteine, die hier zentral abgefangen werden:
  *
  * 1. Daily lehnt Räume ab, deren Ablaufzeit (`exp`) in der Vergangenheit liegt.
  *    Wird ein Videoraum erst nach dem Termin angelegt — etwa um eine
@@ -11,6 +13,10 @@
  * 2. Existiert bereits ein Raum mit demselben Namen, antwortet Daily mit einem
  *    Fehler. Statt abzubrechen wird der vorhandene Raum weiterverwendet und
  *    seine Ablaufzeit bei Bedarf verlängert.
+ * 3. Ein abgelaufener Raum wird von Daily gelöscht, die URL bleibt aber in der
+ *    Datenbank stehen. Der Beitritt läuft dann ins Leere. Deshalb wird der Raum
+ *    unmittelbar vor jedem Beitritt erneut sichergestellt
+ *    (`ensureAppointmentRoom`) — das legt ihn bei Bedarf neu an.
  *
  * Fehlermeldungen von Daily werden unverändert durchgereicht, damit im Admin
  * sichtbar ist, woran es tatsächlich liegt.
@@ -143,4 +149,35 @@ export async function ensureDailyRoom(input: {
 
   console.error(`[daily] Raum ${input.name} konnte nicht erstellt werden:`, message);
   return { ok: false, error: `Daily.co meldete: ${message}` };
+}
+
+
+/**
+ * Stellt den Videoraum eines Termins sicher und hinterlegt die URL am Termin.
+ *
+ * Wird direkt vor dem Beitritt aufgerufen — von beiden Seiten. Ein zwischen
+ * Terminanlage und Gespräch abgelaufener und damit gelöschter Raum wird so
+ * wieder angelegt, statt beide Seiten in einem endlosen „wird verbunden…“
+ * stehen zu lassen.
+ */
+export async function ensureAppointmentRoom(appointmentId: string): Promise<DailyRoomResult> {
+  const appointment = await db.appointment.findUnique({
+    where: { id: appointmentId },
+    select: { id: true, endTime: true, type: true },
+  });
+  if (!appointment) return { ok: false, error: "Termin nicht gefunden." };
+
+  const prefix = appointment.type === "CLOSING_CALL" ? "closing" : "strategiegespraech";
+  const result = await ensureDailyRoom({
+    name: buildRoomName(prefix, appointment.id),
+    endsAt: appointment.endTime,
+  });
+  if (!result.ok) return result;
+
+  await db.appointment.update({
+    where: { id: appointment.id },
+    data: { meetingUrl: result.url },
+  });
+
+  return result;
 }

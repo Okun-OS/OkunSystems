@@ -61,6 +61,11 @@ export function ClosingClientView({ initialState, token }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [missing, setMissing] = useState<string[]>([]);
   const [joined, setJoined] = useState(false);
+  // Die geprüfte Raum-URL aus dem Beitritt — sie hat Vorrang vor der am Termin
+  // hinterlegten, die auf einen abgelaufenen Raum zeigen kann.
+  const [callUrl, setCallUrl] = useState<string | null>(null);
+  const [joinPending, setJoinPending] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
   const [offerOpen, setOfferOpen] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -86,6 +91,32 @@ export function ClosingClientView({ initialState, token }: Props) {
       if (pollRef.current) clearInterval(pollRef.current);
     };
   }, [refresh, state.isActivated, joined]);
+
+  // Vor dem Beitritt stellt der Server den Gesprächsraum sicher: ein abgelaufener
+  // Raum wird dabei neu angelegt. Ohne diesen Schritt landet der Kunde in einem
+  // Raum, den es nicht mehr gibt — sichtbar nur als endloses „wird verbunden…“.
+  const joinCall = useCallback(async () => {
+    setJoinPending(true);
+    setJoinError(null);
+    try {
+      const res = await fetch("/api/closing/join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+      const data = (await res.json()) as { meetingUrl?: string; error?: string };
+      if (!res.ok || !data.meetingUrl) {
+        setJoinError(data.error ?? "Der Gesprächsraum konnte nicht geöffnet werden.");
+        return;
+      }
+      setCallUrl(data.meetingUrl);
+      setJoined(true);
+    } catch {
+      setJoinError("Keine Verbindung zum Server. Bitte erneut versuchen.");
+    } finally {
+      setJoinPending(false);
+    }
+  }, [token]);
 
   const pendingConsents = useMemo(
     () => state.consents.filter((c) => !c.accepted),
@@ -199,7 +230,7 @@ export function ClosingClientView({ initialState, token }: Props) {
                   style={{ height: "min(calc(100vh - 190px), 720px)" }}
                 >
                   <OkunCall
-                    roomUrl={state.meetingUrl!}
+                    roomUrl={callUrl ?? state.meetingUrl!}
                     userName={state.contactName ?? state.companyName}
                     role="client"
                     slide={slide}
@@ -212,7 +243,9 @@ export function ClosingClientView({ initialState, token }: Props) {
                   advisorPresent={state.advisorPresent}
                   appointmentStart={state.appointmentStart}
                   closerName={state.closerName}
-                  onJoin={() => setJoined(true)}
+                  pending={joinPending}
+                  error={joinError}
+                  onJoin={() => void joinCall()}
                 />
               ))}
 
@@ -528,11 +561,15 @@ function WaitingRoom({
   advisorPresent,
   appointmentStart,
   closerName,
+  pending,
+  error,
   onJoin,
 }: {
   advisorPresent: boolean;
   appointmentStart: string | null;
   closerName: string | null;
+  pending: boolean;
+  error: string | null;
   onJoin: () => void;
 }) {
   return (
@@ -564,15 +601,22 @@ function WaitingRoom({
 
         <button
           onClick={onJoin}
-          className={`mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-colors ${
+          disabled={pending}
+          className={`mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-colors disabled:opacity-60 ${
             advisorPresent
               ? "bg-[#00b8ff] text-[#041018] hover:bg-[#0099d6]"
               : "border border-[#16283d] text-[#8899b4] hover:text-[#eef2f7] hover:border-[#2a3a55]"
           }`}
         >
-          <Video size={15} />
-          {advisorPresent ? "Gespräch beitreten" : "Schon jetzt beitreten"}
+          {pending ? <Loader2 size={15} className="animate-spin" /> : <Video size={15} />}
+          {pending
+            ? "Gesprächsraum wird geöffnet…"
+            : advisorPresent
+              ? "Gespräch beitreten"
+              : "Schon jetzt beitreten"}
         </button>
+
+        {error && <p className="mt-3 text-[#fca5a5] text-xs max-w-sm mx-auto">{error}</p>}
       </div>
     </Card>
   );

@@ -14,6 +14,7 @@ import {
 } from "@daily-co/daily-react";
 import type { DailyEventObjectAppMessage } from "@daily-co/daily-js";
 import {
+  AlertTriangle,
   ChevronLeft,
   ChevronRight,
   Loader2,
@@ -43,6 +44,11 @@ import { PdfPage } from "./pdf-page";
  * Über der Folie kann der Berater zeigen. Die Zeigerposition läuft über Dailys
  * Datenkanal (`sendAppMessage`) und wird nirgends gespeichert — sie ist so
  * flüchtig wie ein Finger auf einer Leinwand.
+ *
+ * Zum Beitritt: Scheitert er, darf das nicht als Dauerspinner enden. Jeder
+ * Fehler wird benannt und lässt sich erneut versuchen; ein neuer Versuch
+ * bekommt ein frisches Gesprächsobjekt, weil Daily ein fehlgeschlagenes nicht
+ * wiederverwendet.
  */
 
 export type CallSlide = {
@@ -81,13 +87,53 @@ export type OkunCallProps = {
 };
 
 export function OkunCall(props: OkunCallProps) {
+  // Ein erneuter Versuch hängt ein frisches Gesprächsobjekt ein: nach einem
+  // Verbindungsfehler ist das bisherige bei Daily nicht mehr zu gebrauchen.
+  const [attempt, setAttempt] = useState(0);
+
   return (
-    <DailyProvider url={props.roomUrl} userName={props.userName}>
-      <CallSurface {...props} />
+    <DailyProvider key={attempt} url={props.roomUrl} userName={props.userName}>
+      <CallSurface {...props} onRetry={() => setAttempt((n) => n + 1)} />
       {/* Ohne diese Komponente bleibt das Gespräch stumm. */}
       <DailyAudio />
     </DailyProvider>
   );
+}
+
+/** Liest die Fehlermeldung aus einem Daily-Ereignis, ohne dessen Form zu kennen. */
+function errorText(event: unknown): string | null {
+  if (!event || typeof event !== "object") return null;
+  const e = event as {
+    errorMsg?: unknown;
+    error?: { msg?: unknown; type?: unknown; localizedMsg?: unknown };
+  };
+  for (const candidate of [e.error?.localizedMsg, e.error?.msg, e.errorMsg]) {
+    if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
+  }
+  return null;
+}
+
+/** Übersetzt Dailys Meldungen in einen Satz, mit dem im Gespräch jemand etwas anfangen kann. */
+function describeFailure(raw: string | null): string {
+  const text = (raw ?? "").toLowerCase();
+  if (text.includes("expired") || text.includes("ended") || text.includes("abgelaufen")) {
+    return "Der Gesprächsraum ist abgelaufen. Bitte die Seite neu laden — der Raum wird dabei neu angelegt.";
+  }
+  if (text.includes("not exist") || text.includes("not found") || text.includes("no room")) {
+    return "Der Gesprächsraum ist nicht mehr vorhanden. Bitte die Seite neu laden — der Raum wird dabei neu angelegt.";
+  }
+  if (text.includes("nbf") || text.includes("not before")) {
+    return "Der Gesprächsraum ist noch nicht freigegeben. Bitte kurz warten und erneut versuchen.";
+  }
+  if (
+    text.includes("network") ||
+    text.includes("connection") ||
+    text.includes("websocket") ||
+    text.includes("load")
+  ) {
+    return "Keine Verbindung zum Gesprächsserver. Bitte Netzwerk, VPN oder Firewall prüfen und erneut versuchen.";
+  }
+  return raw ?? "Das Gespräch konnte nicht verbunden werden.";
 }
 
 function CallSurface({
@@ -101,7 +147,8 @@ function CallSurface({
   canNext,
   onStopPresentation,
   onPageCount,
-}: OkunCallProps) {
+  onRetry,
+}: OkunCallProps & { onRetry: () => void }) {
   const daily = useDaily();
   const meetingState = useMeetingState();
   const localSessionId = useLocalSessionId();
@@ -113,13 +160,75 @@ function CallSurface({
   const [pointing, setPointing] = useState(false);
   const [remotePointer, setRemotePointer] = useState<{ x: number; y: number } | null>(null);
   const pointerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [failure, setFailure] = useState<string | null>(null);
+  const [takingLong, setTakingLong] = useState(false);
+  const [deviceHint, setDeviceHint] = useState<string | null>(null);
+  const joinStarted = useRef(false);
 
   const isAdvisor = role === "advisor";
 
+  // Beitreten, sobald das Gesprächsobjekt steht.
+  //
+  // Geprüft wird, ob gerade *nicht* beigetreten wird — nicht, ob der Zustand
+  // „new“ ist: ein wiederverwendetes Gesprächsobjekt steht auf „loaded“ oder
+  // „left-meeting“, und dann unterblieb der Beitritt früher stillschweigend.
+  useEffect(() => {
+    if (!daily || joinStarted.current) return;
+    const state = daily.meetingState();
+    if (state === "joined-meeting" || state === "joining-meeting") return;
+    joinStarted.current = true;
+    daily.join().catch((err: unknown) => {
+      setFailure(describeFailure(err instanceof Error ? err.message : errorText(err)));
+    });
+  }, [daily]);
+
+  // Fehler benennen, statt den Ladekreis weiterdrehen zu lassen.
   useEffect(() => {
     if (!daily) return;
-    if (daily.meetingState() === "new") void daily.join();
+    const onFatal = (event?: unknown) => setFailure(describeFailure(errorText(event)));
+    const onCameraError = (event?: unknown) =>
+      setDeviceHint(
+        errorText(event) ??
+          "Kamera oder Mikrofon sind nicht verfügbar. Bitte die Freigabe im Browser prüfen."
+      );
+    daily.on("error", onFatal);
+    daily.on("camera-error", onCameraError);
+    return () => {
+      daily.off("error", onFatal);
+      daily.off("camera-error", onCameraError);
+    };
   }, [daily]);
+
+  // Auch ohne Ereignis darf ein Fehlzustand nicht unbemerkt bleiben: meldet
+  // Daily „error“, ohne dass eine Meldung ankam, steht hier trotzdem etwas.
+  const failureMessage =
+    failure ?? (meetingState === "error" ? describeFailure(null) : null);
+  const connecting = meetingState !== "joined-meeting" && !failureMessage;
+
+  // Dauert der Beitritt ungewöhnlich lange, bekommt der Wartende einen Ausweg.
+  useEffect(() => {
+    if (!connecting) return;
+    const timer = setTimeout(() => setTakingLong(true), 15_000);
+    return () => clearTimeout(timer);
+  }, [connecting]);
+
+  const retry = useCallback(() => {
+    setFailure(null);
+    setTakingLong(false);
+    joinStarted.current = false;
+    // Daily duldet kein zweites Gesprächsobjekt neben dem alten — das
+    // gescheiterte wird deshalb abgeräumt, bevor ein neues entsteht.
+    const current = daily;
+    void (async () => {
+      try {
+        await current?.destroy();
+      } catch {
+        // Ein bereits abgeräumtes Objekt ist genau das, was wir wollten.
+      } finally {
+        onRetry();
+      }
+    })();
+  }, [daily, onRetry]);
 
   // Eingehende Nachrichten: Zeiger anzeigen bzw. Stand neu holen.
   useEffect(() => {
@@ -178,7 +287,6 @@ function CallSurface({
     onLeave();
   }
 
-  const joining = meetingState !== "joined-meeting";
   const screenId = screens[0]?.screenId ?? null;
   const stageMode: "screen" | "slide" | "people" = screenId
     ? "screen"
@@ -189,11 +297,10 @@ function CallSurface({
   return (
     <div className="flex flex-col h-full min-h-0 bg-[#05090f]">
       <div className="flex-1 min-h-0 p-3">
-        {joining ? (
-          <div className="h-full flex flex-col items-center justify-center gap-3">
-            <Loader2 size={22} className="text-[#00b8ff] animate-spin" />
-            <p className="text-[#8899b4] text-sm">Gespräch wird verbunden…</p>
-          </div>
+        {failureMessage ? (
+          <CallProblem message={failureMessage} onRetry={retry} />
+        ) : connecting ? (
+          <Connecting takingLong={takingLong} onRetry={retry} />
         ) : stageMode === "people" ? (
           <PeopleStage localSessionId={localSessionId} remoteIds={remoteIds} />
         ) : (
@@ -295,6 +402,12 @@ function CallSurface({
         </div>
       )}
 
+      {deviceHint && (
+        <div className="px-3 pb-2">
+          <p className="text-[#fca5a5] text-xs text-center">{deviceHint}</p>
+        </div>
+      )}
+
       <div className="px-3 py-2.5 border-t border-[#12203a] flex items-center justify-center gap-2">
         <ControlButton active={micOn} onClick={toggleMic} label={micOn ? "Stumm" : "Ton an"}>
           {micOn ? <Mic size={15} /> : <MicOff size={15} />}
@@ -318,6 +431,47 @@ function CallSurface({
           <PhoneOff size={14} /> Verlassen
         </button>
       </div>
+    </div>
+  );
+}
+
+/** Der Beitritt läuft — mit Ausweg, falls er zu lange dauert. */
+function Connecting({ takingLong, onRetry }: { takingLong: boolean; onRetry: () => void }) {
+  return (
+    <div className="h-full flex flex-col items-center justify-center gap-3 px-6 text-center">
+      <Loader2 size={22} className="text-[#00b8ff] animate-spin" />
+      <p className="text-[#8899b4] text-sm">Gespräch wird verbunden…</p>
+      {takingLong && (
+        <>
+          <p className="text-[#5b6b7f] text-xs max-w-sm">
+            Das dauert länger als gewöhnlich. Häufig liegt es an einer Firewall, einem VPN oder
+            einer verweigerten Kamera-Freigabe.
+          </p>
+          <button
+            onClick={onRetry}
+            className="px-4 py-2 rounded-lg border border-[#16283d] text-[#c9d4e4] text-xs font-semibold hover:text-[#eef2f7] hover:border-[#2a3a55] transition-colors"
+          >
+            Erneut verbinden
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+/** Der Beitritt ist gescheitert — der Grund steht da, wo sonst das Bild wäre. */
+function CallProblem({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="h-full flex flex-col items-center justify-center gap-3 px-6 text-center">
+      <AlertTriangle size={22} className="text-[#fca5a5]" />
+      <p className="text-[#eef2f7] text-sm font-semibold">Das Gespräch konnte nicht verbunden werden</p>
+      <p className="text-[#8899b4] text-xs max-w-sm">{message}</p>
+      <button
+        onClick={onRetry}
+        className="px-4 py-2 rounded-lg bg-[#00b8ff] text-[#041018] text-xs font-bold hover:bg-[#0099d6] transition-colors"
+      >
+        Erneut verbinden
+      </button>
     </div>
   );
 }
