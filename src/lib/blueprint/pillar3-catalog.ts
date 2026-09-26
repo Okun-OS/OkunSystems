@@ -5,10 +5,16 @@
  * Bewusst eine reine Datei ohne Datenbankzugriff — sie wird von der
  * Kundenoberfläche, der Auswertung und dem Bericht gleichermaßen gelesen.
  *
- * Grundsatz: Alles, was gerechnet wird, entsteht aus Auswahlfeldern und festen
- * Bändern. Gleiche Eingabe, gleiches Ergebnis. Freitext gibt es nur an einer
- * einzigen Stelle (`sys_branchen`), und der fließt nicht in die Auswertung,
- * sondern geht als Vorschlag zur Prüfung in den Adminbereich.
+ * Grundsatz: Alles, was gerechnet wird, entsteht aus Auswahlfeldern, festen
+ * Bändern oder einer Zahl mit fester Einheit. Gleiche Eingabe, gleiches
+ * Ergebnis. Freitext ist immer nur Bezeichnung — er benennt, was jemand
+ * ergänzt hat, und geht als Vorschlag zur Prüfung in den Adminbereich, aber
+ * nie in die Rechnung.
+ *
+ * Dazu gehört auch: Wer etwas ergänzt, wird trotzdem eingeordnet. Eine eigene
+ * Häufigkeit („einmal im Jahr") wird in Vorgänge pro Woche umgerechnet und
+ * zusätzlich dem nächstgelegenen Band zugeordnet — damit Auswertung und
+ * Bericht weiter mit Bändern arbeiten können und die Stunden trotzdem stimmen.
  */
 
 // ─── Block 1: Programme ──────────────────────────────────────────────────────
@@ -21,6 +27,8 @@ export type SystemEntry = {
   needsName?: boolean;
   /** Steht für „wir haben dafür nichts" — zählt nicht als Programm. */
   isNone?: boolean;
+  /** Offene Ergänzung: zusätzlich wählbar, wenn nichts in der Liste passt. */
+  isOther?: boolean;
 };
 
 export const SYSTEM_CATEGORIES = [
@@ -40,6 +48,7 @@ export const SYSTEM_CATALOG: SystemEntry[] = [
   { key: "sys_ms365", label: "Microsoft 365 / Outlook", category: "Büro & E-Mail" },
   { key: "sys_google", label: "Google Workspace / Gmail", category: "Büro & E-Mail" },
   { key: "sys_mail_other", label: "anderer E-Mail-Anbieter", category: "Büro & E-Mail" },
+  { key: "sys_office_other", label: "Sonstiges — welches?", category: "Büro & E-Mail", needsName: true, isOther: true },
 
   { key: "sys_hubspot", label: "HubSpot", category: "Kundenverwaltung" },
   { key: "sys_pipedrive", label: "Pipedrive", category: "Kundenverwaltung" },
@@ -47,6 +56,7 @@ export const SYSTEM_CATALOG: SystemEntry[] = [
   { key: "sys_crm_other", label: "anderes CRM", category: "Kundenverwaltung", needsName: true },
   { key: "sys_crm_excel", label: "Excel-Liste", category: "Kundenverwaltung" },
   { key: "sys_crm_none", label: "kein System", category: "Kundenverwaltung", isNone: true },
+  { key: "sys_crm_sonstiges", label: "Sonstiges — welches?", category: "Kundenverwaltung", needsName: true, isOther: true },
 
   { key: "sys_datev", label: "DATEV", category: "Buchhaltung & Rechnung" },
   { key: "sys_lexoffice", label: "Lexoffice", category: "Buchhaltung & Rechnung" },
@@ -54,41 +64,49 @@ export const SYSTEM_CATALOG: SystemEntry[] = [
   { key: "sys_acc_other", label: "andere Software", category: "Buchhaltung & Rechnung", needsName: true },
   { key: "sys_acc_office", label: "Word oder Excel", category: "Buchhaltung & Rechnung" },
   { key: "sys_acc_tax", label: "macht der Steuerberater", category: "Buchhaltung & Rechnung" },
+  { key: "sys_acc_sonstiges", label: "Sonstiges — welches?", category: "Buchhaltung & Rechnung", needsName: true, isOther: true },
 
   { key: "sys_plan_industry", label: "Branchensoftware", category: "Planung & Einsatz", needsName: true },
   { key: "sys_plan_excel", label: "Excel", category: "Planung & Einsatz" },
   { key: "sys_plan_paper", label: "Papier oder Whiteboard", category: "Planung & Einsatz" },
   { key: "sys_plan_none", label: "keine Planung nötig", category: "Planung & Einsatz", isNone: true },
+  { key: "sys_plan_other", label: "Sonstiges — welches?", category: "Planung & Einsatz", needsName: true, isOther: true },
 
   { key: "sys_time_terminal", label: "Terminal oder Stempeluhr", category: "Arbeitszeiten" },
   { key: "sys_time_app", label: "App auf dem Handy", category: "Arbeitszeiten" },
   { key: "sys_time_paper", label: "Stundenzettel auf Papier", category: "Arbeitszeiten" },
   { key: "sys_time_excel", label: "Excel", category: "Arbeitszeiten" },
   { key: "sys_time_none", label: "keine Erfassung", category: "Arbeitszeiten", isNone: true },
+  { key: "sys_time_other", label: "Sonstiges — welches?", category: "Arbeitszeiten", needsName: true, isOther: true },
 
   { key: "sys_hr_digital", label: "digitale Personalakte", category: "Personal" },
   { key: "sys_hr_folder", label: "Ordner im Schrank", category: "Personal" },
   { key: "sys_hr_external", label: "externes Lohnbüro", category: "Personal" },
+  { key: "sys_hr_other", label: "Sonstiges — welches?", category: "Personal", needsName: true, isOther: true },
 
   { key: "sys_doc_sharepoint", label: "SharePoint / OneDrive", category: "Dokumente & Ablage" },
   { key: "sys_doc_gdrive", label: "Google Drive", category: "Dokumente & Ablage" },
   { key: "sys_doc_dropbox", label: "Dropbox", category: "Dokumente & Ablage" },
   { key: "sys_doc_server", label: "Server oder Netzlaufwerk", category: "Dokumente & Ablage" },
   { key: "sys_doc_paper", label: "Papierordner", category: "Dokumente & Ablage" },
+  { key: "sys_doc_other", label: "Sonstiges — welches?", category: "Dokumente & Ablage", needsName: true, isOther: true },
 
   { key: "sys_task_saas", label: "Asana, Trello oder Monday", category: "Aufgaben & Fristen" },
   { key: "sys_task_ms", label: "Microsoft Planner / To Do", category: "Aufgaben & Fristen" },
   { key: "sys_task_calendar", label: "Kalender", category: "Aufgaben & Fristen" },
   { key: "sys_task_notes", label: "Notizzettel", category: "Aufgaben & Fristen" },
   { key: "sys_task_none", label: "nichts Festes", category: "Aufgaben & Fristen", isNone: true },
+  { key: "sys_task_other", label: "Sonstiges — welches?", category: "Aufgaben & Fristen", needsName: true, isOther: true },
 
   { key: "sys_comm_teams", label: "Microsoft Teams", category: "Interne Kommunikation" },
   { key: "sys_comm_slack", label: "Slack", category: "Interne Kommunikation" },
   { key: "sys_comm_whatsapp", label: "WhatsApp", category: "Interne Kommunikation" },
   { key: "sys_comm_phone", label: "Telefon und Zuruf", category: "Interne Kommunikation" },
+  { key: "sys_comm_other", label: "Sonstiges — welches?", category: "Interne Kommunikation", needsName: true, isOther: true },
 
   { key: "sys_branchen", label: "Branchensoftware — welche?", category: "Branchensoftware", needsName: true },
   { key: "sys_branchen_none", label: "keine", category: "Branchensoftware", isNone: true },
+  { key: "sys_branchen_other", label: "Sonstiges — welches?", category: "Branchensoftware", needsName: true, isOther: true },
 ];
 
 // ─── Block 1: Zwecke ─────────────────────────────────────────────────────────
@@ -107,7 +125,11 @@ export const PURPOSES: PurposeEntry[] = [
   { key: "pur_tasks", label: "Aufgaben und Fristen" },
   { key: "pur_comms", label: "Interne Kommunikation" },
   { key: "pur_reports", label: "Auswertungen und Zahlen" },
+  { key: "pur_other", label: "Sonstiges" },
 ];
+
+/** Der Zweck, der nach einer eigenen Bezeichnung verlangt. */
+export const OTHER_PURPOSE_KEY = "pur_other";
 
 /** Ab wie vielen Zwecken ein einzelnes Programm als Behelfslösung gilt. */
 export const MULTI_PURPOSE_THRESHOLD = 5;
@@ -183,6 +205,23 @@ export const TASK_CATALOG: TaskEntry[] = [
 
 export const MAX_TASKS = 10;
 
+/**
+ * Eigene Aufgaben, die im Katalog fehlen.
+ *
+ * Der Schlüssel ist fest vergeben (`custom_1` …), die Bezeichnung kommt vom
+ * Kunden. Sie zählen wie jede andere Aufgabe in die Stundenrechnung — wer
+ * seinen größten Zeitfresser ergänzt, soll ihn im Bericht wiederfinden.
+ */
+export const MAX_CUSTOM_TASKS = 3;
+
+export function customTaskKey(index: number): string {
+  return `custom_${index + 1}`;
+}
+
+export function isCustomTaskKey(key: string): boolean {
+  return /^custom_[1-9][0-9]*$/.test(key);
+}
+
 // ─── Block 2: Bänder ─────────────────────────────────────────────────────────
 
 export type Band = { key: string; label: string; value: number; hint: string };
@@ -208,6 +247,88 @@ export const DURATION_BANDS: Band[] = [
 
 /** Wochen je Monat. 52 Wochen auf 12 Monate. */
 export const WEEKS_PER_MONTH = 4.33;
+
+// ─── Block 2: Eigene Angaben ─────────────────────────────────────────────────
+
+/**
+ * Wenn kein Band passt.
+ *
+ * „Stündlich, täglich, wöchentlich, monatlich" deckt nicht alles ab — manches
+ * fällt einmal im Quartal oder einmal im Jahr an. Statt den Kunden auf das
+ * nächstbeste Band zu zwingen, nimmt er eine Zahl und eine Einheit. Beides
+ * feste Werte, also weiterhin dieselbe Eingabe, dasselbe Ergebnis.
+ */
+export const CUSTOM_FREQUENCY_KEY = "freq_custom";
+export const CUSTOM_DURATION_KEY = "dur_custom";
+
+/** Faktoren auf Vorgänge pro Woche. Ein Arbeitsmonat hat 5 Tage je Woche. */
+export const FREQUENCY_UNITS: Array<{ key: string; label: string; perWeek: number }> = [
+  { key: "hour", label: "pro Stunde", perWeek: 40 },
+  { key: "day", label: "pro Arbeitstag", perWeek: 5 },
+  { key: "week", label: "pro Woche", perWeek: 1 },
+  { key: "month", label: "pro Monat", perWeek: 1 / WEEKS_PER_MONTH },
+  { key: "quarter", label: "pro Quartal", perWeek: 1 / (3 * WEEKS_PER_MONTH) },
+  { key: "year", label: "pro Jahr", perWeek: 1 / 52 },
+];
+
+export function frequencyUnitByKey(key: string) {
+  return FREQUENCY_UNITS.find((unit) => unit.key === key);
+}
+
+/** Vorgänge pro Woche aus Anzahl und Einheit. Null, wenn die Angabe unbrauchbar ist. */
+export function frequencyPerWeekFrom(count: number, unitKey: string): number | null {
+  const unit = frequencyUnitByKey(unitKey);
+  if (!unit) return null;
+  if (!Number.isFinite(count) || count <= 0 || count > 10_000) return null;
+  return count * unit.perWeek;
+}
+
+/**
+ * Ordnet eine eigene Angabe dem nächstgelegenen Band zu.
+ *
+ * Gerechnet wird mit dem genauen Wert; das Band sorgt dafür, dass Auswertung
+ * und Bericht eine Einstufung in der Hand haben, die sie kennen. Verglichen
+ * wird logarithmisch, weil die Bänder sich vervielfachen statt zu addieren:
+ * von 0,25 auf 0,5 ist derselbe Schritt wie von 5 auf 10.
+ */
+function nearestBand(bands: Band[], value: number): Band {
+  let best = bands[0];
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (const band of bands) {
+    const distance = Math.abs(Math.log(band.value) - Math.log(value));
+    if (distance < bestDistance) {
+      best = band;
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
+
+/**
+ * Der Rückweg: aus Vorgängen pro Woche wieder eine lesbare Angabe.
+ *
+ * Gespeichert wird immer pro Woche. Wer „einmal pro Jahr" eingetragen hat,
+ * soll beim erneuten Öffnen nicht „0,02 pro Woche" vorfinden — gesucht wird
+ * deshalb die Einheit, bei der die kleinste Zahl ab 1 herauskommt.
+ */
+export function splitFrequency(perWeek: number): { count: number; unit: string } {
+  let best: { count: number; unit: string } | null = null;
+  for (const unit of FREQUENCY_UNITS) {
+    const count = Math.round((perWeek / unit.perWeek) * 100) / 100;
+    if (count >= 1 && (best === null || count < best.count)) {
+      best = { count, unit: unit.key };
+    }
+  }
+  return best ?? { count: Math.round(perWeek * 100) / 100, unit: "week" };
+}
+
+export function nearestFrequencyBand(perWeek: number): Band {
+  return nearestBand(FREQUENCY_BANDS, perWeek);
+}
+
+export function nearestDurationBand(minutes: number): Band {
+  return nearestBand(DURATION_BANDS, minutes);
+}
 
 // ─── Block 3: Abläufe ────────────────────────────────────────────────────────
 
@@ -286,6 +407,13 @@ export const NON_SYSTEM_OPTIONS: Array<{ key: string; label: string }> = [
   { key: "paper", label: "Papier" },
   { key: "none", label: "gar nichts — das weiß man" },
 ];
+
+/**
+ * An einer Station kann etwas zum Einsatz kommen, das oben nicht als Programm
+ * angegeben wurde. Statt „bitte wählen" stehen zu lassen, wird es benannt.
+ */
+export const OTHER_SYSTEM_KEY = "other";
+export const OTHER_SYSTEM_PREFIX = "other:";
 
 // ─── Nachschlagehilfen ───────────────────────────────────────────────────────
 

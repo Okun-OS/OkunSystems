@@ -5,15 +5,27 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import {
+  CUSTOM_DURATION_KEY,
+  CUSTOM_FREQUENCY_KEY,
+  MAX_CUSTOM_TASKS,
   MAX_TASKS,
+  OTHER_PURPOSE_KEY,
+  OTHER_SYSTEM_PREFIX,
   PURPOSES,
   STATIONS,
   STATION_MODES,
+  TASK_AREAS,
+  customTaskKey,
   durationByKey,
   frequencyByKey,
+  frequencyPerWeekFrom,
+  isCustomTaskKey,
+  nearestDurationBand,
+  nearestFrequencyBand,
   systemByKey,
   taskByKey,
 } from "@/lib/blueprint/pillar3-catalog";
+import { WEEKS_PER_MONTH } from "@/lib/blueprint/pillar3-catalog";
 import { minutesPerMonth } from "@/lib/blueprint/pillar3-engine";
 
 /**
@@ -21,8 +33,13 @@ import { minutesPerMonth } from "@/lib/blueprint/pillar3-engine";
  *
  * Alle Eingaben werden serverseitig gegen den Katalog geprüft. Was dort nicht
  * steht, wird verworfen — der Browser bestimmt nicht, was in der Auswertung
- * landet. Nur der selbst eingetragene Programmname ist freier Text, und der
- * geht nicht in die Rechnung, sondern als Vorschlag zur Prüfung.
+ * landet.
+ *
+ * Ergänzungen des Kunden sind entweder Bezeichnung (eigener Programmname,
+ * eigener Zweck, eigene Aufgabenbezeichnung) oder eine Zahl mit fester Einheit
+ * (eigene Häufigkeit, eigene Dauer). Freier Text fließt nie in die Rechnung;
+ * die Zahlen schon, und sie werden zusätzlich dem nächstgelegenen Band
+ * zugeordnet, damit Auswertung und Bericht eine bekannte Einstufung haben.
  */
 
 /** Sitzung des angemeldeten Kunden — oder Umleitung. */
@@ -56,6 +73,8 @@ export type SystemSelection = {
   /** Eigene Bezeichnung, wenn der Katalogeintrag danach fragt. */
   customName?: string;
   purposes: string[];
+  /** Eigener Zweck, wenn „Sonstiges" gewählt wurde. */
+  customPurpose?: string;
 };
 
 export async function saveSystems(
@@ -71,6 +90,7 @@ export async function saveSystems(
     category: string;
     purposes: string[];
     isCustom: boolean;
+    customPurpose: string | null;
   }> = [];
 
   for (const selection of selections) {
@@ -79,12 +99,17 @@ export async function saveSystems(
     if (!entry || entry.isNone) continue;
 
     const customName = selection.customName?.trim().slice(0, 120);
+    const purposes = [...new Set(selection.purposes.filter((p) => validPurposes.has(p)))];
+    const customPurpose = selection.customPurpose?.trim().slice(0, 120) || null;
+
     rows.push({
       catalogKey: entry.key,
       name: entry.needsName && customName ? customName : entry.label,
       category: entry.category,
-      purposes: [...new Set(selection.purposes.filter((p) => validPurposes.has(p)))],
+      purposes,
       isCustom: Boolean(entry.needsName && customName),
+      // Die Bezeichnung steht nur, wenn „Sonstiges" auch angehakt ist.
+      customPurpose: purposes.includes(OTHER_PURPOSE_KEY) ? customPurpose : null,
     });
   }
 
@@ -99,6 +124,7 @@ export async function saveSystems(
           category: row.category,
           purposes: JSON.stringify(row.purposes),
           isCustom: row.isCustom,
+          customPurpose: row.customPurpose,
         },
       });
     }
@@ -115,6 +141,14 @@ export type TaskSelection = {
   frequencyBand: string;
   durationBand: string;
   systemIds: string[];
+  /** Bezeichnung und Bereich einer selbst ergänzten Aufgabe. */
+  customLabel?: string;
+  customArea?: string;
+  /** Eigene Häufigkeit: Anzahl je Einheit, wenn kein Band gepasst hat. */
+  frequencyCount?: number;
+  frequencyUnit?: string;
+  /** Eigene Dauer je Vorgang in Minuten. */
+  durationMinutes?: number;
 };
 
 export async function saveTasks(
@@ -129,24 +163,83 @@ export async function saveTasks(
   });
   const ownSystemIds = new Set(ownSystems.map((s) => s.id));
 
+  const validAreas = new Set<string>(TASK_AREAS);
+  let customCount = 0;
+
   const rows = selections
     .slice(0, MAX_TASKS)
     .map((selection, index) => {
-      const entry = taskByKey(selection.catalogKey);
-      if (!entry) return null;
-      if (!frequencyByKey(selection.frequencyBand)) return null;
-      if (!durationByKey(selection.durationBand)) return null;
+      const isCustom = isCustomTaskKey(selection.catalogKey);
+      const entry = isCustom ? undefined : taskByKey(selection.catalogKey);
+
+      let label: string;
+      let area: string;
+      let catalogKey: string;
+
+      if (isCustom) {
+        const customLabel = selection.customLabel?.trim().slice(0, 120);
+        // Eine eigene Aufgabe ohne Bezeichnung ist keine Aufgabe.
+        if (!customLabel) return null;
+        if (customCount >= MAX_CUSTOM_TASKS) return null;
+        catalogKey = customTaskKey(customCount);
+        customCount += 1;
+        label = customLabel;
+        area = selection.customArea && validAreas.has(selection.customArea)
+          ? selection.customArea
+          : TASK_AREAS[0];
+      } else {
+        if (!entry) return null;
+        catalogKey = entry.key;
+        label = entry.label;
+        area = entry.area;
+      }
+
+      // Häufigkeit: entweder ein Band oder eine eigene Angabe, die zusätzlich
+      // dem nächstgelegenen Band zugeordnet wird.
+      let frequencyBand = selection.frequencyBand;
+      let frequencyPerWeek: number | null = null;
+      if (frequencyBand === CUSTOM_FREQUENCY_KEY) {
+        const perWeek = frequencyPerWeekFrom(
+          Number(selection.frequencyCount),
+          selection.frequencyUnit ?? ""
+        );
+        if (perWeek === null) return null;
+        frequencyPerWeek = perWeek;
+        frequencyBand = nearestFrequencyBand(perWeek).key;
+      } else if (!frequencyByKey(frequencyBand)) {
+        return null;
+      }
+
+      let durationBand = selection.durationBand;
+      let durationMinutes: number | null = null;
+      if (durationBand === CUSTOM_DURATION_KEY) {
+        const minutes = Math.round(Number(selection.durationMinutes));
+        if (!Number.isFinite(minutes) || minutes <= 0 || minutes > 8 * 60) return null;
+        durationMinutes = minutes;
+        durationBand = nearestDurationBand(minutes).key;
+      } else if (!durationByKey(durationBand)) {
+        return null;
+      }
+
+      // Gerechnet wird mit den genauen Angaben, wo es welche gibt.
+      const perWeek = frequencyPerWeek ?? frequencyByKey(frequencyBand)!.value;
+      const minutes = durationMinutes ?? durationByKey(durationBand)!.value;
 
       return {
-        catalogKey: entry.key,
-        label: entry.label,
-        area: entry.area,
-        frequencyBand: selection.frequencyBand,
-        durationBand: selection.durationBand,
+        catalogKey,
+        label,
+        area,
+        frequencyBand,
+        durationBand,
         // Nur Programme, die zu dieser Sitzung gehören.
         systemIds: selection.systemIds.filter((id) => ownSystemIds.has(id)),
+        isCustom,
+        frequencyPerWeek,
+        durationMinutes,
         minutesPerMonth:
-          minutesPerMonth(selection.frequencyBand, selection.durationBand) ?? 0,
+          frequencyPerWeek !== null || durationMinutes !== null
+            ? Math.round(perWeek * minutes * WEEKS_PER_MONTH)
+            : minutesPerMonth(frequencyBand, durationBand) ?? 0,
         position: index,
       };
     })
@@ -193,12 +286,22 @@ export async function saveFlow(
     .filter((station) => validStations.has(station.stationKey))
     .map((station) => {
       const isOwnSystem = station.system ? ownSystemIds.has(station.system) : false;
+      // „other:Bezeichnung" — etwas, das oben nicht als Programm stand.
+      const isOther = station.system?.startsWith(OTHER_SYSTEM_PREFIX) ?? false;
+      const otherLabel = isOther
+        ? station.system!.slice(OTHER_SYSTEM_PREFIX.length).trim().slice(0, 120)
+        : "";
+
       return {
         stationKey: station.stationKey,
         position: validStations.get(station.stationKey)!,
         role: station.role?.trim().slice(0, 80) || null,
         systemId: isOwnSystem ? station.system! : null,
-        systemLabel: station.system && !isOwnSystem ? station.system : null,
+        systemLabel: isOther
+          ? otherLabel || "anderes Programm"
+          : station.system && !isOwnSystem
+            ? station.system
+            : null,
         mode: validModes.has(station.mode) ? station.mode : "manual",
       };
     });

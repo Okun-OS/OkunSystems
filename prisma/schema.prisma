@@ -1635,13 +1635,15 @@ model BlueprintSystem {
   session   AnalysisSession @relation(fields: [sessionId], references: [id])
 
   /// Schlüssel aus dem Katalog, oder null bei einem selbst eingetragenen Programm.
-  catalogKey String?
-  name       String
-  category   String
+  catalogKey    String?
+  name          String
+  category      String
   /// JSON-Liste der Zweck-Schlüssel.
-  purposes   String  @default("[]")
+  purposes      String  @default("[]")
   /// Selbst eingetragen — geht nicht in die Auswertung, sondern zur Prüfung.
-  isCustom   Boolean @default(false)
+  isCustom      Boolean @default(false)
+  /// Eigener Zweck, wenn „Sonstiges" gewählt wurde. Reine Bezeichnung.
+  customPurpose String?
 
   createdAt DateTime @default(now())
 
@@ -1662,6 +1664,13 @@ model BlueprintTask {
   durationBand  String
   /// JSON-Liste von BlueprintSystem-IDs.
   systemIds     String @default("[]")
+
+  /// Vom Kunden selbst ergänzte Aufgabe — die Bezeichnung stammt von ihm.
+  isCustom         Boolean @default(false)
+  /// Eigene Häufigkeit in Vorgängen pro Woche, wenn kein Band gepasst hat.
+  frequencyPerWeek Float?
+  /// Eigene Dauer je Vorgang in Minuten, wenn kein Band gepasst hat.
+  durationMinutes  Int?
 
   /// Aus Häufigkeit und Dauer gerechnet — gespeichert, damit der Bericht nicht
   /// von der Bänder-Tabelle abhängt, die später einmal anders aussehen könnte.

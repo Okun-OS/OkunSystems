@@ -4,8 +4,11 @@ import { db } from "@/lib/db";
 import {
   DURATION_BANDS,
   FREQUENCY_BANDS,
+  FREQUENCY_UNITS,
+  MAX_CUSTOM_TASKS,
   MAX_TASKS,
   NON_SYSTEM_OPTIONS,
+  OTHER_SYSTEM_PREFIX,
   PURPOSES,
   STATIONS,
   STATION_MODES,
@@ -107,6 +110,8 @@ export default async function Pillar3Page({
           stationModes: STATION_MODES,
           nonSystemOptions: NON_SYSTEM_OPTIONS,
           maxTasks: MAX_TASKS,
+          maxCustomTasks: MAX_CUSTOM_TASKS,
+          frequencyUnits: FREQUENCY_UNITS,
         }}
         saved={{
           systems: systems.map((system) => ({
@@ -115,19 +120,28 @@ export default async function Pillar3Page({
             name: system.name,
             purposes: parseList(system.purposes),
             isCustom: system.isCustom,
+            customPurpose: system.customPurpose ?? "",
           })),
-          tasks: taskRecords.map((task) => ({
+          tasks: tasks.map((task) => ({
             catalogKey: task.catalogKey,
             frequencyBand: task.frequencyBand,
             durationBand: task.durationBand,
-            systemIds: task.systemIds,
+            systemIds: parseList(task.systemIds),
+            isCustom: task.isCustom,
+            customLabel: task.isCustom ? task.label : "",
+            customArea: task.area,
+            frequencyPerWeek: task.frequencyPerWeek,
+            durationMinutes: task.durationMinutes,
           })),
           flows: flows.map((flow) => ({
             catalogKey: flow.catalogKey,
             stations: flow.stations.map((station) => ({
               stationKey: station.stationKey,
               role: station.role ?? "",
-              system: station.systemId ?? station.systemLabel ?? "",
+              // Eine Bezeichnung, die weder Programm noch „Papier/gar nichts"
+              // ist, war eine eigene Angabe — und wird auch wieder als solche
+              // angezeigt, statt im leeren Auswahlfeld zu verschwinden.
+              system: station.systemId ?? toSystemChoice(station.systemLabel),
               mode: station.mode,
             })),
           })),
@@ -140,6 +154,13 @@ export default async function Pillar3Page({
       />
     </div>
   );
+}
+
+/** Gespeicherte Stationsangabe zurück in den Wert des Auswahlfelds. */
+function toSystemChoice(label: string | null): string {
+  if (!label) return "";
+  if (NON_SYSTEM_OPTIONS.some((option) => option.key === label)) return label;
+  return `${OTHER_SYSTEM_PREFIX}${label}`;
 }
 
 function parseList(raw: string): string[] {

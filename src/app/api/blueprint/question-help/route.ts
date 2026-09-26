@@ -24,8 +24,18 @@ const MODULE_LABELS: Record<number, string> = {
  * Client-accessible. Returns an AI-generated explanation for a Blueprint question.
  * Supports multi-turn conversation via conversationHistory.
  *
+ * Zwei Betriebsarten:
+ *   • questionId — eine Frage aus dem Fragenkatalog (Module 1–2)
+ *   • topicTitle — ein Block der dritten Säule, die keine Katalogfragen kennt,
+ *     sondern Programme, Aufgaben und Abläufe. Titel und Antwortmöglichkeiten
+ *     kommen dann aus dem Aufruf; sie sind ohnehin nur Erklärkontext und
+ *     verändern nichts an den gespeicherten Daten.
+ *
  * Body: {
- *   questionId: string,
+ *   questionId?: string,
+ *   topicTitle?: string,
+ *   topicHint?: string,
+ *   topicOptions?: string[],
  *   sessionId: string,
  *   userMessage?: string,
  *   conversationHistory?: Array<{ role: "user" | "assistant", content: string }>
@@ -39,15 +49,29 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({})) as {
     questionId?: string;
+    topicTitle?: string;
+    topicHint?: string;
+    topicOptions?: string[];
     sessionId?: string;
     userMessage?: string;
     conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>;
   };
 
-  const { questionId, sessionId, userMessage, conversationHistory = [] } = body;
+  const {
+    questionId,
+    topicTitle,
+    topicHint,
+    topicOptions = [],
+    sessionId,
+    userMessage,
+    conversationHistory = [],
+  } = body;
 
-  if (!questionId || !sessionId) {
-    return NextResponse.json({ error: "Missing questionId or sessionId" }, { status: 400 });
+  if (!sessionId || (!questionId && !topicTitle)) {
+    return NextResponse.json(
+      { error: "Missing sessionId and questionId/topicTitle" },
+      { status: 400 }
+    );
   }
 
   // Verify the session belongs to the requesting user's company
@@ -74,32 +98,55 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Load question with answer options
-  const question = await db.questionTemplate.findUnique({
-    where: { id: questionId },
-    select: {
-      questionDe: true,
-      externalId: true,
-      moduleNumber: true,
-      intent: true,
-      questionType: true,
-      answerOptions: {
-        where: { isActive: true },
-        select: { textDe: true, order: true },
-        orderBy: { order: "asc" },
+  // Frage aus dem Katalog — oder ein Block der dritten Säule.
+  let areaLabel: string;
+  let questionRef: string;
+  let questionText: string;
+  let optionsList: string | null;
+
+  if (questionId) {
+    const question = await db.questionTemplate.findUnique({
+      where: { id: questionId },
+      select: {
+        questionDe: true,
+        externalId: true,
+        moduleNumber: true,
+        intent: true,
+        questionType: true,
+        answerOptions: {
+          where: { isActive: true },
+          select: { textDe: true, order: true },
+          orderBy: { order: "asc" },
+        },
       },
-    },
-  });
+    });
 
-  if (!question) {
-    return NextResponse.json({ error: "Question not found" }, { status: 404 });
+    if (!question) {
+      return NextResponse.json({ error: "Question not found" }, { status: 404 });
+    }
+
+    areaLabel = question.moduleNumber
+      ? (MODULE_LABELS[question.moduleNumber] ?? `Modul ${question.moduleNumber}`)
+      : "";
+    questionRef = question.externalId;
+    questionText = question.questionDe;
+    optionsList =
+      question.answerOptions.length > 0
+        ? question.answerOptions
+            .map((o: { textDe: string; order: number }, i: number) => `  ${i + 1}. ${o.textDe}`)
+            .join("\n")
+        : null;
+  } else {
+    areaLabel = "Systeme, Aufgaben und Abläufe";
+    questionRef = "Säule 3";
+    questionText = [topicTitle, topicHint].filter(Boolean).join(" — ").slice(0, 600);
+    const options = topicOptions
+      .filter((option): option is string => typeof option === "string")
+      .slice(0, 40)
+      .map((option) => option.slice(0, 160));
+    optionsList =
+      options.length > 0 ? options.map((option, i) => `  ${i + 1}. ${option}`).join("\n") : null;
   }
-
-  const moduleLabel = question.moduleNumber ? (MODULE_LABELS[question.moduleNumber] ?? `Modul ${question.moduleNumber}`) : "";
-
-  const optionsList = question.answerOptions.length > 0
-    ? question.answerOptions.map((o: { textDe: string; order: number }, i: number) => `  ${i + 1}. ${o.textDe}`).join("\n")
-    : null;
 
   const systemPrompt = `Du bist ein freundlicher Unternehmensberater, der KMU-Inhaber beim Ausfüllen des OKUN Blueprint™-Fragebogens unterstützt.
 
@@ -108,9 +155,9 @@ Der OKUN Blueprint™ ist eine strukturierte Unternehmensanalyse, die 8 Bereiche
 Du hilfst dem Nutzer, die aktuelle Frage zu verstehen und die für sein Unternehmen passende Antwort zu finden.
 
 **Aktuelle Frage:**
-Bereich: ${moduleLabel}
-Frage-ID: ${question.externalId}
-Fragetext: "${question.questionDe}"
+Bereich: ${areaLabel}
+Frage-ID: ${questionRef}
+Fragetext: "${questionText}"
 ${optionsList ? `\nAntwortoptionen:\n${optionsList}` : "\n(Freitextfrage — der Nutzer gibt seine Antwort selbst ein.)"}
 
 **Deine Aufgaben:**
@@ -118,6 +165,7 @@ ${optionsList ? `\nAntwortoptionen:\n${optionsList}` : "\n(Freitextfrage — der
 - Hilf dem Nutzer einzuordnen, welche Option zu seiner Situation passt
 - Antworte präzise und auf Deutsch
 - Bleib beim Thema der aktuellen Frage
+- Passt nichts aus der Liste, sag dem Nutzer, dass er über „Sonstiges" ergänzen kann
 - Halte deine Antworten kurz (2–4 Absätze maximal)
 - Es gibt kein Richtig oder Falsch — der Nutzer soll seine tatsächliche Situation beschreiben`;
 
