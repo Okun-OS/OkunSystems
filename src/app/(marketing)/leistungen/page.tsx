@@ -140,60 +140,72 @@ export default function LeistungenPage() {
       </section>
 
       {/* ── Eigene Lösung: OKUN Workforce ────────────────────────────────── */}
-      <section className="border-t border-[#102138] bg-[linear-gradient(160deg,#081428_0%,#060a11_70%)]">
-        <Container className="py-16 sm:py-20">
+      {/*
+        Auf dem Bildschirm steht das fertige Banner, so wie es gestaltet wurde.
+        Auf dem Telefon nicht: Seine Schrift wäre dort wenige Pixel hoch und
+        damit unlesbar. Deshalb trägt die schmale Ansicht denselben Inhalt als
+        echten Text — eine Aussage, zwei Darstellungen.
+      */}
+      <section className="border-t border-[#102138] bg-[#060a11]">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/marketing/workforce-banner.jpg"
+          alt="OKUN Workforce — digitale HR-Prozesse von der Dienstplanung bis zur Lohnabrechnung: effizientere Personalprozesse, weniger Fehler, mehr Zeit für das Wesentliche."
+          className="hidden lg:block w-full"
+        />
+
+        <Container className="py-14 lg:hidden">
           <Eyebrow>Eine unserer eigenen Lösungen</Eyebrow>
 
-          <div className="mt-6 grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-center">
-            <div className="space-y-5">
-              <div>
-                <p className="text-[#f4f8fd] text-[30px] font-bold leading-none tracking-tight">
-                  OKUN
-                </p>
-                <p className="text-[#38a9f5] text-[34px] font-bold leading-tight tracking-tight">
-                  Workforce
-                </p>
-              </div>
-
-              <h3 className="text-[#f4f8fd] text-[17px] font-semibold">
-                Digitale HR-Prozesse. Mehr Zeit für das Wesentliche.
-              </h3>
-
-              <p className="text-[#9fb2c9] text-[15px] leading-relaxed">
-                OKUN Workforce digitalisiert und automatisiert alle HR-Prozesse von der
-                Dienstplanung bis zur Lohnabrechnung. So sparen Sie Zeit, reduzieren Fehler und
-                schaffen mehr Freiraum für das, was wirklich zählt: Ihre Mitarbeiterinnen und
-                Mitarbeiter.
+          <div className="mt-6 space-y-5">
+            <div>
+              <p className="text-[#f4f8fd] text-[30px] font-bold leading-none tracking-tight">
+                OKUN
               </p>
-
-              <div className="grid gap-4 pt-2 sm:grid-cols-3">
-                {[
-                  { icon: <Users size={18} strokeWidth={1.5} />, lines: ["Effizientere", "Personalprozesse"] },
-                  { icon: <ShieldCheck size={18} strokeWidth={1.5} />, lines: ["Weniger Fehler", "Mehr Sicherheit"] },
-                  { icon: <Clock size={18} strokeWidth={1.5} />, lines: ["Mehr Zeit für", "das Wesentliche"] },
-                ].map((item) => (
-                  <div key={item.lines.join()} className="flex items-start gap-2.5">
-                    <span className="text-[#38a9f5] mt-0.5">{item.icon}</span>
-                    <span className="text-[#c2d0e2] text-[13px] leading-snug">
-                      {item.lines[0]}
-                      <br />
-                      {item.lines[1]}
-                    </span>
-                  </div>
-                ))}
-              </div>
+              <p className="text-[#38a9f5] text-[34px] font-bold leading-tight tracking-tight">
+                Workforce
+              </p>
             </div>
+
+            <h3 className="text-[#f4f8fd] text-[17px] font-semibold">
+              Digitale HR-Prozesse. Mehr Zeit für das Wesentliche.
+            </h3>
+
+            <p className="text-[#9fb2c9] text-[15px] leading-relaxed">
+              OKUN Workforce digitalisiert und automatisiert alle HR-Prozesse von der
+              Dienstplanung bis zur Lohnabrechnung. So sparen Sie Zeit, reduzieren Fehler und
+              schaffen mehr Freiraum für das, was wirklich zählt: Ihre Mitarbeitenden und
+              Mitarbeiter.
+            </p>
 
             <Backdrop
               src="/marketing/workforce.jpg"
-              className="rounded-2xl border border-[#16304f] min-h-[260px] lg:min-h-[340px]"
-              overlay="linear-gradient(180deg,rgba(6,10,17,0.25) 0%,rgba(6,10,17,0.55) 100%)"
+              className="rounded-2xl border border-[#16304f] min-h-[240px]"
+              overlay="linear-gradient(180deg,rgba(6,10,17,0.1) 0%,rgba(6,10,17,0.35) 100%)"
             >
-              <div className="min-h-[260px] lg:min-h-[340px]" />
+              <div className="min-h-[240px]" />
             </Backdrop>
+
+            <div className="grid gap-4 pt-1 sm:grid-cols-3">
+              {[
+                { icon: <Users size={18} strokeWidth={1.5} />, lines: ["Effizientere", "Personalprozesse"] },
+                { icon: <ShieldCheck size={18} strokeWidth={1.5} />, lines: ["Weniger Fehler", "Mehr Sicherheit"] },
+                { icon: <Clock size={18} strokeWidth={1.5} />, lines: ["Mehr Zeit für", "das Wesentliche"] },
+              ].map((item) => (
+                <div key={item.lines.join()} className="flex items-start gap-2.5">
+                  <span className="text-[#38a9f5] mt-0.5">{item.icon}</span>
+                  <span className="text-[#c2d0e2] text-[13px] leading-snug">
+                    {item.lines[0]}
+                    <br />
+                    {item.lines[1]}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </Container>
       </section>
+
     </>
   );
 }
