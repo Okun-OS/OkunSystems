@@ -70,7 +70,7 @@ export async function POST(req: Request) {
 
   try {
     const resend = new Resend(apiKey);
-    const from = process.env.EMAIL_FROM ?? "OKUN Systems <noreply@okun-systems.de>";
+    const from = process.env.EMAIL_FROM ?? "OKUN Systems <noreply@okun-systems.com>";
     await resend.emails.send({
       from,
       to: user.email,

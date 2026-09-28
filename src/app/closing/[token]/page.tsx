@@ -38,10 +38,10 @@ export default async function ClosingClientPage({
           <p className="text-[#8899b4] text-sm leading-relaxed">{text.body}</p>
           <p className="mt-6 text-xs text-[#4a5a70]">
             <a
-              href="mailto:info@okun-systems.de"
+              href="mailto:info@okun-systems.com"
               className="hover:text-[#8899b4] transition-colors"
             >
-              info@okun-systems.de
+              info@okun-systems.com
             </a>
           </p>
         </div>

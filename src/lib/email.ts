@@ -4,8 +4,8 @@ const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
   : null;
 
-const FROM_ADDRESS = process.env.EMAIL_FROM ?? "OKUN Systems <noreply@okun-systems.de>";
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "info@okun-systems.de";
+const FROM_ADDRESS = process.env.EMAIL_FROM ?? "OKUN Systems <noreply@okun-systems.com>";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "info@okun-systems.com";
 
 export async function sendAppointmentConfirmation({
   toEmail,
@@ -59,7 +59,7 @@ export async function sendAppointmentConfirmation({
           <br>Wir melden uns spätestens 24 Stunden vor dem Termin mit weiteren Details.
         </p>
         <div style="margin-top:24px;padding-top:16px;border-top:1px solid #111e30;">
-          <p style="color:#444;font-size:11px;margin:0;">OKUN Systems · <a href="https://okun-systems.de" style="color:#444;">okun-systems.de</a></p>
+          <p style="color:#444;font-size:11px;margin:0;">OKUN Systems · <a href="https://okun-systems.com" style="color:#444;">okun-systems.com</a></p>
         </div>
       </div>
     `,
@@ -102,7 +102,7 @@ export async function sendBlueprintReportReady({
           Für Fragen oder zur Besprechung der Ergebnisse können Sie jederzeit einen Strategietermin vereinbaren.
         </p>
         <div style="margin-top:24px;padding-top:16px;border-top:1px solid #111e30;">
-          <p style="color:#444;font-size:11px;margin:0;">OKUN Systems · <a href="https://okun-systems.de" style="color:#444;">okun-systems.de</a></p>
+          <p style="color:#444;font-size:11px;margin:0;">OKUN Systems · <a href="https://okun-systems.com" style="color:#444;">okun-systems.com</a></p>
         </div>
       </div>
     `,
@@ -192,7 +192,7 @@ export async function sendInvitationEmail({
           Falls Sie diese Einladung nicht erwartet haben, können Sie diese E-Mail ignorieren.
         </p>
         <div style="margin-top:24px;padding-top:16px;border-top:1px solid #111e30;">
-          <p style="color:#444;font-size:11px;margin:0;">OKUN Systems · <a href="https://okun-systems.de" style="color:#444;">okun-systems.de</a></p>
+          <p style="color:#444;font-size:11px;margin:0;">OKUN Systems · <a href="https://okun-systems.com" style="color:#444;">okun-systems.com</a></p>
         </div>
       </div>
     `,
@@ -212,7 +212,7 @@ export async function sendLearningAssignmentEmail({
 }) {
   if (!resend) return;
 
-  const portalUrl = process.env.NEXTAUTH_URL ?? process.env.APP_URL ?? "https://okun-systems.de";
+  const portalUrl = process.env.NEXTAUTH_URL ?? process.env.APP_URL ?? "https://okun-systems.com";
 
   await resend.emails.send({
     from: FROM_ADDRESS,
@@ -232,7 +232,7 @@ export async function sendLearningAssignmentEmail({
           </a>
         </div>
         <div style="margin-top:24px;padding-top:16px;border-top:1px solid #111e30;">
-          <p style="color:#444;font-size:11px;margin:0;">OKUN Systems · <a href="https://okun-systems.de" style="color:#444;">okun-systems.de</a></p>
+          <p style="color:#444;font-size:11px;margin:0;">OKUN Systems · <a href="https://okun-systems.com" style="color:#444;">okun-systems.com</a></p>
         </div>
       </div>
     `,
@@ -251,7 +251,7 @@ export async function sendDocumentReleasedEmail({
   documentTitle: string;
 }) {
   if (!resend) return;
-  const portalUrl = process.env.NEXTAUTH_URL ?? process.env.APP_URL ?? "https://okun-systems.de";
+  const portalUrl = process.env.NEXTAUTH_URL ?? process.env.APP_URL ?? "https://okun-systems.com";
   await resend.emails.send({
     from: FROM_ADDRESS,
     to: toEmail,
@@ -266,7 +266,7 @@ export async function sendDocumentReleasedEmail({
           <a href="${portalUrl}/portal/dokumente" style="display:inline-block;background:#00b8ff;color:#000;font-weight:700;font-size:14px;text-decoration:none;padding:12px 24px;border-radius:8px;">Zum Dokumentenbereich</a>
         </div>
         <div style="margin-top:24px;padding-top:16px;border-top:1px solid #111e30;">
-          <p style="color:#444;font-size:11px;margin:0;">OKUN Systems · <a href="https://okun-systems.de" style="color:#444;">okun-systems.de</a></p>
+          <p style="color:#444;font-size:11px;margin:0;">OKUN Systems · <a href="https://okun-systems.com" style="color:#444;">okun-systems.com</a></p>
         </div>
       </div>
     `,
@@ -327,7 +327,7 @@ export async function sendClosingInvitationEmail({
           Der Link ist 7 Tage gültig. Bei Fragen antworten Sie einfach auf diese E-Mail.
         </p>
         <div style="margin-top:24px;padding-top:16px;border-top:1px solid #111e30;">
-          <p style="color:#444;font-size:11px;margin:0;">OKUN Systems · <a href="https://okun-systems.de" style="color:#444;">okun-systems.de</a></p>
+          <p style="color:#444;font-size:11px;margin:0;">OKUN Systems · <a href="https://okun-systems.com" style="color:#444;">okun-systems.com</a></p>
         </div>
       </div>
     `,
@@ -383,7 +383,7 @@ export async function sendOfferEmail({
           Bei Fragen zum Angebot antworten Sie einfach auf diese E-Mail.
         </p>
         <div style="margin-top:24px;padding-top:16px;border-top:1px solid #111e30;">
-          <p style="color:#444;font-size:11px;margin:0;">OKUN Systems · <a href="https://okun-systems.de" style="color:#444;">okun-systems.de</a></p>
+          <p style="color:#444;font-size:11px;margin:0;">OKUN Systems · <a href="https://okun-systems.com" style="color:#444;">okun-systems.com</a></p>
         </div>
       </div>
     `,
@@ -425,7 +425,7 @@ export async function sendPasswordResetEmail({
         </div>
         <p style="color:#555;font-size:12px;">Falls Sie keine Zurücksetzung beantragt haben, ignorieren Sie diese E-Mail.</p>
         <div style="margin-top:24px;padding-top:16px;border-top:1px solid #111e30;">
-          <p style="color:#444;font-size:11px;margin:0;">OKUN Systems · <a href="https://okun-systems.de" style="color:#444;">okun-systems.de</a></p>
+          <p style="color:#444;font-size:11px;margin:0;">OKUN Systems · <a href="https://okun-systems.com" style="color:#444;">okun-systems.com</a></p>
         </div>
       </div>
     `,
@@ -472,7 +472,7 @@ export async function sendContractClosedEmail({
           Bei Fragen steht Ihnen ${closerName} gerne zur Verfügung.
         </p>
         <div style="margin-top:24px;padding-top:16px;border-top:1px solid #111e30;">
-          <p style="color:#444;font-size:11px;margin:0;">OKUN Systems · <a href="https://okun-systems.de" style="color:#444;">okun-systems.de</a></p>
+          <p style="color:#444;font-size:11px;margin:0;">OKUN Systems · <a href="https://okun-systems.com" style="color:#444;">okun-systems.com</a></p>
         </div>
       </div>
     `,
@@ -539,7 +539,7 @@ export async function sendInvoiceEmail({
           Zum Portal
         </a>
         <div style="margin-top:24px;padding-top:16px;border-top:1px solid #111e30;">
-          <p style="color:#444;font-size:11px;margin:0;">OKUN Systems · <a href="https://okun-systems.de" style="color:#444;">okun-systems.de</a></p>
+          <p style="color:#444;font-size:11px;margin:0;">OKUN Systems · <a href="https://okun-systems.com" style="color:#444;">okun-systems.com</a></p>
         </div>
       </div>
     `,

@@ -792,7 +792,7 @@ body {
 
   <div class="cover-footer">
     <span>OKUN Blueprint™ 2.0 · ${dateStr}</span>
-    <span>okun-systems.de</span>
+    <span>okun-systems.com</span>
   </div>
 </div>
 

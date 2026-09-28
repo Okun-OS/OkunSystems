@@ -37,7 +37,7 @@ export type IssuedToken = {
 };
 
 export function appUrl(): string {
-  return process.env.NEXTAUTH_URL ?? process.env.APP_URL ?? "https://okun-systems.de";
+  return process.env.NEXTAUTH_URL ?? process.env.APP_URL ?? "https://okun-systems.com";
 }
 
 /** Stellt ein neues Token aus und invalidiert damit das bisherige. */

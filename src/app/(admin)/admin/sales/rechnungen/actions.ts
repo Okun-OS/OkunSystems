@@ -112,7 +112,7 @@ export async function sendInvoice(invoiceId: string) {
       invoice.billingName ||
       invoice.company.name;
 
-    const appUrl = process.env.NEXTAUTH_URL ?? process.env.APP_URL ?? "https://okun-systems.de";
+    const appUrl = process.env.NEXTAUTH_URL ?? process.env.APP_URL ?? "https://okun-systems.com";
     await sendInvoiceEmail({
       toEmail,
       toName,

@@ -125,7 +125,7 @@ export async function activateCustomer(input: {
           });
           userCreated = true;
           const appUrl =
-            process.env.NEXTAUTH_URL ?? process.env.APP_URL ?? "https://okun-systems.de";
+            process.env.NEXTAUTH_URL ?? process.env.APP_URL ?? "https://okun-systems.com";
           passwordSetUrl = `${appUrl}/passwort-reset/${resetToken}`;
           recipientEmail = email;
           recipientName = contactName;
