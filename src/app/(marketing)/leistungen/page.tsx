@@ -141,69 +141,127 @@ export default function LeistungenPage() {
 
       {/* ── Eigene Lösung: OKUN Workforce ────────────────────────────────── */}
       {/*
-        Auf dem Bildschirm steht das fertige Banner, so wie es gestaltet wurde.
-        Auf dem Telefon nicht: Seine Schrift wäre dort wenige Pixel hoch und
-        damit unlesbar. Deshalb trägt die schmale Ansicht denselben Inhalt als
-        echten Text — eine Aussage, zwei Darstellungen.
+        Das Banner ist heller und blauer als der Rest der Seite. Ungemildert
+        klebt es als Fremdkörper in der Seite — deshalb laufen seine Kanten in
+        die Seitenfarbe aus und ein leichter Schleier nimmt ihm die Härte. Der
+        Blick soll auf dem Gerät landen, nicht auf der Naht.
+
+        Auf dem Telefon steht das Banner nicht: Seine Schrift wäre bei 390 px
+        wenige Pixel hoch und weder lesbar noch vorlesbar. Dort trägt derselbe
+        Inhalt echte Schrift — im selben Gewand, nicht als Notlösung.
       */}
-      <section className="border-t border-[#102138] bg-[#060a11]">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/marketing/workforce-banner.jpg"
-          alt="OKUN Workforce — digitale HR-Prozesse von der Dienstplanung bis zur Lohnabrechnung: effizientere Personalprozesse, weniger Fehler, mehr Zeit für das Wesentliche."
-          className="hidden lg:block w-full"
-        />
+      <section className="relative overflow-hidden border-t border-[#102138] bg-[#060a11]">
+        <div className="relative hidden lg:block">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/marketing/workforce-banner.jpg"
+            alt="OKUN Workforce — digitale HR-Prozesse von der Dienstplanung bis zur Lohnabrechnung: effizientere Personalprozesse, weniger Fehler, mehr Zeit für das Wesentliche."
+            className="block w-full"
+          />
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                // Eng an den Kanten: Weiter innen läge der Schleier auf der
+                // Wortmarke und den drei Punkten und nähme ihnen das Weiß.
+                "linear-gradient(180deg,#060a11 0%,rgba(6,10,17,0.5) 4%,rgba(6,10,17,0) 13%," +
+                "rgba(6,10,17,0) 86%,rgba(6,10,17,0.5) 96%,#060a11 100%)",
+            }}
+          />
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(90deg,#060a11 0%,rgba(6,10,17,0.3) 2%,rgba(6,10,17,0) 9%," +
+                "rgba(6,10,17,0) 93%,rgba(6,10,17,0.35) 98%,#060a11 100%)",
+            }}
+          />
+          <span aria-hidden className="pointer-events-none absolute inset-0 bg-[rgba(6,10,17,0.1)]" />
+        </div>
 
-        <Container className="py-14 lg:hidden">
-          <Eyebrow>Eine unserer eigenen Lösungen</Eyebrow>
+        {/* ── Dieselbe Aussage für schmale Bildschirme ── */}
+        <div className="lg:hidden">
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(120% 75% at 85% 45%,rgba(20,86,163,0.34) 0%,rgba(9,24,46,0.5) 45%,rgba(6,10,17,0) 75%)",
+            }}
+          />
 
-          <div className="mt-6 space-y-5">
-            <div>
-              <p className="text-[#f4f8fd] text-[30px] font-bold leading-none tracking-tight">
+          <Container className="relative py-14">
+            <Eyebrow>Eine unserer eigenen Lösungen</Eyebrow>
+
+            <div className="mt-5">
+              <p className="text-[#f4f8fd] text-[34px] font-bold leading-[0.95] tracking-tight">
                 OKUN
               </p>
-              <p className="text-[#38a9f5] text-[34px] font-bold leading-tight tracking-tight">
+              <p className="text-[#38a9f5] text-[38px] font-bold leading-tight tracking-tight">
                 Workforce
               </p>
             </div>
 
-            <h3 className="text-[#f4f8fd] text-[17px] font-semibold">
+            <h3 className="mt-4 text-[#f4f8fd] text-[16px] font-semibold leading-snug">
               Digitale HR-Prozesse. Mehr Zeit für das Wesentliche.
             </h3>
 
-            <p className="text-[#9fb2c9] text-[15px] leading-relaxed">
+            <p className="mt-3 text-[#9fb2c9] text-[15px] leading-relaxed">
               OKUN Workforce digitalisiert und automatisiert alle HR-Prozesse von der
               Dienstplanung bis zur Lohnabrechnung. So sparen Sie Zeit, reduzieren Fehler und
               schaffen mehr Freiraum für das, was wirklich zählt: Ihre Mitarbeitenden und
               Mitarbeiter.
             </p>
 
-            <Backdrop
-              src="/marketing/workforce.jpg"
-              className="rounded-2xl border border-[#16304f] min-h-[240px]"
-              overlay="linear-gradient(180deg,rgba(6,10,17,0.1) 0%,rgba(6,10,17,0.35) 100%)"
-            >
-              <div className="min-h-[240px]" />
-            </Backdrop>
+            <Rule className="mt-6" />
 
-            <div className="grid gap-4 pt-1 sm:grid-cols-3">
+            {/* Das Gerät bekommt Luft und einen Schein, statt in einem Kasten
+                zu sitzen — so wirkt es wie im Banner. */}
+            <div className="relative mt-7">
+              <span
+                aria-hidden
+                className="pointer-events-none absolute -inset-x-6 -inset-y-4 rounded-[28px]"
+                style={{
+                  background:
+                    "radial-gradient(70% 70% at 50% 45%,rgba(35,126,214,0.35) 0%,rgba(6,10,17,0) 70%)",
+                }}
+              />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/marketing/workforce.jpg"
+                alt="OKUN Workforce auf Laptop und Telefon: Dashboard mit Mitarbeiterzahl, offenen Schichten und Einsatzplanung."
+                className="relative block w-full rounded-2xl border border-[#16304f]"
+              />
+            </div>
+
+            {/* Die drei Punkte wie im Banner: Zeichen oben, Trennstriche dazwischen. */}
+            <ul className="mt-8 grid grid-cols-3 gap-0">
               {[
-                { icon: <Users size={18} strokeWidth={1.5} />, lines: ["Effizientere", "Personalprozesse"] },
-                { icon: <ShieldCheck size={18} strokeWidth={1.5} />, lines: ["Weniger Fehler", "Mehr Sicherheit"] },
-                { icon: <Clock size={18} strokeWidth={1.5} />, lines: ["Mehr Zeit für", "das Wesentliche"] },
-              ].map((item) => (
-                <div key={item.lines.join()} className="flex items-start gap-2.5">
-                  <span className="text-[#38a9f5] mt-0.5">{item.icon}</span>
-                  <span className="text-[#c2d0e2] text-[13px] leading-snug">
+                { icon: <Users size={22} strokeWidth={1.4} />, lines: ["Effizientere", "Personalprozesse"] },
+                { icon: <ShieldCheck size={22} strokeWidth={1.4} />, lines: ["Weniger Fehler", "Mehr Sicherheit"] },
+                { icon: <Clock size={22} strokeWidth={1.4} />, lines: ["Mehr Zeit für", "das Wesentliche"] },
+              ].map((item, index) => (
+                <li
+                  key={item.lines.join()}
+                  className={`flex flex-col items-center gap-2.5 px-1.5 text-center ${
+                    index > 0 ? "border-l border-[#16304f]" : ""
+                  }`}
+                >
+                  <span className="text-[#38a9f5]">{item.icon}</span>
+                  {/* Die Zeilen stehen fest: „Weniger Fehler / Mehr Sicherheit"
+                      sind zwei Aussagen und sollen nicht beliebig umbrechen. */}
+                  <span className="text-[#c2d0e2] text-[11px] leading-snug whitespace-nowrap">
                     {item.lines[0]}
                     <br />
                     {item.lines[1]}
                   </span>
-                </div>
+                </li>
               ))}
-            </div>
-          </div>
-        </Container>
+            </ul>
+          </Container>
+        </div>
       </section>
 
     </>
