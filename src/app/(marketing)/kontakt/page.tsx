@@ -13,7 +13,7 @@ import {
 } from "@/components/marketing/pieces";
 import { ClosingQuote } from "@/components/marketing/closing-quote";
 import { ContactForm } from "@/components/marketing/contact-form";
-import { ADDRESS_LINES, COMPANY } from "@/lib/marketing/company";
+import { ADDRESS_LINES, BOOKING_URL, COMPANY } from "@/lib/marketing/company";
 
 export const metadata: Metadata = {
   title: "Kontakt",
@@ -84,11 +84,11 @@ export default function KontaktPage() {
               </ul>
 
               <div className="mt-auto pt-7 space-y-2.5">
-                <PrimaryButton href={`mailto:${COMPANY.email}?subject=Terminanfrage`} className="w-full">
-                  Termin anfragen
+                <PrimaryButton href={BOOKING_URL} className="w-full">
+                  Termin buchen
                 </PrimaryButton>
                 <p className="text-[#6f8299] text-xs">
-                  Oder schreiben Sie uns über das Formular — wir schlagen Ihnen passende Termine vor.
+                  Wählen Sie direkt einen passenden Termin in unserem Kalender.
                 </p>
               </div>
             </div>

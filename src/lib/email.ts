@@ -409,12 +409,14 @@ export async function sendContactRequest({
   company,
   email,
   phone,
+  topic,
   message,
 }: {
   name: string;
   company: string;
   email: string;
   phone: string;
+  topic: string;
   message: string;
 }) {
   if (!resend) {
@@ -434,6 +436,7 @@ export async function sendContactRequest({
     ["Unternehmen", company],
     ["E-Mail", email],
     ["Telefon", phone || "—"],
+    ["Anfragegrund", topic || "—"],
   ];
 
   const result = await resend.emails.send({
@@ -464,6 +467,124 @@ export async function sendContactRequest({
   if (result.error) {
     console.error("[email] sendContactRequest fehlgeschlagen:", result.error);
     return { ok: false as const, error: "Die Nachricht konnte nicht gesendet werden." };
+  }
+  return { ok: true as const };
+}
+
+/**
+ * Meldung an uns, wenn über Calendly ein Termin gebucht oder abgesagt wurde.
+ *
+ * Calendly schickt selbst eine Bestätigung an den Kalenderinhaber. Diese
+ * Nachricht geht zusätzlich an die allgemeine Adresse — damit ein Termin
+ * nicht nur in einem persönlichen Postfach landet, sondern dort, wo das Team
+ * hinschaut.
+ */
+export async function sendBookingNotification({
+  canceled,
+  eventName,
+  startTime,
+  timezone,
+  name,
+  email,
+  location,
+  answers,
+  cancelReason,
+  rescheduleUrl,
+}: {
+  canceled: boolean;
+  eventName: string;
+  startTime: string | null;
+  timezone: string | null;
+  name: string;
+  email: string;
+  location: string | null;
+  answers: Array<{ question: string; answer: string }>;
+  cancelReason: string | null;
+  rescheduleUrl: string | null;
+}) {
+  if (!resend) {
+    console.warn("[email] RESEND_API_KEY not set — skipping sendBookingNotification");
+    return { ok: false as const, error: "E-Mail-Versand ist nicht konfiguriert." };
+  }
+
+  const escape = (value: string) =>
+    value
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+
+  // Die Zeit wird in der Zeitzone des Gastes gezeigt, nicht in der des
+  // Servers — der steht irgendwo und weiß nichts von Berlin.
+  let when = "—";
+  if (startTime) {
+    const date = new Date(startTime);
+    if (!Number.isNaN(date.getTime())) {
+      when = date.toLocaleString("de-DE", {
+        weekday: "long",
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: timezone ?? "Europe/Berlin",
+      });
+      when += ` Uhr (${timezone ?? "Europe/Berlin"})`;
+    }
+  }
+
+  const rows: Array<[string, string]> = [
+    ["Gespräch", eventName],
+    ["Termin", when],
+    ["Name", name],
+    ["E-Mail", email || "—"],
+  ];
+  if (location) rows.push(["Ort bzw. Link", location]);
+  if (cancelReason) rows.push(["Grund der Absage", cancelReason]);
+
+  const result = await resend.emails.send({
+    from: FROM_ADDRESS,
+    to: ADMIN_EMAIL,
+    replyTo: email || undefined,
+    subject: canceled
+      ? `Termin abgesagt: ${name} — ${when}`
+      : `Neuer Termin: ${name} — ${when}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#080c14;color:#f0f0f0;padding:32px;border-radius:12px;">
+        <h1 style="font-size:18px;font-weight:700;margin:0 0 6px;">
+          ${canceled ? "Termin abgesagt" : "Neuer Termin gebucht"}
+        </h1>
+        <p style="color:#888;font-size:13px;margin:0 0 20px;">Über Calendly</p>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+          ${rows
+            .map(
+              ([label, value]) =>
+                `<tr><td style="color:#888;font-size:13px;padding:6px 12px 6px 0;vertical-align:top;">${label}</td><td style="color:#f0f0f0;font-size:14px;">${escape(value)}</td></tr>`
+            )
+            .join("")}
+        </table>
+        ${
+          answers.length > 0
+            ? `<div style="background:#0c1520;border:1px solid #1a2840;border-radius:8px;padding:16px;margin-bottom:20px;">${answers
+                .map(
+                  (entry) =>
+                    `<p style="color:#888;font-size:12px;margin:0 0 4px;">${escape(entry.question)}</p><p style="color:#f0f0f0;font-size:14px;line-height:1.6;margin:0 0 14px;white-space:pre-wrap;">${escape(entry.answer)}</p>`
+                )
+                .join("")}</div>`
+            : ""
+        }
+        ${
+          rescheduleUrl && !canceled
+            ? `<p style="margin:0;"><a href="${rescheduleUrl}" style="color:#00b8ff;font-size:13px;">Termin verschieben</a></p>`
+            : ""
+        }
+      </div>
+    `,
+  });
+
+  if (result.error) {
+    console.error("[email] sendBookingNotification fehlgeschlagen:", result.error);
+    return { ok: false as const, error: "Die Benachrichtigung konnte nicht gesendet werden." };
   }
   return { ok: true as const };
 }

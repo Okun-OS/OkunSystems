@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { MarketingLogo } from "./marketing-logo";
 import { PrimaryButton, Container } from "./pieces";
+import { BOOKING_URL } from "@/lib/marketing/company";
 
 const NAV = [
   { href: "/", label: "Startseite" },
@@ -59,7 +60,7 @@ export function SiteHeader() {
           >
             Kundenportal
           </Link>
-          <PrimaryButton href="/kontakt" className="py-2.5">
+          <PrimaryButton href={BOOKING_URL} className="py-2.5">
             Strategiegespräch vereinbaren
           </PrimaryButton>
         </div>
@@ -97,7 +98,7 @@ export function SiteHeader() {
             >
               Kundenportal
             </Link>
-            <PrimaryButton href="/kontakt" className="mt-3 w-full">
+            <PrimaryButton href={BOOKING_URL} className="mt-3 w-full">
               Strategiegespräch vereinbaren
             </PrimaryButton>
           </Container>

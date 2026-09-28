@@ -32,3 +32,13 @@ export const ADDRESS_LINES = [
   `${COMPANY.postalCode} ${COMPANY.city}`,
   COMPANY.country,
 ] as const;
+
+/**
+ * Die Terminbuchung läuft über Calendly.
+ *
+ * Ohne Monatsparameter: Der Link, den Calendly beim Teilen anbietet, enthält
+ * den gerade geöffneten Monat. Fest eingebaut zeigt er ein Jahr später auf
+ * einen Monat in der Vergangenheit — Calendly öffnet von selbst den nächsten
+ * Monat mit freien Terminen.
+ */
+export const BOOKING_URL = "https://calendly.com/kontakt-okun-systems/30min";

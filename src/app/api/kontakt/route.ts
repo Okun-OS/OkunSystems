@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
     company?: string;
     email?: string;
     phone?: string;
+    topic?: string;
     message?: string;
     website?: string;
   };
@@ -36,6 +37,7 @@ export async function POST(request: NextRequest) {
   const company = body.company?.trim().slice(0, 160) ?? "";
   const email = body.email?.trim().slice(0, 160) ?? "";
   const phone = body.phone?.trim().slice(0, 60) ?? "";
+  const topic = body.topic?.trim().slice(0, 120) ?? "";
   const message = body.message?.trim().slice(0, 4000) ?? "";
 
   if (!name || !company || !email) {
@@ -48,7 +50,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Bitte eine gültige E-Mail-Adresse angeben." }, { status: 400 });
   }
 
-  const sent = await sendContactRequest({ name, company, email, phone, message });
+  const sent = await sendContactRequest({ name, company, email, phone, topic, message });
   if (!sent.ok) {
     return NextResponse.json({ error: sent.error }, { status: 502 });
   }

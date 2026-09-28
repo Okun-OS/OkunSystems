@@ -12,6 +12,7 @@ import {
   SectionTitle,
 } from "@/components/marketing/pieces";
 import { OkunRing } from "@/components/marketing/okun-ring";
+import { BOOKING_URL } from "@/lib/marketing/company";
 
 /** Startseite. */
 export default function HomePage() {
@@ -62,7 +63,7 @@ export default function HomePage() {
               </div>
 
               <div className="pt-2">
-                <PrimaryButton href="/kontakt">Strategiegespräch vereinbaren</PrimaryButton>
+                <PrimaryButton href={BOOKING_URL}>Strategiegespräch vereinbaren</PrimaryButton>
               </div>
             </div>
 

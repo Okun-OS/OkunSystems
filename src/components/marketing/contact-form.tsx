@@ -4,6 +4,16 @@ import { useState } from "react";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import Link from "next/link";
 
+/** Die Anfragegründe — bewusst kurz, sonst wird aus einer Auswahl eine Hürde. */
+const TOPICS = [
+  "Analyse von Unternehmensprozessen",
+  "Digitalisierung und Automatisierung",
+  "KI-Integration",
+  "OKUN Workforce",
+  "Bestehende Systeme optimieren",
+  "Etwas anderes",
+] as const;
+
 /**
  * Das Kontaktformular.
  *
@@ -34,6 +44,7 @@ export function ContactForm() {
           company: String(data.get("company") ?? ""),
           email: String(data.get("email") ?? ""),
           phone: String(data.get("phone") ?? ""),
+          topic: String(data.get("topic") ?? ""),
           message: String(data.get("message") ?? ""),
           // Für Menschen unsichtbar; nur automatische Einsender füllen es aus.
           website: String(data.get("website") ?? ""),
@@ -78,6 +89,25 @@ export function ContactForm() {
           placeholder="ihre@emailadresse.de"
         />
         <Field label="Telefonnummer" name="phone" placeholder="Ihre Telefonnummer" />
+      </div>
+
+      <div>
+        <label htmlFor="topic" className="block text-[#c2d0e2] text-sm mb-1.5">
+          Worum geht es? (optional)
+        </label>
+        <select
+          id="topic"
+          name="topic"
+          defaultValue=""
+          className="w-full rounded-lg border border-[#1a3050] bg-[#091426] px-3.5 py-2.5 text-[#f4f8fd] text-sm focus:border-[#2f7fd4] focus:outline-none"
+        >
+          <option value="">Bitte wählen</option>
+          {TOPICS.map((topic) => (
+            <option key={topic} value={topic}>
+              {topic}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div>

@@ -105,7 +105,13 @@ export function Card({
   );
 }
 
-/** Der Knopf, der durch die ganze Seite führt. */
+/**
+ * Der Knopf, der durch die ganze Seite führt.
+ *
+ * Zeigt er nach außen — etwa auf die Terminbuchung — öffnet er einen neuen
+ * Tab und sagt es auch: Wer mitten im Lesen war, soll die Seite nicht
+ * verlieren, und wer vorgelesen bekommt, soll es hören.
+ */
 export function PrimaryButton({
   href,
   children,
@@ -115,11 +121,21 @@ export function PrimaryButton({
   children: React.ReactNode;
   className?: string;
 }) {
+  const classes = `inline-flex items-center justify-center gap-2 rounded-lg border border-[#2f7fd4]/60 bg-[linear-gradient(180deg,#1668c4_0%,#0d4f9e_100%)] px-5 py-3 text-sm font-semibold text-white transition-colors hover:border-[#4aa3ef] hover:bg-[linear-gradient(180deg,#1b78da_0%,#105ab0_100%)] ${className}`;
+  const isExternal = href.startsWith("http");
+
+  if (isExternal) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className={classes}>
+        {children}
+        <span className="sr-only"> (öffnet in neuem Tab)</span>
+        <span aria-hidden>→</span>
+      </a>
+    );
+  }
+
   return (
-    <Link
-      href={href}
-      className={`inline-flex items-center justify-center gap-2 rounded-lg border border-[#2f7fd4]/60 bg-[linear-gradient(180deg,#1668c4_0%,#0d4f9e_100%)] px-5 py-3 text-sm font-semibold text-white transition-colors hover:border-[#4aa3ef] hover:bg-[linear-gradient(180deg,#1b78da_0%,#105ab0_100%)] ${className}`}
-    >
+    <Link href={href} className={classes}>
       {children}
       <span aria-hidden>→</span>
     </Link>
