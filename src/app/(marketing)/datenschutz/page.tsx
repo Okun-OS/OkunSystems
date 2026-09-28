@@ -68,10 +68,45 @@ export default function DatenschutzPage() {
   );
 }
 
+/**
+ * Macht E-Mail-Adressen und Web-Adressen im Fließtext anklickbar.
+ *
+ * Eine Erklärung, die auf eine Adresse für den Widerruf verweist, sollte man
+ * nicht abtippen müssen — besonders nicht auf dem Telefon.
+ */
+function linkify(text: string): React.ReactNode {
+  const pattern = /([\w.+-]+@[\w-]+\.[\w.-]+)|(https?:\/\/[^\s,)]+)/g;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+
+  for (const match of text.matchAll(pattern)) {
+    const index = match.index ?? 0;
+    if (index > lastIndex) parts.push(text.slice(lastIndex, index));
+
+    const value = match[0];
+    const href = match[1] ? `mailto:${value}` : value;
+    parts.push(
+      <a
+        key={`${index}-${value}`}
+        href={href}
+        className="text-[#38a9f5] hover:underline underline-offset-4 break-words"
+        {...(match[2] ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+      >
+        {value}
+      </a>
+    );
+    lastIndex = index + value.length;
+  }
+
+  if (lastIndex === 0) return text;
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
+  return parts;
+}
+
 function Block({ block }: { block: PrivacyBlock }) {
   switch (block.kind) {
     case "text":
-      return <p className="text-[#a8bacf] text-sm leading-relaxed">{block.text}</p>;
+      return <p className="text-[#a8bacf] text-sm leading-relaxed">{linkify(block.text)}</p>;
 
     case "list":
       return (
