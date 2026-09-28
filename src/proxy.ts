@@ -7,8 +7,25 @@ const secret =
   process.env.NEXTAUTH_SECRET ||
   "okun-systems-platform-secret-please-set-NEXTAUTH_SECRET-in-railway";
 
+/**
+ * Öffentliche Seiten der Website.
+ *
+ * Sie liegen in derselben Anwendung wie das Portal, dürfen aber keine
+ * Anmeldung verlangen — sonst sieht ein Interessent statt der Startseite ein
+ * Anmeldeformular.
+ */
+const PUBLIC_PAGES = new Set([
+  "/",
+  "/leistungen",
+  "/ueber-uns",
+  "/kontakt",
+  "/impressum",
+  "/datenschutz",
+]);
+
 export async function proxy(req: NextRequest) {
   const { nextUrl } = req;
+  const isPublicPage = PUBLIC_PAGES.has(nextUrl.pathname);
   const isAuthPage =
     nextUrl.pathname === "/login" ||
     nextUrl.pathname.startsWith("/einladung/") ||
@@ -17,7 +34,7 @@ export async function proxy(req: NextRequest) {
   const isClosingRoute = nextUrl.pathname.startsWith("/closing/");
   const isApiRoute = nextUrl.pathname.startsWith("/api/");
 
-  if (isApiRoute || isClosingRoute) {
+  if (isApiRoute || isClosingRoute || isPublicPage) {
     return NextResponse.next();
   }
 
@@ -44,13 +61,6 @@ export async function proxy(req: NextRequest) {
   if (isLoggedIn && isAuthPage) {
     if (isAdminOrCloser) {
       return NextResponse.redirect(new URL("/admin/dashboard", nextUrl));
-    }
-    return NextResponse.redirect(new URL("/dashboard", nextUrl));
-  }
-
-  if (isLoggedIn && nextUrl.pathname === "/") {
-    if (isAdminOrCloser) {
-      return NextResponse.redirect(new URL(homeFor(role ?? "CLIENT"), nextUrl));
     }
     return NextResponse.redirect(new URL("/dashboard", nextUrl));
   }

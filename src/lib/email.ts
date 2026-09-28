@@ -397,6 +397,77 @@ export async function sendOfferEmail({
   return { ok: true as const };
 }
 
+/**
+ * Eine Anfrage über das Kontaktformular der Website.
+ *
+ * Geht ausschließlich an das eigene Postfach. `replyTo` steht auf der Adresse
+ * des Absenders, damit eine Antwort direkt beim Interessenten landet — der
+ * Absender der Mail bleibt aber unsere eigene, verifizierte Adresse.
+ */
+export async function sendContactRequest({
+  name,
+  company,
+  email,
+  phone,
+  message,
+}: {
+  name: string;
+  company: string;
+  email: string;
+  phone: string;
+  message: string;
+}) {
+  if (!resend) {
+    console.warn("[email] RESEND_API_KEY not set — skipping sendContactRequest");
+    return { ok: false as const, error: "Der Nachrichtenversand ist gerade nicht verfügbar." };
+  }
+
+  const escape = (value: string) =>
+    value
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+
+  const rows: Array<[string, string]> = [
+    ["Name", name],
+    ["Unternehmen", company],
+    ["E-Mail", email],
+    ["Telefon", phone || "—"],
+  ];
+
+  const result = await resend.emails.send({
+    from: FROM_ADDRESS,
+    to: ADMIN_EMAIL,
+    replyTo: email,
+    subject: `Kontaktanfrage von ${name} (${company})`,
+    html: `
+      <div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#080c14;color:#f0f0f0;padding:32px;border-radius:12px;">
+        <h1 style="font-size:18px;font-weight:700;margin:0 0 20px;">Neue Kontaktanfrage</h1>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+          ${rows
+            .map(
+              ([label, value]) =>
+                `<tr><td style="color:#888;font-size:13px;padding:6px 12px 6px 0;">${label}</td><td style="color:#f0f0f0;font-size:14px;">${escape(value)}</td></tr>`
+            )
+            .join("")}
+        </table>
+        ${
+          message
+            ? `<div style="background:#0c1520;border:1px solid #1a2840;border-radius:8px;padding:16px;"><p style="color:#888;font-size:12px;margin:0 0 8px;">Nachricht</p><p style="color:#f0f0f0;font-size:14px;line-height:1.6;margin:0;white-space:pre-wrap;">${escape(message)}</p></div>`
+            : `<p style="color:#666;font-size:13px;">Keine Nachricht hinterlassen.</p>`
+        }
+      </div>
+    `,
+  });
+
+  if (result.error) {
+    console.error("[email] sendContactRequest fehlgeschlagen:", result.error);
+    return { ok: false as const, error: "Die Nachricht konnte nicht gesendet werden." };
+  }
+  return { ok: true as const };
+}
+
 export async function sendPasswordResetEmail({
   toEmail,
   resetUrl,
