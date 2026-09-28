@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Container, Eyebrow, KeywordList, Rule } from "@/components/marketing/pieces";
 import { ClosingQuote } from "@/components/marketing/closing-quote";
+import { ADDRESS_LINES, COMPANY } from "@/lib/marketing/company";
 import { OkunRing } from "@/components/marketing/okun-ring";
 
 export const metadata: Metadata = {
@@ -50,45 +51,79 @@ export default function ImpressumPage() {
         <Container className="py-14 sm:py-16">
           <div className="max-w-2xl space-y-9">
             <Block title="Angaben gemäß § 5 TMG">
-              <p className="text-[#f4f8fd] font-semibold">OKUN SYSTEMS UG (haftungsbeschränkt)</p>
-              <p>Potsdamer Platz 1</p>
-              <p>10785 Berlin</p>
-              <p>Deutschland</p>
+              {ADDRESS_LINES.map((line, index) => (
+                <p key={line} className={index === 0 ? "text-[#f4f8fd] font-semibold" : undefined}>
+                  {line}
+                </p>
+              ))}
             </Block>
 
             <Block title="Vertreten durch">
-              <p className="text-[#f4f8fd] font-semibold">Felix Okun</p>
+              <p className="text-[#f4f8fd] font-semibold">{COMPANY.managingDirector}</p>
               <p>Geschäftsführer</p>
             </Block>
 
             <Block title="Kontakt">
               <p>
-                E-Mail:{" "}
+                Telefon:{" "}
                 <a
-                  href="mailto:kontakt@okun-systems.com"
+                  href={`tel:${COMPANY.phoneHref}`}
                   className="text-[#38a9f5] hover:underline underline-offset-4"
                 >
-                  kontakt@okun-systems.com
+                  {COMPANY.phone}
+                </a>
+              </p>
+              <p>
+                E-Mail:{" "}
+                <a
+                  href={`mailto:${COMPANY.email}`}
+                  className="text-[#38a9f5] hover:underline underline-offset-4"
+                >
+                  {COMPANY.email}
                 </a>
               </p>
             </Block>
 
             <Block title="Handelsregister">
-              <p>Eintragung im Handelsregister</p>
-              <p>Registergericht: [wird nachgereicht]</p>
-              <p>Registernummer: [wird nachgereicht]</p>
+              {COMPANY.registerCourt || COMPANY.registerNumber ? (
+                <>
+                  <p>Eintragung im Handelsregister</p>
+                  <p>Registergericht: {COMPANY.registerCourt}</p>
+                  <p>Registernummer: {COMPANY.registerNumber}</p>
+                </>
+              ) : (
+                // Solange die Eintragung läuft, steht das hier — und nicht eine
+                // Zeile, die so aussieht, als hätte jemand sie vergessen.
+                <p>Die Eintragung im Handelsregister ist beantragt.</p>
+              )}
             </Block>
 
             <Block title="Umsatzsteuer">
-              <p>Umsatzsteuer-Identifikationsnummer gemäß § 27 a UStG:</p>
-              <p>[wird nachgereicht]</p>
+              {COMPANY.vatId ? (
+                <>
+                  <p>Umsatzsteuer-Identifikationsnummer gemäß § 27 a UStG:</p>
+                  <p>{COMPANY.vatId}</p>
+                </>
+              ) : (
+                <p>
+                  Eine Umsatzsteuer-Identifikationsnummer gemäß § 27 a UStG liegt derzeit
+                  nicht vor.
+                </p>
+              )}
             </Block>
 
             <Block title="Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV">
-              <p className="text-[#f4f8fd] font-semibold">Felix Okun</p>
-              <p>Potsdamer Platz 1</p>
-              <p>10785 Berlin</p>
-              <p>Deutschland</p>
+              <p className="text-[#f4f8fd] font-semibold">{COMPANY.managingDirector}</p>
+              {ADDRESS_LINES.slice(1).map((line) => (
+                <p key={line}>{line}</p>
+              ))}
+            </Block>
+
+            <Block title="Verbraucherstreitbeilegung">
+              <p>
+                Wir sind nicht bereit oder verpflichtet, an Streitbeilegungsverfahren vor einer
+                Verbraucherschlichtungsstelle teilzunehmen.
+              </p>
             </Block>
 
             <p className="text-[#8fa3bc] text-sm leading-relaxed pt-2">

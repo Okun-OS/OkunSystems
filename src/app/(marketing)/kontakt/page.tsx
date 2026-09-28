@@ -13,6 +13,7 @@ import {
 } from "@/components/marketing/pieces";
 import { ClosingQuote } from "@/components/marketing/closing-quote";
 import { ContactForm } from "@/components/marketing/contact-form";
+import { ADDRESS_LINES, COMPANY } from "@/lib/marketing/company";
 
 export const metadata: Metadata = {
   title: "Kontakt",
@@ -20,15 +21,7 @@ export const metadata: Metadata = {
     "Sprechen Sie mit uns über Ihre Prozesse: unverbindliches Erstgespräch, individuelle Lösungsansätze, persönlich und auf Augenhöhe.",
 };
 
-const ADDRESS = {
-  company: "OKUN SYSTEMS UG (haftungsbeschränkt)",
-  street: "Potsdamer Platz 1",
-  city: "10785 Berlin",
-  country: "Deutschland",
-  phone: "030 13883330",
-  phoneHref: "+493013883330",
-  email: "kontakt@okun-systems.com",
-};
+
 
 export default function KontaktPage() {
   return (
@@ -91,7 +84,7 @@ export default function KontaktPage() {
               </ul>
 
               <div className="mt-auto pt-7 space-y-2.5">
-                <PrimaryButton href={`mailto:${ADDRESS.email}?subject=Terminanfrage`} className="w-full">
+                <PrimaryButton href={`mailto:${COMPANY.email}?subject=Terminanfrage`} className="w-full">
                   Termin anfragen
                 </PrimaryButton>
                 <p className="text-[#6f8299] text-xs">
@@ -129,13 +122,11 @@ export default function KontaktPage() {
                   <div className="flex gap-3">
                     <MapPin size={18} strokeWidth={1.5} className="text-[#38a9f5] mt-0.5 flex-shrink-0" />
                     <address className="not-italic text-[#c2d0e2] text-sm leading-relaxed">
-                      {ADDRESS.company}
-                      <br />
-                      {ADDRESS.street}
-                      <br />
-                      {ADDRESS.city}
-                      <br />
-                      {ADDRESS.country}
+                      {ADDRESS_LINES.map((line) => (
+                        <span key={line} className="block">
+                          {line}
+                        </span>
+                      ))}
                     </address>
                   </div>
 
@@ -144,10 +135,10 @@ export default function KontaktPage() {
                     <div>
                       <p className="text-[#c2d0e2] text-sm">Telefon</p>
                       <a
-                        href={`tel:${ADDRESS.phoneHref}`}
+                        href={`tel:${COMPANY.phoneHref}`}
                         className="text-[#38a9f5] text-sm underline underline-offset-4 hover:text-[#7cc6fa]"
                       >
-                        {ADDRESS.phone}
+                        {COMPANY.phone}
                       </a>
                     </div>
                   </div>
@@ -155,10 +146,10 @@ export default function KontaktPage() {
                   <div className="flex gap-3">
                     <Mail size={18} strokeWidth={1.5} className="text-[#38a9f5] mt-0.5 flex-shrink-0" />
                     <a
-                      href={`mailto:${ADDRESS.email}`}
+                      href={`mailto:${COMPANY.email}`}
                       className="text-[#c2d0e2] text-sm hover:text-[#f4f8fd]"
                     >
-                      {ADDRESS.email}
+                      {COMPANY.email}
                     </a>
                   </div>
                 </div>
