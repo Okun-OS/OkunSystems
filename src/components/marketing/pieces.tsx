@@ -167,6 +167,17 @@ export function Backdrop({
   );
 }
 
+/**
+ * Der Verlauf über einem Kopfbild.
+ *
+ * Zwei Lagen: eine von links, die dem Text dunklen Grund gibt, und eine nach
+ * unten, die den Übergang zum nächsten Abschnitt schließt. Ohne die erste
+ * verschwindet die Schrift auf hellen Fotos — Himmel, Glasfassaden, Mittag.
+ */
+export const HERO_OVERLAY =
+  "linear-gradient(90deg,rgba(6,10,17,0.95) 0%,rgba(6,10,17,0.88) 34%,rgba(6,10,17,0.55) 68%,rgba(6,10,17,0.4) 100%)," +
+  "linear-gradient(180deg,rgba(6,10,17,0.45) 0%,rgba(6,10,17,0.3) 50%,rgba(6,10,17,0.96) 100%)";
+
 /** Der Seitenrahmen — überall dieselbe Breite. */
 export function Container({
   children,

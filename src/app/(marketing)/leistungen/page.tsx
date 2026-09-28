@@ -15,6 +15,7 @@ import {
   Card,
   Container,
   Eyebrow,
+  HERO_OVERLAY,
   Headline,
   KeywordList,
   Rule,
@@ -66,7 +67,7 @@ export default function LeistungenPage() {
       {/* ── Kopfbereich ──────────────────────────────────────────────────── */}
       <Backdrop
         src="/marketing/leistungen-gebaeude.jpg"
-        overlay="linear-gradient(180deg,rgba(6,10,17,0.62) 0%,rgba(6,10,17,0.72) 50%,rgba(6,10,17,0.97) 100%)"
+        overlay={HERO_OVERLAY}
       >
         <Container className="relative py-16 sm:py-20">
           <div className="absolute right-5 top-8 hidden sm:block sm:right-8">

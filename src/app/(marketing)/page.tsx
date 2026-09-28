@@ -4,6 +4,7 @@ import {
   Card,
   Container,
   Eyebrow,
+  HERO_OVERLAY,
   Headline,
   KeywordList,
   PrimaryButton,
@@ -19,7 +20,7 @@ export default function HomePage() {
       {/* ── Kopfbereich ──────────────────────────────────────────────────── */}
       <Backdrop
         src="/marketing/hero-berge.jpg"
-        overlay="linear-gradient(180deg,rgba(6,10,17,0.72) 0%,rgba(6,10,17,0.78) 45%,rgba(6,10,17,0.97) 100%)"
+        overlay={HERO_OVERLAY}
       >
         <Container className="relative py-16 sm:py-20 lg:py-24">
           <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)] lg:items-center">
@@ -128,11 +129,9 @@ export default function HomePage() {
           <Backdrop
             src="/marketing/platine.jpg"
             className="min-h-[280px] lg:min-h-[420px]"
-            overlay="linear-gradient(90deg,rgba(6,10,17,0.55) 0%,rgba(6,10,17,0.35) 60%,rgba(6,10,17,0.9) 100%)"
+            overlay="linear-gradient(90deg,rgba(6,10,17,0.25) 0%,rgba(6,10,17,0.15) 55%,rgba(6,10,17,0.75) 100%)"
           >
-            <div className="h-full min-h-[280px] lg:min-h-[420px] flex items-center justify-center">
-              <OkunRing className="w-[160px] opacity-70 lg:w-[200px]" />
-            </div>
+            <div className="h-full min-h-[280px] lg:min-h-[420px]" />
           </Backdrop>
 
           <div className="bg-[#070c15] flex items-center">

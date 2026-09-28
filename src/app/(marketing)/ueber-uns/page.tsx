@@ -6,6 +6,7 @@ import {
   Card,
   Container,
   Eyebrow,
+  HERO_OVERLAY,
   Headline,
   KeywordList,
   Rule,
@@ -24,7 +25,7 @@ export default function UeberUnsPage() {
       {/* ── Kopfbereich ──────────────────────────────────────────────────── */}
       <Backdrop
         src="/marketing/ueber-uns-hero.jpg"
-        overlay="linear-gradient(180deg,rgba(6,10,17,0.55) 0%,rgba(6,10,17,0.7) 55%,rgba(6,10,17,0.97) 100%)"
+        overlay={HERO_OVERLAY}
       >
         <Container className="relative py-16 sm:py-20">
           <div className="absolute right-5 top-8 hidden sm:block sm:right-8">
@@ -79,18 +80,15 @@ export default function UeberUnsPage() {
               </div>
             </div>
 
-            {/* Porträt */}
+            {/* Porträt — Namenszug und Funktion trägt das Bild selbst. */}
             <div className="max-w-[280px] w-full">
               <Backdrop
                 src="/marketing/felix-okun.jpg"
                 alt="Felix Okun, Geschäftsführer von OKUN Systems"
-                className="rounded-xl border border-[#16304f] aspect-[3/4]"
-                overlay="linear-gradient(180deg,rgba(6,10,17,0) 55%,rgba(6,10,17,0.85) 100%)"
+                className="rounded-xl border border-[#16304f] aspect-square"
+                overlay="linear-gradient(180deg,rgba(6,10,17,0) 70%,rgba(6,10,17,0.25) 100%)"
               >
-                <div className="flex h-full min-h-[320px] flex-col justify-end p-4">
-                  <p className="text-[#f4f8fd] text-[22px] italic leading-tight">Felix Okun</p>
-                  <p className="text-[#9fb2c9] text-xs mt-1">Geschäftsführer · OKUN Systems</p>
-                </div>
+                <div className="aspect-square" />
               </Backdrop>
             </div>
 

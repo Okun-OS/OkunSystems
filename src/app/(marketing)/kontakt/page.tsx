@@ -4,6 +4,7 @@ import {
   Backdrop,
   Container,
   Eyebrow,
+  HERO_OVERLAY,
   Headline,
   KeywordList,
   PrimaryButton,
@@ -35,7 +36,7 @@ export default function KontaktPage() {
       {/* ── Kopfbereich ──────────────────────────────────────────────────── */}
       <Backdrop
         src="/marketing/kontakt-hero.jpg"
-        overlay="linear-gradient(180deg,rgba(6,10,17,0.55) 0%,rgba(6,10,17,0.72) 55%,rgba(6,10,17,0.97) 100%)"
+        overlay={HERO_OVERLAY}
       >
         <Container className="relative py-16 sm:py-20">
           <div className="absolute right-5 top-8 hidden sm:block sm:right-8">
@@ -165,15 +166,30 @@ export default function KontaktPage() {
                 <Rule />
               </div>
 
-              <div className="min-h-[280px] lg:min-h-[340px]">
-                <iframe
-                  title="Standort von OKUN Systems am Potsdamer Platz 1, Berlin"
-                  src="https://www.openstreetmap.org/export/embed.html?bbox=13.370%2C52.505%2C13.382%2C52.513&layer=mapnik&marker=52.5096%2C13.3760"
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                  className="h-full min-h-[280px] w-full border-0 lg:min-h-[340px]"
+              {/* Bewusst ein Bild statt eines eingebetteten Kartendienstes:
+                  Ein fremder Rahmen lädt beim Aufruf Daten des Besuchers zu
+                  einem Dritten, bevor er überhaupt etwas angeklickt hat. Wer
+                  die Route will, klickt — und weiß dann, wohin er geht. */}
+              <a
+                href="https://www.google.com/maps/search/?api=1&query=Potsdamer+Platz+1%2C+10785+Berlin"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group relative block min-h-[280px] lg:min-h-[340px]"
+                aria-label="Standort am Potsdamer Platz 1 in Berlin bei Google Maps öffnen"
+              >
+                <span
+                  aria-hidden
+                  className="absolute inset-0 bg-cover bg-center"
+                  style={{ backgroundImage: "url(/marketing/karte.jpg)" }}
                 />
-              </div>
+                <span
+                  aria-hidden
+                  className="absolute inset-0 bg-[rgba(6,10,17,0.15)] transition-colors group-hover:bg-[rgba(6,10,17,0.05)]"
+                />
+                <span className="absolute bottom-3 right-3 rounded-lg border border-[#2f7fd4]/50 bg-[rgba(9,20,38,0.9)] px-3 py-1.5 text-xs text-[#c2d0e2]">
+                  Route öffnen →
+                </span>
+              </a>
             </div>
           </div>
         </Container>
