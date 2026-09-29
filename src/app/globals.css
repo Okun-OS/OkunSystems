@@ -73,13 +73,14 @@ body {
 /*
  * Der Lichtpunkt auf der Bildmarke.
  *
- * `stroke-dashoffset` von 100 auf 0 schiebt den kurzen Strich in Richtung
- * der Bahn, und die Bahn verläuft im Uhrzeigersinn — oben wandert das Licht
- * also nach rechts. Die Bahn ist über `pathLength` auf 100 normiert.
+ * Die Bahn der Vorlage beginnt links und läuft gegen den Uhrzeigersinn.
+ * Ein wachsender `stroke-dashoffset` schiebt den kurzen Strich entgegen
+ * dieser Richtung, also im Uhrzeigersinn — oben wandert das Licht damit nach
+ * rechts. Die Bahn ist über `pathLength` auf 100 normiert.
  */
 @keyframes okun-ring-lauf {
-  from { stroke-dashoffset: 100; }
-  to   { stroke-dashoffset: 0; }
+  from { stroke-dashoffset: 0; }
+  to   { stroke-dashoffset: 100; }
 }
 
 .okun-ring-lauf {

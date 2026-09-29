@@ -1,15 +1,13 @@
 /**
- * Die Bildmarke aus dem Logo, als SVG nachgebaut.
+ * Die Bildmarke aus dem Logo.
  *
- * Alle Maße stammen aus `public/okun-icon.png` und wurden dort ausgemessen:
- * Mittelpunkt (642|611,5), Radius 218, Strichstärke 23, die Lücke von 138°
- * bis 212°, der Punkt bei (658,5|611,5) mit Radius 26,5, der Balken auf
- * derselben Höhe ab x = 320. Das Koordinatensystem ist deshalb bewusst das
- * der Vorlage — so bleibt jede Zahl hier nachprüfbar.
+ * Der Inhalt ist die freigestellte Vorlage `public/marketing/okun-bildmarke.svg`
+ * — unverändert übernommen, nur der Ausschnitt ist enger gefasst und der
+ * umlaufende Lichtpunkt kommt hinzu. Eingebettet statt über `<img>` geladen,
+ * weil der Lichtpunkt sonst nicht auf dieselbe Bahn gelegt werden kann.
  *
- * Als SVG und nicht als Bilddatei, weil die Vorlage einen schwarzen Grund
- * trägt, der über dem Kopffoto als Kasten stünde. Außerdem bleibt sie in
- * jeder Größe scharf und trägt die Markenfarbe, statt sie zu treffen.
+ * Die Bezeichner tragen ein Präfix: eine zweite Marke auf derselben Seite
+ * würde sonst dieselben Verläufe ansprechen wie die erste.
  */
 export function OkunRing({
   className = "",
@@ -21,89 +19,108 @@ export function OkunRing({
 }) {
   return (
     <svg
-      viewBox="290 350 610 525"
+      viewBox="250 355 650 515"
       className={className}
       fill="none"
       aria-hidden
       focusable="false"
     >
       <defs>
-        {/* Von links tiefblau nach rechts hell — wie in der Vorlage. */}
         <linearGradient
-          id="okun-ring-stroke"
+          id="okun-mark-ring"
           gradientUnits="userSpaceOnUse"
-          x1="412"
-          y1="0"
-          x2="872"
-          y2="0"
+          x1="415"
+          y1="612"
+          x2="875"
+          y2="612"
         >
-          <stop offset="0%" stopColor="#1c79ff" />
-          <stop offset="18%" stopColor="#3c97ff" />
-          <stop offset="40%" stopColor="#a5e4fd" />
-          <stop offset="62%" stopColor="#bcf7fe" />
-          <stop offset="100%" stopColor="#c9fcfe" />
+          <stop offset="0%" stopColor="#0B67FF" />
+          <stop offset="38%" stopColor="#4AAEFF" />
+          <stop offset="70%" stopColor="#A9F2FF" />
+          <stop offset="100%" stopColor="#C8FCFF" />
         </linearGradient>
 
-        {/* Der Balken läuft links aus, statt hart abzubrechen. */}
+        {/* Der Balken läuft links aus — wie in der Vorlage. */}
         <linearGradient
-          id="okun-ring-bar"
+          id="okun-mark-line"
           gradientUnits="userSpaceOnUse"
-          x1="300"
-          y1="0"
-          x2="660"
-          y2="0"
+          x1="275"
+          y1="612"
+          x2="665"
+          y2="612"
         >
-          <stop offset="0%" stopColor="#1c79ff" stopOpacity="0" />
-          <stop offset="12%" stopColor="#2483ff" />
-          <stop offset="45%" stopColor="#4ea4fe" />
-          <stop offset="65%" stopColor="#a8e7fd" />
-          <stop offset="100%" stopColor="#c4fafe" />
+          <stop offset="0%" stopColor="#061833" stopOpacity="0" />
+          <stop offset="14%" stopColor="#096CFF" stopOpacity="0.92" />
+          <stop offset="38%" stopColor="#20A0FF" />
+          <stop offset="68%" stopColor="#A7F2FF" />
+          <stop offset="100%" stopColor="#C8FCFF" />
         </linearGradient>
 
-        <filter id="okun-ring-glow" x="-30%" y="-30%" width="160%" height="160%">
-          <feGaussianBlur stdDeviation="7" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
+        <radialGradient id="okun-mark-node" cx="35%" cy="35%" r="75%">
+          <stop offset="0%" stopColor="#D7FFFF" />
+          <stop offset="100%" stopColor="#A9F4FF" />
+        </radialGradient>
+
+        <filter
+          id="okun-mark-glow"
+          x="-35%"
+          y="-35%"
+          width="170%"
+          height="170%"
+          colorInterpolationFilters="sRGB"
+        >
+          <feGaussianBlur stdDeviation="9" />
         </filter>
 
-        <filter id="okun-ring-spark" x="-40%" y="-40%" width="180%" height="180%">
-          <feGaussianBlur stdDeviation="9" />
+        <filter
+          id="okun-mark-spark"
+          x="-40%"
+          y="-40%"
+          width="180%"
+          height="180%"
+          colorInterpolationFilters="sRGB"
+        >
+          <feGaussianBlur stdDeviation="11" />
         </filter>
       </defs>
 
-      <g filter="url(#okun-ring-glow)">
-        {/* Der Ring ist links offen, dort wo der Balken hineinläuft. */}
+      {/* Schein */}
+      <g opacity="0.38" filter="url(#okun-mark-glow)" fill="none" strokeLinecap="butt">
         <path
-          d="M 457.13 495.98 A 218 218 0 1 1 479.99 757.37"
-          stroke="url(#okun-ring-stroke)"
-          strokeWidth="23"
-          strokeLinecap="round"
+          d="M 425.34 650.20 A 220 220 0 0 0 642 832 A 220 220 0 0 0 862 612 A 220 220 0 0 0 642 392 A 220 220 0 0 0 425.34 573.80"
+          stroke="url(#okun-mark-ring)"
+          strokeWidth="24"
         />
+        <path d="M 275 612 L 652 612" stroke="url(#okun-mark-line)" strokeWidth="25" />
+        <circle cx="652" cy="612" r="31" fill="#B8F8FF" stroke="none" />
+      </g>
+
+      {/* Marke */}
+      <g fill="none" strokeLinecap="butt">
         <path
-          d="M 320 611.5 H 658.5"
-          stroke="url(#okun-ring-bar)"
-          strokeWidth="23"
+          d="M 425.34 650.20 A 220 220 0 0 0 642 832 A 220 220 0 0 0 862 612 A 220 220 0 0 0 642 392 A 220 220 0 0 0 425.34 573.80"
+          stroke="url(#okun-mark-ring)"
+          strokeWidth="22.5"
         />
-        <circle cx="658.5" cy="611.5" r="26.5" fill="#c9fcfe" />
+        <path d="M 275 612 L 652 612" stroke="url(#okun-mark-line)" strokeWidth="23" />
+        <circle cx="652" cy="612" r="30.5" fill="url(#okun-mark-node)" />
       </g>
 
       {/*
-       * Der Lichtpunkt läuft auf derselben Bahn wie der Ring, oben also nach
-       * rechts. `pathLength` normiert die Bahn auf 100 Einheiten, damit der
-       * Strich im Stylesheet ohne die echte Bogenlänge auskommt.
+       * Der Lichtpunkt läuft auf der Bahn des Rings. `pathLength` normiert sie
+       * auf 100 Einheiten, damit das Stylesheet ohne die echte Bogenlänge
+       * auskommt.
        */}
       {animated && (
         <path
           className="okun-ring-lauf"
-          d="M 457.13 495.98 A 218 218 0 1 1 479.99 757.37"
-          stroke="#eafdff"
-          strokeWidth="23"
+          d="M 425.34 650.20 A 220 220 0 0 0 642 832 A 220 220 0 0 0 862 612 A 220 220 0 0 0 642 392 A 220 220 0 0 0 425.34 573.80"
+          stroke="#EAFDFF"
+          strokeWidth="22.5"
           strokeLinecap="round"
-          filter="url(#okun-ring-spark)"
+          filter="url(#okun-mark-spark)"
           pathLength={100}
-          strokeDasharray="7 93"
+          strokeDasharray="6 94"
         />
       )}
     </svg>
