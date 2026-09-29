@@ -23,7 +23,36 @@ const PUBLIC_PAGES = new Set([
   "/datenschutz",
 ]);
 
+/**
+ * Website und Portal leben auf der nackten Domain.
+ *
+ * `www` zeigt auf dieselbe Anwendung. Ohne Weiterleitung entstehen zwei
+ * getrennte Anmeldungen: das Sitzungs-Cookie wird ohne `Domain`-Angabe
+ * gesetzt und gilt damit nur für genau den Hostnamen, unter dem man sich
+ * angemeldet hat. Wer sich auf `www.` anmeldet und später die nackte Domain
+ * aufruft, steht dort vor dem Anmeldeformular — und umgekehrt.
+ *
+ * Hinter dem Railway-Proxy steht der vom Besucher aufgerufene Hostname in
+ * `x-forwarded-host`; `host` ist nur der Rückfall für den lokalen Betrieb.
+ * Ein Port bleibt erhalten, damit die Entwicklungsumgebung nicht bricht.
+ */
+function apexUrl(req: NextRequest): URL | null {
+  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
+  if (!host?.toLowerCase().startsWith("www.")) return null;
+
+  const { nextUrl } = req;
+  const protocol =
+    req.headers.get("x-forwarded-proto") ?? nextUrl.protocol.replace(":", "");
+
+  return new URL(
+    `${protocol}://${host.slice(4)}${nextUrl.pathname}${nextUrl.search}`
+  );
+}
+
 export async function proxy(req: NextRequest) {
+  const apex = apexUrl(req);
+  if (apex) return NextResponse.redirect(apex, 308);
+
   const { nextUrl } = req;
   const isPublicPage = PUBLIC_PAGES.has(nextUrl.pathname);
   const isAuthPage =
