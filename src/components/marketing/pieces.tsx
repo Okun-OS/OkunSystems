@@ -194,6 +194,20 @@ export const HERO_OVERLAY =
   "linear-gradient(90deg,rgba(6,10,17,0.95) 0%,rgba(6,10,17,0.88) 34%,rgba(6,10,17,0.55) 68%,rgba(6,10,17,0.4) 100%)," +
   "linear-gradient(180deg,rgba(6,10,17,0.45) 0%,rgba(6,10,17,0.3) 50%,rgba(6,10,17,0.96) 100%)";
 
+/**
+ * Derselbe Verlauf, aber viel zurückhaltender — für dunkle Kopffotos.
+ *
+ * Wie viel Deckung die Schrift braucht, hängt am Foto. Über der hellen
+ * Glasfassade und dem Mittagslicht am Potsdamer Platz braucht sie die volle
+ * Stärke, über den Nachtbergen nicht: dort war die linke Seite unter
+ * `HERO_OVERLAY` praktisch schwarz, und vom Bild blieb nur der rechte Rand
+ * übrig. Ein gemeinsamer Wert für alle vier Köpfe hieße also: entweder dort
+ * verschwindet die Schrift oder hier das Foto.
+ */
+export const HERO_OVERLAY_SOFT =
+  "linear-gradient(90deg,rgba(6,10,17,0.6) 0%,rgba(6,10,17,0.5) 30%,rgba(6,10,17,0.26) 62%,rgba(6,10,17,0.12) 100%)," +
+  "linear-gradient(180deg,rgba(6,10,17,0.3) 0%,rgba(6,10,17,0.18) 45%,rgba(6,10,17,0.94) 100%)";
+
 /** Der Seitenrahmen — überall dieselbe Breite. */
 export function Container({
   children,

@@ -69,3 +69,27 @@ body {
 .animate-pulse-accent {
   animation: pulse-accent 2s ease-in-out infinite;
 }
+
+/*
+ * Der Lichtpunkt auf der Bildmarke.
+ *
+ * `stroke-dashoffset` von 100 auf 0 schiebt den kurzen Strich in Richtung
+ * der Bahn, und die Bahn verläuft im Uhrzeigersinn — oben wandert das Licht
+ * also nach rechts. Die Bahn ist über `pathLength` auf 100 normiert.
+ */
+@keyframes okun-ring-lauf {
+  from { stroke-dashoffset: 100; }
+  to   { stroke-dashoffset: 0; }
+}
+
+.okun-ring-lauf {
+  animation: okun-ring-lauf 6s linear infinite;
+}
+
+/* Wer Bewegung abbestellt hat, bekommt die ruhige Marke. */
+@media (prefers-reduced-motion: reduce) {
+  .okun-ring-lauf {
+    animation: none;
+    opacity: 0;
+  }
+}

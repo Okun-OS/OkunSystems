@@ -4,7 +4,7 @@ import {
   Card,
   Container,
   Eyebrow,
-  HERO_OVERLAY,
+  HERO_OVERLAY_SOFT,
   Headline,
   KeywordList,
   PrimaryButton,
@@ -21,7 +21,7 @@ export default function HomePage() {
       {/* ── Kopfbereich ──────────────────────────────────────────────────── */}
       <Backdrop
         src="/marketing/hero-berge.jpg"
-        overlay={HERO_OVERLAY}
+        overlay={HERO_OVERLAY_SOFT}
       >
         <Container className="relative py-16 sm:py-20 lg:py-24">
           <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)] lg:items-center">
@@ -67,11 +67,8 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="relative flex items-center justify-center lg:justify-end">
+            <div className="flex items-center justify-center lg:justify-end">
               <OkunRing className="w-[260px] sm:w-[340px] lg:w-[400px]" />
-              <div className="absolute right-0 top-4 hidden lg:block">
-                <KeywordList items={["Effizienter", "Intelligenter", "Nachhaltiger"]} />
-              </div>
             </div>
           </div>
         </Container>
