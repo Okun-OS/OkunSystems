@@ -27,6 +27,7 @@ export default async function ClientLayout({
           name: userRecord.name,
           email: userRecord.email,
           companyName: userRecord.company?.name,
+          plan: userRecord.company?.plan,
         }}
       />
       <main className="ml-[240px] min-h-screen flex flex-col">

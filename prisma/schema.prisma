@@ -388,6 +388,14 @@ model AnalysisSession {
   activeGroupWeights String    @default("{}")
   pendingReviewCount Int       @default(0)
   reportUrl          String?
+  /// Die erzeugten Berichtstexte als JSON.
+  ///
+  /// Bisher wurde nur die Adresse der PDF-Datei aufgehoben und die Texte nach
+  /// dem Rendern verworfen. Der Leitfaden für das Strategiegespräch soll aber
+  /// auf dem aufbauen, was der Kunde schwarz auf weiß bekommen hat — und aus
+  /// einer PDF-Datei liest sich das schlecht zurück.
+  reportTexts        String?
+  reportTextsAt      DateTime?
 
   companyId      String
   company        Company               @relation(fields: [companyId], references: [id])

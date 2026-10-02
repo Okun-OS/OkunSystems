@@ -72,7 +72,10 @@ function packageTypesOf(solution: SolutionInput): string[] {
  * Sitzungen aus der Zeit vor dieser Zuordnung — greift die gröbere Auswahl über
  * die Kategorie, damit alte Auswertungen nicht leer ausgehen.
  *
- * In beiden Fällen gilt: nur Lösungen, die es im gebuchten Paket gibt.
+ * Lösungen oberhalb des gebuchten Pakets werden **nicht** mehr entfernt,
+ * sondern mit `beyondPackage` versehen. Vorher fielen sie aus der Auswertung
+ * heraus — und mit ihnen genau die Vorschläge, die dem Kunden über sein Paket
+ * hinaus etwas bringen. Ob und wie sie erscheinen, entscheidet der Bericht.
  */
 export function matchSolutions(
   signals: SignalTotals,
@@ -81,39 +84,44 @@ export function matchSolutions(
   solutionRefs?: Map<string, number>
 ): SolutionRecommendation[] {
   const active = solutions.filter((sol) => sol.isActive);
-  const inPackage = (sol: SolutionInput) => {
-    const types = packageTypesOf(sol);
-    return !packageType || types.includes(packageType);
-  };
 
   const build = (
     sol: SolutionInput,
     signalScore: number,
     fromAnswers: boolean
-  ): SolutionRecommendation => ({
-    solutionId: sol.id,
-    externalId: sol.externalId,
-    name: sol.name,
-    category: sol.category,
-    description: sol.description,
-    packageTypes: packageTypesOf(sol),
-    signalScore,
-    fromAnswers,
-  });
+  ): SolutionRecommendation => {
+    const packageTypes = packageTypesOf(sol);
+    return {
+      solutionId: sol.id,
+      externalId: sol.externalId,
+      name: sol.name,
+      category: sol.category,
+      description: sol.description,
+      packageTypes,
+      signalScore,
+      fromAnswers,
+      // Ohne gebuchtes Paket gibt es kein "darüber hinaus".
+      beyondPackage: packageType !== null && !packageTypes.includes(packageType),
+    };
+  };
+
+  // Im Paket zuerst, darüber danach — sonst steht der Aufpreis oben.
+  const byRank = (a: SolutionRecommendation, b: SolutionRecommendation) =>
+    Number(a.beyondPackage) - Number(b.beyondPackage) ||
+    b.signalScore - a.signalScore ||
+    a.name.localeCompare(b.name, "de");
 
   if (solutionRefs && solutionRefs.size > 0) {
     return active
-      .filter(inPackage)
       .map((sol) => ({ sol, score: solutionRefs.get(sol.externalId) ?? 0 }))
       .filter((entry) => entry.score > 0)
       .map((entry) => build(entry.sol, entry.score, true))
-      .sort((a, b) => b.signalScore - a.signalScore || a.name.localeCompare(b.name, "de"));
+      .sort(byRank);
   }
 
   return active
-    .filter(inPackage)
     .map((sol) => ({ sol, score: signals[sol.category as keyof SignalTotals] ?? 0 }))
     .filter((entry) => entry.score > 0)
     .map((entry) => build(entry.sol, entry.score, false))
-    .sort((a, b) => b.signalScore - a.signalScore || a.name.localeCompare(b.name, "de"));
+    .sort(byRank);
 }

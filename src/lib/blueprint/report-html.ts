@@ -147,8 +147,15 @@ function recommendationPage(data: BlueprintReportData): string {
     phases.length > 0
       ? phases
           .map(
-            (phase) => `<div class="sol-phase">
+            (phase) => `<div class="sol-phase${phase.beyondPackage ? " sol-phase-beyond" : ""}">
       <div class="sol-phase-label">${phase.phaseLabel}</div>
+      ${
+        phase.beyondPackage
+          ? `<p class="sol-beyond-note">Diese Ansätze liegen außerhalb Ihres gebuchten Pakets.
+             Wir führen sie auf, weil Ihre Antworten darauf hindeuten — nicht, weil Sie sie
+             brauchen, um loszulegen.</p>`
+          : ""
+      }
       ${phase.solutions.map(solutionCard).join("\n")}
     </div>`
           )
@@ -665,6 +672,11 @@ body {
   font-size: 7.5pt; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase;
   color: #00b8ff; margin-bottom: 8px;
 }
+/* Außerhalb des gebuchten Pakets: abgesetzt, damit niemand es für
+   Vereinbartes hält — aber sichtbar, weil es der eigentliche Hinweis ist. */
+.sol-phase-beyond { border-left: 2px solid #cbd5e1; padding-left: 12px; }
+.sol-phase-beyond .sol-phase-label { color: #64748b; }
+.sol-beyond-note { font-size: 8pt; color: #64748b; line-height: 1.55; margin: 0 0 8px; }
 .sol-card { background: #f8fafc; border-radius: 4px; padding: 9px 12px; margin-bottom: 7px; }
 .sol-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
 .sol-name { font-size: 9.5pt; font-weight: 700; color: #0d1117; }

@@ -94,10 +94,18 @@ export async function POST(req: NextRequest) {
     const key = buildReportKey(sessionId);
     const reportUrl = await uploadPdfToR2(pdfBuffer, key);
 
-    // Step 6: Save URL on session
+    // Step 6: Save URL and the generated texts on the session.
+    //
+    // Die Texte wurden bisher nach dem Rendern verworfen. Der Leitfaden für
+    // das Strategiegespräch baut auf dem auf, was der Kunde tatsächlich
+    // bekommen hat — und aus einer PDF-Datei liest sich das schlecht zurück.
     await db.analysisSession.update({
       where: { id: sessionId },
-      data: { reportUrl },
+      data: {
+        reportUrl,
+        reportTexts: JSON.stringify(texts),
+        reportTextsAt: new Date(),
+      },
     });
 
     // Step 6b: Save PDF as internal Document record (non-fatal)

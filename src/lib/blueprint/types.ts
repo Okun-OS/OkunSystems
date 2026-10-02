@@ -36,6 +36,8 @@ export interface AnswerOptionInput {
 export interface QuestionInput {
   id: string;
   externalId: string;
+  /** Der Fragetext, wie ihn der Kunde gelesen hat. */
+  questionDe: string;
   moduleNumber: number | null;
   groupCode: string | null;
   questionType: string;
@@ -133,6 +135,15 @@ export interface SolutionRecommendation {
    * daraus, dass irgendwo in ihrer Kategorie ein Signal lag.
    */
   fromAnswers: boolean;
+  /**
+   * true, wenn es die Lösung im gebuchten Paket nicht gibt.
+   *
+   * Sie wird trotzdem geführt. Vorher fiel sie aus der Auswertung heraus —
+   * und damit genau das, was dem Kunden über sein Paket hinaus etwas
+   * bringen würde. Was er davon zu sehen bekommt, entscheidet der Bericht,
+   * nicht die Auswertung.
+   */
+  beyondPackage: boolean;
 }
 
 export type PackageTier = "foundation" | "operations" | "custom";
@@ -141,4 +152,6 @@ export interface RoadmapPhase {
   phaseLabel: string;
   packageTier: PackageTier;
   solutions: SolutionRecommendation[];
+  /** true für die Phase oberhalb des gebuchten Pakets. */
+  beyondPackage: boolean;
 }

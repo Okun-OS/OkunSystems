@@ -54,6 +54,35 @@ export interface CompanyContextData {
   entries: Array<{ role: string; content: string }>;
 }
 
+/**
+ * Eine einzelne beantwortete Frage im Wortlaut.
+ *
+ * Der Bericht selbst arbeitet mit Kennzahlen — Modulwerte, Signale, Stunden.
+ * Für den Leitfaden des Strategiegesprächs reicht das nicht: Was ein Betrieb
+ * wirklich braucht, steht oft in einem Freitext wie „branchenspezifische
+ * Sonderlogik", und der verschwand bisher hinter einer Punktzahl.
+ */
+export interface AnsweredQuestion {
+  externalId: string;
+  moduleNumber: number | null;
+  question: string;
+  /** Die angekreuzten Antworten im Wortlaut. */
+  selected: string[];
+  /** Was der Kunde selbst dazugeschrieben hat. */
+  freeText: string | null;
+}
+
+/** Stammdaten, soweit sie für Anrede und Einordnung gebraucht werden. */
+export interface CompanyProfile {
+  name: string;
+  legalForm: string | null;
+  industry: string | null;
+  city: string | null;
+  website: string | null;
+  contactPerson: string | null;
+  contactPosition: string | null;
+}
+
 export interface BlueprintReportData {
   sessionId: string;
   company: {
@@ -77,6 +106,10 @@ export interface BlueprintReportData {
   pillar3: Pillar3Result | null;
   /** Modul-5-Gruppen, die den Betrieb nicht betreffen. */
   skippedGroups: string[];
+  /** Die beantworteten Fragen im Wortlaut, samt Freitexten. */
+  answers: AnsweredQuestion[];
+  /** Stammdaten des Unternehmens. */
+  profile: CompanyProfile;
 }
 
 const MODULE_LABELS: Record<number, string> = {
@@ -95,7 +128,19 @@ export async function assembleBlueprintReport(
 ): Promise<BlueprintReportData> {
   const analysisSession = await db.analysisSession.findUnique({
     where: { id: sessionId },
-    include: { company: { select: { name: true, industry: true } } },
+    include: {
+      company: {
+        select: {
+          name: true,
+          industry: true,
+          legalForm: true,
+          city: true,
+          website: true,
+          contactPerson: true,
+          contactPosition: true,
+        },
+      },
+    },
   });
 
   if (!analysisSession) throw new Error(`Session not found: ${sessionId}`);
@@ -224,12 +269,48 @@ export async function assembleBlueprintReport(
     .filter((code) => !askedGroups.has(code))
     .sort();
 
+  // Die Antworten im Wortlaut. Die Zuordnung läuft über die Datenbank-Kennung
+  // der Option, weil die Auswertung mit den externen Kennungen arbeitet und
+  // beides nebeneinander existiert.
+  const questionById = new Map(questions.map((q) => [q.id, q]));
+  const answerByQuestionId = new Map(
+    sessionAnswers.map((a) => [a.questionId, a])
+  );
+
+  const answers: AnsweredQuestion[] = evaluated
+    .filter((q) => q.isActive && q.status === "ANSWERED")
+    .sort((a, b) => a.order - b.order)
+    .map((evaluatedQuestion) => {
+      const question = questionById.get(evaluatedQuestion.questionId);
+      const chosen = new Set(evaluatedQuestion.selectedOptionExternalIds);
+      return {
+        externalId: evaluatedQuestion.externalId,
+        moduleNumber: evaluatedQuestion.moduleNumber,
+        question: question?.questionDe ?? evaluatedQuestion.externalId,
+        selected: (question?.answerOptions ?? [])
+          .filter((opt) => chosen.has(opt.externalId))
+          .map((opt) => opt.textDe),
+        freeText:
+          answerByQuestionId.get(evaluatedQuestion.questionId)?.freeText?.trim() || null,
+      };
+    });
+
   return {
     sessionId,
     company: {
       name: analysisSession.company.name,
       industry: analysisSession.company.industry,
     },
+    profile: {
+      name: analysisSession.company.name,
+      legalForm: analysisSession.company.legalForm,
+      industry: analysisSession.company.industry,
+      city: analysisSession.company.city,
+      website: analysisSession.company.website,
+      contactPerson: analysisSession.company.contactPerson,
+      contactPosition: analysisSession.company.contactPosition,
+    },
+    answers,
     completedAt: analysisSession.completedAt,
     packageType: analysisSession.packageType,
     moduleScores,

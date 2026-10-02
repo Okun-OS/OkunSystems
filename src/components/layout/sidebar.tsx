@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { OkunLogo } from "./okun-logo";
 import { cn } from "@/lib/utils";
+import { packageLabel } from "@/lib/packages";
 
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", exact: true },
@@ -32,11 +33,14 @@ interface SidebarProps {
     name?: string | null;
     email?: string | null;
     companyName?: string | null;
+    /** Das gebuchte Paket. Null, solange keines hinterlegt ist. */
+    plan?: string | null;
   };
 }
 
 export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname();
+  const paket = packageLabel(user.plan);
 
   return (
     <aside className="fixed left-0 top-0 h-full w-[240px] bg-[#060a10] border-r border-[#111e30] flex flex-col z-40">
@@ -80,6 +84,16 @@ export function Sidebar({ user }: SidebarProps) {
           </div>
           <ChevronDown size={14} className="text-[#8899b4] flex-shrink-0" />
         </div>
+        {/*
+          Das gebuchte Paket war im ganzen Portal nirgends zu sehen. Wer nicht
+          weiß, was er hat, versteht auch nicht, was ihm fehlt.
+        */}
+        {paket && (
+          <p className="px-3 pt-2 text-[10px] uppercase tracking-[0.18em] text-[#5b6b7f]">
+            {paket}
+          </p>
+        )}
+
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg mt-1 text-[#8899b4] hover:text-red-400 hover:bg-[#101c2e] text-sm w-full transition-colors"

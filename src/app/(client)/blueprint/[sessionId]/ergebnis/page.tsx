@@ -198,7 +198,8 @@ export default async function BlueprintErgebnisPage({
 
         {data.packageType && (
           <div className="mt-4 bg-[#101c2e] border border-[#1a2840] rounded-xl p-4">
-            <p className="text-xs text-[#888] mb-1">Empfohlenes Paket</p>
+            {/* Das Feld hält fest, was gebucht war — nicht, was empfohlen wird. */}
+            <p className="text-xs text-[#888] mb-1">Gebuchtes Paket</p>
             <p
               className="text-sm font-semibold"
               style={{ color: TIER_COLORS[data.packageType] ?? "#f0f0f0" }}
@@ -228,7 +229,11 @@ export default async function BlueprintErgebnisPage({
                   />
                   <p
                     className="text-xs font-semibold uppercase tracking-wide"
-                    style={{ color: TIER_COLORS[phase.packageTier] ?? "#888" }}
+                    style={{
+                      color: phase.beyondPackage
+                        ? "#8899b4"
+                        : TIER_COLORS[phase.packageTier] ?? "#888",
+                    }}
                   >
                     {phase.phaseLabel}
                   </p>
