@@ -10,6 +10,7 @@ import {
 import { logActivity } from "@/lib/activity/log";
 import { sendLearningAssignmentEmail } from "@/lib/email";
 import { SIGNAL_TAG_MAP } from "./constants";
+import { isAbovePackage } from "@/lib/packages";
 
 // ─── Categories ──────────────────────────────────────────────────────────────
 
@@ -68,6 +69,8 @@ export async function updateLearningChapter(
     status?: string;
     isActive?: boolean;
     availability?: string;
+    /** Ab welchem Paket es das Kapitel gibt; null = für alle. */
+    minPackage?: string | null;
   }
 ) {
   return db.learningChapter.update({ where: { id }, data: params });
@@ -469,4 +472,58 @@ export async function getSuggestedChaptersForSession(
   return chapterTags
     .map((ct) => ct.chapterId)
     .filter((id) => !assignedIds.has(id));
+}
+
+/**
+ * Schaltet alle Kapitel frei, die zum gebuchten Paket gehören.
+ *
+ * Bisher wurde jedes Kapitel für jeden Kunden einzeln von Hand zugewiesen.
+ * Das Paket stand daneben, wurde aber nie gelesen — es gab zwar eine
+ * Tabelle dafür (`PackageDefaultLearningAssignment`), die benutzt aber keine
+ * Zeile Code. Maßgeblich ist jetzt `minPackage` am Kapitel.
+ *
+ * Schon vorhandene Zuweisungen bleiben unangetastet, auch abgelehnte: Wer ein
+ * Kapitel bewusst abgelehnt hat, soll es nicht durch einen Sammelaufruf
+ * zurückbekommen.
+ */
+export async function releasePackageChapters(params: {
+  companyId: string;
+  assignedById: string;
+}): Promise<{ ok: true; released: number } | { ok: false; error: string }> {
+  const company = await db.company.findUnique({
+    where: { id: params.companyId },
+    select: { plan: true },
+  });
+  if (!company?.plan) {
+    return { ok: false, error: "Für dieses Unternehmen ist kein Paket hinterlegt." };
+  }
+
+  const [chapters, existing] = await Promise.all([
+    db.learningChapter.findMany({
+      where: { status: "PUBLISHED", isActive: true },
+      select: { id: true, minPackage: true },
+      orderBy: { order: "asc" },
+    }),
+    db.customerLearningAssignment.findMany({
+      where: { companyId: params.companyId },
+      select: { chapterId: true },
+    }),
+  ]);
+
+  const schonVergeben = new Set(existing.map((a) => a.chapterId));
+  const faellig = chapters.filter(
+    (c) => !schonVergeben.has(c.id) && !isAbovePackage(c.minPackage, company.plan)
+  );
+
+  let released = 0;
+  for (const chapter of faellig) {
+    const res = await releaseChapterToCompany({
+      companyId: params.companyId,
+      chapterId: chapter.id,
+      assignedById: params.assignedById,
+    });
+    if (res.ok) released++;
+  }
+
+  return { ok: true, released };
 }

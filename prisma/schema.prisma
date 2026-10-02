@@ -752,6 +752,17 @@ model LearningChapter {
   estimatedMinutes Int?
   status           String   @default("DRAFT") // DRAFT | PUBLISHED | ARCHIVED
   availability     String   @default("strategy_session") // immediate | strategy_session
+  /// Ab welchem Paket es dieses Kapitel gibt: foundation | operations | custom.
+  ///
+  /// Leer heisst: fuer alle. Ein Kapitel oberhalb des gebuchten Pakets wird
+  /// dem Kunden nicht versteckt, sondern ausgegraut gezeigt -- wer nicht
+  /// sieht, was es gaebe, fragt auch nicht danach.
+  ///
+  /// Bewusst ein Feld am Kapitel und nicht die Tabelle
+  /// PackageDefaultLearningAssignment: dort braeuchte "ab Operations" je eine
+  /// Zeile fuer operations und custom, und eine vergessene Zeile faellt
+  /// niemandem auf. Die Tabelle wird von keiner Zeile Code benutzt.
+  minPackage       String?
   isActive         Boolean  @default(true)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt

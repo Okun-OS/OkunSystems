@@ -13,6 +13,7 @@ import {
 import { ArrowLeft, BookOpen, Plus, Save, Tag, Clock } from "lucide-react";
 import Link from "next/link";
 import { LessonUploadRow } from "./LessonUploadRow";
+import { PACKAGES } from "@/lib/packages";
 
 export default async function ChapterEditorPage({
   params,
@@ -42,6 +43,8 @@ export default async function ChapterEditorPage({
       description: (formData.get("description") as string) || undefined,
       contentType: formData.get("contentType") as string,
       availability: formData.get("availability") as string,
+      // Leer bedeutet: für alle Pakete. Deshalb null statt "".
+      minPackage: (formData.get("minPackage") as string) || null,
       estimatedMinutes: formData.get("estimatedMinutes")
         ? parseInt(formData.get("estimatedMinutes") as string)
         : undefined,
@@ -235,6 +238,26 @@ export default async function ChapterEditorPage({
                 </select>
                 <p className="text-[#555] text-xs mt-1">
                   Steuert, ob der Inhalt direkt aktiviert oder erst per Strategiegespräch freigegeben wird.
+                </p>
+              </div>
+
+              <div>
+                <label className="text-[#888] text-xs block mb-1.5">Ab welchem Paket</label>
+                <select
+                  name="minPackage"
+                  defaultValue={chapter.minPackage ?? ""}
+                  className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-sm text-[#f0f0f0] focus:outline-none focus:border-[#00b8ff]/50"
+                >
+                  <option value="">Für alle Pakete</option>
+                  {PACKAGES.map((paket) => (
+                    <option key={paket.key} value={paket.key}>
+                      Ab {paket.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[#555] text-xs mt-1">
+                  Kunden mit einem kleineren Paket sehen das Kapitel ausgegraut mit dem Hinweis,
+                  ab wann es verfügbar ist — es wird nicht versteckt.
                 </p>
               </div>
 
