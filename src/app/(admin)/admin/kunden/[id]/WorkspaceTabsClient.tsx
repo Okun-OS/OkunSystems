@@ -8,6 +8,7 @@ const TABS = [
   { label: "Blueprint", href: "/blueprint-portal" },
   { label: "Ergebnisse", href: "/ergebnisse" },
   { label: "Antworten", href: "/antworten" },
+  { label: "Leitfaden", href: "/leitfaden" },
   { label: "Analyse intern", href: "/analyse" },
   { label: "Dokumente", href: "/dokumente" },
   { label: "Termine", href: "/termine" },

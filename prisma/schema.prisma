@@ -47,6 +47,7 @@ model User {
   createdOffers         Offer[]                      @relation("OfferCreatedBy")
   createdInvoices       Invoice[]                    @relation("InvoiceCreatedBy")
   confirmedInvoices     Invoice[]                    @relation("InvoiceConfirmedBy")
+  strategyGuideVersions StrategyGuideVersion[]
   createdContractDocs   ContractDocument[]           @relation("ContractDocumentCreatedBy")
   createdConsentDefs    ConsentDefinition[]          @relation("ConsentDefinitionCreatedBy")
   createdClosingScripts ClosingScript[]              @relation("ClosingScriptCreatedBy")
@@ -135,6 +136,7 @@ model Company {
   consentAuditEvents  ConsentAuditEvent[]
   presentations       ClosingPresentation[]
   contextSessions     CompanyContextSession[]      @relation("CompanyContextSessions")
+  strategyGuides      StrategyGuide[]
 }
 
 model Project {
@@ -411,6 +413,7 @@ model AnalysisSession {
   evidence       ScoringEvidence[]
   appointments   Appointment[]
   sessionAnswers SessionAnswer[]
+  strategyGuide  StrategyGuide?
 }
 
 model ConversationMessage {
@@ -1739,4 +1742,51 @@ model BlueprintFlowStation {
 
   @@unique([flowId, stationKey])
   @@index([flowId])
+}
+
+/// Der Leitfaden für das Strategiegespräch.
+///
+/// Anders als der Kundenbericht ist er intern: Er sagt dem Kollegen, der das
+/// Gespräch führt, was wir festgestellt haben, wie er es vorträgt und welche
+/// Custom-Projekte sich anbieten. Der Kunde bekommt ihn nie zu sehen.
+///
+/// Je Blueprint-Sitzung einer, mit beliebig vielen Fassungen — der Kollege
+/// schärft nach, und jede Fassung bleibt nachvollziehbar erhalten.
+model StrategyGuide {
+  id        String   @id @default(cuid())
+  sessionId String   @unique
+  session   AnalysisSession @relation(fields: [sessionId], references: [id])
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  versions StrategyGuideVersion[]
+}
+
+model StrategyGuideVersion {
+  id      String        @id @default(cuid())
+  guideId String
+  guide   StrategyGuide @relation(fields: [guideId], references: [id], onDelete: Cascade)
+  version Int
+
+  /// Was diese Fassung ausgelöst hat: leer bei der ersten, sonst die Anweisung
+  /// des Kollegen im Wortlaut.
+  instruction String?
+
+  /// Das Dokument als JSON.
+  content String
+
+  /// Protokoll der unabhängigen Prüfung: welcher Vorschlag in welcher Runde
+  /// bestätigt oder verworfen wurde, und warum.
+  reviewLog String @default("[]")
+
+  /// Wie viele Runden es gebraucht hat.
+  rounds Int @default(1)
+
+  createdById String
+  createdBy   User   @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@unique([guideId, version])
 }
