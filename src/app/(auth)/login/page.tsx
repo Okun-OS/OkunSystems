@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { OkunLogo } from "@/components/layout/okun-logo";
+import { COMPANY } from "@/lib/marketing/company";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -207,8 +208,13 @@ export default function LoginPage() {
         )}
       </div>
 
+      {/*
+        Die Rechtsform stand hier als Text und war falsch — eine UG ist keine
+        GmbH, und im Impressum wäre der Widerspruch sofort aufgefallen. Sie
+        kommt jetzt aus derselben Quelle wie Impressum und Datenschutz.
+      */}
       <p className="text-center text-[#555] text-xs mt-6">
-        © {new Date().getFullYear()} OKUN Systems GmbH
+        © {new Date().getFullYear()} {COMPANY.legalName}
       </p>
     </div>
   );
