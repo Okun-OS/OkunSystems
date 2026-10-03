@@ -8,6 +8,10 @@ import { forwardPath, normalizeStatus } from "./state-machine";
  * Kundenaktivierung — erfolgt ausschließlich nach bestätigter Zahlung und ist
  * idempotent: doppelte Webhooks oder Doppelklicks erzeugen weder zwei
  * Aktivierungen noch zwei Benutzerkonten.
+ *
+ * Hier entsteht das Kundenkonto, und damit ist dies der früheste Moment, zu
+ * dem der Kunde überhaupt etwas sehen kann. Deshalb werden auch die
+ * Lerninhalte seines Pakets hier freigegeben.
  */
 
 export type ActivationResult = {
@@ -149,6 +153,53 @@ export async function activateCustomer(input: {
       userCreated: false,
       error: err instanceof Error ? err.message : "Aktivierung fehlgeschlagen.",
     };
+  }
+
+  // Lerninhalte des gebuchten Pakets freigeben.
+  //
+  // Hier und nicht beim Vertragsabschluss: Vorher gibt es gar keinen Zugang —
+  // das Kundenkonto entsteht erst in dieser Funktion. Freigeschaltete Kapitel
+  // vor der Aktivierung könnte niemand sehen.
+  //
+  // Nicht fatal: Ein Kunde ohne Lerninhalte ist ärgerlich, ein Kunde ohne
+  // Zugang wäre schlimmer. Scheitert die Freigabe, bleibt die Aktivierung
+  // gültig und ein Kollege gibt im Adminbereich von Hand frei.
+  try {
+    const zuweiser =
+      input.actorId ??
+      (
+        await db.closingSession.findUnique({
+          where: { id: input.closingSessionId ?? "" },
+          select: { closerId: true },
+        })
+      )?.closerId ??
+      (
+        await db.user.findFirst({
+          where: { role: "ADMIN", deactivatedAt: null },
+          orderBy: { createdAt: "asc" },
+          select: { id: true },
+        })
+      )?.id ??
+      null;
+
+    if (zuweiser) {
+      const { releasePackageChapters } = await import("@/lib/learning/actions");
+      const res = await releasePackageChapters({
+        companyId: input.companyId,
+        assignedById: zuweiser,
+      });
+      if (res.ok && res.released > 0) {
+        console.info(
+          `[activation] ${res.released} Lernkapitel für ${company.name} freigegeben.`
+        );
+      }
+    } else {
+      console.warn(
+        "[activation] Keine Freigabe der Lernkapitel: niemand gefunden, dem sie zugeschrieben werden könnte."
+      );
+    }
+  } catch (err) {
+    console.error("[activation] Freigabe der Lernkapitel fehlgeschlagen:", err);
   }
 
   if (userCreated && recipientEmail && passwordSetUrl) {

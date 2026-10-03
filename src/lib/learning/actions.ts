@@ -108,6 +108,14 @@ export async function releaseChapterToCompany(params: {
   companyId: string;
   chapterId: string;
   assignedById: string;
+  /**
+   * Keine Benachrichtigung verschicken.
+   *
+   * Für Sammelfreigaben: Sechs Kapitel auf einmal wären sechs E-Mails
+   * hintereinander. Bei der Aktivierung übernimmt das die Willkommensmail,
+   * bei der Sammelfreigabe im Adminbereich sagt es der Kollege selbst.
+   */
+  silent?: boolean;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   const [existing, chapter] = await Promise.all([
     db.customerLearningAssignment.findUnique({
@@ -162,7 +170,7 @@ export async function releaseChapterToCompany(params: {
     },
   });
 
-  if (chapter?.title) {
+  if (chapter?.title && !params.silent) {
     const primaryUser = assignment.company.users[0];
     if (primaryUser) {
       await sendLearningAssignmentEmail({
@@ -490,6 +498,7 @@ export async function releasePackageChapters(params: {
   companyId: string;
   assignedById: string;
 }): Promise<{ ok: true; released: number } | { ok: false; error: string }> {
+  // Ohne Benachrichtigung je Kapitel — siehe `silent` weiter oben.
   const company = await db.company.findUnique({
     where: { id: params.companyId },
     select: { plan: true },
@@ -521,6 +530,7 @@ export async function releasePackageChapters(params: {
       companyId: params.companyId,
       chapterId: chapter.id,
       assignedById: params.assignedById,
+      silent: true,
     });
     if (res.ok) released++;
   }
