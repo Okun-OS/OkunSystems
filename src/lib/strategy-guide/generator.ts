@@ -1,5 +1,11 @@
 import { askModel, parseJson } from "./model";
-import type { CustomVorschlag, GuideDocument, Kernbefund, Einwand } from "./types";
+import type {
+  CustomVorschlag,
+  GuideDocument,
+  Kernbefund,
+  Einwand,
+  StandardLoesung,
+} from "./types";
 
 const SYSTEM_ERZEUGER = `Du bereitest bei OKUN Systems das Strategiegespräch vor.
 
@@ -53,8 +59,7 @@ ${abgelehnt.map((a) => `- „${a.titel}“: ${a.begruendung}`).join("\n")}`
     : "";
 
   const prompt = `Lies den folgenden Fall vollständig und überlege dann frei, welche
-Systeme man für genau diesen Betrieb entwickeln könnte — Dinge, die es so noch
-nicht gibt oder die als Standardsoftware nicht passend genug sind.
+Systeme man für genau diesen Betrieb entwickeln müsste.
 
 Denk dabei wie jemand, der den Betrieb kennt: Welche Tätigkeit frisst Zeit, läuft
 über mehrere Systeme oder von Hand, und ließe sich mit etwas Gebautem anders
@@ -62,10 +67,27 @@ lösen? Branchenübliches zählt mit — eine Pflegeeinrichtung, die Medikamente
 und deren Dokumentation von Hand führt, braucht etwas anderes als ein
 Handwerksbetrieb mit Materialbestellung.
 
+Prüfe jeden Einfall erst gegen den Markt, bevor du ihn aufschreibst: Welche
+Produkte gibt es dafür schon von der Stange? Gibt es sie und decken sie den
+Bedarf, ist das keine Entwicklung, sondern eine Einführung — die gehört in den
+Abschnitt für fertige Lösungen, nicht hierher. Gibt es sie, decken aber
+nachweislich nicht ab, was dieser Betrieb braucht, bleibt es ein Vorschlag —
+dann muss aber im Datenbestand stehen, woran es scheitert. Dass dieser Betrieb
+etwas heute von Hand macht, heißt nicht, dass es dafür keine Software gibt;
+es heißt nur, dass er sie nicht hat.
+
+Eine Anbindung an vorhandene Software ist für sich kein Produkt. Besteht das
+Eigene allein in der Schnittstelle, während das Programm davor von der Stange
+kommt, dann schlag die Schnittstelle vor und nicht das Programm.
+
+Lieber ein Vorschlag, der trägt, als drei, die der Kollege im Gespräch nicht
+verteidigen kann. Findest du nur einen, nenn nur einen. Findest du keinen,
+nenn keinen.
+
 Wichtig: Für jeden Vorschlag muss es einen **Aufhänger** geben — eine konkrete
 Stelle im Datenbestand, auf die sich der Vorschlag stützt. Eine Aufgabe mit
 ihren Stunden, ein Medienbruch, eine Lücke, ein Freitext des Kunden, ein Satz
-aus dem Vorgespräch. Ohne Aufhänger kein Vorschlag.
+aus dem Unternehmenskontext. Ohne Aufhänger kein Vorschlag.
 
 Das gebuchte Paket ist: ${paket ?? "keines hinterlegt"}. Vorschläge dürfen
 ausdrücklich darüber hinausgehen — darum geht es.
@@ -136,10 +158,23 @@ Antworte mit JSON in genau dieser Form:
 "kernbefunde":[{"titel":"kurz","beleg":"die Zahl aus der Auswertung, wörtlich","wirkung":"was das im Alltag bedeutet, in Alltagssprache"}],
 "expertise":"Die eine Beobachtung, auf die der Kunde selbst nicht gekommen wäre — ein Zusammenhang zwischen zwei Befunden, den erst die Auswertung sichtbar macht. Zwei bis vier Sätze. Das ist der Moment, in dem der Kunde merkt, dass wir hingesehen haben.",
 "empfehlung":"Was wir an seiner Stelle täten, in welcher Reihenfolge und warum. Fünf bis acht Sätze.",
+"standardLoesungen":[{"titel":"kurz, was eingerichtet würde","aufhaenger":"die Stelle im Fall, die es nötig macht, mit Zahl","loesung":"was es ist und was daran auf diesen Betrieb zugeschnitten wird, zwei bis drei Sätze","nutzen":"was er davon hat, möglichst mit der Zahl aus dem Aufhänger","einordnung":"im gebuchten Paket enthalten oder darüber hinaus"}],
+"unsereLeistung":"Was wir konkret tun, wenn er zusagt. Nicht was er bekommt, sondern was wir machen: was wir erheben, einrichten, übernehmen, einweisen, begleiten — und in welcher Reihenfolge. Fünf bis acht Sätze, so dass der Kollege die Frage „und was macht ihr dann genau?“ ohne Zögern beantworten kann. Was die Auswertung an fertigen Lösungen empfiehlt, gehört hier hinein.",
 "einwaende":[{"einwand":"was der Kunde wahrscheinlich sagt, in seinen Worten","antwort":"die Antwort, ausformuliert zum Sagen"}],
 "abschluss":"Was am Ende des Gesprächs vereinbart sein sollte. Konkrete nächste Schritte."}
 
-Gib drei Kernbefunde und drei Einwände.`;
+Gib drei Kernbefunde und drei Einwände.
+
+Zu den fertigen Lösungen: Das sind Dinge, die es am Markt gibt und die wir
+bei ihm einrichten — nicht gebaut, sondern eingeführt und zugeschnitten. Die
+Auswertung nennt dazu bereits Empfehlungen; nimm die, die zu seinen Befunden
+passen, und sag bei jeder, ob sie im gebuchten Paket liegt oder darüber. Zwei
+bis fünf. Gibt der Fall keine her, gib eine leere Liste.
+
+Nenne das, was der Kunde zu Beginn des Blueprints über seinen Betrieb
+geschrieben hat, „Unternehmenskontext“ oder schlicht „im Blueprint“. Es gab
+kein Vorgespräch und kein Telefonat — schreibe nie, er habe etwas „im
+Vorgespräch“ gesagt.`;
 
   const raw = await askModel(SYSTEM_ERZEUGER, prompt, 12000);
   const parsed = parseJson<Partial<Omit<GuideDocument, "customVorschlaege">>>(
@@ -160,6 +195,10 @@ Gib drei Kernbefunde und drei Einwände.`;
       : [],
     expertise: text(parsed.expertise, "— konnte nicht erzeugt werden —"),
     empfehlung: text(parsed.empfehlung, "— konnte nicht erzeugt werden —"),
+    standardLoesungen: Array.isArray(parsed.standardLoesungen)
+      ? (parsed.standardLoesungen as StandardLoesung[])
+      : [],
+    unsereLeistung: text(parsed.unsereLeistung, "— konnte nicht erzeugt werden —"),
     einwaende: Array.isArray(parsed.einwaende) ? (parsed.einwaende as Einwand[]) : [],
     abschluss: text(parsed.abschluss, "— konnte nicht erzeugt werden —"),
   };

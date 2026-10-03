@@ -15,14 +15,42 @@ Ein Vorschlag besteht die Prüfung nur, wenn alle vier Punkte zutreffen:
    wiederfindest, besteht nicht.
 2. Der Aufhänger verweist auf eine Stelle, die es im Datenbestand wirklich
    gibt — eine Aufgabe, einen Medienbruch, eine Lücke, einen Freitext, einen
-   Satz aus dem Vorgespräch. „Erfahrungsgemäß“ ist kein Aufhänger.
+   Satz aus dem Unternehmenskontext. „Erfahrungsgemäß“ ist kein Aufhänger.
 3. Es geht wirklich um etwas, das gebaut werden müsste. Was gängige
    Standardsoftware von der Stange löst, besteht nicht.
+
+   Bevor du über diesen Punkt urteilst, schreibst du im Feld
+   „standardprodukte“ auf, welche Produkte oder Produktgattungen das
+   Beschriebene heute schon können — mit Namen, soweit du welche kennst.
+   Erst danach urteilst du. Findest du nichts, schreibst du hin, warum es
+   das nicht von der Stange gibt.
+
+   Es gibt zwei Wege, diesen Punkt zu bestehen. Entweder gibt es das
+   Beschriebene so nicht von der Stange. Oder es gibt es, deckt aber
+   nachweislich nicht ab, was dieser Betrieb braucht — und dann muss im
+   Datenbestand stehen, woran es scheitert: ein Freitext, in dem der Kunde
+   es benennt, eine Besonderheit seines Ablaufs, eine Anforderung von
+   außen. „Passt nicht richtig“ ohne Beleg reicht nicht.
+
+   Dieser Punkt gilt für **das, was gebaut würde**, nicht für den Betrieb.
+   Dass ein Betrieb etwas heute von Hand macht, heißt nicht, dass es dafür
+   keine Software gibt — es heißt nur, dass er sie nicht hat. Das ist dann
+   eine Einführung, keine Entwicklung.
+
+   Eine Anbindung an vorhandene Software ist für sich genommen kein
+   Produkt. Besteht das Eigene allein in der Schnittstelle, während das
+   Programm davor von der Stange kommt, besteht der Vorschlag nicht — er
+   muss dann auf die Schnittstelle zugeschnitten werden.
+
 4. Es passt zu dem, was dieser Betrieb laut Datenbestand tatsächlich tut.
    Branchentypisches, das hier nirgends vorkommt, besteht nicht.
 
 Im Zweifel lehnst du ab. Ein abgelehnter guter Vorschlag kostet eine Runde;
 ein durchgewunkener falscher kostet im Kundengespräch die Glaubwürdigkeit.
+
+Urteile unabhängig voneinander nach denselben Maßstäben. Wenn du einen
+Vorschlag ablehnst, weil es das von der Stange gibt, muss derselbe Maßstab
+für jeden anderen Vorschlag gelten, der ebenfalls ein Programm beschreibt.
 
 Deine Begründung sagt in einem Satz, welcher der vier Punkte verletzt ist und
 woran es konkret liegt — so, dass man es beheben kann.
@@ -71,7 +99,10 @@ ${liste}
 
 Antworte mit JSON in genau dieser Form, mit einem Eintrag je Vorschlag:
 
-{"urteile":[{"index":0,"bestanden":true,"begruendung":"ein Satz"}]}`;
+{"urteile":[{"index":0,"standardprodukte":"welche Produkte oder Gattungen das heute schon können","bestanden":true,"begruendung":"ein Satz"}]}
+
+Die Reihenfolge der Felder ist bindend: „standardprodukte“ steht vor
+„bestanden“, weil der Marktblick dem Urteil vorausgeht und nicht folgt.`;
 
   const raw = await askModel(SYSTEM_PRUEFER, prompt, 4000);
   const parsed = parseJson<{ urteile?: Pruefurteil[] }>(raw, "Prüfung");
@@ -80,10 +111,22 @@ Antworte mit JSON in genau dieser Form, mit einem Eintrag je Vorschlag:
   // Ein Vorschlag ohne Urteil gilt als nicht bestanden. Andersherum wäre ein
   // Aussetzer des Prüfers eine stillschweigende Freigabe.
   return vorschlaege.map((_, i) => {
-    const treffer = urteile.find((u) => u.index === i);
+    const roh = urteile.find((u) => u.index === i);
+    // Ein Bestehen ohne Marktblick ist keines: Punkt 3 wurde dann nicht
+    // geprüft, sondern übersprungen.
+    const treffer =
+      roh && roh.bestanden && !roh.standardprodukte?.trim()
+        ? {
+            ...roh,
+            bestanden: false,
+            begruendung:
+              "Punkt 3 ist offen: Die Prüfung hat nicht benannt, was Standardsoftware davon heute schon leistet.",
+          }
+        : roh;
     return (
       treffer ?? {
         index: i,
+        standardprodukte: "",
         bestanden: false,
         begruendung: "Die Prüfung hat zu diesem Vorschlag kein Urteil abgegeben.",
       }

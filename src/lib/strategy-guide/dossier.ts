@@ -50,8 +50,10 @@ export function buildDossier(
     teile.push(
       [
         "## Was der Kunde über sich selbst gesagt hat",
-        "Wörtlich aus dem Vorgespräch. Die wichtigste Quelle für alles, was",
-        "nicht in Zahlen steht.",
+        "Wörtlich aus dem Unternehmenskontext — dem ersten Teil des Blueprints,",
+        "den der Kunde selbst ausgefüllt hat. Die wichtigste Quelle für alles,",
+        "was nicht in Zahlen steht. Es gab kein Vorgespräch; nenne es im",
+        "Gespräch nie so.",
         "",
         paare.length > 0 ? paare.join("\n\n") : data.companyContext.summary ?? "—",
       ].join("\n")

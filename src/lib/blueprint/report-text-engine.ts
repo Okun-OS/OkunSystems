@@ -143,7 +143,7 @@ async function generateContextPageText(data: BlueprintReportData): Promise<strin
   const context = formatContextForPrompt(data);
   const prompt = `Du bist Senior-Berater bei OKUN Systems und schreibst den Unternehmenskontext für einen professionellen Analysebericht.
 
-Unternehmenskontext aus dem Vorgespräch:
+Unternehmenskontext, vom Kunden zu Beginn des Blueprints selbst ausgefüllt:
 ${context}
 
 Unternehmen: ${data.company.name}${data.company.industry ? ` | Branche: ${data.company.industry}` : ""}

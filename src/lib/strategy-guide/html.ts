@@ -77,6 +77,23 @@ export function renderGuideHtml(params: {
           )
           .join("");
 
+  const fertige =
+    doc.standardLoesungen.length === 0
+      ? `<p class="leer">Aus diesem Fall ergibt sich keine fertige Lösung, die hier
+         einzurichten wäre.</p>`
+      : doc.standardLoesungen
+          .map(
+            (l) => `<div class="karte fertig">
+              <div class="karte-titel">${esc(l.titel)}
+                <span class="einordnung">${esc(l.einordnung)}</span>
+              </div>
+              <div class="aufhaenger gruen"><span>Aufhänger</span>${esc(l.aufhaenger)}</div>
+              <div class="karte-text">${esc(l.loesung)}</div>
+              <div class="karte-text grau">${esc(l.nutzen)}</div>
+            </div>`
+          )
+          .join("");
+
   const einwaende = doc.einwaende
     .map(
       (e) => `<div class="karte">
@@ -92,7 +109,11 @@ export function renderGuideHtml(params: {
         <td class="runde">R${e.runde}</td>
         <td class="urteil ${e.bestanden ? "ja" : "nein"}">${e.bestanden ? "bestanden" : "verworfen"}</td>
         <td>${esc(e.titel)}</td>
-        <td class="grund">${esc(e.begruendung)}</td>
+        <td class="grund">${esc(e.begruendung)}${
+          e.standardprodukte
+            ? `<div class="markt"><span>Von der Stange</span>${esc(e.standardprodukte)}</div>`
+            : ""
+        }</td>
       </tr>`
     )
     .join("");
@@ -168,6 +189,9 @@ export function renderGuideHtml(params: {
     color: #94a3b8; font-weight: 700;
   }
   .groesse { font-size: 9pt; color: #64748b; margin-top: 7px; }
+  .fertig { border-left: 3px solid #15803d; }
+  .aufhaenger.gruen { color: #15803d; }
+  .einordnung { float: right; font-size: 8pt; font-weight: 600; color: #64748b; }
   .einwand { font-style: italic; color: #475569; }
   .leer { font-size: 10pt; color: #64748b; }
   table.protokoll { width: 100%; border-collapse: collapse; font-size: 8.5pt; margin-top: 4px; }
@@ -177,6 +201,11 @@ export function renderGuideHtml(params: {
   .urteil.ja { color: #15803d; }
   .urteil.nein { color: #b45309; }
   .grund { color: #64748b; }
+  .markt { margin-top: 4px; color: #94a3b8; }
+  .markt span {
+    display: block; font-size: 7pt; text-transform: uppercase; letter-spacing: 0.7px;
+    color: #b6c2d0; font-weight: 700;
+  }
   footer { margin-top: 22px; padding-top: 9px; border-top: 1px solid #dde3ea; font-size: 8pt; color: #94a3b8; }
 </style></head>
 <body>
@@ -201,8 +230,10 @@ export function renderGuideHtml(params: {
   ${abschnitt(4, "Warum das Expertise zeigt", p(doc.expertise))}
   ${abschnitt(5, "Unsere Empfehlung", p(doc.empfehlung))}
   ${abschnitt(6, "Custom-Projekte, die hier gehen", vorschlaege)}
-  ${abschnitt(7, "Womit du rechnen musst", einwaende)}
-  ${abschnitt(8, "Was am Ende stehen sollte", p(doc.abschluss))}
+  ${abschnitt(7, "Fertige Lösungen, die wir hier einrichten", fertige)}
+  ${abschnitt(8, "Was wir konkret tun", p(doc.unsereLeistung))}
+  ${abschnitt(9, "Womit du rechnen musst", einwaende)}
+  ${abschnitt(10, "Was am Ende stehen sollte", p(doc.abschluss))}
 
   ${
     protokoll.length > 0

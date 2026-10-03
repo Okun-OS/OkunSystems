@@ -12,6 +12,7 @@ import {
   MessageSquare,
   AlertTriangle,
   FileDown,
+  PackageCheck,
 } from "lucide-react";
 import type { GuideDocument, ProtokollEintrag } from "@/lib/strategy-guide/types";
 
@@ -358,7 +359,44 @@ export default function LeitfadenClient({
             )}
           </Abschnitt>
 
-          <Abschnitt nummer={7} titel="Womit du rechnen musst">
+          <Abschnitt nummer={7} titel="Fertige Lösungen, die wir hier einrichten">
+            {doc.standardLoesungen.length === 0 ? (
+              <p className="text-[#8899b4] text-sm leading-relaxed">
+                Aus diesem Fall ergibt sich keine fertige Lösung, die hier einzurichten
+                wäre.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {doc.standardLoesungen.map((l, i) => (
+                  <div
+                    key={i}
+                    className="bg-[#060a10] border border-[#152031] rounded-lg p-4"
+                  >
+                    <div className="flex items-start justify-between gap-3 mb-2">
+                      <p className="text-[#f0f0f0] text-sm font-semibold flex items-center gap-2">
+                        <PackageCheck size={14} className="text-[#22c55e] flex-shrink-0" />
+                        {l.titel}
+                      </p>
+                      <span className="flex-shrink-0 text-xs text-[#8899b4]">
+                        {l.einordnung}
+                      </span>
+                    </div>
+                    <p className="text-[#22c55e] text-xs leading-relaxed">
+                      Aufhänger: {l.aufhaenger}
+                    </p>
+                    <p className="text-[#c9d4e4] text-sm mt-2.5 leading-relaxed">{l.loesung}</p>
+                    <p className="text-[#8899b4] text-xs mt-2 leading-relaxed">{l.nutzen}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Abschnitt>
+
+          <Abschnitt nummer={8} titel="Was wir konkret tun">
+            <p className={absatz}>{doc.unsereLeistung}</p>
+          </Abschnitt>
+
+          <Abschnitt nummer={9} titel="Womit du rechnen musst">
             <div className="space-y-3">
               {doc.einwaende.map((e, i) => (
                 <div key={i} className="bg-[#060a10] rounded-lg p-4">
@@ -369,7 +407,7 @@ export default function LeitfadenClient({
             </div>
           </Abschnitt>
 
-          <Abschnitt nummer={8} titel="Was am Ende stehen sollte">
+          <Abschnitt nummer={10} titel="Was am Ende stehen sollte">
             <p className={absatz}>{doc.abschluss}</p>
           </Abschnitt>
         </div>
@@ -401,6 +439,14 @@ export default function LeitfadenClient({
                   <p className="text-[#5b6b7f] text-xs mt-0.5 leading-relaxed">
                     {p.begruendung}
                   </p>
+                  {p.standardprodukte && (
+                    <p className="text-[#44546b] text-xs mt-1 leading-relaxed">
+                      <span className="uppercase tracking-wider text-[10px] text-[#38475c]">
+                        Von der Stange:{" "}
+                      </span>
+                      {p.standardprodukte}
+                    </p>
+                  )}
                 </div>
               </div>
             ))}

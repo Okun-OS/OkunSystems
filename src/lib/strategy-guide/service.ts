@@ -86,6 +86,7 @@ export async function erzeugeLeitfaden(params: {
         titel: vorschlag.titel,
         bestanden: urteil.bestanden,
         begruendung: urteil.begruendung,
+        standardprodukte: urteil.standardprodukte?.trim() || undefined,
       });
       if (urteil.bestanden) {
         bestaetigt.push({ ...vorschlag, geprueftInRunde: runde });

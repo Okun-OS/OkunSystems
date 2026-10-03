@@ -27,6 +27,11 @@ const doc: GuideDocument = {
     { titel: "Serviceerfassung auf dem Telefon", aufhaenger: "32,5 Stunden Abtippen im Monat", idee: lang(14, "Der Monteur erfasst direkt vor Ort."), nutzen: lang(10, "Die Daten sind abends im System."), groessenordnung: "mittleres Custom-Projekt", geprueftInRunde: 1 },
     { titel: "Rechnungslauf aus den Berichten", aufhaenger: "4 Medienbrueche bis zur Rechnung", idee: lang(14, "Aus dem Bericht entsteht der Rechnungsentwurf."), nutzen: lang(10, "Die Rechnung geht Tage frueher raus."), groessenordnung: "groesseres Custom-Projekt", geprueftInRunde: 2 },
   ],
+  standardLoesungen: [
+    { titel: "Dienst- und Einsatzplanung von der Stange", aufhaenger: "16,2 h/Monat Abstimmung ueber WhatsApp", loesung: lang(10, "Fertige Planungssoftware, auf die Fahrzeuge zugeschnitten."), nutzen: lang(8, "Die Planung steht abends fuer den Folgetag."), einordnung: "im gebuchten Paket enthalten" },
+    { titel: "Dokumentenablage", aufhaenger: "Nachweise liegen in Papierordnern", loesung: lang(10, "Ablage mit Rechten je Hausverwaltung."), nutzen: lang(8, "Nachweise sind in Sekunden auffindbar."), einordnung: "ueber dem gebuchten Paket" },
+  ],
+  unsereLeistung: lang(24, "Wir erheben die Ablaeufe, richten ein, uebernehmen die Daten und weisen die Monteure ein."),
   einwaende: [
     { einwand: "Meine Leute koennen das nicht.", antwort: lang(12, "Wer ein Telefon bedienen kann, kann das auch.") },
     { einwand: "Das ist zu teuer.", antwort: lang(12, "32,5 Stunden im Monat sind auch ein Preis.") },
