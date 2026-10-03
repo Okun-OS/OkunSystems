@@ -11,6 +11,7 @@ import {
   Lightbulb,
   MessageSquare,
   AlertTriangle,
+  FileDown,
 } from "lucide-react";
 import type { GuideDocument, ProtokollEintrag } from "@/lib/strategy-guide/types";
 
@@ -64,6 +65,7 @@ export default function LeitfadenClient({
 }) {
   const router = useRouter();
   const [laeuft, setLaeuft] = useState(false);
+  const [pdfLaeuft, setPdfLaeuft] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);
   const [anweisung, setAnweisung] = useState("");
   const [gezeigt, setGezeigt] = useState(fassungen[0]?.version ?? 0);
@@ -95,6 +97,40 @@ export default function LeitfadenClient({
     }
   }
 
+  /**
+   * Holt die gezeigte Fassung als PDF.
+   *
+   * Nicht als einfacher Link: Schlägt der Abruf fehl, soll die Meldung hier
+   * stehen und nicht als nackter JSON-Text in einem neuen Tab.
+   */
+  async function pdfHolen() {
+    if (!sessionId || !aktuell) return;
+    setPdfLaeuft(true);
+    setFehler(null);
+    try {
+      const res = await fetch(
+        `/api/admin/strategy-guide/pdf?sessionId=${encodeURIComponent(sessionId)}&version=${aktuell.version}`
+      );
+      if (!res.ok) {
+        const daten = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(daten.error ?? "Das PDF konnte nicht erzeugt werden.");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Leitfaden-${companyName.replace(/[^\p{L}\p{N}]+/gu, "-")}-Fassung-${aktuell.version}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setFehler(e instanceof Error ? e.message : "Unbekannter Fehler");
+    } finally {
+      setPdfLaeuft(false);
+    }
+  }
+
   if (!sessionId) {
     return (
       <div className="max-w-[900px] mx-auto">
@@ -114,17 +150,34 @@ export default function LeitfadenClient({
 
   return (
     <div className="max-w-[900px] mx-auto space-y-5">
-      <div>
-        <h1 className="text-2xl font-bold text-[#f0f0f0]">Leitfaden Strategiegespräch</h1>
-        <p className="text-[#8899b4] text-sm mt-1">
-          {companyName}
-          {blueprintCompletedAt &&
-            ` · Blueprint abgeschlossen am ${new Date(blueprintCompletedAt).toLocaleDateString("de-DE")}`}
-        </p>
-        <p className="text-[#5b6b7f] text-xs mt-2 leading-relaxed">
-          Interne Unterlage. Sie enthält, wie wir dem Kunden unsere Befunde vortragen und was
-          wir ihm darüber hinaus anbieten — der Kunde bekommt sie nicht zu sehen.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-[#f0f0f0]">Leitfaden Strategiegespräch</h1>
+          <p className="text-[#8899b4] text-sm mt-1">
+            {companyName}
+            {blueprintCompletedAt &&
+              ` · Blueprint abgeschlossen am ${new Date(blueprintCompletedAt).toLocaleDateString("de-DE")}`}
+          </p>
+          <p className="text-[#5b6b7f] text-xs mt-2 leading-relaxed">
+            Interne Unterlage. Sie enthält, wie wir dem Kunden unsere Befunde vortragen und was
+            wir ihm darüber hinaus anbieten — der Kunde bekommt sie nicht zu sehen.
+          </p>
+        </div>
+        {aktuell && (
+          <button
+            onClick={pdfHolen}
+            disabled={pdfLaeuft}
+            title="Zum Mitnehmen ins Gespräch — auf jeder Seite steht, dass der Kunde das Blatt nicht sehen darf."
+            className="flex-shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-lg bg-[#060a10] border border-[#1a2840] text-[#8899b4] text-xs hover:text-[#c9d4e4] hover:border-[#28405f] disabled:opacity-50 transition-colors"
+          >
+            {pdfLaeuft ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <FileDown size={14} />
+            )}
+            {pdfLaeuft ? "Wird erzeugt…" : "Als PDF"}
+          </button>
+        )}
       </div>
 
       {!hatBerichtstexte && (
