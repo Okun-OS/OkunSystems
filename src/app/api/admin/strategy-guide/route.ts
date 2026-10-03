@@ -94,3 +94,36 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+
+/**
+ * GET /api/admin/strategy-guide?sessionId=…
+ *
+ * Sagt, welche Fassung zuletzt abgelegt wurde.
+ *
+ * Gedacht fürs Nachsehen, wenn die Verbindung während der Erzeugung
+ * abgerissen ist: Der Server arbeitet weiter und legt die Fassung ab, nur
+ * die Antwort kommt nicht mehr an. Statt dem Kollegen einen Fehler zu
+ * zeigen, der keiner ist, fragt die Seite hier nach.
+ */
+export async function GET(req: NextRequest) {
+  const actor = await getActor();
+  if (!actor) {
+    return NextResponse.json({ error: "Nicht angemeldet" }, { status: 401 });
+  }
+  if (!mayDoStrategy(actor.role, actor.canStrategy)) {
+    return NextResponse.json({ error: "Kein Zugriff" }, { status: 403 });
+  }
+
+  const sessionId = req.nextUrl.searchParams.get("sessionId");
+  if (!sessionId) {
+    return NextResponse.json({ error: "sessionId fehlt" }, { status: 400 });
+  }
+
+  const guide = await db.strategyGuide.findUnique({
+    where: { sessionId },
+    include: { versions: { orderBy: { version: "desc" }, take: 1 } },
+  });
+
+  return NextResponse.json({ version: guide?.versions[0]?.version ?? 0 });
+}

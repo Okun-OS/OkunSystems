@@ -66,6 +66,7 @@ export default function LeitfadenClient({
 }) {
   const router = useRouter();
   const [laeuft, setLaeuft] = useState(false);
+  const [wartet, setWartet] = useState(false);
   const [pdfLaeuft, setPdfLaeuft] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);
   const [anweisung, setAnweisung] = useState("");
@@ -74,9 +75,38 @@ export default function LeitfadenClient({
   const aktuell = fassungen.find((f) => f.version === gezeigt) ?? fassungen[0] ?? null;
   const doc = aktuell?.document ?? null;
 
+  /**
+   * Sieht nach, ob eine neue Fassung aufgetaucht ist.
+   *
+   * Die Erzeugung läuft mehrere Minuten in einer einzigen Anfrage, über die
+   * währenddessen nichts fließt. Wird die Leitung dabei gekappt, meldet der
+   * Browser "Failed to fetch", obwohl der Server weiterarbeitet und die
+   * Fassung ablegt — ein Neuladen der Seite zeigte sie dann. Genau das
+   * passiert hier von selbst.
+   */
+  async function wartenAufFassung(vorher: number): Promise<boolean> {
+    const bisMax = Date.now() + 12 * 60 * 1000;
+    while (Date.now() < bisMax) {
+      await new Promise((r) => setTimeout(r, 10_000));
+      try {
+        const res = await fetch(
+          `/api/admin/strategy-guide?sessionId=${encodeURIComponent(sessionId!)}`
+        );
+        if (!res.ok) continue;
+        const daten = (await res.json()) as { version?: number };
+        if ((daten.version ?? 0) > vorher) return true;
+      } catch {
+        // Auch das Nachsehen kann scheitern — dann eben beim nächsten Mal.
+      }
+    }
+    return false;
+  }
+
   async function erzeugen(mitAnweisung: boolean) {
     if (!sessionId) return;
+    const vorher = fassungen[0]?.version ?? 0;
     setLaeuft(true);
+    setWartet(false);
     setFehler(null);
     try {
       const res = await fetch("/api/admin/strategy-guide", {
@@ -92,7 +122,27 @@ export default function LeitfadenClient({
       setAnweisung("");
       router.refresh();
     } catch (e) {
-      setFehler(e instanceof Error ? e.message : "Unbekannter Fehler");
+      // Eine abgerissene Leitung wirft einen TypeError; ein abgelehnter
+      // Aufruf liefert eine Meldung vom Server. Nur im ersten Fall lohnt
+      // das Nachsehen.
+      if (e instanceof TypeError) {
+        setWartet(true);
+        const da = await wartenAufFassung(vorher);
+        setWartet(false);
+        if (da) {
+          setAnweisung("");
+          router.refresh();
+          setLaeuft(false);
+          return;
+        }
+        setFehler(
+          "Die Verbindung ist abgerissen und auch nach zwölf Minuten war keine " +
+            "neue Fassung da. Laden Sie die Seite neu — manchmal ist sie trotzdem " +
+            "fertig geworden."
+        );
+      } else {
+        setFehler(e instanceof Error ? e.message : "Unbekannter Fehler");
+      }
     } finally {
       setLaeuft(false);
     }
@@ -216,7 +266,7 @@ export default function LeitfadenClient({
               className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#00b8ff]/10 border border-[#00b8ff]/25 text-[#00b8ff] text-sm hover:bg-[#00b8ff]/15 disabled:opacity-50 transition-colors"
             >
               {laeuft ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
-              {laeuft ? "Wird erstellt…" : "Erzeugen"}
+              {wartet ? "Verbindung weg — wird nachgesehen…" : laeuft ? "Wird erstellt…" : "Erzeugen"}
             </button>
           </div>
         ) : (
@@ -245,7 +295,7 @@ export default function LeitfadenClient({
                 className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#00b8ff]/10 border border-[#00b8ff]/25 text-[#00b8ff] text-sm hover:bg-[#00b8ff]/15 disabled:opacity-40 transition-colors"
               >
                 {laeuft ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                {laeuft ? "Wird überarbeitet…" : "Neue Fassung erstellen"}
+                {wartet ? "Verbindung weg — wird nachgesehen…" : laeuft ? "Wird überarbeitet…" : "Neue Fassung erstellen"}
               </button>
             </div>
           </>
