@@ -1,6 +1,7 @@
-import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
+import { getActor } from "@/lib/auth-guards";
+import { mayDoStrategy } from "@/lib/team/roles";
 import { speichereNeueFassung } from "@/lib/strategy-guide/service";
 
 export const runtime = "nodejs";
@@ -15,22 +16,19 @@ export const maxDuration = 600;
  *
  * Erzeugt eine neue Fassung des Leitfadens für das Strategiegespräch.
  *
- * Nur für Admin. Der Leitfaden sagt, wie man dem Kunden etwas verkauft, und
- * darf ihn nie erreichen. Ein CLOSER käme an die Seite ohnehin nicht heran —
- * seine äußere Schranke endet bei `/admin/sales` —, und eine Rolle, die die
- * Seite nicht sehen darf, soll auch die Schnittstelle dahinter nicht
- * erreichen.
+ * Zugang hat, wer Strategiegespräche führen darf. Geprüft wird gegen die
+ * Datenbank, nicht gegen das JWT — wer die Seite nicht sehen darf, soll auch
+ * die Schnittstelle dahinter nicht erreichen, und ein gerade entzogenes Recht
+ * soll nicht bis zur nächsten Anmeldung fortwirken.
  *
  * Body: { sessionId: string, anweisung?: string }
  */
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user) {
+  const actor = await getActor();
+  if (!actor) {
     return NextResponse.json({ error: "Nicht angemeldet" }, { status: 401 });
   }
-
-  const user = session.user as { id?: string; role?: string };
-  if (user.role !== "ADMIN") {
+  if (!mayDoStrategy(actor.role, actor.canStrategy)) {
     return NextResponse.json({ error: "Kein Zugriff" }, { status: 403 });
   }
 
@@ -73,7 +71,7 @@ export async function POST(req: NextRequest) {
     const { version, ergebnis } = await speichereNeueFassung({
       sessionId: analysisSession.id,
       companyId: analysisSession.companyId,
-      userId: user.id!,
+      userId: actor.id,
       anweisung: body.anweisung?.trim() || null,
     });
 

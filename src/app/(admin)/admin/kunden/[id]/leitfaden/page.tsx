@@ -1,6 +1,7 @@
-import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { redirect, notFound } from "next/navigation";
+import { getActor } from "@/lib/auth-guards";
+import { mayDoStrategy } from "@/lib/team/roles";
 import LeitfadenClient from "./LeitfadenClient";
 import type { GuideDocument, ProtokollEintrag } from "@/lib/strategy-guide/types";
 
@@ -11,21 +12,20 @@ import type { GuideDocument, ProtokollEintrag } from "@/lib/strategy-guide/types
  * festgestellt haben, wie er es vorträgt und welche Projekte sich anbieten.
  * Der Kunde darf sie nie sehen.
  *
- * Vorerst nur für Admin. Ein CLOSER käme hier ohnehin nicht an — seine äußere
- * Schranke endet bei `/admin/sales` (siehe `role-access.ts`). Soll er den
- * Leitfaden führen dürfen, ist das eine bewusste Änderung an den Rollenregeln
- * und nicht hier zu entscheiden.
+ * Zugang hat, wer Strategiegespräche führen darf — Administratoren ohnehin,
+ * sonst nur mit ausdrücklich erteiltem Recht. Wer allein Closing-Gespräche
+ * führt, kommt hier nicht herein.
  */
 export default async function LeitfadenPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const session = await auth();
-  if (!session?.user) redirect("/login");
-
-  const rolle = (session.user as { role?: string }).role;
-  if (rolle !== "ADMIN") redirect("/dashboard");
+  // Die Rolle kommt aus der Datenbank, nicht aus dem JWT: ein Recht, das
+  // gerade entzogen wurde, soll nicht bis zum nächsten Anmelden fortwirken.
+  const actor = await getActor();
+  if (!actor) redirect("/login");
+  if (!mayDoStrategy(actor.role, actor.canStrategy)) redirect("/dashboard");
 
   const { id } = await params;
 

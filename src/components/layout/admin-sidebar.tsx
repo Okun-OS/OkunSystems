@@ -21,29 +21,34 @@ import {
 } from "lucide-react";
 import { OkunLogo } from "./okun-logo";
 import { cn } from "@/lib/utils";
+import { teamRoleLabel } from "@/lib/team/roles";
 
-/** `closer: true` = auch für die Rolle CLOSER sichtbar. */
+/**
+ * `closing` = sichtbar für wer Closing-Gespräche führt.
+ * `strategie` = sichtbar für wer Strategiegespräche führt.
+ * Ein Administrator sieht alles.
+ */
 const navItems = [
-  { href: "/admin/dashboard", icon: LayoutDashboard, label: "Übersicht", closer: false },
-  { href: "/admin/sales", icon: TrendingUp, label: "Sales & Closing", closer: true },
-  { href: "/admin/kunden", icon: Users, label: "Kunden", closer: false },
-  { href: "/admin/lernen", icon: BookOpen, label: "Learning Library", closer: false },
-  { href: "/admin/termine", icon: Calendar, label: "Termine", closer: false },
-  { href: "/admin/dokumente", icon: FileText, label: "Dokumente", closer: false },
-  { href: "/admin/einstellungen", icon: Settings, label: "Einstellungen", closer: false },
+  { href: "/admin/dashboard", icon: LayoutDashboard, label: "Übersicht", closing: false, strategie: false },
+  { href: "/admin/sales", icon: TrendingUp, label: "Sales & Closing", closing: true, strategie: false },
+  { href: "/admin/kunden", icon: Users, label: "Kunden", closing: false, strategie: true },
+  { href: "/admin/lernen", icon: BookOpen, label: "Learning Library", closing: false, strategie: false },
+  { href: "/admin/termine", icon: Calendar, label: "Termine", closing: false, strategie: false },
+  { href: "/admin/dokumente", icon: FileText, label: "Dokumente", closing: false, strategie: false },
+  { href: "/admin/einstellungen", icon: Settings, label: "Einstellungen", closing: false, strategie: false },
 ];
 
 const salesSubItems = [
-  { href: "/admin/sales", label: "Dashboard", icon: TrendingUp, exact: true, closer: true },
-  { href: "/admin/sales/leads", label: "Leads", icon: UserCircle, closer: true },
-  { href: "/admin/sales/angebote", label: "Angebote", icon: Package, closer: false },
-  { href: "/admin/sales/bibliothek", label: "Bibliothek", icon: Library, closer: false },
-  { href: "/admin/sales/rechnungen", label: "Rechnungen", icon: Receipt, closer: false },
+  { href: "/admin/sales", label: "Dashboard", icon: TrendingUp, exact: true, closing: true },
+  { href: "/admin/sales/leads", label: "Leads", icon: UserCircle, closing: true },
+  { href: "/admin/sales/angebote", label: "Angebote", icon: Package, closing: false },
+  { href: "/admin/sales/bibliothek", label: "Bibliothek", icon: Library, closing: false },
+  { href: "/admin/sales/rechnungen", label: "Rechnungen", icon: Receipt, closing: false },
   {
     href: "/admin/sales/praesentationen",
     label: "Präsentationen",
     icon: Monitor,
-    closer: false,
+    closing: false,
   },
 ];
 
@@ -52,16 +57,23 @@ interface AdminSidebarProps {
     name?: string | null;
     email?: string | null;
     role?: string | null;
+    canStrategy?: boolean | null;
   };
 }
 
 export function AdminSidebar({ user }: AdminSidebarProps) {
   const pathname = usePathname();
-  const isCloser = user.role === "CLOSER";
-  // Ein Closer sieht nur seinen Bereich. Die Anzeige folgt damit derselben
-  // Regel, die serverseitig ohnehin durchgesetzt wird.
-  const visibleNav = navItems.filter((item) => !isCloser || item.closer);
-  const visibleSubItems = salesSubItems.filter((item) => !isCloser || item.closer);
+  // Jeder sieht nur seine Bereiche. Die Anzeige folgt damit derselben Regel,
+  // die serverseitig ohnehin durchgesetzt wird — sie ersetzt sie nicht.
+  const istAdmin = user.role === "ADMIN";
+  const darfClosing = user.role === "CLOSER";
+  const darfStrategie = user.canStrategy === true;
+
+  const sichtbar = (item: { closing: boolean; strategie: boolean }) =>
+    istAdmin || (darfClosing && item.closing) || (darfStrategie && item.strategie);
+
+  const visibleNav = navItems.filter(sichtbar);
+  const visibleSubItems = salesSubItems.filter((item) => istAdmin || (darfClosing && item.closing));
 
   return (
     <aside className="fixed left-0 top-0 h-full w-[240px] bg-[#060a10] border-r border-[#111e30] flex flex-col z-40">
@@ -128,7 +140,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
           <div className="flex-1 min-w-0">
             <p className="text-[#eef2f7] text-xs font-medium truncate">{user.name}</p>
             <p className="text-[#00b8ff] text-xs font-medium">
-              {isCloser ? "Closer" : "Administrator"}
+              {teamRoleLabel(user)}
             </p>
           </div>
           <ChevronDown size={14} className="text-[#8899b4] flex-shrink-0" />

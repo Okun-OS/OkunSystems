@@ -80,18 +80,19 @@ export async function proxy(req: NextRequest) {
 
   const isLoggedIn = !!token;
   const role = token?.role as string | undefined;
+  const canStrategy = token?.canStrategy === true;
 
   if (!isLoggedIn && !isAuthPage) {
     return NextResponse.redirect(new URL("/login", nextUrl));
   }
 
-  const isAdminOrCloser = role === "ADMIN" || role === "CLOSER";
+  const isStaff = role === "ADMIN" || role === "CLOSER" || role === "STRATEGIST";
 
   if (isLoggedIn && isAuthPage) {
-    if (isAdminOrCloser) {
-      return NextResponse.redirect(new URL("/admin/dashboard", nextUrl));
-    }
-    return NextResponse.redirect(new URL("/dashboard", nextUrl));
+    // Jede Rolle landet auf ihrer eigenen Startseite — ein Mitarbeiter, der
+    // nur Strategiegespräche führt, hat auf dem Admin-Dashboard nichts zu
+    // suchen und würde von dort sofort wieder weggeleitet.
+    return NextResponse.redirect(new URL(homeFor(role ?? "CLIENT"), nextUrl));
   }
 
   // Bereichsschranke: ein CLOSER darf nur den Sales-/Closing-Bereich betreten.
@@ -99,10 +100,10 @@ export async function proxy(req: NextRequest) {
   // (siehe (admin)/layout.tsx und auth-guards.ts) — hier wird nur früh
   // umgeleitet, damit gar nicht erst gerendert wird.
   if (isLoggedIn && isAdminPath(nextUrl.pathname)) {
-    if (!isAdminOrCloser) {
+    if (!isStaff) {
       return NextResponse.redirect(new URL("/dashboard", nextUrl));
     }
-    if (!canAccessAdminPath(role ?? "", nextUrl.pathname)) {
+    if (!canAccessAdminPath(role ?? "", nextUrl.pathname, canStrategy)) {
       return NextResponse.redirect(new URL(homeFor(role ?? "CLIENT"), nextUrl));
     }
   }

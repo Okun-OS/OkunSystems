@@ -20,6 +20,7 @@ import {
   setTeamMemberActive,
   updateTeamMember,
 } from "./actions";
+import { TEAM_ROLES, teamRoleKeyOf, teamRoleLabel } from "@/lib/team/roles";
 
 /**
  * Interne Benutzer.
@@ -34,6 +35,7 @@ export type TeamMember = {
   name: string | null;
   email: string;
   role: string;
+  canStrategy: boolean;
   pendingSetup: boolean;
   active: boolean;
   deactivatedAt: string | null;
@@ -95,7 +97,7 @@ export function TeamClient({
     });
   }
 
-  const closers = members.filter((m) => m.role === "CLOSER");
+  const closers = members.filter((m) => m.role !== "ADMIN");
   const admins = members.filter((m) => m.role === "ADMIN");
 
   return (
@@ -169,8 +171,12 @@ export function TeamClient({
                   <input name="email" type="email" required className={inputClass} />
                 </Field>
                 <Field label="Rolle" required>
-                  <select name="role" defaultValue="CLOSER" className={inputClass}>
-                    <option value="CLOSER">Closer</option>
+                  <select name="role" defaultValue="closing" className={inputClass}>
+                    {TEAM_ROLES.map((r) => (
+                      <option key={r.key} value={r.key}>
+                        {r.label}
+                      </option>
+                    ))}
                     <option value="ADMIN">Administrator</option>
                   </select>
                 </Field>
@@ -231,7 +237,7 @@ export function TeamClient({
                       </div>
 
                       <div className="flex items-center gap-2 flex-wrap">
-                        <Pill tone="muted">{ROLE_LABELS[member.role] ?? member.role}</Pill>
+                        <Pill tone="muted">{teamRoleLabel(member)}</Pill>
                         <Pill tone={member.active ? "on" : "off"}>
                           {member.active ? "aktiv" : "deaktiviert"}
                         </Pill>
@@ -318,9 +324,17 @@ export function TeamClient({
                           />
                         </Field>
                         <Field label="Rolle">
-                          <select name="role" defaultValue={member.role} className={inputClass}>
-                            <option value="CLOSER">Closer</option>
-                            <option value="ADMIN">Administrator</option>
+                          <select
+                            name="role"
+                            defaultValue={member.role === "ADMIN" ? "ADMIN" : teamRoleKeyOf(member) ?? "closing"}
+                            className={inputClass}
+                          >
+                    {TEAM_ROLES.map((r) => (
+                      <option key={r.key} value={r.key}>
+                        {r.label}
+                      </option>
+                    ))}
+                    <option value="ADMIN">Administrator</option>
                           </select>
                         </Field>
                         <PrimaryButton type="submit" disabled={pending}>
@@ -339,12 +353,21 @@ export function TeamClient({
       <div className="mt-8">
         <Panel title="Was darf welche Rolle?">
           <div className="space-y-3">
-            {(["ADMIN", "CLOSER"] as const).map((role) => (
-              <div key={role} className="flex items-start gap-3">
+            <div className="flex items-start gap-3">
+              <ShieldCheck size={14} className="text-[#00b8ff] mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-[#eef2f7] text-sm font-semibold">Administrator</p>
+                <p className="text-[#8899b4] text-xs mt-0.5">
+                  Voller Zugriff auf alle Bereiche.
+                </p>
+              </div>
+            </div>
+            {TEAM_ROLES.map((r) => (
+              <div key={r.key} className="flex items-start gap-3">
                 <ShieldCheck size={14} className="text-[#00b8ff] mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-[#eef2f7] text-sm font-semibold">{ROLE_LABELS[role]}</p>
-                  <p className="text-[#8899b4] text-xs mt-0.5">{ROLE_HINTS[role]}</p>
+                  <p className="text-[#eef2f7] text-sm font-semibold">{r.label}</p>
+                  <p className="text-[#8899b4] text-xs mt-0.5">{r.beschreibung}</p>
                 </div>
               </div>
             ))}

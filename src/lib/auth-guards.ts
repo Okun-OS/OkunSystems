@@ -5,16 +5,19 @@ import { db } from "@/lib/db";
  * Serverseitige Autorisierung.
  *
  * Rollen: ADMIN (voller Zugriff), CLOSER (nur die ihm zugewiesenen Closings),
- * CLIENT (ausschließlich eigene Daten). Jede schreibende Aktion und jeder
- * Download geht durch diese Prüfungen — die Rolle aus dem JWT wird zusätzlich
- * gegen die Datenbank verifiziert.
+ * STRATEGIST (nur der Kundenbereich samt Leitfaden), CLIENT (ausschließlich
+ * eigene Daten). Jede schreibende Aktion und jeder Download geht durch diese
+ * Prüfungen — die Rolle aus dem JWT wird zusätzlich gegen die Datenbank
+ * verifiziert.
  */
 
-export type ActorRole = "ADMIN" | "CLOSER" | "CLIENT";
+export type ActorRole = "ADMIN" | "CLOSER" | "STRATEGIST" | "CLIENT";
 
 export type Actor = {
   id: string;
   role: ActorRole;
+  /** Darf Strategiegespräche führen. Kommt aus der Datenbank, nicht aus dem JWT. */
+  canStrategy: boolean;
   name: string | null;
   email: string;
   companyId: string | null;
@@ -29,8 +32,8 @@ export async function getActor(): Promise<Actor | null> {
   const user = await db.user.findUnique({
     where: { id: userId },
     select: {
-      id: true, role: true, name: true, email: true, companyId: true,
-      deactivatedAt: true,
+      id: true, role: true, canStrategy: true, name: true, email: true,
+      companyId: true, deactivatedAt: true,
     },
   });
   // Ein bereits ausgestelltes JWT darf ein deaktiviertes Konto nicht am Leben
@@ -39,6 +42,7 @@ export async function getActor(): Promise<Actor | null> {
   return {
     id: user.id,
     role: (user.role as ActorRole) ?? "CLIENT",
+    canStrategy: user.canStrategy,
     name: user.name,
     email: user.email,
     companyId: user.companyId,

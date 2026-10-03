@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getActor } from "@/lib/auth-guards";
 import { TeamClient } from "./TeamClient";
+import { STAFF_ROLES } from "@/lib/team/roles";
 
 export default async function TeamPage() {
   const actor = await getActor();
@@ -9,13 +10,14 @@ export default async function TeamPage() {
   if (actor.role !== "ADMIN") redirect("/admin/dashboard");
 
   const members = await db.user.findMany({
-    where: { role: { in: ["ADMIN", "CLOSER"] } },
+    where: { role: { in: [...STAFF_ROLES] } },
     orderBy: [{ role: "asc" }, { name: "asc" }],
     select: {
       id: true,
       name: true,
       email: true,
       role: true,
+      canStrategy: true,
       firstLogin: true,
       deactivatedAt: true,
       resetTokenExpiry: true,
@@ -32,6 +34,7 @@ export default async function TeamPage() {
         name: m.name,
         email: m.email,
         role: m.role,
+        canStrategy: m.canStrategy,
         pendingSetup: m.firstLogin && Boolean(m.resetTokenExpiry),
         active: !m.deactivatedAt,
         deactivatedAt: m.deactivatedAt ? m.deactivatedAt.toISOString() : null,

@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { guarded, requireAdmin } from "@/lib/auth-guards";
 import { sendPasswordResetEmail } from "@/lib/email";
 import { appUrl } from "@/lib/closing/token";
+import { teamRoleByKey } from "@/lib/team/roles";
 
 /**
  * Verwaltung interner Benutzer (ADMIN und CLOSER).
@@ -17,7 +18,18 @@ import { appUrl } from "@/lib/closing/token";
  */
 
 const PATH = "/admin/einstellungen/team";
-const TEAM_ROLES = ["ADMIN", "CLOSER"] as const;
+/**
+ * Was im Formular ausgewählt werden kann.
+ *
+ * "ADMIN" steht für sich; die drei Mitarbeiter-Aufgaben kommen aus
+ * `TEAM_ROLES` und bringen jeweils ihre Kombination aus Rolle und
+ * Strategierecht mit.
+ */
+function rollenZuordnung(auswahl: string): { role: string; canStrategy: boolean } | null {
+  if (auswahl === "ADMIN") return { role: "ADMIN", canStrategy: true };
+  const treffer = teamRoleByKey(auswahl);
+  return treffer ? { role: treffer.role, canStrategy: treffer.canStrategy } : null;
+}
 const SETUP_TOKEN_TTL_DAYS = 7;
 
 function normalizeEmail(raw: string): string {
@@ -42,13 +54,11 @@ export async function createTeamMember(formData: FormData) {
 
     const email = normalizeEmail((formData.get("email") as string) ?? "");
     const name = (formData.get("name") as string)?.trim();
-    const role = (formData.get("role") as string)?.trim();
+    const zuordnung = rollenZuordnung((formData.get("role") as string)?.trim() ?? "");
 
     if (!email || !email.includes("@")) return { error: "Bitte eine gültige E-Mail angeben." };
     if (!name) return { error: "Name ist Pflichtfeld." };
-    if (!(TEAM_ROLES as readonly string[]).includes(role)) {
-      return { error: "Ungültige Rolle." };
-    }
+    if (!zuordnung) return { error: "Ungültige Rolle." };
 
     const existing = await db.user.findUnique({ where: { email } });
     if (existing) {
@@ -67,7 +77,8 @@ export async function createTeamMember(formData: FormData) {
         // Zufälliges, nicht kommuniziertes Passwort: der Zugang entsteht
         // ausschließlich über den Einrichtungslink.
         password: await bcrypt.hash(randomBytes(32).toString("hex"), 12),
-        role,
+        role: zuordnung.role,
+        canStrategy: zuordnung.canStrategy,
         firstLogin: true,
       },
       select: { id: true },
@@ -92,11 +103,9 @@ export async function updateTeamMember(userId: string, formData: FormData) {
     const actor = await requireAdmin();
 
     const name = (formData.get("name") as string)?.trim();
-    const role = (formData.get("role") as string)?.trim();
+    const zuordnung = rollenZuordnung((formData.get("role") as string)?.trim() ?? "");
     if (!name) return { error: "Name ist Pflichtfeld." };
-    if (!(TEAM_ROLES as readonly string[]).includes(role)) {
-      return { error: "Ungültige Rolle." };
-    }
+    if (!zuordnung) return { error: "Ungültige Rolle." };
 
     const target = await db.user.findUnique({
       where: { id: userId },
@@ -108,7 +117,7 @@ export async function updateTeamMember(userId: string, formData: FormData) {
     }
 
     // Der letzte aktive Admin darf sich nicht selbst die Rechte entziehen.
-    if (target.role === "ADMIN" && role !== "ADMIN") {
+    if (target.role === "ADMIN" && zuordnung.role !== "ADMIN") {
       const remaining = await db.user.count({
         where: { role: "ADMIN", deactivatedAt: null, id: { not: userId } },
       });
@@ -120,7 +129,10 @@ export async function updateTeamMember(userId: string, formData: FormData) {
       }
     }
 
-    await db.user.update({ where: { id: userId }, data: { name, role } });
+    await db.user.update({
+      where: { id: userId },
+      data: { name, role: zuordnung.role, canStrategy: zuordnung.canStrategy },
+    });
     revalidatePath(PATH);
     return { ok: true };
   });

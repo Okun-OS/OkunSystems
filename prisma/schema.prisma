@@ -12,7 +12,13 @@ model User {
   email             String    @unique
   name              String?
   password          String
-  role              String    @default("CLIENT") // ADMIN | CLIENT | CLOSER
+  role              String    @default("CLIENT") // ADMIN | CLIENT | CLOSER | STRATEGIST
+  /// Darf Strategiegespräche führen und den Leitfaden dazu sehen.
+  ///
+  /// Getrennt von `role`, weil `role` die Schranke zum Vertriebsbereich ist:
+  /// Wer dort nicht CLOSER heißt, kommt nicht hinein. Ein zusätzliches Feld
+  /// kann daran nichts aufweichen, ein weiterer Rollenname schon.
+  canStrategy       Boolean   @default(false)
   portalRole        String?
   image             String?
   firstLogin        Boolean   @default(true)

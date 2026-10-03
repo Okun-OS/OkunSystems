@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import bcryptjs from "bcryptjs";
 import { encode } from "@auth/core/jwt";
 import { Resend } from "resend";
+import { homeFor } from "@/lib/closing/role-access";
 
 const SECRET =
   process.env.AUTH_SECRET ||
@@ -126,6 +127,7 @@ export async function POST(req: Request) {
         email: user.email,
         name: user.name ?? "",
         role: user.role,
+        canStrategy: user.canStrategy,
         companyId: user.companyId,
         firstLogin: user.firstLogin,
       },
@@ -145,8 +147,7 @@ export async function POST(req: Request) {
       .filter(Boolean)
       .join("; ");
 
-    const redirectTo =
-      user.role === "ADMIN" ? "/admin/dashboard" : "/dashboard";
+    const redirectTo = homeFor(user.role);
 
     const response = Response.json({ ok: true, redirectTo });
     response.headers.set("Set-Cookie", cookieValue);
