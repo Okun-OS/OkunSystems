@@ -4,7 +4,8 @@ import { getActor } from "@/lib/auth-guards";
 import { mayDoStrategy } from "@/lib/team/roles";
 import { renderGuideHtml } from "@/lib/strategy-guide/html";
 import { renderHtmlToPdf } from "@/lib/blueprint/pdf-generator";
-import type { GuideDocument, ProtokollEintrag } from "@/lib/strategy-guide/types";
+import type { ProtokollEintrag } from "@/lib/strategy-guide/types";
+import { leseGuide } from "@/lib/strategy-guide/normalisieren";
 
 // Puppeteer läuft nicht in der Edge-Laufzeit.
 export const runtime = "nodejs";
@@ -88,10 +89,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Sitzung nicht gefunden" }, { status: 404 });
   }
 
-  let doc: GuideDocument;
-  try {
-    doc = JSON.parse(fassung.content) as GuideDocument;
-  } catch {
+  const doc = leseGuide(fassung.content);
+  if (!doc) {
     return NextResponse.json(
       { error: "Die gespeicherte Fassung ist beschädigt." },
       { status: 500 }

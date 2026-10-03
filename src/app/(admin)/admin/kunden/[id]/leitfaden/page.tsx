@@ -4,6 +4,7 @@ import { getActor } from "@/lib/auth-guards";
 import { mayDoStrategy } from "@/lib/team/roles";
 import LeitfadenClient from "./LeitfadenClient";
 import type { GuideDocument, ProtokollEintrag } from "@/lib/strategy-guide/types";
+import { leseGuide } from "@/lib/strategy-guide/normalisieren";
 
 /**
  * Der Leitfaden für das Strategiegespräch.
@@ -56,11 +57,10 @@ export default async function LeitfadenPage({
   const fassungen = (guide?.versions ?? []).map((v) => {
     let document: GuideDocument | null = null;
     let protokoll: ProtokollEintrag[] = [];
-    try {
-      document = JSON.parse(v.content) as GuideDocument;
-    } catch {
-      document = null;
-    }
+    // Über leseGuide, nicht roh: Fassungen aus der Zeit vor einem neuen
+    // Abschnitt kennen dessen Feld nicht, und ein Zugriff darauf ließe die
+    // Seite abstürzen.
+    document = leseGuide(v.content);
     try {
       protokoll = JSON.parse(v.reviewLog) as ProtokollEintrag[];
     } catch {

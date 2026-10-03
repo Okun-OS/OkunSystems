@@ -4,6 +4,7 @@ import type { ReportTexts } from "@/lib/blueprint/report-text-engine";
 import { buildDossier } from "./dossier";
 import { generateLeitfaden, generateVorschlaege } from "./generator";
 import { pruefeVorschlaege } from "./reviewer";
+import { leseGuide } from "./normalisieren";
 import type {
   CustomVorschlag,
   GepruefterVorschlag,
@@ -125,14 +126,7 @@ export async function speichereNeueFassung(params: {
   });
 
   const letzte = guide.versions[0];
-  let vorfassung: GuideDocument | null = null;
-  if (letzte) {
-    try {
-      vorfassung = JSON.parse(letzte.content) as GuideDocument;
-    } catch {
-      vorfassung = null;
-    }
-  }
+  const vorfassung: GuideDocument | null = letzte ? leseGuide(letzte.content) : null;
 
   const ergebnis = await erzeugeLeitfaden({
     sessionId: params.sessionId,
