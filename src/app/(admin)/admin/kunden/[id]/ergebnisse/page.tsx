@@ -223,7 +223,7 @@ export default async function ErgebnissePage({
             </div>
 
             <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5 flex flex-col items-center justify-center">
-              <p className="text-[#888] text-xs mb-2">Empfohlenes Paket</p>
+              <p className="text-[#888] text-xs mb-2">Gebuchtes Paket</p>
               {reportData.packageType ? (
                 <p
                   className="text-2xl font-bold text-center"

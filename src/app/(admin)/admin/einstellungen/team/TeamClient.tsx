@@ -111,10 +111,10 @@ export function TeamClient({
 
       <div className="flex items-start justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-[#eef2f7] mb-1">Team &amp; Closer</h1>
+          <h1 className="text-2xl font-bold text-[#eef2f7] mb-1">Team</h1>
           <p className="text-[#8899b4] text-sm max-w-2xl">
-            Interne Zugänge. Ein Closer sieht ausschließlich den Sales- und Closing-Bereich und
-            dort nur die ihm zugewiesenen Leads und Closings.
+            Interne Zugänge. Jeder sieht nur die Bereiche seiner Aufgabe — wer Closing-Gespräche
+            führt, zusätzlich nur die ihm zugewiesenen Leads und Closings.
           </p>
         </div>
         <PrimaryButton
@@ -200,7 +200,7 @@ export function TeamClient({
 
       <div className="space-y-6">
         {[
-          { label: "Closer", list: closers },
+          { label: "Mitarbeitende", list: closers },
           { label: "Administratoren", list: admins },
         ].map(({ label, list }) => (
           <div key={label}>
