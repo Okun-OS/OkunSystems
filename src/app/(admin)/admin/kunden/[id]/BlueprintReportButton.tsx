@@ -12,13 +12,50 @@ export function BlueprintReportButton({
 }) {
   const [reportUrl, setReportUrl] = useState<string | null>(initialReportUrl);
   const [loading, setLoading] = useState(false);
+  const [warte, setWarte] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [additionalContext, setAdditionalContext] = useState("");
   const [specialRequests, setSpecialRequests] = useState("");
 
+  /**
+   * Sieht nach, ob der Bericht inzwischen fertig ist.
+   *
+   * Die Erzeugung läuft mehrere Minuten in einer einzigen Anfrage. Bricht
+   * unterwegs die Verbindung weg — ein Zeitlimit beim Betreiber, ein
+   * Netzwechsel, ein zugeklappter Deckel —, meldet der Browser "Failed to
+   * fetch", obwohl der Server weiterarbeitet und fertig wird. Statt dem
+   * Benutzer einen Fehler zu zeigen, der keiner ist, wird hier nachgesehen.
+   *
+   * Angenommen wird nur eine Adresse, die vorher nicht da war: Beim
+   * Neuerzeugen liegt schon eine vom letzten Mal vor, und die wäre kein
+   * Beleg dafür, dass dieser Lauf durchkam.
+   */
+  async function wartenAufErgebnis(vorher: string | null): Promise<boolean> {
+    const bisMax = Date.now() + 10 * 60 * 1000;
+    while (Date.now() < bisMax) {
+      await new Promise((r) => setTimeout(r, 10_000));
+      try {
+        const res = await fetch(
+          `/api/blueprint/report?sessionId=${encodeURIComponent(sessionId)}`
+        );
+        if (!res.ok) continue;
+        const json = (await res.json()) as { reportUrl?: string | null };
+        if (json.reportUrl && json.reportUrl !== vorher) {
+          setReportUrl(json.reportUrl);
+          return true;
+        }
+      } catch {
+        // Auch das Nachsehen kann scheitern — dann eben beim nächsten Mal.
+      }
+    }
+    return false;
+  }
+
   async function generate() {
+    const vorher = reportUrl;
     setLoading(true);
+    setWarte(false);
     setShowForm(false);
     setError(null);
     try {
@@ -35,7 +72,25 @@ export function BlueprintReportButton({
       if (!res.ok) throw new Error(json.error ?? "Generierung fehlgeschlagen");
       setReportUrl(json.reportUrl);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unbekannter Fehler");
+      // Ein abgerissener Aufruf wirft einen TypeError, kein Serverfehler mit
+      // Meldung. Nur dann lohnt das Nachsehen.
+      const abgerissen = e instanceof TypeError;
+      if (abgerissen) {
+        setWarte(true);
+        const fertig = await wartenAufErgebnis(vorher);
+        setWarte(false);
+        if (fertig) {
+          setLoading(false);
+          return;
+        }
+        setError(
+          "Die Verbindung ist abgerissen und der Bericht war auch nach zehn " +
+            "Minuten nicht da. Die erzeugten Texte sind gespeichert — laden " +
+            "Sie die Seite neu und versuchen Sie es noch einmal."
+        );
+      } else {
+        setError(e instanceof Error ? e.message : "Unbekannter Fehler");
+      }
     } finally {
       setLoading(false);
     }
@@ -46,7 +101,11 @@ export function BlueprintReportButton({
       <div className="mt-3 pt-3 border-t border-[#111e30]">
         <div className="flex items-center gap-2 w-full bg-[#0c1a2e] border border-[#1a2840] rounded-lg px-3 py-3 text-[#00b8ff] text-xs">
           <Loader2 size={13} className="animate-spin flex-shrink-0" />
-          <span>Bericht wird generiert — das dauert ca. 3–4 Minuten …</span>
+          <span>
+            {warte
+              ? "Die Verbindung ist abgerissen — der Server arbeitet weiter. Es wird nachgesehen, ob der Bericht fertig wird …"
+              : "Bericht wird generiert — das dauert ca. 3–4 Minuten …"}
+          </span>
         </div>
       </div>
     );
