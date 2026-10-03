@@ -106,6 +106,14 @@ export function renderGuideHtml(params: {
   body {
     font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     color: #15202b; font-size: 10.5pt; line-height: 1.55; margin: 0;
+    /*
+     * Keine Ligaturen. Auf dem Server greift der Renderer zu einer Schrift,
+     * deren ff- und fi-Glyphen keine Rückabbildung auf die Buchstaben
+     * mitbringen: Im Druck sieht "Prüffristen" richtig aus, beim Kopieren
+     * und beim Suchen im PDF zerfällt es zu "Prü ff risten". Ohne Ligaturen
+     * setzt der Renderer jeden Buchstaben einzeln, und beides stimmt.
+     */
+    font-variant-ligatures: none;
   }
   /*
    * Die Warnzeile steht in einem Tabellenkopf, nicht in einem festen Element.

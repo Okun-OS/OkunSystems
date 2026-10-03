@@ -437,6 +437,13 @@ body {
   background: #fff;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
+  /*
+   * Keine Ligaturen: Auf dem Server greift der Renderer zu einer Schrift,
+   * deren ff- und fi-Glyphen keine Rückabbildung auf die Buchstaben
+   * mitbringen. Im Druck sieht "Prüffristen" richtig aus, beim Kopieren und
+   * beim Suchen im PDF zerfällt es zu "Prü ff risten".
+   */
+  font-variant-ligatures: none;
 }
 
 /* ── Page break utility ─────────────────────────────────────────────────── */

@@ -39,8 +39,8 @@ const KONTEXT: Array<[string, string]> = [
 
 /** Welche Antwort bei welcher Frage. Zahl = Position der Option (1-basiert). */
 const WAHL: Record<string, number[]> = {
-  "M1.1": [2], "M1.2": [4], "M1.3": [1], "M1.4": [2, 3], "M1.5": [1],
-  "M1.6": [2], "M1.7": [2], "M1.8": [2], "M1.9": [2], "M1.10": [1],
+  "M1.1": [2], "M1.2": [5], "M1.3": [1], "M1.4": [2, 3], "M1.5": [1],
+  "M1.6": [2], "M1.7": [1], "M1.8": [2], "M1.9": [2], "M1.10": [1],
   "M1.11": [1, 2, 3], "M1.12": [1],
 };
 
@@ -233,12 +233,12 @@ export async function seedNordlicht(): Promise<DemoErgebnis> {
   const papier = await sys("Papier-Serviceberichte", "sonstige", ["pur_documents", "pur_time"], true);
 
   const tasks: Array<[string, string, string, string, string, string[]]> = [
-    ["tsk_reports", "Serviceberichte abtippen", "verwaltung", "freq_daily", "dur_over60", [papier.id, branche.id]],
-    ["tsk_deadlines", "Wartungsfristen in Excel und Outlook abgleichen", "verwaltung", "freq_weekly", "dur_over60", [outlook.id, excel.id]],
-    ["tsk_dispatch", "Einsatzplanung für den Folgetag abstimmen", "disposition", "freq_daily", "dur_30_60", [whatsapp.id]],
-    ["tsk_stock", "Materialbestand je Fahrzeug nachpflegen", "lager", "freq_weekly", "dur_30_60", [excel.id]],
-    ["tsk_invoice", "Rechnungen aus Serviceberichten erstellen", "verwaltung", "freq_weekly", "dur_over60", [branche.id, papier.id]],
-    ["tsk_proof", "Nachweise für Hausverwaltungen zusammenstellen", "verwaltung", "freq_monthly", "dur_over60", [papier.id, outlook.id]],
+    ["tsk_reports", "Serviceberichte abtippen", "Verwaltung & Dokumente", "freq_daily", "dur_over60", [papier.id, branche.id]],
+    ["tsk_deadlines", "Wartungsfristen in Excel und Outlook abgleichen", "Verwaltung & Dokumente", "freq_weekly", "dur_over60", [outlook.id, excel.id]],
+    ["tsk_dispatch", "Einsatzplanung für den Folgetag abstimmen", "Steuerung & Abstimmung", "freq_daily", "dur_30_60", [whatsapp.id]],
+    ["tsk_stock", "Materialbestand je Fahrzeug nachpflegen", "Einkauf & Material", "freq_weekly", "dur_30_60", [excel.id]],
+    ["tsk_invoice", "Rechnungen aus Serviceberichten erstellen", "Rechnungen & Zahlungen", "freq_weekly", "dur_over60", [branche.id, papier.id]],
+    ["tsk_proof", "Nachweise für Hausverwaltungen zusammenstellen", "Verwaltung & Dokumente", "freq_monthly", "dur_over60", [papier.id, outlook.id]],
   ];
   for (const [i, [key, label, area, freq, dur, systemIds]] of tasks.entries()) {
     await db.blueprintTask.create({
