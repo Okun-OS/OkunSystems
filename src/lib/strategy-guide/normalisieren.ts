@@ -4,6 +4,7 @@ import type {
   Kernbefund,
   Einwand,
   StandardLoesung,
+  Umsetzungsposten,
 } from "./types";
 
 /**
@@ -34,6 +35,7 @@ export function normalisiereGuide(roh: unknown): GuideDocument | null {
     empfehlung: text(q.empfehlung),
     customVorschlaege: liste<GepruefterVorschlag>(q.customVorschlaege),
     standardLoesungen: liste<StandardLoesung>(q.standardLoesungen),
+    umsetzung: liste<Umsetzungsposten>(q.umsetzung),
     unsereLeistung: text(q.unsereLeistung),
     einwaende: liste<Einwand>(q.einwaende),
     abschluss: text(q.abschluss),

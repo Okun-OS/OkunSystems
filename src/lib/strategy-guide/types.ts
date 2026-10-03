@@ -62,6 +62,27 @@ export interface StandardLoesung {
   einordnung: string;
 }
 
+/**
+ * Ein Posten aus dem, was wir für diesen Kunden umsetzen.
+ *
+ * Der Leitfaden sagte bisher in Fließtext, was wir tun, und blieb dabei
+ * ungenau — er nannte eine Lösung und ließ offen, welcher Befund sie nötig
+ * macht und in welchen Teil des gebuchten Pakets sie fällt. Der Kollege
+ * konnte daraus nicht ableiten, was der Kunde am Ende bekommt.
+ */
+export interface Umsetzungsposten {
+  /** In welchen Block des Pakets das fällt, wörtlich aus dem Leistungsumfang. */
+  block: string;
+  /** Was eingerichtet, automatisiert oder übernommen wird. */
+  titel: string;
+  /** Der Befund mit seiner Zahl, der das nötig macht. */
+  befund: string;
+  /** Was wir dafür konkret tun. */
+  wasWirTun: string;
+  /** Ob das im gebuchten Paket liegt oder darüber. */
+  einordnung: string;
+}
+
 /** Ein Vorschlag mit dem Ergebnis der Prüfung. */
 export interface GepruefterVorschlag extends CustomVorschlag {
   geprueftInRunde: number;
@@ -83,11 +104,19 @@ export interface GuideDocument {
   /** 7 — Fertige Lösungen, die wir für ihn einrichten würden. */
   standardLoesungen: StandardLoesung[];
   /**
-   * 8 — Was wir konkret für diesen Kunden tun.
+   * 8 — Was wir umsetzen, Posten für Posten.
    *
-   * Nicht, was er bekommt, sondern was wir machen: Erhebung, Einrichtung,
-   * Übernahme von Daten, Einweisung, Begleitung. Der Kollege muss die
-   * Frage „und was macht ihr dann genau?“ beantworten können.
+   * Je Posten: welcher Befund, was wir damit machen, in welchem Teil des
+   * gebuchten Pakets das liegt. Daraus muss der Kollege ablesen können,
+   * welche Abläufe automatisiert werden und welche digitalen Grundlagen
+   * der Kunde bekommt.
+   */
+  umsetzung: Umsetzungsposten[];
+  /**
+   * 8b — Wie wir dabei vorgehen.
+   *
+   * Erhebung, Einrichtung, Übernahme von Daten, Einweisung, Begleitung —
+   * die Antwort auf „und wie läuft das dann ab?“.
    */
   unsereLeistung: string;
   /** 9 — Wahrscheinliche Einwände mit Antwort. */

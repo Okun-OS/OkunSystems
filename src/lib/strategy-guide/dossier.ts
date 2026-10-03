@@ -2,6 +2,7 @@ import type { BlueprintReportData } from "@/lib/blueprint/report-assembler";
 import type { ReportTexts } from "@/lib/blueprint/report-text-engine";
 import { formatHours, stationLabel } from "@/lib/blueprint/pillar3-engine";
 import { packageLabel } from "@/lib/packages";
+import { umfangAlsText } from "@/lib/packages/umfang";
 
 /**
  * Die Faktengrundlage für Erzeuger und Prüfer.
@@ -40,6 +41,8 @@ export function buildDossier(
   );
 
   // ── Was der Kunde selbst erzählt hat ─────────────────────────────────────
+  teile.push(umfangAlsText(data.packageType));
+
   if (data.companyContext) {
     const paare = data.companyContext.entries.reduce<string[]>((acc, e, i, arr) => {
       if (e.role === "assistant" && arr[i + 1]?.role === "user") {
@@ -155,10 +158,30 @@ export function buildDossier(
     teile.push(
       [
         "## Lösungen, die die Auswertung vorschlägt",
-        ...data.recommendations.map(
-          (r) =>
-            `- ${r.name} (${r.category}, Trefferstärke ${r.signalScore})${r.beyondPackage ? " — LIEGT ÜBER DEM GEBUCHTEN PAKET" : ""}\n  ${r.description}`
-        ),
+        "",
+        "Es gibt drei Arten, und sie bedeuten für den Kunden Verschiedenes:",
+        "",
+        "- DIGITALE GRUNDLAGE: ein bewährtes Werkzeug vom Markt, das wir für ihn",
+        "  auswählen, einrichten und auf seinen Betrieb zuschneiden. Er bekommt",
+        "  damit erst die Grundlage, auf der sich überhaupt etwas automatisieren",
+        "  lässt. Schon im kleinsten Paket enthalten.",
+        "- AUTOMATISIERUNG: ein Baustein, der einen Ablauf übernimmt, der heute",
+        "  von Hand läuft. Ordne ihn im Abschnitt zur Umsetzung dem Block des",
+        "  Leistungsumfangs zu, in den er gehört — zu den Automatisierungen oder",
+        "  zur Workforce, je nachdem, was er tatsächlich tut.",
+        "- INDIVIDUELL GEBAUT: wird für ihn entwickelt, weil es das so nicht gibt.",
+        "",
+        ...data.recommendations.map((r) => {
+          const art =
+            r.category === "BEWAEHRTE_LOESUNG"
+              ? "DIGITALE GRUNDLAGE"
+              : r.category === "WORKFORCE"
+                ? "AUTOMATISIERUNG"
+                : "INDIVIDUELL GEBAUT";
+          return `- ${r.name} [${art}, Trefferstärke ${r.signalScore}]${
+            r.beyondPackage ? " — LIEGT ÜBER DEM GEBUCHTEN PAKET" : " — im gebuchten Paket enthalten"
+          }\n  ${r.description}`;
+        }),
       ].join("\n")
     );
   }

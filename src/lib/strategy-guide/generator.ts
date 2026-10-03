@@ -5,6 +5,7 @@ import type {
   Kernbefund,
   Einwand,
   StandardLoesung,
+  Umsetzungsposten,
 } from "./types";
 
 const SYSTEM_ERZEUGER = `Du bereitest bei OKUN Systems das Strategiegespräch vor.
@@ -159,7 +160,8 @@ Antworte mit JSON in genau dieser Form:
 "expertise":"Die eine Beobachtung, auf die der Kunde selbst nicht gekommen wäre — ein Zusammenhang zwischen zwei Befunden, den erst die Auswertung sichtbar macht. Zwei bis vier Sätze. Das ist der Moment, in dem der Kunde merkt, dass wir hingesehen haben.",
 "empfehlung":"Was wir an seiner Stelle täten, in welcher Reihenfolge und warum. Fünf bis acht Sätze.",
 "standardLoesungen":[{"titel":"kurz, was eingerichtet würde","aufhaenger":"die Stelle im Fall, die es nötig macht, mit Zahl","loesung":"was es ist und was daran auf diesen Betrieb zugeschnitten wird, zwei bis drei Sätze","nutzen":"was er davon hat, möglichst mit der Zahl aus dem Aufhänger","einordnung":"im gebuchten Paket enthalten oder darüber hinaus"}],
-"unsereLeistung":"Was wir konkret tun, wenn er zusagt. Nicht was er bekommt, sondern was wir machen: was wir erheben, einrichten, übernehmen, einweisen, begleiten — und in welcher Reihenfolge. Fünf bis acht Sätze, so dass der Kollege die Frage „und was macht ihr dann genau?“ ohne Zögern beantworten kann. Was die Auswertung an fertigen Lösungen empfiehlt, gehört hier hinein.",
+"umsetzung":[{"block":"in welchen Block des gebuchten Leistungsumfangs das fällt, wörtlich dessen Bezeichnung","titel":"was eingerichtet, automatisiert oder übernommen wird","befund":"der Befund mit seiner Zahl, der das nötig macht","wasWirTun":"was wir dafür konkret tun, ein bis zwei Sätze","einordnung":"im gebuchten Paket enthalten oder darüber hinaus"}],
+"unsereLeistung":"Wie das abläuft: was wir erheben, in welcher Reihenfolge wir einrichten, was wir an Daten übernehmen, wen wir einweisen, wie lange wir begleiten. Vier bis sechs Sätze. Keine Aufzählung der Lösungen — die stehen schon in der Umsetzung.",
 "einwaende":[{"einwand":"was der Kunde wahrscheinlich sagt, in seinen Worten","antwort":"die Antwort, ausformuliert zum Sagen"}],
 "abschluss":"Was am Ende des Gesprächs vereinbart sein sollte. Konkrete nächste Schritte."}
 
@@ -170,6 +172,24 @@ bei ihm einrichten — nicht gebaut, sondern eingeführt und zugeschnitten. Die
 Auswertung nennt dazu bereits Empfehlungen; nimm die, die zu seinen Befunden
 passen, und sag bei jeder, ob sie im gebuchten Paket liegt oder darüber. Zwei
 bis fünf. Gibt der Fall keine her, gib eine leere Liste.
+
+Zur Umsetzung — das ist der wichtigste Abschnitt, denn daran misst der Kunde,
+was er für sein Geld bekommt. Geh den gebuchten Leistungsumfang Block für
+Block durch, in seiner Reihenfolge, und sag für jeden, was bei diesem Betrieb
+konkret hineingehört:
+
+- Welche digitalen Grundlagen fehlen ihm, und was richten wir dafür ein oder
+  verbessern wir? Leite das aus seinen Antworten ab, nicht aus einer
+  allgemeinen Liste.
+- Welche wiederkehrenden Tätigkeiten automatisieren wir, und welche Aufgabe
+  mit welcher Stundenzahl steckt dahinter?
+- Was übernimmt die digitale Workforce?
+
+Halte dich an die Grenzen des Umfangs. Steht dort "höchstens drei", nenne
+höchstens drei — und wenn mehr sinnvoll wäre, schreib das in die Einordnung
+des vierten Postens als "darüber hinaus", statt es stillschweigend
+mitzuversprechen. Jeder Posten braucht einen Befund mit Zahl; ohne den
+gehört er nicht in die Liste.
 
 Nenne das, was der Kunde zu Beginn des Blueprints über seinen Betrieb
 geschrieben hat, „Unternehmenskontext“ oder schlicht „im Blueprint“. Es gab
@@ -197,6 +217,9 @@ Vorgespräch“ gesagt.`;
     empfehlung: text(parsed.empfehlung, "— konnte nicht erzeugt werden —"),
     standardLoesungen: Array.isArray(parsed.standardLoesungen)
       ? (parsed.standardLoesungen as StandardLoesung[])
+      : [],
+    umsetzung: Array.isArray(parsed.umsetzung)
+      ? (parsed.umsetzung as Umsetzungsposten[])
       : [],
     unsereLeistung: text(parsed.unsereLeistung, "— konnte nicht erzeugt werden —"),
     einwaende: Array.isArray(parsed.einwaende) ? (parsed.einwaende as Einwand[]) : [],

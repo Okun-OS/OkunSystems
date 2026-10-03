@@ -14,7 +14,11 @@ import {
   FileDown,
   PackageCheck,
 } from "lucide-react";
-import type { GuideDocument, ProtokollEintrag } from "@/lib/strategy-guide/types";
+import type {
+  GuideDocument,
+  ProtokollEintrag,
+  Umsetzungsposten,
+} from "@/lib/strategy-guide/types";
 
 interface Fassung {
   version: number;
@@ -74,6 +78,14 @@ export default function LeitfadenClient({
 
   const aktuell = fassungen.find((f) => f.version === gezeigt) ?? fassungen[0] ?? null;
   const doc = aktuell?.document ?? null;
+
+  // Nach Block gruppiert, in der Reihenfolge des Leistungsumfangs.
+  const bloecke: Array<{ name: string; posten: Umsetzungsposten[] }> = [];
+  for (const posten of doc?.umsetzung ?? []) {
+    const vorhanden = bloecke.find((b) => b.name === posten.block);
+    if (vorhanden) vorhanden.posten.push(posten);
+    else bloecke.push({ name: posten.block, posten: [posten] });
+  }
 
   /**
    * Sieht nach, ob eine neue Fassung aufgetaucht ist.
@@ -454,8 +466,49 @@ export default function LeitfadenClient({
             )}
           </Abschnitt>
 
-          <Abschnitt nummer={8} titel="Was wir konkret tun">
-            <p className={absatz}>{doc.unsereLeistung}</p>
+          <Abschnitt nummer={8} titel="Was wir umsetzen">
+            {doc.umsetzung.length === 0 ? (
+              <p className="text-[#8899b4] text-sm leading-relaxed">
+                Für diesen Fall ist nicht hinterlegt, was im gebuchten Paket umgesetzt
+                wird. Im Gespräch nichts zusagen.
+              </p>
+            ) : (
+              <div className="space-y-5">
+                {bloecke.map((b) => (
+                  <div key={b.name}>
+                    <p className="text-[#8899b4] text-xs font-semibold uppercase tracking-wider border-b border-[#1a2840] pb-1.5 mb-2.5">
+                      {b.name}
+                    </p>
+                    <div className="space-y-3">
+                      {b.posten.map((pst, i) => (
+                        <div key={i} className="border-l-2 border-[#1a2840] pl-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <p className="text-[#f0f0f0] text-sm font-semibold">
+                              {pst.titel}
+                            </p>
+                            <span className="flex-shrink-0 text-xs text-[#8899b4]">
+                              {pst.einordnung}
+                            </span>
+                          </div>
+                          <p className="text-[#00b8ff] text-xs mt-1 font-medium">
+                            {pst.befund}
+                          </p>
+                          <p className="text-[#c9d4e4] text-sm mt-1.5 leading-relaxed">
+                            {pst.wasWirTun}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="mt-5 bg-[#060a10] rounded-lg px-4 py-3">
+              <p className="text-[#8899b4] text-xs font-semibold uppercase tracking-wider mb-1.5">
+                Wie das abläuft
+              </p>
+              <p className={absatz}>{doc.unsereLeistung}</p>
+            </div>
           </Abschnitt>
 
           <Abschnitt nummer={9} titel="Womit du rechnen musst">

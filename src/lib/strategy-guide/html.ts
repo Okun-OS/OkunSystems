@@ -94,6 +94,38 @@ export function renderGuideHtml(params: {
           )
           .join("");
 
+  // Nach Block gruppiert, in der Reihenfolge, in der sie auftreten — das ist
+  // die Reihenfolge des Leistungsumfangs.
+  const bloecke: Array<{ name: string; posten: typeof doc.umsetzung }> = [];
+  for (const posten of doc.umsetzung) {
+    const vorhanden = bloecke.find((b) => b.name === posten.block);
+    if (vorhanden) vorhanden.posten.push(posten);
+    else bloecke.push({ name: posten.block, posten: [posten] });
+  }
+
+  const umsetzung =
+    doc.umsetzung.length === 0
+      ? `<p class="leer">Für diesen Fall ist nicht hinterlegt, was im gebuchten Paket
+         umgesetzt wird. Im Gespräch nichts zusagen.</p>`
+      : bloecke
+          .map(
+            (b) => `<div class="block">
+              <div class="block-name">${esc(b.name)}</div>
+              ${b.posten
+                .map(
+                  (pst) => `<div class="posten">
+                    <div class="posten-titel">${esc(pst.titel)}
+                      <span class="einordnung">${esc(pst.einordnung)}</span>
+                    </div>
+                    <div class="beleg">${esc(pst.befund)}</div>
+                    <div class="karte-text">${esc(pst.wasWirTun)}</div>
+                  </div>`
+                )
+                .join("")}
+            </div>`
+          )
+          .join("");
+
   const einwaende = doc.einwaende
     .map(
       (e) => `<div class="karte">
@@ -190,9 +222,22 @@ export function renderGuideHtml(params: {
   }
   .groesse { font-size: 9pt; color: #64748b; margin-top: 7px; }
   .fertig { border-left: 3px solid #15803d; }
+  .block { margin-bottom: 11px; page-break-inside: avoid; }
+  .block-name {
+    font-size: 8pt; text-transform: uppercase; letter-spacing: 0.8px;
+    color: #15202b; font-weight: 700; border-bottom: 1px solid #15202b;
+    padding-bottom: 3px; margin-bottom: 6px;
+  }
+  .posten { padding: 5px 0 7px 11px; border-left: 2px solid #dde3ea; margin-bottom: 5px; }
+  .posten-titel { font-weight: 700; font-size: 10pt; }
   .aufhaenger.gruen { color: #15803d; }
   .einordnung { float: right; font-size: 8pt; font-weight: 600; color: #64748b; }
   .einwand { font-style: italic; color: #475569; }
+  .ablauf { margin-top: 11px; background: #f6f8fa; padding: 10px 13px; border-radius: 4px; }
+  .ablauf-titel {
+    font-size: 8pt; text-transform: uppercase; letter-spacing: 0.8px;
+    color: #64748b; font-weight: 700; margin-bottom: 4px;
+  }
   .leer { font-size: 10pt; color: #64748b; }
   table.protokoll { width: 100%; border-collapse: collapse; font-size: 8.5pt; margin-top: 4px; }
   table.protokoll td { border-top: 1px solid #e2e8f0; padding: 5px 7px 5px 0; vertical-align: top; }
@@ -231,7 +276,11 @@ export function renderGuideHtml(params: {
   ${abschnitt(5, "Unsere Empfehlung", p(doc.empfehlung))}
   ${abschnitt(6, "Custom-Projekte, die hier gehen", vorschlaege)}
   ${abschnitt(7, "Fertige Lösungen, die wir hier einrichten", fertige)}
-  ${abschnitt(8, "Was wir konkret tun", p(doc.unsereLeistung))}
+  ${abschnitt(
+    8,
+    "Was wir umsetzen",
+    `${umsetzung}<div class="ablauf"><div class="ablauf-titel">Wie das abläuft</div>${p(doc.unsereLeistung)}</div>`
+  )}
   ${abschnitt(9, "Womit du rechnen musst", einwaende)}
   ${abschnitt(10, "Was am Ende stehen sollte", p(doc.abschluss))}
 

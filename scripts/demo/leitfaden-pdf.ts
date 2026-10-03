@@ -31,6 +31,11 @@ const doc: GuideDocument = {
     { titel: "Dienst- und Einsatzplanung von der Stange", aufhaenger: "16,2 h/Monat Abstimmung ueber WhatsApp", loesung: lang(10, "Fertige Planungssoftware, auf die Fahrzeuge zugeschnitten."), nutzen: lang(8, "Die Planung steht abends fuer den Folgetag."), einordnung: "im gebuchten Paket enthalten" },
     { titel: "Dokumentenablage", aufhaenger: "Nachweise liegen in Papierordnern", loesung: lang(10, "Ablage mit Rechten je Hausverwaltung."), nutzen: lang(8, "Nachweise sind in Sekunden auffindbar."), einordnung: "ueber dem gebuchten Paket" },
   ],
+  umsetzung: [
+    { block: "Digitale Grundlagen", titel: "Zentrale Dateiablage", befund: "Nachweise liegen in Papierordnern", wasWirTun: lang(5, "Wir richten die Ablage ein und uebernehmen die Bestaende."), einordnung: "im gebuchten Paket enthalten" },
+    { block: "Automatisierungen", titel: "Rechnungslauf aus den Berichten", befund: "6,5 h/Monat Rechnungserstellung", wasWirTun: lang(5, "Wir setzen die Uebergabe auf."), einordnung: "im gebuchten Paket enthalten (1 von 3)" },
+    { block: "OKUN Workforce", titel: "Fristenmeldungen", befund: "zwei gerissene Fristen im Vorjahr", wasWirTun: lang(5, "Die Workforce meldet faellige Pruefungen."), einordnung: "im gebuchten Paket enthalten" },
+  ],
   unsereLeistung: lang(24, "Wir erheben die Ablaeufe, richten ein, uebernehmen die Daten und weisen die Monteure ein."),
   einwaende: [
     { einwand: "Meine Leute koennen das nicht.", antwort: lang(12, "Wer ein Telefon bedienen kann, kann das auch.") },
