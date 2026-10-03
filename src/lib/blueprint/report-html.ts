@@ -3,6 +3,7 @@ import type { SolutionRecommendation } from "./types";
 import { bandLabel, formatHours, stationLabel } from "./pillar3-engine";
 import { STATIONS_OKUN_TAKES } from "./pillar3-catalog";
 import type { ReportTexts } from "./report-text-engine";
+import { packageLabel } from "@/lib/packages";
 
 function scoreColor(score: number): string {
   if (score >= 80) return "#00b8ff";
@@ -770,7 +771,7 @@ body {
       ${logoHtml}
       <div class="cover-logo-sub">OKUN Systems · Digitalisierungsberatung</div>
     </div>
-    <div class="cover-confidential">Vertraulich · Nur für intern</div>
+    <div class="cover-confidential">Vertraulich · Nur für den Adressaten</div>
   </div>
 
   <div class="cover-body">
@@ -782,7 +783,7 @@ body {
       ${data.company.industry ? `<div class="cover-meta-item"><div class="cover-meta-label">Branche</div><div class="cover-meta-val">${data.company.industry}</div></div>` : ""}
       <div class="cover-meta-item"><div class="cover-meta-label">Analysedatum</div><div class="cover-meta-val">${dateStr}</div></div>
       <div class="cover-meta-item"><div class="cover-meta-label">Abdeckung</div><div class="cover-meta-val">${data.totalAnswered} / ${data.totalActive} Fragen</div></div>
-      <div class="cover-meta-item"><div class="cover-meta-label">Paket</div><div class="cover-meta-val">${data.packageType ?? "Standard"}</div></div>
+      <div class="cover-meta-item"><div class="cover-meta-label">Paket</div><div class="cover-meta-val">${packageLabel(data.packageType) ?? "—"}</div></div>
     </div>
 
     <div class="cover-score-section">
