@@ -280,6 +280,10 @@ export default function LeitfadenClient({
               Kunde ist kein IT-Mensch — formuliere das in Alltagssprache.“ Die bisherige
               Fassung bleibt erhalten.
             </p>
+            <p className="text-[#5b6b7f] text-xs mb-3 leading-relaxed">
+              Das Feld darf leer bleiben: Dann wird der Leitfaden von Grund auf neu
+              erzeugt, statt die bisherige Fassung zu überarbeiten.
+            </p>
             <textarea
               value={anweisung}
               onChange={(e) => setAnweisung(e.target.value)}
@@ -290,12 +294,20 @@ export default function LeitfadenClient({
             />
             <div className="flex justify-end mt-3">
               <button
-                onClick={() => erzeugen(true)}
-                disabled={laeuft || anweisung.trim().length === 0}
+                onClick={() => erzeugen(anweisung.trim().length > 0)}
+                disabled={laeuft}
                 className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#00b8ff]/10 border border-[#00b8ff]/25 text-[#00b8ff] text-sm hover:bg-[#00b8ff]/15 disabled:opacity-40 transition-colors"
               >
                 {laeuft ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                {wartet ? "Verbindung weg — wird nachgesehen…" : laeuft ? "Wird überarbeitet…" : "Neue Fassung erstellen"}
+                {wartet
+                  ? "Verbindung weg — wird nachgesehen…"
+                  : laeuft
+                    ? anweisung.trim().length > 0
+                      ? "Wird überarbeitet…"
+                      : "Wird neu erzeugt…"
+                    : anweisung.trim().length > 0
+                      ? "Neue Fassung erstellen"
+                      : "Neu erzeugen"}
               </button>
             </div>
           </>
