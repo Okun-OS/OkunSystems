@@ -129,8 +129,49 @@ export default function LeitfadenClient({
           anweisung: mitAnweisung ? anweisung : undefined,
         }),
       });
-      const daten = (await res.json()) as { error?: string };
-      if (!res.ok) throw new Error(daten.error ?? "Unbekannter Fehler");
+
+      // Wird die Anfrage abgelehnt, kommt eine gewöhnliche Antwort mit
+      // Meldung. Wird sie angenommen, kommt ein Strom: alle zehn Sekunden
+      // ein Lebenszeichen, am Ende das Ergebnis. So fließt durchgehend
+      // etwas, und niemand hält die Verbindung für tot.
+      if (!res.ok) {
+        const daten = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(daten.error ?? "Unbekannter Fehler");
+      }
+      if (!res.body) throw new Error("Keine Antwort vom Server");
+
+      const leser = res.body.getReader();
+      const dekoder = new TextDecoder();
+      let rest = "";
+      let fertig = false;
+
+      for (;;) {
+        const { done, value } = await leser.read();
+        if (done) break;
+        rest += dekoder.decode(value, { stream: true });
+        const zeilen = rest.split("\n");
+        rest = zeilen.pop() ?? "";
+        for (const zeile of zeilen) {
+          if (!zeile.trim()) continue;
+          let eintrag: { status?: string; error?: string };
+          try {
+            eintrag = JSON.parse(zeile) as { status?: string; error?: string };
+          } catch {
+            continue;
+          }
+          if (eintrag.status === "fehler") {
+            throw new Error(eintrag.error ?? "Der Leitfaden konnte nicht erzeugt werden.");
+          }
+          if (eintrag.status === "fertig") fertig = true;
+        }
+      }
+
+      if (!fertig) {
+        // Der Strom endete, ohne fertig zu melden — dann ist er unterwegs
+        // abgerissen. Behandeln wie einen Verbindungsabbruch.
+        throw new TypeError("Der Strom endete vorzeitig");
+      }
+
       setAnweisung("");
       router.refresh();
     } catch (e) {

@@ -67,32 +67,66 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  try {
-    const { version, ergebnis } = await speichereNeueFassung({
-      sessionId: analysisSession.id,
-      companyId: analysisSession.companyId,
-      userId: actor.id,
-      anweisung: body.anweisung?.trim() || null,
-    });
+  // Die Antwort kommt als Strom, nicht am Stück.
+  //
+  // Die Erzeugung dauert Minuten. Wartet der Browser die ganze Zeit auf eine
+  // Antwort, über die kein einziges Byte fließt, hält irgendwer unterwegs die
+  // Verbindung für tot und schneidet sie ab — der Kollege sah "Failed to
+  // fetch", obwohl der Server weiterarbeitete. Ein Lebenszeichen alle zehn
+  // Sekunden verhindert das, und nebenbei sieht man, dass noch etwas läuft.
+  const encoder = new TextEncoder();
+  const strom = new ReadableStream({
+    async start(controller) {
+      let offen = true;
+      const schreibe = (o: unknown) => {
+        if (!offen) return;
+        controller.enqueue(encoder.encode(JSON.stringify(o) + "\n"));
+      };
 
-    return NextResponse.json({
-      version,
-      document: ergebnis.document,
-      protokoll: ergebnis.protokoll,
-      runden: ergebnis.runden,
-    });
-  } catch (err) {
-    console.error("[strategy-guide]", err);
-    return NextResponse.json(
-      {
-        error:
-          err instanceof Error
-            ? err.message
-            : "Der Leitfaden konnte nicht erzeugt werden.",
-      },
-      { status: 500 }
-    );
-  }
+      schreibe({ status: "gestartet" });
+      const puls = setInterval(() => schreibe({ status: "laeuft" }), 10_000);
+
+      try {
+        const { version, ergebnis } = await speichereNeueFassung({
+          sessionId: analysisSession.id,
+          companyId: analysisSession.companyId,
+          userId: actor.id,
+          anweisung: body.anweisung?.trim() || null,
+        });
+        schreibe({
+          status: "fertig",
+          version,
+          document: ergebnis.document,
+          protokoll: ergebnis.protokoll,
+          runden: ergebnis.runden,
+        });
+      } catch (err) {
+        console.error("[strategy-guide]", err);
+        schreibe({
+          status: "fehler",
+          error:
+            err instanceof Error
+              ? err.message
+              : "Der Leitfaden konnte nicht erzeugt werden.",
+        });
+      } finally {
+        clearInterval(puls);
+        offen = false;
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(strom, {
+    status: 200,
+    headers: {
+      "Content-Type": "application/x-ndjson; charset=utf-8",
+      "Cache-Control": "no-store, no-transform",
+      // Bittet Vermittler, nichts zu puffern — sonst kommt das Lebenszeichen
+      // erst mit der fertigen Antwort an und hilft nicht.
+      "X-Accel-Buffering": "no",
+    },
+  });
 }
 
 
