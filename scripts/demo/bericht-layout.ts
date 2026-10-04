@@ -41,6 +41,8 @@ async function main() {
     moduleDetailedAnalysis: detail,
     conclusionText: fuell(18, "PLATZHALTER Schluss."),
     orientationText: fuell(12, "PLATZHALTER Einordnung."),
+    grundlagenAnalyse: fuell(20, "PLATZHALTER Grundlagen."),
+    automatisierungAnalyse: fuell(16, "PLATZHALTER Automatisierung."),
   };
 
   let logo = "";

@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { BlueprintReportData } from "./report-assembler";
+import { formatHours } from "./pillar3-engine";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -12,6 +13,16 @@ export interface ReportTexts {
   moduleDetailedAnalysis: Record<number, string>;
   conclusionText: string;
   orientationText: string;
+  /**
+   * Die digitale Grundausstattung: was da ist, was davon trägt, wo es klemmt.
+   *
+   * Der Bericht zeigte die Systeme bisher nur als Tabelle — Zweck, Programm,
+   * Medienbruch. Was daran gut ist und was besser ginge, stand nirgends, und
+   * genau das ist die Frage, die der Kunde an seine eigene Lage hat.
+   */
+  grundlagenAnalyse: string;
+  /** Welche wiederkehrende Arbeit sich dem Grunde nach abnehmen ließe. */
+  automatisierungAnalyse: string;
 }
 
 export interface AdminReportInput {
@@ -335,6 +346,95 @@ Antworte NUR mit gültigem JSON. Kein Text davor oder danach, kein Markdown:
   }
 }
 
+/**
+ * Die Analyse der digitalen Grundausstattung und des Automatisierungsstands.
+ *
+ * Bleibt beim Ist-Zustand und bei dem, was besser wäre — ohne Produktnamen und
+ * ohne unser Angebot. Was wir anbieten, steht im Strategiegespräch an; hier
+ * soll der Kunde seine eigene Lage verstehen, unabhängig davon, mit wem er sie
+ * ändert.
+ */
+async function generateGrundlagen(data: BlueprintReportData): Promise<{
+  grundlagenAnalyse: string;
+  automatisierungAnalyse: string;
+}> {
+  const p3 = data.pillar3;
+
+  const belegt = (p3?.systems.rows ?? [])
+    .filter((r) => r.systemNames.length > 0)
+    .map((r) => `- ${r.purposeLabel}: ${r.systemNames.join(", ")}${r.isMediaBreak ? " [mehrere Programme für denselben Zweck]" : ""}`)
+    .join("\n");
+
+  const luecken = (p3?.systems.gaps ?? [])
+    .map((r) => `- ${r.purposeLabel}: kein Programm`)
+    .join("\n");
+
+  const ueberladen = (p3?.systems.overloaded ?? [])
+    .map((e) => `- ${e.name} trägt ${e.purposeCount} verschiedene Zwecke`)
+    .join("\n");
+
+  const aufgaben = (p3?.tasks.entries ?? [])
+    .slice(0, 8)
+    .map((e) => `- ${e.task.label}: ${formatHours(e.hoursPerMonth)} h/Monat${e.isHandoffCandidate ? " (über mehrere Programme)" : ""}`)
+    .join("\n");
+
+  const ablaeufe = (p3?.flows.findings ?? [])
+    .map((f) => `- ${f.flow.title}: ${f.manualStations} von ${f.relevantStations} Stationen von Hand, ${f.systemSwitches} Programmwechsel`)
+    .join("\n");
+
+  const freitexte = data.answers
+    .filter((a) => a.freeText && a.freeText.length > 20)
+    .slice(0, 6)
+    .map((a) => `- ${a.freeText}`)
+    .join("\n");
+
+  const prompt = `Du bist Senior-Berater bei OKUN Systems und schreibst zwei Abschnitte des Analyseberichts für ${data.company.name}.
+
+NUR IST-ZUSTAND UND ZIELBILD. Keine Produktnamen, keine Anbieter, keine Maßnahmen von uns, kein Hinweis auf unser Angebot. Keine englischen Begriffe. Der Kunde soll seine eigene Lage verstehen, unabhängig davon, mit wem er sie ändert.
+
+Erfinde keine Zahl und kein Programm. Was unten nicht steht, steht dir nicht zur Verfügung.
+
+PROGRAMME NACH ZWECK:
+${belegt || "keine Programme erfasst"}
+
+ZWECKE OHNE PROGRAMM:
+${luecken || "keine"}
+
+PROGRAMME MIT VIELEN ZWECKEN:
+${ueberladen || "keine"}
+
+WIEDERKEHRENDE ARBEIT:
+${aufgaben || "nicht erfasst"}
+
+ABLÄUFE:
+${ablaeufe || "nicht erfasst"}
+
+WAS DER KUNDE SELBST GESCHRIEBEN HAT:
+${freitexte || "nichts"}
+
+Antworte NUR mit gültigem JSON, kein Text davor oder danach:
+{
+  "grundlagenAnalyse": "Fünf Absätze, getrennt durch doppelten Zeilenumbruch, je mindestens vier Sätze. Absatz 1: Welche digitalen Werkzeuge sind im Einsatz und wofür — ein Überblick in Worten, nicht als Liste. Absatz 2: Was davon trägt und warum; welche Zwecke sind heute ordentlich abgedeckt und was das im Alltag bedeutet. Absatz 3: Wo dieselbe Sache in mehreren Programmen liegt oder ein Zweck ganz ohne Programm auskommt, und was das kostet. Absatz 4: Wo ein einzelnes Programm mehr trägt, als ihm zusteht, und welches Risiko daraus entsteht. Absatz 5: Wie eine geordnete Grundausstattung für einen Betrieb dieser Art aussähe — als Zielbild, ohne Produktnamen und ohne zu sagen, wer es einrichtet.",
+  "automatisierungAnalyse": "Vier Absätze, getrennt durch doppelten Zeilenumbruch, je mindestens vier Sätze. Absatz 1: Welche wiederkehrende Arbeit bindet heute wie viel Zeit — mit den Zahlen von oben, wörtlich. Absatz 2: Woran man erkennt, dass eine Tätigkeit sich dem Grunde nach abnehmen ließe: sie wiederholt sich, folgt festen Regeln, läuft über mehrere Programme. Welche der genannten Tätigkeiten erfüllen das? Absatz 3: Welche nicht, und warum — was Urteil, Aushandlung oder Erfahrung braucht, bleibt bei Menschen. Absatz 4: Was es für den Betrieb bedeuten würde, wenn die erste Gruppe nicht mehr von Hand liefe — in Stunden, mit den Zahlen von oben."
+}`;
+
+  try {
+    const raw = await callClaude(prompt, 5000);
+    const jsonStr = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
+    const parsed = JSON.parse(jsonStr) as {
+      grundlagenAnalyse?: string;
+      automatisierungAnalyse?: string;
+    };
+    return {
+      grundlagenAnalyse: htmlParagraphs(parsed.grundlagenAnalyse ?? ""),
+      automatisierungAnalyse: htmlParagraphs(parsed.automatisierungAnalyse ?? ""),
+    };
+  } catch (e) {
+    console.error("[Blueprint] generateGrundlagen failed:", e);
+    return { grundlagenAnalyse: "", automatisierungAnalyse: "" };
+  }
+}
+
 // ── Helper: wrap double-newline separated paragraphs in <p> tags ─────────────
 function htmlParagraphs(text: string): string {
   if (!text) return "";
@@ -363,9 +463,14 @@ export async function generateReportTexts(data: BlueprintReportData, adminInput?
   const { moduleInsights, moduleDetailedAnalysis } = await generateModuleInsightsAndDetailed(data, avgScore);
   await sleep(3000);
 
+  const grundlagen = await generateGrundlagen(data);
+  await sleep(3000);
+
   const finalSections = await generateFinalSections(data, avgScore, adminInput);
 
   return {
+    grundlagenAnalyse: grundlagen.grundlagenAnalyse,
+    automatisierungAnalyse: grundlagen.automatisierungAnalyse,
     einleitungText,
     executiveSummary: finalSections.executiveSummary,
     contextPageText,

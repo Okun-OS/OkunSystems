@@ -179,7 +179,7 @@ function recommendationPage(data: BlueprintReportData): string {
  * Alle Zahlen kommen fertig gerechnet aus der Auswertung — hier wird nur
  * dargestellt. Damit kann die Textgenerierung den Zahlen nicht widersprechen.
  */
-function pillar3Pages(data: BlueprintReportData): string {
+function pillar3Pages(data: BlueprintReportData, texts: ReportTexts): string {
   const p3 = data.pillar3;
   if (!p3 || !p3.hasData) return "";
 
@@ -329,7 +329,17 @@ function pillar3Pages(data: BlueprintReportData): string {
     der Vorgang läuft auf Papier oder im Kopf.
     ${overloaded ? ` Auffällig: ${overloaded} trägt mehr, als ein einzelnes Werkzeug tragen sollte.` : ""}
   </p>
-</div>`;
+
+</div>
+
+${
+  texts.grundlagenAnalyse
+    ? `<div class="npage">
+         ${ph("Was Sie heute haben und was es trägt", "Ihre digitale Grundausstattung")}
+         <div class="score-prose">${texts.grundlagenAnalyse}</div>
+       </div>`
+    : ""
+}`;
 }
 
 /** Bezeichnungen der Modul-5-Gruppen für den Hinweis im Bericht. */
@@ -920,7 +930,15 @@ ${moduleDetailPages}
 <!-- ══════════════════════════════════════════════════════════════════════
      DRITTE SÄULE: ABLÄUFE, AUFGABEN, SYSTEME
      ══════════════════════════════════════════════════════════════════════ -->
-${pillar3Pages(data)}
+${pillar3Pages(data, texts)}
+${
+  texts.automatisierungAnalyse
+    ? `<div class="npage">
+         ${ph("Was sich abnehmen ließe", "Automatisierung")}
+         <div class="score-prose">${texts.automatisierungAnalyse}</div>
+       </div>`
+    : ""
+}
 
 <!-- ══════════════════════════════════════════════════════════════════════
      EMPFEHLUNGEN UND ROADMAP
