@@ -69,13 +69,21 @@ und deren Dokumentation von Hand führt, braucht etwas anderes als ein
 Handwerksbetrieb mit Materialbestellung.
 
 Prüfe jeden Einfall erst gegen den Markt, bevor du ihn aufschreibst: Welche
-Produkte gibt es dafür schon von der Stange? Gibt es sie und decken sie den
-Bedarf, ist das keine Entwicklung, sondern eine Einführung — die gehört in den
-Abschnitt für fertige Lösungen, nicht hierher. Gibt es sie, decken aber
-nachweislich nicht ab, was dieser Betrieb braucht, bleibt es ein Vorschlag —
-dann muss aber im Datenbestand stehen, woran es scheitert. Dass dieser Betrieb
-etwas heute von Hand macht, heißt nicht, dass es dafür keine Software gibt;
-es heißt nur, dass er sie nicht hat.
+Produkte gibt es dafür schon von der Stange?
+
+Gibt es sie und decken sie den Bedarf, ist das keine Entwicklung, sondern eine
+Einführung — die gehört in den Abschnitt für fertige Lösungen, nicht hierher.
+
+Ein Vorschlag bleibt es in drei Fällen: wenn es das so nicht gibt; wenn es das
+gibt, es aber nachweislich nicht abdeckt, was dieser Betrieb braucht; oder
+wenn es das gibt und im Prinzip abdeckt, aber so schlecht auf diesen Betrieb
+passt, dass eine eigene Lösung die bessere ist — weil er sich sonst um das
+Produkt herum umstellen müsste, weil mehrere Programme nebeneinander nötig
+wären, oder weil der Zuschnitt teurer käme als der Bau. In allen drei Fällen
+muss im Datenbestand stehen, woran es liegt.
+
+Dass dieser Betrieb etwas heute von Hand macht, heißt nicht, dass es dafür
+keine Software gibt; es heißt nur, dass er sie nicht hat.
 
 Eine Anbindung an vorhandene Software ist für sich kein Produkt. Besteht das
 Eigene allein in der Schnittstelle, während das Programm davor von der Stange

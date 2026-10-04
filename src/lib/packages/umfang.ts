@@ -30,6 +30,78 @@ export interface Paketumfang {
   bloecke: Leistungsblock[];
 }
 
+const GRUNDLAGEN: Leistungsblock = {
+  titel: "Digitale Grundlagen",
+  versprechen: "Die Basis für effizientes Arbeiten",
+  beschreibung:
+    "Wir prüfen, welche digitalen Werkzeuge und Strukturen im Unternehmen vorhanden sind, und richten sie bei Bedarf ein oder verbessern sie.",
+  beispiele: [
+    "E-Mail und Kalender",
+    "zentrale Dateiablage",
+    "Aufgaben- und Projektmanagement",
+    "digitale Formulare und Datenerfassung",
+    "Zusammenarbeit im Team (etwa Google Workspace oder Microsoft 365)",
+  ],
+};
+
+const AUTOMATISIERUNGEN: Leistungsblock = {
+  titel: "Bewährte Automatisierungslösungen",
+  versprechen: "Weniger manuelle Arbeit, mehr Wirkung",
+  beschreibung:
+    "Wir suchen wiederkehrende Tätigkeiten von Hand mit Automatisierungspotenzial und setzen passende Lösungen um — standardisiert, erprobt, in die vorhandene Systemlandschaft eingebunden.",
+  beispiele: [
+    "standardisierte, erprobte Lösungen",
+    "passend zu den Prozessen des Betriebs",
+    "Einbindung in die vorhandene Systemlandschaft",
+    "schnelle und messbare Ergebnisse",
+  ],
+  grenze:
+    "Höchstens drei. Eine vierte ist nicht im Paket und wäre eine Nachforderung.",
+};
+
+const FOKUS: Leistungsblock = {
+  titel: "Klarer Fokus",
+  versprechen: "Lösungen mit echtem Mehrwert",
+  beschreibung:
+    "Wir setzen dort an, wo der Nutzen am größten ist, und begleiten die Umstellung persönlich.",
+  beispiele: [
+    "praxisnahe Umsetzung",
+    "individuell priorisiert",
+    "transparent und nachvollziehbar",
+    "persönliche Begleitung",
+    "Wissenstransfer für das Team",
+  ],
+};
+
+/** Die sechs Module aus dem Angebot — nicht aus dem Lösungskatalog. */
+const WORKFORCE: Leistungsblock = {
+  titel: "OKUN Workforce",
+  versprechen: "Das Betriebssystem für das Personal",
+  beschreibung:
+    "OKUN Workforce digitalisiert und automatisiert die Personalprozesse, von der Dienstplanung bis zur Lohnabrechnung.",
+  beispiele: [
+    "Dienstplanung — Pläne in wenigen Klicks, mit Verfügbarkeiten, Qualifikationen und gesetzlichen Vorgaben",
+    "Zeiterfassung — Mitarbeitende stempeln sich ein und aus, alles wird für die Lohnabrechnung bereitgestellt",
+    "Urlaubsmanagement — Anträge, Krankmeldungen und Abwesenheiten digital, automatisch geprüft, im Dienstplan berücksichtigt",
+    "Lohnabrechnung — automatisiert und fehlerfrei, samt gesetzlicher Anforderungen",
+    "Digitale Mitarbeiterakte — Personaldokumente, Verträge, Nachweise und Qualifikationen an einem Ort",
+    "Auswertungen und Reports — Personalzahlen, Auslastung, Kosten und Abwesenheiten in Echtzeit",
+  ],
+};
+
+const FOUNDATION: Paketumfang = {
+  key: "foundation",
+  phasen: [
+    "Buchung und Kickoff — Vertrag abschließen, gemeinsame Ziele festlegen",
+    "OKUN Blueprint — Analyse der Ausgangssituation, Prozesse und Automatisierungspotenziale",
+    "Digitale Grundlagen — die notwendigen Systeme und Strukturen einrichten oder verbessern",
+    "Auswahl und Umsetzung — bis zu drei bewährte Digitalisierungs- und Automatisierungslösungen",
+    "Einrichtungstermin — gemeinsamer Termin zur Einrichtung, Konfiguration und Integration",
+    "Go-Live und Stabilisierung — Systeme gehen live, wir begleiten die erste Zeit",
+  ],
+  bloecke: [GRUNDLAGEN, AUTOMATISIERUNGEN, FOKUS],
+};
+
 const OPERATIONS: Paketumfang = {
   key: "operations",
   phasen: [
@@ -37,60 +109,50 @@ const OPERATIONS: Paketumfang = {
     "OKUN Blueprint — Analyse der Ausgangssituation, Prozesse und Automatisierungspotenziale",
     "Digitale Grundlagen — die notwendigen Systeme und Strukturen einrichten oder verbessern",
     "Auswahl und Umsetzung — bis zu drei bewährte Automatisierungslösungen, passend zu den Prozessen",
-    "OKUN Workforce — die digitalen Mitarbeitenden für wiederkehrende Aufgaben einführen",
+    "OKUN Workforce — Einführung für wiederkehrende Aufgaben und skalierbare Prozesse",
     "Go-Live und Stabilisierung — Systeme gehen live, wir begleiten die erste Zeit",
   ],
-  bloecke: [
-    {
-      titel: "Digitale Grundlagen",
-      versprechen: "Die Basis für effizientes Arbeiten",
-      beschreibung:
-        "Wir prüfen, welche digitalen Werkzeuge und Strukturen im Unternehmen vorhanden sind, und richten sie bei Bedarf ein oder verbessern sie.",
-      beispiele: [
-        "E-Mail und Kalender",
-        "zentrale Dateiablage",
-        "Aufgaben- und Projektmanagement",
-        "digitale Formulare und Datenerfassung",
-        "Zusammenarbeit im Team (etwa Google Workspace oder Microsoft 365)",
-      ],
-    },
-    {
-      titel: "Automatisierungen",
-      versprechen: "Weniger manuelle Arbeit, mehr Wirkung",
-      beschreibung:
-        "Wir suchen wiederkehrende Tätigkeiten von Hand und setzen dafür bewährte Automatisierungslösungen um — standardisiert, erprobt, in die vorhandene Systemlandschaft eingebunden.",
-      beispiele: [
-        "standardisierte, erprobte Lösungen",
-        "passend zu den Prozessen des Betriebs",
-        "Einbindung in die vorhandene Systemlandschaft",
-        "schnelle und messbare Ergebnisse",
-      ],
-      grenze: "Höchstens drei. Mehr ist nicht im Paket und wäre eine Nachforderung.",
-    },
-    {
-      titel: "OKUN Workforce",
-      versprechen: "Digitale Mitarbeitende, echte Entlastung",
-      beschreibung:
-        "Die digitale Workforce übernimmt wiederkehrende Aufgaben: Sie verarbeitet Daten, erstellt Dokumente und unterstützt die Teams — rund um die Uhr.",
-      beispiele: [
-        "Datenverarbeitung",
-        "Dokumentenerstellung",
-        "Statusmeldungen und Benachrichtigungen",
-        "Vorbereitung von Auswertungen",
-      ],
-    },
-  ],
+  bloecke: [GRUNDLAGEN, AUTOMATISIERUNGEN, WORKFORCE, FOKUS],
+
 };
 
 /**
- * Der hinterlegte Umfang je Paket.
+ * Custom: alles aus Operations, dazu ein individuell entwickeltes Projekt.
  *
- * Nur Operations ist belegt — für Foundation und Custom liegt das Angebot
- * noch nicht vor. Lieber nichts als etwas Erfundenes: Der Leitfaden sagt
- * dann, dass der Umfang nicht hinterlegt ist, statt einen zu behaupten.
+ * Dafür gibt es kein eigenes Angebotsblatt — das Projekt wird im Einzelfall
+ * zugeschnitten und eingeschätzt.
  */
+const CUSTOM: Paketumfang = {
+  key: "custom",
+  phasen: [
+    ...OPERATIONS.phasen.slice(0, 5),
+    "Individuelle Entwicklung — ein eigens gebautes System, im Einzelfall zugeschnitten und eingeschätzt",
+    "Go-Live und Stabilisierung — Systeme gehen live, wir begleiten die erste Zeit",
+  ],
+  bloecke: [
+    GRUNDLAGEN,
+    AUTOMATISIERUNGEN,
+    WORKFORCE,
+    {
+      titel: "Individuelle Entwicklung",
+      versprechen: "Ein System, das es so noch nicht gibt",
+      beschreibung:
+        "Wir entwickeln ein System eigens für diesen Betrieb — entweder weil es das so nicht zu kaufen gibt, oder weil das Vorhandene so schlecht passt, dass eine eigene Lösung die bessere ist.",
+      beispiele: [
+        "Umfang und Preis werden im Einzelfall eingeschätzt",
+        "setzt auf den digitalen Grundlagen und den Automatisierungen auf",
+      ],
+      grenze: "Ein Projekt. Was darüber hinausgeht, ist ein eigenes Vorhaben.",
+    },
+    FOKUS,
+  ],
+};
+
+/** Der hinterlegte Umfang je Paket. */
 export const PAKETUMFANG: Partial<Record<PackageKey, Paketumfang>> = {
+  foundation: FOUNDATION,
   operations: OPERATIONS,
+  custom: CUSTOM,
 };
 
 export function umfangFuer(key: string | null | undefined): Paketumfang | null {

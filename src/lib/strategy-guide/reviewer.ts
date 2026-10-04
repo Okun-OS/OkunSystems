@@ -25,12 +25,23 @@ Ein Vorschlag besteht die Prüfung nur, wenn alle vier Punkte zutreffen:
    Erst danach urteilst du. Findest du nichts, schreibst du hin, warum es
    das nicht von der Stange gibt.
 
-   Es gibt zwei Wege, diesen Punkt zu bestehen. Entweder gibt es das
-   Beschriebene so nicht von der Stange. Oder es gibt es, deckt aber
-   nachweislich nicht ab, was dieser Betrieb braucht — und dann muss im
-   Datenbestand stehen, woran es scheitert: ein Freitext, in dem der Kunde
-   es benennt, eine Besonderheit seines Ablaufs, eine Anforderung von
-   außen. „Passt nicht richtig“ ohne Beleg reicht nicht.
+   Es gibt drei Wege, diesen Punkt zu bestehen:
+
+   a) Es gibt das Beschriebene so nicht von der Stange.
+   b) Es gibt es, deckt aber nachweislich nicht ab, was dieser Betrieb
+      braucht.
+   c) Es gibt es und deckt es im Prinzip ab, passt aber so schlecht auf
+      diesen Betrieb, dass eine eigene Lösung die bessere ist — weil er
+      sich sonst um das Produkt herum umstellen müsste, weil mehrere
+      Programme nebeneinander nötig wären, oder weil der Zuschnitt teurer
+      ausfällt als der Bau.
+
+   In allen drei Fällen gilt dasselbe: Es muss im Datenbestand stehen,
+   woran es liegt — ein Freitext, in dem der Kunde es benennt, eine
+   Besonderheit seines Ablaufs, eine Anforderung von außen, eine Zahl aus
+   der Auswertung. „Passt nicht richtig“ ohne Beleg reicht nicht, und bei
+   c) genügt auch nicht, dass eine eigene Lösung schöner wäre: Der
+   Vorschlag muss sagen, was am Zuschnitt des fertigen Produkts scheitert.
 
    Dieser Punkt gilt für **das, was gebaut würde**, nicht für den Betrieb.
    Dass ein Betrieb etwas heute von Hand macht, heißt nicht, dass es dafür
