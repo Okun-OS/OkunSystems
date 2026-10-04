@@ -115,6 +115,36 @@ export interface GuideDocument {
   abschluss: string;
 }
 
+/** Ein Schritt in der Umsetzungsanleitung. */
+export interface AnleitungsSchritt {
+  titel: string;
+  /** Was zu tun ist, so genau, dass man danach arbeiten kann. */
+  was: string;
+  /** Wer das macht: wir, der Kunde, oder beide gemeinsam. */
+  wer: string;
+  /** Woran man erkennt, dass dieser Schritt fertig ist. */
+  ergebnis: string;
+}
+
+/**
+ * Die Anleitung zu einem Posten der Umsetzung.
+ *
+ * Für die Abteilung, die es baut — nicht für das Kundengespräch. Der
+ * Leitfaden sagt, was wir umsetzen und womit; hier steht, in welcher
+ * Reihenfolge man vorgeht und woran es scheitert.
+ */
+export interface Anleitung {
+  /** Was am Ende läuft, in zwei bis drei Sätzen. */
+  ziel: string;
+  /** Was vorher geklärt oder vorhanden sein muss. */
+  voraussetzungen: string[];
+  schritte: AnleitungsSchritt[];
+  /** Was erfahrungsgemäß schiefgeht. */
+  fallstricke: string[];
+  /** Woran wir erkennen, dass der Posten erledigt ist. */
+  fertigWenn: string;
+}
+
 /** Das Urteil der unabhängigen Prüfung zu einem Vorschlag. */
 export interface Pruefurteil {
   index: number;

@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { anleitungsSchluessel } from "@/lib/strategy-guide/schluessel";
 import {
   Sparkles,
   ShieldCheck,
@@ -12,6 +14,7 @@ import {
   MessageSquare,
   AlertTriangle,
   FileDown,
+  BookOpen,
 } from "lucide-react";
 import type {
   GuideDocument,
@@ -55,6 +58,7 @@ const absatz = "text-[#c9d4e4] text-sm leading-relaxed whitespace-pre-line";
 
 export default function LeitfadenClient({
   companyName,
+  companyId,
   sessionId,
   blueprintCompletedAt,
   hatBerichtstexte,
@@ -515,6 +519,15 @@ export default function LeitfadenClient({
                               <p className="text-[#c9d4e4] text-sm leading-relaxed">{f.v}</p>
                             </div>
                           ))}
+                          <Link
+                            href={`/admin/kunden/${companyId}/leitfaden/anleitung/${encodeURIComponent(
+                              anleitungsSchluessel(pst.block, pst.titel)
+                            )}`}
+                            className="inline-flex items-center gap-1.5 mt-2.5 text-[#8899b4] text-xs hover:text-[#00b8ff] transition-colors"
+                          >
+                            <BookOpen size={12} />
+                            Anleitung für die Umsetzung
+                          </Link>
                         </div>
                       ))}
                     </div>

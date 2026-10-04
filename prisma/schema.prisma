@@ -54,6 +54,7 @@ model User {
   createdInvoices       Invoice[]                    @relation("InvoiceCreatedBy")
   confirmedInvoices     Invoice[]                    @relation("InvoiceConfirmedBy")
   strategyGuideVersions StrategyGuideVersion[]
+  umsetzungsAnleitungen UmsetzungsAnleitung[]
   createdContractDocs   ContractDocument[]           @relation("ContractDocumentCreatedBy")
   createdConsentDefs    ConsentDefinition[]          @relation("ConsentDefinitionCreatedBy")
   createdClosingScripts ClosingScript[]              @relation("ClosingScriptCreatedBy")
@@ -420,6 +421,7 @@ model AnalysisSession {
   appointments   Appointment[]
   sessionAnswers SessionAnswer[]
   strategyGuide  StrategyGuide?
+  anleitungen    UmsetzungsAnleitung[]
 }
 
 model ConversationMessage {
@@ -1768,6 +1770,34 @@ model StrategyGuide {
   updatedAt DateTime @updatedAt
 
   versions StrategyGuideVersion[]
+}
+
+/// Die Anleitung, wie ein einzelner Posten der Umsetzung tatsächlich gebaut
+/// wird — für die Abteilung, die es macht, nicht für das Kundengespräch.
+///
+/// Hängt an der Sitzung und nicht an einer Fassung des Leitfadens: Derselbe
+/// Posten überlebt eine Nachschärfung des Gesprächsleitfadens, und die
+/// Anleitung dazu soll das auch.
+model UmsetzungsAnleitung {
+  id        String          @id @default(cuid())
+  sessionId String
+  session   AnalysisSession @relation(fields: [sessionId], references: [id])
+
+  /// Aus Block und Titel gebildet, damit derselbe Posten wiedergefunden wird.
+  schluessel String
+  block      String
+  titel      String
+
+  /// Die Anleitung als JSON.
+  content String
+
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([sessionId, schluessel])
+  @@index([sessionId])
 }
 
 model StrategyGuideVersion {
