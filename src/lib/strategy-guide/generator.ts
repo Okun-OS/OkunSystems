@@ -1,4 +1,4 @@
-import { askModel, parseJson } from "./model";
+import { askModel, parseJson, type Verbrauch } from "./model";
 import type {
   CustomVorschlag,
   GuideDocument,
@@ -44,7 +44,8 @@ export async function generateVorschlaege(
   dossier: string,
   paket: string | null,
   abgelehnt: Array<{ titel: string; begruendung: string }>,
-  anweisung: string | null
+  anweisung: string | null,
+  sammler?: Verbrauch[]
 ): Promise<CustomVorschlag[]> {
   const korrektur =
     abgelehnt.length > 0
@@ -117,7 +118,12 @@ Antworte mit JSON in genau dieser Form:
 "nutzen":"was der Betrieb davon hat, möglichst mit der Zahl aus dem Aufhänger",
 "groessenordnung":"grobe Spanne, z. B. 15–25 Tsd."}]}`;
 
-  const raw = await askModel(SYSTEM_ERZEUGER, prompt, 8000);
+  const raw = await askModel({
+    label: "Vorschläge",
+    system: SYSTEM_ERZEUGER,
+    prompt,
+    maxTokens: 8000,
+  }, sammler);
   const parsed = parseJson<{ vorschlaege?: CustomVorschlag[] }>(raw, "Vorschläge");
   return Array.isArray(parsed.vorschlaege) ? parsed.vorschlaege : [];
 }
@@ -132,7 +138,8 @@ export async function generateLeitfaden(
   dossier: string,
   vorschlaege: CustomVorschlag[],
   anweisung: string | null,
-  vorfassung: GuideDocument | null
+  vorfassung: GuideDocument | null,
+  sammler?: Verbrauch[]
 ): Promise<Omit<GuideDocument, "customVorschlaege">> {
   const nachschaerfung =
     anweisung && vorfassung
@@ -204,7 +211,12 @@ geschrieben hat, „Unternehmenskontext“ oder schlicht „im Blueprint“. Es 
 kein Vorgespräch und kein Telefonat — schreibe nie, er habe etwas „im
 Vorgespräch“ gesagt.`;
 
-  const raw = await askModel(SYSTEM_ERZEUGER, prompt, 12000);
+  const raw = await askModel({
+    label: "Leitfaden",
+    system: SYSTEM_ERZEUGER,
+    prompt,
+    maxTokens: 12000,
+  }, sammler);
   const parsed = parseJson<Partial<Omit<GuideDocument, "customVorschlaege">>>(
     raw,
     "Leitfaden"

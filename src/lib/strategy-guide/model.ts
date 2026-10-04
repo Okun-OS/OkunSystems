@@ -2,34 +2,123 @@ import Anthropic from "@anthropic-ai/sdk";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+const MODELL = "claude-opus-5-5";
+
 /**
- * Jeder Aufruf ist eine eigene Anfrage ohne Vorgeschichte.
+ * Wie gründlich das Modell nachdenken soll.
  *
- * Darauf beruht die Unabhängigkeit der Prüfung: Der Prüfer sieht nicht, wie
- * der Erzeuger auf seinen Vorschlag gekommen ist, und kann deshalb nicht von
- * dessen Begründung überzeugt werden. Er muss selbst in den Daten nachsehen.
+ * Auf diesem Modell lässt sich das Denken nicht abschalten, nur dosieren —
+ * und die Voreinstellung gilt für jeden Aufruf gleich. Ein Erzeuger, der
+ * frei auf Ideen kommen soll, braucht mehr davon als eine Prüfung, die
+ * fertige Vorschläge gegen vorgegebene Regeln hält.
+ */
+export type Aufwand = "low" | "medium" | "high" | "xhigh" | "max";
+
+export interface Aufruf {
+  system: string;
+  prompt: string;
+  maxTokens?: number;
+  /**
+   * Voreinstellung ist "medium" — genau das, was dieses Modell ohnehin
+   * verwendet, wenn man nichts angibt. Hier steht es nur ausdrücklich, damit
+   * sichtbar ist, dass es ein Stellhebel ist, und damit eine spätere
+   * Änderung eine Entscheidung ist und kein Zufall.
+   */
+  aufwand?: Aufwand;
+  /** Für die Protokollzeile, damit man sieht, welcher Schritt was kostet. */
+  label: string;
+}
+
+/** Was ein Aufruf verbraucht hat. */
+export interface Verbrauch {
+  label: string;
+  eingabe: number;
+  ausgabe: number;
+  ausCache: number;
+  inCache: number;
+  sekunden: number;
+}
+
+/** Preise je Million Token für claude-opus-5-5. */
+const PREIS = { eingabe: 4, ausgabe: 20, cache: 0.2 };
+
+export function kostenEuro(v: Verbrauch[]): number {
+  const summe = v.reduce(
+    (s, x) =>
+      s +
+      (x.eingabe * PREIS.eingabe +
+        x.ausgabe * PREIS.ausgabe +
+        x.ausCache * PREIS.cache +
+        x.inCache * PREIS.eingabe * 1.25) /
+        1_000_000,
+    0
+  );
+  return Math.round(summe * 100) / 100;
+}
+
+/**
+ * Ein Fehler, bei dem ein zweiter Versuch Sinn ergibt.
+ *
+ * Vorher wurde jeder Fehler zweimal wiederholt — auch eine abgelehnte
+ * Anfrage, die beim dritten Mal genauso abgelehnt wird. Das kostete den
+ * dreifachen Preis für ein Ergebnis, das feststand.
+ */
+function lohntWiederholung(e: unknown): boolean {
+  if (e instanceof Anthropic.APIError) {
+    const s = e.status ?? 0;
+    return s === 408 || s === 409 || s === 429 || s >= 500;
+  }
+  // Verbindungsabbrüche und Zeitüberschreitungen sind keine APIError.
+  return true;
+}
+
+/**
+ * Ein Aufruf ans Modell.
+ *
+ * Jeder Aufruf ist eine eigene Anfrage ohne Vorgeschichte. Darauf beruht die
+ * Unabhängigkeit der Prüfung: Der Prüfer sieht nicht, wie der Erzeuger auf
+ * seinen Vorschlag gekommen ist, und kann deshalb nicht von dessen
+ * Begründung überzeugt werden. Er muss selbst in den Daten nachsehen.
+ *
+ * Die Antwort wird im Strom gelesen, nicht am Stück. Bei Antworten dieser
+ * Länge läuft eine Anfrage sonst minutenlang, ohne dass ein einziges Byte
+ * fließt — und was so lange schweigt, wird unterwegs für tot gehalten und
+ * abgeschnitten.
  */
 export async function askModel(
-  system: string,
-  prompt: string,
-  maxTokens = 16000,
-  attempt = 0
+  aufruf: Aufruf,
+  sammler?: Verbrauch[],
+  versuch = 0
 ): Promise<string> {
+  const begonnen = Date.now();
   try {
-    const res = await client.messages.create({
-      model: "claude-opus-5-5",
-      max_tokens: maxTokens,
-      system,
-      messages: [{ role: "user", content: prompt }],
+    const strom = client.messages.stream({
+      model: MODELL,
+      max_tokens: aufruf.maxTokens ?? 16000,
+      output_config: { effort: aufruf.aufwand ?? "medium" },
+      system: aufruf.system,
+      messages: [{ role: "user", content: aufruf.prompt }],
     });
-    const block = res.content.find((b) => b.type === "text");
+
+    const antwort = await strom.finalMessage();
+
+    sammler?.push({
+      label: aufruf.label,
+      eingabe: antwort.usage.input_tokens,
+      ausgabe: antwort.usage.output_tokens,
+      ausCache: antwort.usage.cache_read_input_tokens ?? 0,
+      inCache: antwort.usage.cache_creation_input_tokens ?? 0,
+      sekunden: Math.round((Date.now() - begonnen) / 100) / 10,
+    });
+
+    const block = antwort.content.find((b) => b.type === "text");
     const text = block?.type === "text" ? block.text.trim() : "";
     if (!text) throw new Error("Leere Antwort vom Modell");
     return text;
   } catch (e) {
-    if (attempt < 2) {
-      await new Promise((r) => setTimeout(r, (attempt + 1) * 3000));
-      return askModel(system, prompt, maxTokens, attempt + 1);
+    if (versuch < 2 && lohntWiederholung(e)) {
+      await new Promise((r) => setTimeout(r, (versuch + 1) * 3000));
+      return askModel(aufruf, sammler, versuch + 1);
     }
     throw e;
   }

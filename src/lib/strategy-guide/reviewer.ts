@@ -1,4 +1,4 @@
-import { askModel, parseJson } from "./model";
+import { askModel, parseJson, type Verbrauch } from "./model";
 import type { CustomVorschlag, Pruefurteil } from "./types";
 
 const SYSTEM_PRUEFER = `Du prüfst Vorschläge bei OKUN Systems auf Belegbarkeit.
@@ -82,7 +82,8 @@ Code-Zaun.`;
  */
 export async function pruefeVorschlaege(
   dossier: string,
-  vorschlaege: CustomVorschlag[]
+  vorschlaege: CustomVorschlag[],
+  sammler?: Verbrauch[]
 ): Promise<Pruefurteil[]> {
   if (vorschlaege.length === 0) return [];
 
@@ -115,7 +116,12 @@ Antworte mit JSON in genau dieser Form, mit einem Eintrag je Vorschlag:
 Die Reihenfolge der Felder ist bindend: „standardprodukte“ steht vor
 „bestanden“, weil der Marktblick dem Urteil vorausgeht und nicht folgt.`;
 
-  const raw = await askModel(SYSTEM_PRUEFER, prompt, 4000);
+  const raw = await askModel({
+    label: "Prüfung",
+    system: SYSTEM_PRUEFER,
+    prompt,
+    maxTokens: 4000,
+  }, sammler);
   const parsed = parseJson<{ urteile?: Pruefurteil[] }>(raw, "Prüfung");
   const urteile = Array.isArray(parsed.urteile) ? parsed.urteile : [];
 

@@ -4,6 +4,7 @@ import type { ReportTexts } from "@/lib/blueprint/report-text-engine";
 import { buildDossier } from "./dossier";
 import { generateLeitfaden, generateVorschlaege } from "./generator";
 import { pruefeVorschlaege } from "./reviewer";
+import { kostenEuro, type Verbrauch } from "./model";
 import { leseGuide } from "./normalisieren";
 import type {
   CustomVorschlag,
@@ -26,6 +27,8 @@ export interface GuideErgebnis {
   document: GuideDocument;
   protokoll: ProtokollEintrag[];
   runden: number;
+  /** Was der Durchlauf an Modellaufrufen gekostet hat. */
+  verbrauch: Verbrauch[];
 }
 
 /**
@@ -61,6 +64,7 @@ export async function erzeugeLeitfaden(params: {
 
   const dossier = buildDossier(data, reportTexts);
 
+  const verbrauch: Verbrauch[] = [];
   const bestaetigt: GepruefterVorschlag[] = [];
   const protokoll: ProtokollEintrag[] = [];
   let abgelehnt: Array<{ titel: string; begruendung: string }> = [];
@@ -73,11 +77,12 @@ export async function erzeugeLeitfaden(params: {
       dossier,
       data.packageType,
       abgelehnt,
-      anweisung
+      anweisung,
+      verbrauch
     );
     if (vorschlaege.length === 0) break;
 
-    const urteile = await pruefeVorschlaege(dossier, vorschlaege);
+    const urteile = await pruefeVorschlaege(dossier, vorschlaege, verbrauch);
     abgelehnt = [];
 
     for (const [i, vorschlag] of vorschlaege.entries()) {
@@ -97,12 +102,27 @@ export async function erzeugeLeitfaden(params: {
     }
   }
 
-  const rest = await generateLeitfaden(dossier, bestaetigt, anweisung, vorfassung);
+  const rest = await generateLeitfaden(dossier, bestaetigt, anweisung, vorfassung, verbrauch);
+
+  // Eine Zeile je Aufruf und eine Summe, damit man im Protokoll des Servers
+  // sieht, welcher Schritt wie lange gedauert und was er gekostet hat. Ohne
+  // das lässt sich über Laufzeit und Kosten nur mutmaßen.
+  for (const v of verbrauch) {
+    console.log(
+      `[leitfaden] ${v.label}: ${v.sekunden}s, ${v.eingabe} ein / ${v.ausgabe} aus` +
+        (v.ausCache ? `, ${v.ausCache} aus dem Zwischenspeicher` : "")
+    );
+  }
+  console.log(
+    `[leitfaden] ${verbrauch.length} Aufrufe, ${runde} Runde(n), ` +
+      `${Math.round(verbrauch.reduce((s, v) => s + v.sekunden, 0))}s, rund ${kostenEuro(verbrauch)} €`
+  );
 
   return {
     document: { ...rest, customVorschlaege: bestaetigt },
     protokoll,
     runden: runde,
+    verbrauch,
   };
 }
 
