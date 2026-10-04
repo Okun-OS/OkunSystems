@@ -113,6 +113,10 @@ async function main() {
             isExclusive: opt.isExclusive ?? false,
             signalCategory: opt.signalCategory ?? null,
             signalValue: opt.signalValue ?? 0,
+            // Ohne die Verweise fällt die Auswertung auf die grobe Zuordnung
+            // über die Kategorie zurück und empfiehlt alles, was in derselben
+            // Schublade liegt. Dieses Skript hat sie nie geschrieben.
+            solutionRefs: JSON.stringify(opt.solutionRefs ?? []),
             order: opt.order,
             isActive: true,
           },
@@ -123,6 +127,7 @@ async function main() {
             isExclusive: opt.isExclusive ?? false,
             signalCategory: opt.signalCategory ?? null,
             signalValue: opt.signalValue ?? 0,
+            solutionRefs: JSON.stringify(opt.solutionRefs ?? []),
             order: opt.order,
           },
         });

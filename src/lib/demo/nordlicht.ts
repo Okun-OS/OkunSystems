@@ -187,15 +187,27 @@ export async function seedNordlicht(): Promise<DemoErgebnis> {
     if (vorgabe) {
       gewaehlt = vorgabe.map((n) => opts[n - 1]).filter(Boolean);
     } else {
-      // Ein Betrieb mit Nachholbedarf: die zweitschlechteste Antwort, bei
-      // Signalfragen zusätzlich das, was auf Individualentwicklung zeigt.
+      // Ein Betrieb mit Nachholbedarf: die zweitschlechteste Antwort.
       const nachPunkten = [...opts].sort((a, b) => a.points - b.points);
       gewaehlt = [nachPunkten[Math.min(1, nachPunkten.length - 1)]];
-      const custom = opts.filter((o) => o.signalCategory === "CUSTOM_DEVELOPMENT");
-      const workforce = opts.filter((o) => o.signalCategory === "WORKFORCE");
-      if (custom.length > 0 || workforce.length > 0) {
-        gewaehlt = [...custom, ...workforce.slice(0, 2)];
-      }
+
+      // Bei Signalfragen eine glaubwürdige Mischung über alle drei Arten.
+      //
+      // Vorher wurden hier ausschließlich die Antworten mit Personal- oder
+      // Individualsignal gewählt. Dadurch löste dieser Betrieb nie eine
+      // bewährte Lösung aus — kein CRM, keine Buchhaltung, kein Wiki —, und
+      // der Leitfaden konnte sie folglich nicht empfehlen. Das sah aus wie
+      // ein Fehler der Auswertung, war aber einer der Demo-Daten: Ein
+      // Handwerksbetrieb, der Kundendaten auf Zuruf führt, kreuzt sehr wohl
+      // an, dass Kundendaten unstrukturiert liegen.
+      const je = (kat: string, wieviel: number) =>
+        opts.filter((o) => o.signalCategory === kat).slice(0, wieviel);
+      const gemischt = [
+        ...je("CUSTOM_DEVELOPMENT", 2),
+        ...je("WORKFORCE", 2),
+        ...je("BEWAEHRTE_LOESUNG", 2),
+      ];
+      if (gemischt.length > 0) gewaehlt = gemischt;
     }
     if (gewaehlt.length === 0) gewaehlt = [opts[0]];
 

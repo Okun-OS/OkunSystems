@@ -1215,7 +1215,7 @@ export const QUESTIONS: QuestionDef[] = [
       { externalId: "5.7.1-a-OPT-6", textDe: "Urlaubs- und Abwesenheitsanträge bearbeiten und dokumentieren", points: 0, signalCategory: "WORKFORCE", signalValue: 10, solutionRefs: ["SOL-W-003"], order: 6 },
       { externalId: "5.7.1-a-OPT-7", textDe: "Mitarbeiterdokumente verwalten und aktualisieren", points: 0, signalCategory: "WORKFORCE", signalValue: 10, solutionRefs: ["SOL-W-005", "SOL-B-002"], order: 7 },
       { externalId: "5.7.1-a-OPT-8", textDe: "Termine koordinieren und Erinnerungen manuell auslösen", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, solutionRefs: ["SOL-C-004", "SOL-B-003"], order: 8 },
-      { externalId: "5.7.1-a-OPT-9", textDe: "Kundenanfragen bearbeiten und intern weiterleiten", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, solutionRefs: ["SOL-C-004", "SOL-B-001"], order: 9 },
+      { externalId: "5.7.1-a-OPT-9", textDe: "Kundenanfragen bearbeiten und intern weiterleiten", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, solutionRefs: ["SOL-C-004", "SOL-B-001", "SOL-B-007"], order: 9 },
       { externalId: "5.7.1-a-OPT-10", textDe: "Auswertungen und Berichte manuell erstellen", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, solutionRefs: ["SOL-C-003"], order: 10 },
     ],
   },
