@@ -492,10 +492,10 @@ export default function LeitfadenClient({
                         <PackageCheck size={14} className="text-[#22c55e] flex-shrink-0" />
                         {l.titel}
                       </p>
-                      <span className="flex-shrink-0 text-xs text-[#8899b4]">
-                        {l.einordnung}
-                      </span>
                     </div>
+                    <p className="text-[#8899b4] text-xs -mt-1 mb-1 leading-relaxed">
+                      {l.einordnung}
+                    </p>
                     <p className="text-[#22c55e] text-xs leading-relaxed">
                       Aufhänger: {l.aufhaenger}
                     </p>
@@ -523,14 +523,12 @@ export default function LeitfadenClient({
                     <div className="space-y-3">
                       {b.posten.map((pst, i) => (
                         <div key={i} className="border-l-2 border-[#1a2840] pl-3">
-                          <div className="flex items-start justify-between gap-3">
-                            <p className="text-[#f0f0f0] text-sm font-semibold">
-                              {pst.titel}
-                            </p>
-                            <span className="flex-shrink-0 text-xs text-[#8899b4]">
-                              {pst.einordnung}
-                            </span>
-                          </div>
+                          <p className="text-[#f0f0f0] text-sm font-semibold">
+                            {pst.titel}
+                          </p>
+                          <p className="text-[#8899b4] text-xs mt-0.5 leading-relaxed">
+                            {pst.einordnung}
+                          </p>
                           <p className="text-[#00b8ff] text-xs mt-1 font-medium">
                             {pst.befund}
                           </p>

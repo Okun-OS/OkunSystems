@@ -214,7 +214,15 @@ export function renderGuideHtml(params: {
   .grau { color: #5b6b7f; }
   .beleg { font-size: 9.5pt; font-weight: 600; color: #0369a1; }
   .vorschlag { border-left: 3px solid #0369a1; }
-  .geprueft { float: right; font-size: 8pt; font-weight: 600; color: #15803d; }
+  /*
+   * Kein float. Die Einordnung ist längst ein ganzer Satz ("im gebuchten
+   * Paket enthalten, wenn die Branchensoftware eine Übergabe zulässt …"),
+   * und ein rechtsbündiges Schildchen mit so viel Text legt sich über die
+   * Zeile darunter oder rutscht beim Seitenumbruch an den Kopf der nächsten
+   * Seite, losgelöst von dem, wozu es gehört. Es steht jetzt als eigene
+   * Zeile unter dem Titel, wo es nicht verrutschen kann.
+   */
+  .geprueft { display: block; font-size: 8pt; font-weight: 600; color: #15803d; margin-top: 2px; }
   .aufhaenger { font-size: 9.5pt; color: #0369a1; margin-top: 4px; }
   .aufhaenger span {
     display: block; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.8px;
@@ -231,7 +239,10 @@ export function renderGuideHtml(params: {
   .posten { padding: 5px 0 7px 11px; border-left: 2px solid #dde3ea; margin-bottom: 5px; }
   .posten-titel { font-weight: 700; font-size: 10pt; }
   .aufhaenger.gruen { color: #15803d; }
-  .einordnung { float: right; font-size: 8pt; font-weight: 600; color: #64748b; }
+  .einordnung {
+    display: block; font-size: 8pt; font-weight: 600; color: #64748b;
+    margin-top: 2px; line-height: 1.35;
+  }
   .einwand { font-style: italic; color: #475569; }
   .ablauf { margin-top: 11px; background: #f6f8fa; padding: 10px 13px; border-radius: 4px; }
   .ablauf-titel {
