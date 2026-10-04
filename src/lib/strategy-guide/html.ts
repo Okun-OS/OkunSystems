@@ -96,7 +96,7 @@ export function renderGuideHtml(params: {
               <div class="block-name">${esc(b.name)}</div>
               ${
                 /workforce/i.test(b.name) && doc.workforceUrteil
-                  ? `<div class="urteil">${p(doc.workforceUrteil)}</div>`
+                  ? `<div class="einschaetzung">${p(doc.workforceUrteil)}</div>`
                   : ""
               }
               ${b.posten
@@ -232,11 +232,12 @@ export function renderGuideHtml(params: {
     display: block; font-size: 7.5pt; text-transform: uppercase;
     letter-spacing: 0.8px; color: #94a3b8; font-weight: 700;
   }
-  .urteil {
+  .einschaetzung {
     background: #f6f8fa; border-left: 3px solid #64748b; padding: 8px 11px;
     margin-bottom: 8px; font-size: 10pt;
   }
-  .urteil p { margin: 0 0 5px; }
+  .einschaetzung p { margin: 0 0 5px; }
+  .einschaetzung p:last-child { margin-bottom: 0; }
   .aufhaenger.gruen { color: #15803d; }
   .einordnung {
     display: block; font-size: 8pt; font-weight: 600; color: #64748b;
@@ -252,9 +253,9 @@ export function renderGuideHtml(params: {
   table.protokoll { width: 100%; border-collapse: collapse; font-size: 8.5pt; margin-top: 4px; }
   table.protokoll td { border-top: 1px solid #e2e8f0; padding: 5px 7px 5px 0; vertical-align: top; }
   .runde { color: #94a3b8; width: 26px; }
-  .urteil { width: 68px; font-weight: 700; }
-  .urteil.ja { color: #15803d; }
-  .urteil.nein { color: #b45309; }
+  table.protokoll .urteil { width: 68px; font-weight: 700; }
+  table.protokoll .urteil.ja { color: #15803d; }
+  table.protokoll .urteil.nein { color: #b45309; }
   .grund { color: #64748b; }
   .markt { margin-top: 4px; color: #94a3b8; }
   .markt span {

@@ -214,6 +214,15 @@ Reihenfolge:
   Dazu gehört ein ausdrückliches Urteil im Feld "workforceUrteil", ob das
   Paket für ihn passt.
 
+Eine Regel, die über allen dreien steht: **Was OKUN Workforce abdeckt, lösen
+wir nicht mit fremder Software.** Die Module stehen im Leistungsumfang; was
+dort steht, wird von Workforce erledigt und taucht nicht noch einmal unter den
+Grundlagen oder den Automatisierungen auf — auch nicht in abgewandelter Form.
+Schlag für Dienstpläne, Arbeitszeiten, Urlaub, Lohn, Personalunterlagen und
+Mitteilungen an die Belegschaft also kein weiteres Programm vor. Umgekehrt
+gilt dasselbe: Was Workforce nicht abdeckt, etwa die Vorgänge des Büros oder
+die Ablage von Kundenunterlagen, gehört nicht unter Workforce.
+
 Halte dich an die Grenzen des Umfangs. Steht dort "höchstens drei", nenne
 höchstens drei — und wenn mehr sinnvoll wäre, schreib das in die Einordnung
 des vierten Postens als "darüber hinaus", statt es stillschweigend
