@@ -122,7 +122,7 @@ Antworte mit JSON in genau dieser Form:
     label: "Vorschläge",
     system: SYSTEM_ERZEUGER,
     prompt,
-    maxTokens: 8000,
+    maxTokens: 24000,
   }, sammler);
   const parsed = parseJson<{ vorschlaege?: CustomVorschlag[] }>(raw, "Vorschläge");
   return Array.isArray(parsed.vorschlaege) ? parsed.vorschlaege : [];
@@ -215,7 +215,7 @@ Vorgespräch“ gesagt.`;
     label: "Leitfaden",
     system: SYSTEM_ERZEUGER,
     prompt,
-    maxTokens: 12000,
+    maxTokens: 48000,
   }, sammler);
   const parsed = parseJson<Partial<Omit<GuideDocument, "customVorschlaege">>>(
     raw,

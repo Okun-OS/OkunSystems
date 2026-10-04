@@ -56,6 +56,14 @@ export function kostenEuro(v: Verbrauch[]): number {
   return Math.round(summe * 100) / 100;
 }
 
+/** Die Antwort passte nicht in die Obergrenze. Ein zweiter Versuch hilft nicht. */
+export class AbgeschnittenError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AbgeschnittenError";
+  }
+}
+
 /**
  * Ein Fehler, bei dem ein zweiter Versuch Sinn ergibt.
  *
@@ -64,6 +72,7 @@ export function kostenEuro(v: Verbrauch[]): number {
  * dreifachen Preis für ein Ergebnis, das feststand.
  */
 function lohntWiederholung(e: unknown): boolean {
+  if (e instanceof AbgeschnittenError) return false;
   if (e instanceof Anthropic.APIError) {
     const s = e.status ?? 0;
     return s === 408 || s === 409 || s === 429 || s >= 500;
@@ -101,6 +110,21 @@ export async function askModel(
     });
 
     const antwort = await strom.finalMessage();
+
+    // Abgeschnitten heißt abgeschnitten, nicht "ungültiges JSON".
+    //
+    // Dieses Modell denkt immer, und die Denk-Token zählen gegen dieselbe
+    // Obergrenze wie die Antwort. Reicht sie nicht, bricht der Text mitten im
+    // Satz ab — und weiter hinten scheitert dann das Lesen des JSON mit einer
+    // Meldung, die auf die falsche Fährte führt. Deshalb wird hier gemeldet,
+    // was wirklich passiert ist. Ein zweiter Versuch mit derselben Obergrenze
+    // liefe genauso aus, also wird nicht wiederholt.
+    if (antwort.stop_reason === "max_tokens") {
+      throw new AbgeschnittenError(
+        `${aufruf.label}: Die Antwort stieß an die Obergrenze von ` +
+          `${aufruf.maxTokens ?? 16000} Token und wurde abgeschnitten.`
+      );
+    }
 
     sammler?.push({
       label: aufruf.label,
@@ -140,6 +164,14 @@ export function parseJson<T>(raw: string, was: string): T {
   try {
     return JSON.parse(kern) as T;
   } catch {
-    throw new Error(`${was}: Antwort war kein gültiges JSON (${raw.slice(0, 200)}…)`);
+    // Anfang und Ende, denn ein abgeschnittener Text sieht vorn tadellos aus
+    // und verrät sich erst hinten.
+    const anfang = raw.slice(0, 160);
+    const ende = raw.length > 320 ? raw.slice(-160) : "";
+    throw new Error(
+      `${was}: Antwort war kein gültiges JSON (${raw.length} Zeichen). ` +
+        `Anfang: ${anfang}…` +
+        (ende ? ` | Ende: …${ende}` : "")
+    );
   }
 }

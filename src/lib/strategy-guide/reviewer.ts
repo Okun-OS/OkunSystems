@@ -120,7 +120,7 @@ Die Reihenfolge der Felder ist bindend: „standardprodukte“ steht vor
     label: "Prüfung",
     system: SYSTEM_PRUEFER,
     prompt,
-    maxTokens: 4000,
+    maxTokens: 16000,
   }, sammler);
   const parsed = parseJson<{ urteile?: Pruefurteil[] }>(raw, "Prüfung");
   const urteile = Array.isArray(parsed.urteile) ? parsed.urteile : [];
