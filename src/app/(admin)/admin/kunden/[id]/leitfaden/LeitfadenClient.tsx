@@ -12,7 +12,6 @@ import {
   MessageSquare,
   AlertTriangle,
   FileDown,
-  PackageCheck,
 } from "lucide-react";
 import type {
   GuideDocument,
@@ -474,40 +473,7 @@ export default function LeitfadenClient({
             )}
           </Abschnitt>
 
-          <Abschnitt nummer={7} titel="Fertige Lösungen, die wir hier einrichten">
-            {doc.standardLoesungen.length === 0 ? (
-              <p className="text-[#8899b4] text-sm leading-relaxed">
-                Aus diesem Fall ergibt sich keine fertige Lösung, die hier einzurichten
-                wäre.
-              </p>
-            ) : (
-              <div className="space-y-4">
-                {doc.standardLoesungen.map((l, i) => (
-                  <div
-                    key={i}
-                    className="bg-[#060a10] border border-[#152031] rounded-lg p-4"
-                  >
-                    <div className="flex items-start justify-between gap-3 mb-2">
-                      <p className="text-[#f0f0f0] text-sm font-semibold flex items-center gap-2">
-                        <PackageCheck size={14} className="text-[#22c55e] flex-shrink-0" />
-                        {l.titel}
-                      </p>
-                    </div>
-                    <p className="text-[#8899b4] text-xs -mt-1 mb-1 leading-relaxed">
-                      {l.einordnung}
-                    </p>
-                    <p className="text-[#22c55e] text-xs leading-relaxed">
-                      Aufhänger: {l.aufhaenger}
-                    </p>
-                    <p className="text-[#c9d4e4] text-sm mt-2.5 leading-relaxed">{l.loesung}</p>
-                    <p className="text-[#8899b4] text-xs mt-2 leading-relaxed">{l.nutzen}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Abschnitt>
-
-          <Abschnitt nummer={8} titel="Was wir umsetzen">
+          <Abschnitt nummer={7} titel="Was wir umsetzen und womit">
             {doc.umsetzung.length === 0 ? (
               <p className="text-[#8899b4] text-sm leading-relaxed">
                 Für diesen Fall ist nicht hinterlegt, was im gebuchten Paket umgesetzt
@@ -520,7 +486,12 @@ export default function LeitfadenClient({
                     <p className="text-[#8899b4] text-xs font-semibold uppercase tracking-wider border-b border-[#1a2840] pb-1.5 mb-2.5">
                       {b.name}
                     </p>
-                    <div className="space-y-3">
+                    {/workforce/i.test(b.name) && doc.workforceUrteil && (
+                      <div className="bg-[#060a10] border-l-2 border-[#2a3a4f] rounded-r-lg px-3.5 py-2.5 mb-3">
+                        <p className={absatz}>{doc.workforceUrteil}</p>
+                      </div>
+                    )}
+                    <div className="space-y-4">
                       {b.posten.map((pst, i) => (
                         <div key={i} className="border-l-2 border-[#1a2840] pl-3">
                           <p className="text-[#f0f0f0] text-sm font-semibold">
@@ -532,9 +503,18 @@ export default function LeitfadenClient({
                           <p className="text-[#00b8ff] text-xs mt-1 font-medium">
                             {pst.befund}
                           </p>
-                          <p className="text-[#c9d4e4] text-sm mt-1.5 leading-relaxed">
-                            {pst.wasWirTun}
-                          </p>
+                          {[
+                            { k: "Womit", v: pst.womit },
+                            { k: "Warum gerade das", v: pst.warum },
+                            { k: "Wie wir vorgehen", v: pst.wieWirEsMachen },
+                          ].map((f) => (
+                            <div key={f.k} className="mt-2">
+                              <p className="text-[#44546b] text-[10px] uppercase tracking-wider font-semibold">
+                                {f.k}
+                              </p>
+                              <p className="text-[#c9d4e4] text-sm leading-relaxed">{f.v}</p>
+                            </div>
+                          ))}
                         </div>
                       ))}
                     </div>
@@ -542,12 +522,10 @@ export default function LeitfadenClient({
                 ))}
               </div>
             )}
-            <div className="mt-5 bg-[#060a10] rounded-lg px-4 py-3">
-              <p className="text-[#8899b4] text-xs font-semibold uppercase tracking-wider mb-1.5">
-                Wie das abläuft
-              </p>
-              <p className={absatz}>{doc.unsereLeistung}</p>
-            </div>
+          </Abschnitt>
+
+          <Abschnitt nummer={8} titel="Wie das abläuft">
+            <p className={absatz}>{doc.unsereLeistung}</p>
           </Abschnitt>
 
           <Abschnitt nummer={9} titel="Womit du rechnen musst">

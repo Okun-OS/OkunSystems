@@ -23,7 +23,7 @@ const pruefe = (was: string, ok: boolean, zusatz = "") => {
 const doc = leseGuide(alt);
 pruefe("alte Fassung laesst sich lesen", doc !== null);
 pruefe("neue Felder sind gefuellt, nicht undefined",
-  Array.isArray(doc?.standardLoesungen) && typeof doc?.unsereLeistung === "string");
+  Array.isArray(doc?.umsetzung) && typeof doc?.workforceUrteil === "string");
 pruefe("alter Inhalt bleibt erhalten", doc?.kernbefunde.length === 1 && doc?.customVorschlaege.length === 1);
 
 try {
@@ -32,7 +32,7 @@ try {
     version: 2, erstelltAm: new Date(), blueprintAbgeschlossen: new Date(),
   });
   pruefe("alte Fassung rendert ohne Absturz", html.length > 1000, `${html.length} Zeichen`);
-  pruefe("leerer Abschnitt 7 wird erklaert", html.includes("keine fertige Lösung"));
+  pruefe("leerer Abschnitt 7 wird erklaert", html.includes("nicht hinterlegt"));
 } catch (e) {
   pruefe("alte Fassung rendert ohne Absturz", false, String(e));
 }

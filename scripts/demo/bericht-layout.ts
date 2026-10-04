@@ -25,10 +25,10 @@ async function main() {
 
   const daten = await assembleBlueprintReport(s.id);
 
-  const module: Record<number, string> = {};
+  const modulText: Record<number, string> = {};
   const detail: Record<number, string> = {};
   for (const m of daten.moduleScores) {
-    module[m.moduleNumber] = fuell(4, `PLATZHALTER Einschaetzung zu ${m.label}.`);
+    modulText[m.moduleNumber] = fuell(4, `PLATZHALTER Einschaetzung zu ${m.label}.`);
     detail[m.moduleNumber] = fuell(14, `PLATZHALTER Ausfuehrung zu ${m.label}.`);
   }
 
@@ -37,7 +37,7 @@ async function main() {
     executiveSummary: fuell(14, "PLATZHALTER Zusammenfassung."),
     contextPageText: fuell(16, "PLATZHALTER Unternehmenskontext."),
     scoreAnalysis: fuell(20, "PLATZHALTER Deutung des Gesamtwerts."),
-    moduleInsights: module,
+    moduleInsights: modulText,
     moduleDetailedAnalysis: detail,
     conclusionText: fuell(18, "PLATZHALTER Schluss."),
     orientationText: fuell(12, "PLATZHALTER Einordnung."),

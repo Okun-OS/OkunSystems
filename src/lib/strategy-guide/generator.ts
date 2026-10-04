@@ -4,7 +4,6 @@ import type {
   GuideDocument,
   Kernbefund,
   Einwand,
-  StandardLoesung,
   Umsetzungsposten,
 } from "./types";
 
@@ -174,37 +173,57 @@ Antworte mit JSON in genau dieser Form:
 "kernbefunde":[{"titel":"kurz","beleg":"die Zahl aus der Auswertung, wörtlich","wirkung":"was das im Alltag bedeutet, in Alltagssprache"}],
 "expertise":"Die eine Beobachtung, auf die der Kunde selbst nicht gekommen wäre — ein Zusammenhang zwischen zwei Befunden, den erst die Auswertung sichtbar macht. Zwei bis vier Sätze. Das ist der Moment, in dem der Kunde merkt, dass wir hingesehen haben.",
 "empfehlung":"Was wir an seiner Stelle täten, in welcher Reihenfolge und warum. Fünf bis acht Sätze.",
-"standardLoesungen":[{"titel":"kurz, was eingerichtet würde","aufhaenger":"die Stelle im Fall, die es nötig macht, mit Zahl","loesung":"was es ist und was daran auf diesen Betrieb zugeschnitten wird, zwei bis drei Sätze","nutzen":"was er davon hat, möglichst mit der Zahl aus dem Aufhänger","einordnung":"im gebuchten Paket enthalten oder darüber hinaus"}],
-"umsetzung":[{"block":"in welchen Block des gebuchten Leistungsumfangs das fällt, wörtlich dessen Bezeichnung","titel":"was eingerichtet, automatisiert oder übernommen wird","befund":"der Befund mit seiner Zahl, der das nötig macht","wasWirTun":"was wir dafür konkret tun, ein bis zwei Sätze","einordnung":"im gebuchten Paket enthalten oder darüber hinaus"}],
+"umsetzung":[{"block":"in welchen Block des gebuchten Leistungsumfangs das fällt, wörtlich dessen Bezeichnung","titel":"was eingerichtet, automatisiert oder übernommen wird","befund":"der Befund mit seiner Zahl, der das nötig macht","womit":"das konkrete Produkt oder System, mit Namen — und wo mehrere infrage kommen, die erste Wahl und die Alternative","warum":"warum gerade das für genau diesen Betrieb: was an seiner Lage dafür spricht, woran es sonst scheitern würde, und was vorher zu klären ist","wieWirEsMachen":"wie wir vorgehen: was wir einrichten, was wir zuschneiden, welche Daten wir von wo übernehmen, wen wir einweisen — zwei bis vier Sätze","einordnung":"im gebuchten Paket enthalten oder darüber hinaus"}],
+"workforceUrteil":"Passt OKUN Workforce für diesen Betrieb? Eine klare Antwort in drei bis fünf Sätzen, mit Begründung aus seinen Daten: Welche seiner Personalprozesse laufen heute wie, welche Module greifen dort, und wo greift es nicht. Passt es nicht, sag das — ein Personalsystem passt nicht zu jedem Betrieb, und wer das Gespräch führt, muss die Frage beantworten können, statt sie zu umgehen.",
 "unsereLeistung":"Wie das abläuft: was wir erheben, in welcher Reihenfolge wir einrichten, was wir an Daten übernehmen, wen wir einweisen, wie lange wir begleiten. Vier bis sechs Sätze. Keine Aufzählung der Lösungen — die stehen schon in der Umsetzung.",
 "einwaende":[{"einwand":"was der Kunde wahrscheinlich sagt, in seinen Worten","antwort":"die Antwort, ausformuliert zum Sagen"}],
 "abschluss":"Was am Ende des Gesprächs vereinbart sein sollte. Konkrete nächste Schritte."}
 
 Gib drei Kernbefunde und drei Einwände.
 
-Zu den fertigen Lösungen: Das sind Dinge, die es am Markt gibt und die wir
-bei ihm einrichten — nicht gebaut, sondern eingeführt und zugeschnitten. Die
-Auswertung nennt dazu bereits Empfehlungen; nimm die, die zu seinen Befunden
-passen, und sag bei jeder, ob sie im gebuchten Paket liegt oder darüber. Zwei
-bis fünf. Gibt der Fall keine her, gib eine leere Liste.
+Zur Umsetzung — das ist der wichtigste Abschnitt des ganzen Dokuments.
 
-Zur Umsetzung — das ist der wichtigste Abschnitt, denn daran misst der Kunde,
-was er für sein Geld bekommt. Geh den gebuchten Leistungsumfang Block für
-Block durch, in seiner Reihenfolge, und sag für jeden, was bei diesem Betrieb
-konkret hineingehört:
+Stell dir vor, wer das Gespräch führt: Der Kollege, der sonst die
+Strategiegespräche macht, ist ausgefallen. Es geht jemand hinein, der den
+Betrieb nicht kennt und von Software nichts versteht. Er hat nur dieses
+Blatt. Fragt der Kunde "und was genau nehmen Sie da?" oder "warum
+ausgerechnet das?", muss die Antwort hier stehen. Steht sie nicht da, kann
+er sie nicht erfinden.
 
-- Welche digitalen Grundlagen fehlen ihm, und was richten wir dafür ein oder
-  verbessern wir? Leite das aus seinen Antworten ab, nicht aus einer
-  allgemeinen Liste.
-- Welche wiederkehrenden Tätigkeiten automatisieren wir, und welche Aufgabe
-  mit welcher Stundenzahl steckt dahinter?
-- Was übernimmt die digitale Workforce?
+Deshalb reicht "wir richten eine Ablage ein" nicht. Es muss dastehen, **womit**
+— mit Produktnamen —, **warum gerade das** für diesen Betrieb, und **wie** wir
+dabei vorgehen.
+
+Geh den gebuchten Leistungsumfang Block für Block durch, in seiner
+Reihenfolge:
+
+- **Digitale Grundlagen**: Welche fehlen ihm? Das sind die Werkzeuge, auf
+  denen alles andere aufsetzt — eine Büro- und Zusammenarbeitsumgebung wie
+  Google Workspace oder Microsoft 365, eine zentrale Dateiablage, ein
+  CRM-System, Aufgaben- und Projektverwaltung, digitale Formulare. Nenne je
+  Posten das Produkt, das du empfiehlst, und warum es für diesen Betrieb das
+  richtige ist. Hat er schon eines, sag das und sag, was wir daran verbessern
+  statt es zu ersetzen.
+- **Automatisierungen**: Welche wiederkehrende Tätigkeit mit welcher
+  Stundenzahl nehmen wir uns vor, und womit lösen wir sie? Das kann ein
+  fertiges Produkt sein, eine Verbindung zwischen zweien, oder etwas, das
+  direkt auf seiner digitalen Grundlage läuft — etwa eine Automatik in seiner
+  Büroumgebung, wenn er ohnehin eine hat. Sag, welcher Weg hier der richtige
+  ist und warum.
+- **OKUN Workforce**: Welche seiner Personalprozesse greifen die Module auf?
+  Dazu gehört ein ausdrückliches Urteil im Feld "workforceUrteil", ob das
+  Paket für ihn passt.
 
 Halte dich an die Grenzen des Umfangs. Steht dort "höchstens drei", nenne
 höchstens drei — und wenn mehr sinnvoll wäre, schreib das in die Einordnung
 des vierten Postens als "darüber hinaus", statt es stillschweigend
 mitzuversprechen. Jeder Posten braucht einen Befund mit Zahl; ohne den
 gehört er nicht in die Liste.
+
+Zu den Produktnamen: Nenne sie, aber behaupte nichts über sie, was du nicht
+weißt. Wo die Wahl von etwas abhängt, das im Datenbestand nicht steht —
+welche Branchensoftware läuft, ob sie eine Schnittstelle hat —, gehört das
+in das Feld "warum" als das, was vorher zu klären ist.
 
 Nenne das, was der Kunde zu Beginn des Blueprints über seinen Betrieb
 geschrieben hat, „Unternehmenskontext“ oder schlicht „im Blueprint“. Es gab
@@ -235,12 +254,10 @@ Vorgespräch“ gesagt.`;
       : [],
     expertise: text(parsed.expertise, "— konnte nicht erzeugt werden —"),
     empfehlung: text(parsed.empfehlung, "— konnte nicht erzeugt werden —"),
-    standardLoesungen: Array.isArray(parsed.standardLoesungen)
-      ? (parsed.standardLoesungen as StandardLoesung[])
-      : [],
     umsetzung: Array.isArray(parsed.umsetzung)
       ? (parsed.umsetzung as Umsetzungsposten[])
       : [],
+    workforceUrteil: text(parsed.workforceUrteil, "— konnte nicht erzeugt werden —"),
     unsereLeistung: text(parsed.unsereLeistung, "— konnte nicht erzeugt werden —"),
     einwaende: Array.isArray(parsed.einwaende) ? (parsed.einwaende as Einwand[]) : [],
     abschluss: text(parsed.abschluss, "— konnte nicht erzeugt werden —"),

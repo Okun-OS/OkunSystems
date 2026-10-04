@@ -42,33 +42,14 @@ export interface CustomVorschlag {
   groessenordnung: string;
 }
 
-/**
- * Eine fertige Lösung, die wir bei diesem Betrieb einrichten würden.
- *
- * Das Gegenstück zum Custom-Vorschlag: nichts, was gebaut wird, sondern
- * etwas, das es gibt und das zu seinem Betrieb passend eingerichtet werden
- * muss. Das ist für den Kunden oft der schnellere Weg und für uns
- * trotzdem eine Leistung — nur eine andere.
- */
-export interface StandardLoesung {
-  titel: string;
-  /** Die Stelle im Fall, die sie nötig macht. */
-  aufhaenger: string;
-  /** Was eingerichtet würde und was dabei auf den Betrieb zugeschnitten wird. */
-  loesung: string;
-  /** Was der Betrieb davon hat. */
-  nutzen: string;
-  /** Ob das im gebuchten Paket liegt oder darüber. */
-  einordnung: string;
-}
-
+/** Ein Vorschlag mit dem Ergebnis der Prüfung. */
 /**
  * Ein Posten aus dem, was wir für diesen Kunden umsetzen.
  *
- * Der Leitfaden sagte bisher in Fließtext, was wir tun, und blieb dabei
- * ungenau — er nannte eine Lösung und ließ offen, welcher Befund sie nötig
- * macht und in welchen Teil des gebuchten Pakets sie fällt. Der Kollege
- * konnte daraus nicht ableiten, was der Kunde am Ende bekommt.
+ * Der wichtigste Baustein des Leitfadens. Wer das Gespräch führt, kennt den
+ * Betrieb womöglich nicht und versteht von Software nichts — er hat nur
+ * dieses Blatt. Fragt der Kunde „und was genau nehmen Sie da?“, muss die
+ * Antwort hier stehen, mit Produktnamen und Begründung.
  */
 export interface Umsetzungsposten {
   /** In welchen Block des Pakets das fällt, wörtlich aus dem Leistungsumfang. */
@@ -77,13 +58,16 @@ export interface Umsetzungsposten {
   titel: string;
   /** Der Befund mit seiner Zahl, der das nötig macht. */
   befund: string;
-  /** Was wir dafür konkret tun. */
-  wasWirTun: string;
+  /** Das konkrete Produkt oder System — mit Namen. */
+  womit: string;
+  /** Warum gerade das, für genau diesen Betrieb, und was vorher zu klären ist. */
+  warum: string;
+  /** Wie wir vorgehen: einrichten, zuschneiden, Daten übernehmen, einweisen. */
+  wieWirEsMachen: string;
   /** Ob das im gebuchten Paket liegt oder darüber. */
   einordnung: string;
 }
 
-/** Ein Vorschlag mit dem Ergebnis der Prüfung. */
 export interface GepruefterVorschlag extends CustomVorschlag {
   geprueftInRunde: number;
 }
@@ -101,19 +85,25 @@ export interface GuideDocument {
   empfehlung: string;
   /** 6 — Custom-Projekte, die hier gehen. Geprüft. */
   customVorschlaege: GepruefterVorschlag[];
-  /** 7 — Fertige Lösungen, die wir für ihn einrichten würden. */
-  standardLoesungen: StandardLoesung[];
   /**
-   * 8 — Was wir umsetzen, Posten für Posten.
+   * 7 — Was wir umsetzen und womit, Posten für Posten.
    *
-   * Je Posten: welcher Befund, was wir damit machen, in welchem Teil des
-   * gebuchten Pakets das liegt. Daraus muss der Kollege ablesen können,
-   * welche Abläufe automatisiert werden und welche digitalen Grundlagen
-   * der Kunde bekommt.
+   * Der wichtigste Abschnitt. Daraus muss jemand, der den Betrieb nicht
+   * kennt, das Gespräch führen können: welche digitalen Grundlagen wir
+   * empfehlen und warum gerade die, welche Abläufe wir womit automatisieren,
+   * und was davon im gebuchten Paket liegt.
    */
   umsetzung: Umsetzungsposten[];
   /**
-   * 8b — Wie wir dabei vorgehen.
+   * 7b — Passt OKUN Workforce für diesen Betrieb?
+   *
+   * Eine ausdrückliche Antwort samt Begründung. Ein Personalsystem passt
+   * nicht zu jedem Betrieb, und wer das Gespräch führt, muss die Frage
+   * beantworten können, statt sie zu umgehen.
+   */
+  workforceUrteil: string;
+  /**
+   * 8 — Wie wir dabei vorgehen.
    *
    * Erhebung, Einrichtung, Übernahme von Daten, Einweisung, Begleitung —
    * die Antwort auf „und wie läuft das dann ab?“.

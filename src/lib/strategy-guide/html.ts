@@ -77,23 +77,6 @@ export function renderGuideHtml(params: {
           )
           .join("");
 
-  const fertige =
-    doc.standardLoesungen.length === 0
-      ? `<p class="leer">Aus diesem Fall ergibt sich keine fertige Lösung, die hier
-         einzurichten wäre.</p>`
-      : doc.standardLoesungen
-          .map(
-            (l) => `<div class="karte fertig">
-              <div class="karte-titel">${esc(l.titel)}
-                <span class="einordnung">${esc(l.einordnung)}</span>
-              </div>
-              <div class="aufhaenger gruen"><span>Aufhänger</span>${esc(l.aufhaenger)}</div>
-              <div class="karte-text">${esc(l.loesung)}</div>
-              <div class="karte-text grau">${esc(l.nutzen)}</div>
-            </div>`
-          )
-          .join("");
-
   // Nach Block gruppiert, in der Reihenfolge, in der sie auftreten — das ist
   // die Reihenfolge des Leistungsumfangs.
   const bloecke: Array<{ name: string; posten: typeof doc.umsetzung }> = [];
@@ -111,14 +94,20 @@ export function renderGuideHtml(params: {
           .map(
             (b) => `<div class="block">
               <div class="block-name">${esc(b.name)}</div>
+              ${
+                /workforce/i.test(b.name) && doc.workforceUrteil
+                  ? `<div class="urteil">${p(doc.workforceUrteil)}</div>`
+                  : ""
+              }
               ${b.posten
                 .map(
                   (pst) => `<div class="posten">
-                    <div class="posten-titel">${esc(pst.titel)}
-                      <span class="einordnung">${esc(pst.einordnung)}</span>
-                    </div>
+                    <div class="posten-titel">${esc(pst.titel)}</div>
+                    <div class="einordnung">${esc(pst.einordnung)}</div>
                     <div class="beleg">${esc(pst.befund)}</div>
-                    <div class="karte-text">${esc(pst.wasWirTun)}</div>
+                    <div class="feld"><span>Womit</span>${esc(pst.womit)}</div>
+                    <div class="feld"><span>Warum gerade das</span>${esc(pst.warum)}</div>
+                    <div class="feld"><span>Wie wir vorgehen</span>${esc(pst.wieWirEsMachen)}</div>
                   </div>`
                 )
                 .join("")}
@@ -238,6 +227,16 @@ export function renderGuideHtml(params: {
   }
   .posten { padding: 5px 0 7px 11px; border-left: 2px solid #dde3ea; margin-bottom: 5px; }
   .posten-titel { font-weight: 700; font-size: 10pt; }
+  .feld { font-size: 10pt; margin-top: 5px; }
+  .feld span {
+    display: block; font-size: 7.5pt; text-transform: uppercase;
+    letter-spacing: 0.8px; color: #94a3b8; font-weight: 700;
+  }
+  .urteil {
+    background: #f6f8fa; border-left: 3px solid #64748b; padding: 8px 11px;
+    margin-bottom: 8px; font-size: 10pt;
+  }
+  .urteil p { margin: 0 0 5px; }
   .aufhaenger.gruen { color: #15803d; }
   .einordnung {
     display: block; font-size: 8pt; font-weight: 600; color: #64748b;
@@ -286,12 +285,12 @@ export function renderGuideHtml(params: {
   ${abschnitt(4, "Warum das Expertise zeigt", p(doc.expertise))}
   ${abschnitt(5, "Unsere Empfehlung", p(doc.empfehlung))}
   ${abschnitt(6, "Custom-Projekte, die hier gehen", vorschlaege)}
-  ${abschnitt(7, "Fertige Lösungen, die wir hier einrichten", fertige)}
   ${abschnitt(
-    8,
-    "Was wir umsetzen",
-    `${umsetzung}<div class="ablauf"><div class="ablauf-titel">Wie das abläuft</div>${p(doc.unsereLeistung)}</div>`
+    7,
+    "Was wir umsetzen und womit",
+    umsetzung
   )}
+  ${abschnitt(8, "Wie das abläuft", p(doc.unsereLeistung))}
   ${abschnitt(9, "Womit du rechnen musst", einwaende)}
   ${abschnitt(10, "Was am Ende stehen sollte", p(doc.abschluss))}
 

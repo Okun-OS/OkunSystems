@@ -27,15 +27,12 @@ const doc: GuideDocument = {
     { titel: "Serviceerfassung auf dem Telefon", aufhaenger: "32,5 Stunden Abtippen im Monat", idee: lang(14, "Der Monteur erfasst direkt vor Ort."), nutzen: lang(10, "Die Daten sind abends im System."), groessenordnung: "mittleres Custom-Projekt", geprueftInRunde: 1 },
     { titel: "Rechnungslauf aus den Berichten", aufhaenger: "4 Medienbrueche bis zur Rechnung", idee: lang(14, "Aus dem Bericht entsteht der Rechnungsentwurf."), nutzen: lang(10, "Die Rechnung geht Tage frueher raus."), groessenordnung: "groesseres Custom-Projekt", geprueftInRunde: 2 },
   ],
-  standardLoesungen: [
-    { titel: "Dienst- und Einsatzplanung von der Stange", aufhaenger: "16,2 h/Monat Abstimmung ueber WhatsApp", loesung: lang(10, "Fertige Planungssoftware, auf die Fahrzeuge zugeschnitten."), nutzen: lang(8, "Die Planung steht abends fuer den Folgetag."), einordnung: "im gebuchten Paket enthalten" },
-    { titel: "Dokumentenablage", aufhaenger: "Nachweise liegen in Papierordnern", loesung: lang(10, "Ablage mit Rechten je Hausverwaltung."), nutzen: lang(8, "Nachweise sind in Sekunden auffindbar."), einordnung: "ueber dem gebuchten Paket" },
-  ],
   umsetzung: [
-    { block: "Digitale Grundlagen", titel: "Zentrale Dateiablage", befund: "Nachweise liegen in Papierordnern", wasWirTun: lang(5, "Wir richten die Ablage ein und uebernehmen die Bestaende."), einordnung: "im gebuchten Paket enthalten" },
-    { block: "Automatisierungen", titel: "Rechnungslauf aus den Berichten", befund: "6,5 h/Monat Rechnungserstellung", wasWirTun: lang(5, "Wir setzen die Uebergabe auf."), einordnung: "im gebuchten Paket enthalten (1 von 3)" },
-    { block: "OKUN Workforce", titel: "Fristenmeldungen", befund: "zwei gerissene Fristen im Vorjahr", wasWirTun: lang(5, "Die Workforce meldet faellige Pruefungen."), einordnung: "im gebuchten Paket enthalten" },
+    { block: "Digitale Grundlagen", titel: "Zentrale Dateiablage", befund: "Nachweise liegen in Papierordnern", womit: "Google Workspace mit geteilten Ablagen", warum: lang(4, "Weil der Betrieb bereits Google-Konten nutzt."), wieWirEsMachen: lang(5, "Wir richten die Ablage ein und uebernehmen die Bestaende."), einordnung: "im gebuchten Paket enthalten" },
+    { block: "Automatisierungen", titel: "Rechnungslauf aus den Berichten", befund: "6,5 h/Monat Rechnungserstellung", womit: "Make als Verbindung zur Branchensoftware", warum: lang(4, "Weil die Software nur Exporte kennt."), wieWirEsMachen: lang(5, "Wir setzen die Uebergabe auf."), einordnung: "im gebuchten Paket enthalten (1 von 3)" },
+    { block: "OKUN Workforce", titel: "Dienstplanung", befund: "16,2 h/Monat Abstimmung", womit: "OKUN Workforce Dienstplanung", warum: lang(4, "Weil 31 Monteure auf 14 Fahrzeugen geplant werden."), wieWirEsMachen: lang(5, "Wir richten Verfuegbarkeiten und Qualifikationen ein."), einordnung: "im gebuchten Paket enthalten" },
   ],
+  workforceUrteil: lang(8, "Workforce passt: 48 Mitarbeitende, Dienstplanung laeuft heute an einer Tafel."),
   unsereLeistung: lang(24, "Wir erheben die Ablaeufe, richten ein, uebernehmen die Daten und weisen die Monteure ein."),
   einwaende: [
     { einwand: "Meine Leute koennen das nicht.", antwort: lang(12, "Wer ein Telefon bedienen kann, kann das auch.") },
