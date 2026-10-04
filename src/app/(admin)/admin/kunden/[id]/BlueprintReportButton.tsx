@@ -13,6 +13,7 @@ export function BlueprintReportButton({
   const [reportUrl, setReportUrl] = useState<string | null>(initialReportUrl);
   const [loading, setLoading] = useState(false);
   const [warte, setWarte] = useState(false);
+  const [schritt, setSchritt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [additionalContext, setAdditionalContext] = useState("");
@@ -56,6 +57,7 @@ export function BlueprintReportButton({
     const vorher = reportUrl;
     setLoading(true);
     setWarte(false);
+    setSchritt(null);
     setShowForm(false);
     setError(null);
     try {
@@ -68,9 +70,51 @@ export function BlueprintReportButton({
           specialRequests: specialRequests.trim() || undefined,
         }),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Generierung fehlgeschlagen");
-      setReportUrl(json.reportUrl);
+      // Wird die Anfrage abgelehnt, kommt eine gewöhnliche Antwort mit
+      // Meldung. Wird sie angenommen, kommt ein Strom: Schrittmeldungen,
+      // dazwischen Lebenszeichen, am Ende die Adresse. So fließt
+      // durchgehend etwas, und niemand hält die Verbindung für tot.
+      if (!res.ok) {
+        const json = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(json.error ?? "Generierung fehlgeschlagen");
+      }
+      if (!res.body) throw new Error("Keine Antwort vom Server");
+
+      const leser = res.body.getReader();
+      const dekoder = new TextDecoder();
+      let rest = "";
+      let fertig: string | null = null;
+
+      for (;;) {
+        const { done, value } = await leser.read();
+        if (done) break;
+        rest += dekoder.decode(value, { stream: true });
+        const zeilen = rest.split("\n");
+        rest = zeilen.pop() ?? "";
+        for (const zeile of zeilen) {
+          if (!zeile.trim()) continue;
+          let eintrag: {
+            status?: string;
+            schritt?: string;
+            reportUrl?: string;
+            error?: string;
+          };
+          try {
+            eintrag = JSON.parse(zeile);
+          } catch {
+            continue;
+          }
+          if (eintrag.status === "schritt" && eintrag.schritt) setSchritt(eintrag.schritt);
+          if (eintrag.status === "fehler") {
+            throw new Error(eintrag.error ?? "Generierung fehlgeschlagen");
+          }
+          if (eintrag.status === "fertig") fertig = eintrag.reportUrl ?? null;
+        }
+      }
+
+      // Der Strom endete ohne Ergebnis — dann ist er unterwegs abgerissen.
+      if (fertig === null) throw new TypeError("Der Strom endete vorzeitig");
+      setReportUrl(fertig);
     } catch (e) {
       // Ein abgerissener Aufruf wirft einen TypeError, kein Serverfehler mit
       // Meldung. Nur dann lohnt das Nachsehen.
@@ -104,7 +148,7 @@ export function BlueprintReportButton({
           <span>
             {warte
               ? "Die Verbindung ist abgerissen — der Server arbeitet weiter. Es wird nachgesehen, ob der Bericht fertig wird …"
-              : "Bericht wird generiert — das dauert ca. 3–4 Minuten …"}
+              : (schritt ?? "Bericht wird generiert — das dauert ca. 3–4 Minuten …")}
           </span>
         </div>
       </div>

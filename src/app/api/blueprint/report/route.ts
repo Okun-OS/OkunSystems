@@ -69,9 +69,28 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  try {
+  // Die Antwort kommt als Strom.
+  //
+  // Die Erzeugung dauert Minuten, in denen sonst kein Byte fließt. Eine
+  // Anfrage, die so lange schweigt, wird unterwegs für tot gehalten und
+  // abgeschnitten — der Benutzer sah "Failed to fetch", obwohl der Server
+  // weiterarbeitete und fertig wurde. Die Schritte melden sich jetzt
+  // einzeln, und nebenbei sieht man, wo es gerade steht.
+  const encoder = new TextEncoder();
+  const strom = new ReadableStream({
+    async start(controller) {
+      let offen = true;
+      const schreibe = (o: unknown) => {
+        if (!offen) return;
+        controller.enqueue(encoder.encode(JSON.stringify(o) + "\n"));
+      };
+      const puls = setInterval(() => schreibe({ status: "laeuft" }), 10_000);
+
+      try {
+    schreibe({ status: "schritt", schritt: "Daten werden zusammengestellt" });
     // Step 1: Assemble report data
     const reportData = await assembleBlueprintReport(sessionId);
+    schreibe({ status: "schritt", schritt: "Texte werden geschrieben — das dauert am längsten" });
 
     // Step 2: Generate AI narrative texts
     const texts = await generateReportTexts(reportData, { additionalContext, specialRequests });
@@ -87,6 +106,8 @@ export async function POST(req: NextRequest) {
       data: { reportTexts: JSON.stringify(texts), reportTextsAt: new Date() },
     });
 
+    schreibe({ status: "schritt", schritt: "Texte gesichert, PDF wird gesetzt" });
+
     // Step 3: Render HTML (embed logo as base64 data URI)
     let logoDataUri = "";
     try {
@@ -100,6 +121,8 @@ export async function POST(req: NextRequest) {
 
     // Step 4: Generate PDF
     const pdfBuffer = await renderHtmlToPdf(html);
+
+    schreibe({ status: "schritt", schritt: "PDF wird abgelegt" });
 
     // Step 5: Upload to R2
     const key = buildReportKey(sessionId);
@@ -155,12 +178,29 @@ export async function POST(req: NextRequest) {
       console.error("[blueprint/report] Email send failed:", emailErr);
     }
 
-    return NextResponse.json({ reportUrl });
-  } catch (err) {
-    console.error("[blueprint/report] Error:", err);
-    const message = err instanceof Error ? err.message : "Report generation failed";
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
+        schreibe({ status: "fertig", reportUrl });
+      } catch (err) {
+        console.error("[blueprint/report] Error:", err);
+        schreibe({
+          status: "fehler",
+          error: err instanceof Error ? err.message : "Report generation failed",
+        });
+      } finally {
+        clearInterval(puls);
+        offen = false;
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(strom, {
+    status: 200,
+    headers: {
+      "Content-Type": "application/x-ndjson; charset=utf-8",
+      "Cache-Control": "no-store, no-transform",
+      "X-Accel-Buffering": "no",
+    },
+  });
 }
 
 /**
