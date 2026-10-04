@@ -42,6 +42,9 @@ const WAHL: Record<string, number[]> = {
   "M1.1": [2], "M1.2": [5], "M1.3": [1], "M1.4": [2, 3], "M1.5": [1],
   "M1.6": [2], "M1.7": [1], "M1.8": [2], "M1.9": [2], "M1.10": [1],
   "M1.11": [1, 2, 3], "M1.12": [1],
+  "M1.14": [3],        // dienstliche Mobiltelefone — Erfassung vor Ort ist möglich
+  "M1.15": [3],        // ein externer IT-Dienstleister betreut die Systeme
+  "M1.16": [2, 5],     // Berichte von unterwegs, Checklisten und Prüfnachweise
 };
 
 const FREITEXT: Record<string, string> = {
@@ -231,26 +234,49 @@ export async function seedNordlicht(): Promise<DemoErgebnis> {
   }
 
   // ── Dritte Säule ────────────────────────────────────────────────────────
-  const sys = (name: string, category: string, purposes: string[], isCustom = false) =>
+  //
+  // Mit den Schlüsseln aus dem Katalog und echten Produktnamen. Vorher standen
+  // hier erfundene Bezeichnungen ohne Katalogbezug ("Branchensoftware
+  // (Angebote/Rechnungen)"). Der Leitfaden konnte daraus nicht erkennen, was
+  // der Betrieb wirklich einsetzt, und fragte in jedem Posten nach dem Namen
+  // — ein Mangel, der wie eine Lücke im Fragebogen aussah, aber keiner war.
+  const sys = (
+    catalogKey: string,
+    name: string,
+    category: string,
+    purposes: string[]
+  ) =>
     db.blueprintSystem.create({
-      data: { sessionId: session.id, name, category,
-        purposes: JSON.stringify(purposes), isCustom },
+      data: {
+        sessionId: session.id,
+        catalogKey,
+        name,
+        category,
+        purposes: JSON.stringify(purposes),
+      },
     });
 
-  const branche = await sys("Branchensoftware (Angebote/Rechnungen)", "erp", ["pur_offers", "pur_invoices", "pur_customers", "pur_orders"]);
-  await sys("DATEV-Anbindung", "finanzen", ["pur_invoices", "pur_reports"]);
-  const outlook = await sys("Outlook-Kalender", "kommunikation", ["pur_tasks", "pur_comms"]);
-  const excel = await sys("Excel-Listen je Fahrzeug", "sonstige", ["pur_tasks", "pur_reports"], true);
-  const whatsapp = await sys("WhatsApp-Gruppen", "kommunikation", ["pur_comms", "pur_scheduling"], true);
-  const papier = await sys("Papier-Serviceberichte", "sonstige", ["pur_documents", "pur_time"], true);
+  const office = await sys("sys_ms365", "Microsoft 365 / Outlook", "Büro & E-Mail", ["pur_comms", "pur_scheduling"]);
+  await sys("sys_datev", "DATEV", "Buchhaltung & Rechnung", ["pur_invoices", "pur_reports"]);
+  const branche = await sys("sys_branchen", "Streit V.1", "Branchensoftware", ["pur_offers", "pur_invoices", "pur_customers", "pur_orders"]);
+  const excel = await sys("sys_task_calendar", "Outlook-Kalender und Excel-Listen", "Aufgaben & Fristen", ["pur_tasks", "pur_reports"]);
+  const whatsapp = await sys("sys_comm_whatsapp", "WhatsApp", "Interne Kommunikation", ["pur_comms", "pur_scheduling"]);
+  const papier = await sys("sys_doc_paper", "Papierordner und Papier-Serviceberichte", "Dokumente & Ablage", ["pur_documents"]);
+  await sys("sys_time_paper", "Stundenzettel auf Papier", "Arbeitszeiten", ["pur_time"]);
+  await sys("sys_plan_paper", "Magnettafel im Büro", "Planung & Einsatz", ["pur_scheduling"]);
+
+  // Ausdrücklich ohne System — damit die Lücke in der Auswertung sichtbar wird
+  // und nicht bloß als fehlende Angabe durchgeht.
+  await sys("sys_crm_none", "kein System", "Kundenverwaltung", []);
+  await sys("sys_hr_folder", "Ordner im Schrank", "Personal", ["pur_hr"]);
 
   const tasks: Array<[string, string, string, string, string, string[]]> = [
     ["tsk_reports", "Serviceberichte abtippen", "Verwaltung & Dokumente", "freq_daily", "dur_over60", [papier.id, branche.id]],
-    ["tsk_deadlines", "Wartungsfristen in Excel und Outlook abgleichen", "Verwaltung & Dokumente", "freq_weekly", "dur_over60", [outlook.id, excel.id]],
+    ["tsk_deadlines", "Wartungsfristen in Excel und Outlook abgleichen", "Verwaltung & Dokumente", "freq_weekly", "dur_over60", [office.id, excel.id]],
     ["tsk_dispatch", "Einsatzplanung für den Folgetag abstimmen", "Steuerung & Abstimmung", "freq_daily", "dur_30_60", [whatsapp.id]],
     ["tsk_stock", "Materialbestand je Fahrzeug nachpflegen", "Einkauf & Material", "freq_weekly", "dur_30_60", [excel.id]],
     ["tsk_invoice", "Rechnungen aus Serviceberichten erstellen", "Rechnungen & Zahlungen", "freq_weekly", "dur_over60", [branche.id, papier.id]],
-    ["tsk_proof", "Nachweise für Hausverwaltungen zusammenstellen", "Verwaltung & Dokumente", "freq_monthly", "dur_over60", [papier.id, outlook.id]],
+    ["tsk_proof", "Nachweise für Hausverwaltungen zusammenstellen", "Verwaltung & Dokumente", "freq_monthly", "dur_over60", [papier.id, office.id]],
   ];
   for (const [i, [key, label, area, freq, dur, systemIds]] of tasks.entries()) {
     await db.blueprintTask.create({

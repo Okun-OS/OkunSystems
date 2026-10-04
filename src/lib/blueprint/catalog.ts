@@ -296,6 +296,67 @@ export const QUESTIONS: QuestionDef[] = [
     questionDe: "Welche weiteren Software-Tools oder digitalen Systeme setzen Sie regelmäßig im Unternehmen ein? (Freitext)",
     options: [],
   },
+  {
+    // Entscheidet, ob eine Erfassung vor Ort überhaupt in Frage kommt. Ohne
+    // Geräte in der Hand der Leute draußen ist jeder mobile Vorschlag
+    // gegenstandslos — und genau das ließ sich bisher nirgends ablesen.
+    externalId: "M1.14",
+    moduleNumber: 1,
+    area: "profil",
+    phase: "BLUEPRINT_M1",
+    questionType: "A",
+    order: 113,
+    isRequired: true,
+    intent: "Geräte im Außendienst erfassen — Voraussetzung für mobile Erfassung",
+    questionDe: "Womit sind Ihre Mitarbeitenden außerhalb des Büros ausgestattet?",
+    options: [
+      { externalId: "M1.14-OPT-1", textDe: "Niemand arbeitet außerhalb des Büros", points: 0, order: 1 },
+      { externalId: "M1.14-OPT-2", textDe: "Mit nichts — nur mit dem eigenen privaten Telefon", points: 0, order: 2 },
+      { externalId: "M1.14-OPT-3", textDe: "Dienstliche Mobiltelefone", points: 0, order: 3 },
+      { externalId: "M1.14-OPT-4", textDe: "Dienstliche Tablets", points: 0, order: 4 },
+      { externalId: "M1.14-OPT-5", textDe: "Notebooks im Fahrzeug", points: 0, order: 5 },
+    ],
+  },
+  {
+    // Wer die Systeme betreut, entscheidet darüber, mit wem wir arbeiten und
+    // wie schnell etwas eingerichtet ist.
+    externalId: "M1.15",
+    moduleNumber: 1,
+    area: "profil",
+    phase: "BLUEPRINT_M1",
+    questionType: "A",
+    order: 114,
+    isRequired: true,
+    intent: "Betreuung der Systeme erfassen — Ansprechpartner für die Einrichtung",
+    questionDe: "Wer kümmert sich bei Ihnen um die Software und die Zugänge?",
+    options: [
+      { externalId: "M1.15-OPT-1", textDe: "Niemand im Besonderen — jeder regelt es selbst", points: 0, order: 1 },
+      { externalId: "M1.15-OPT-2", textDe: "Jemand im Haus nebenbei", points: 0, order: 2 },
+      { externalId: "M1.15-OPT-3", textDe: "Ein externer IT-Dienstleister", points: 0, order: 3 },
+      { externalId: "M1.15-OPT-4", textDe: "Eine eigene Stelle im Haus", points: 0, order: 4 },
+    ],
+  },
+  {
+    // Was heute auf Papier entsteht, ist der unmittelbare Ansatzpunkt für
+    // digitale Formulare. Diese Lösung hatte bisher keinen eigenen Auslöser.
+    externalId: "M1.16",
+    moduleNumber: 1,
+    area: "profil",
+    phase: "BLUEPRINT_M1",
+    questionType: "A",
+    order: 115,
+    isRequired: true,
+    intent: "Papiererfassung erfassen — Ansatzpunkt für digitale Formulare",
+    questionDe: "Was wird bei Ihnen heute auf Papier ausgefüllt und später abgetippt? (Mehrfachauswahl)",
+    options: [
+      { externalId: "M1.16-OPT-1", textDe: "Nichts — wir erfassen alles gleich digital", points: 0, order: 1, isExclusive: true },
+      { externalId: "M1.16-OPT-2", textDe: "Berichte oder Protokolle von unterwegs", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 15, solutionRefs: ["SOL-B-007"], order: 2 },
+      { externalId: "M1.16-OPT-3", textDe: "Stundenzettel und Arbeitszeiten", points: 0, signalCategory: "WORKFORCE", signalValue: 15, solutionRefs: ["SOL-W-002"], order: 3 },
+      { externalId: "M1.16-OPT-4", textDe: "Anträge und Freigaben", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, solutionRefs: ["SOL-B-007"], order: 4 },
+      { externalId: "M1.16-OPT-5", textDe: "Checklisten und Prüfnachweise", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 15, solutionRefs: ["SOL-B-007"], order: 5 },
+      { externalId: "M1.16-OPT-6", textDe: "Material- oder Bestandslisten", points: 0, signalCategory: "BEWAEHRTE_LOESUNG", signalValue: 10, solutionRefs: ["SOL-B-007"], order: 6 },
+    ],
+  },
 
   // ═══════════════════════════════════════════════════════════════════════════
   // MODUL 2 – Prozessqualität (25% Gesamtgewicht, Typ B, 0–50 Punkte)

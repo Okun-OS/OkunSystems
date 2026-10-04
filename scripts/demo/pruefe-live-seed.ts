@@ -36,7 +36,9 @@ async function main() {
     `${p3?.tasks.totalHoursPerMonth ?? 0} h/Monat`);
   pruefe("Ablaufreife gerechnet", (p3?.flowMaturity ?? -1) >= 0,
     `${p3?.flowMaturity ?? "—"} von 100`);
-  pruefe("Systeme erfasst", (p3?.systems.systemCount ?? 0) === 6, `${p3?.systems.systemCount ?? 0}`);
+  pruefe("Systeme erfasst", (p3?.systems.systemCount ?? 0) >= 8, `${p3?.systems.systemCount ?? 0}`);
+  pruefe("Luecke bei der Kundenverwaltung sichtbar",
+    (p3?.systems.gaps.length ?? 0) > 0, `${p3?.systems.gaps.length ?? 0} Luecken`);
   pruefe("Medienbrueche erkannt", (p3?.systems.mediaBreaks.length ?? 0) > 0,
     `${p3?.systems.mediaBreaks.length ?? 0}`);
   pruefe("Empfehlungen erzeugt", daten.recommendations.length > 0,
