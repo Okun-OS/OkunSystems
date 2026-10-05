@@ -4,6 +4,7 @@ import type {
   Kernbefund,
   Einwand,
   Umsetzungsposten,
+  NichtUmgesetzt,
 } from "./types";
 
 const text = (v: unknown): string => (typeof v === "string" ? v : "");
@@ -64,6 +65,11 @@ export function normalisiereGuide(roh: unknown): GuideDocument | null {
     einordnung: text(p.einordnung),
   }));
 
+  const nichtUmgesetzt: NichtUmgesetzt[] = liste(q.nichtUmgesetzt).map((n) => ({
+    titel: text(n.titel),
+    warum: text(n.warum),
+  }));
+
   return {
     befund: text(q.befund),
     gespraechseinstieg: text(q.gespraechseinstieg),
@@ -72,6 +78,7 @@ export function normalisiereGuide(roh: unknown): GuideDocument | null {
     empfehlung: text(q.empfehlung),
     customVorschlaege,
     umsetzung,
+    nichtUmgesetzt,
     workforceUrteil: text(q.workforceUrteil),
     unsereLeistung: text(q.unsereLeistung),
     einwaende,

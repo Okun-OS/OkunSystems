@@ -5,6 +5,7 @@ import type {
   Kernbefund,
   Einwand,
   Umsetzungsposten,
+  NichtUmgesetzt,
 } from "./types";
 
 const SYSTEM_ERZEUGER = `Du bereitest bei OKUN Systems das Strategiegespräch vor.
@@ -174,6 +175,7 @@ Antworte mit JSON in genau dieser Form:
 "expertise":"Die eine Beobachtung, auf die der Kunde selbst nicht gekommen wäre — ein Zusammenhang zwischen zwei Befunden, den erst die Auswertung sichtbar macht. Zwei bis vier Sätze. Das ist der Moment, in dem der Kunde merkt, dass wir hingesehen haben.",
 "empfehlung":"Was wir an seiner Stelle täten, in welcher Reihenfolge und warum. Fünf bis acht Sätze.",
 "umsetzung":[{"block":"in welchen Block des gebuchten Leistungsumfangs das fällt, wörtlich dessen Bezeichnung","titel":"was eingerichtet, automatisiert oder übernommen wird","befund":"der Befund mit seiner Zahl, der das nötig macht","womit":"das konkrete Produkt oder System, mit Namen — und wo mehrere infrage kommen, die erste Wahl und die Alternative","warum":"warum gerade das für genau diesen Betrieb: was an seiner Lage dafür spricht, woran es sonst scheitern würde, und was vorher zu klären ist","wieWirEsMachen":"wie wir vorgehen: was wir einrichten, was wir zuschneiden, welche Daten wir von wo übernehmen, wen wir einweisen — zwei bis vier Sätze","einordnung":"im gebuchten Paket enthalten oder darüber hinaus"}],
+"nichtUmgesetzt":[{"titel":"die Empfehlung der Auswertung, wörtlich","warum":"warum wir sie hier nicht angehen, ein bis zwei Sätze — belegt aus seinen Daten"}],
 "workforceUrteil":"Passt OKUN Workforce für diesen Betrieb? Eine klare Antwort in drei bis fünf Sätzen, mit Begründung aus seinen Daten: Welche seiner Personalprozesse laufen heute wie, welche Module greifen dort, und wo greift es nicht. Passt es nicht, sag das — ein Personalsystem passt nicht zu jedem Betrieb, und wer das Gespräch führt, muss die Frage beantworten können, statt sie zu umgehen.",
 "unsereLeistung":"Wie das abläuft: was wir erheben, in welcher Reihenfolge wir einrichten, was wir an Daten übernehmen, wen wir einweisen, wie lange wir begleiten. Vier bis sechs Sätze. Keine Aufzählung der Lösungen — die stehen schon in der Umsetzung.",
 "einwaende":[{"einwand":"was der Kunde wahrscheinlich sagt, in seinen Worten","antwort":"die Antwort, ausformuliert zum Sagen"}],
@@ -223,6 +225,18 @@ Mitteilungen an die Belegschaft also kein weiteres Programm vor. Umgekehrt
 gilt dasselbe: Was Workforce nicht abdeckt, etwa die Vorgänge des Büros oder
 die Ablage von Kundenunterlagen, gehört nicht unter Workforce.
 
+Und eine Pflicht, die darüber steht: **Jede Empfehlung der Auswertung mit
+Trefferstärke 20 oder mehr muss vorkommen.** Entweder als Posten der Umsetzung
+— oder, wenn wir sie bewusst nicht angehen, in der Liste "nichtUmgesetzt" mit
+dem Grund. Der Kunde hat den Bericht gelesen und diese Empfehlungen darin
+gesehen; taucht eine im Gespräch nicht auf, fragt er danach, und dann braucht
+der Kollege eine Antwort.
+
+Gründe, eine nicht anzugehen, gibt es genug: Er hat es schon und es trägt. Es
+würde erst sinnvoll, wenn etwas anderes steht. Es liegt über dem gebuchten
+Paket. Die Zahlen hergeben es nicht. Schreib den Grund hin, der hier zutrifft
+— aber lass keine weg.
+
 Halte dich an die Grenzen des Umfangs. Steht dort "höchstens drei", nenne
 höchstens drei — und wenn mehr sinnvoll wäre, schreib das in die Einordnung
 des vierten Postens als "darüber hinaus", statt es stillschweigend
@@ -265,6 +279,9 @@ Vorgespräch“ gesagt.`;
     empfehlung: text(parsed.empfehlung, "— konnte nicht erzeugt werden —"),
     umsetzung: Array.isArray(parsed.umsetzung)
       ? (parsed.umsetzung as Umsetzungsposten[])
+      : [],
+    nichtUmgesetzt: Array.isArray(parsed.nichtUmgesetzt)
+      ? (parsed.nichtUmgesetzt as NichtUmgesetzt[])
       : [],
     workforceUrteil: text(parsed.workforceUrteil, "— konnte nicht erzeugt werden —"),
     unsereLeistung: text(parsed.unsereLeistung, "— konnte nicht erzeugt werden —"),

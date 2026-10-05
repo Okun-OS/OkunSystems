@@ -32,6 +32,10 @@ const doc: GuideDocument = {
     { block: "Automatisierungen", titel: "Rechnungslauf aus den Berichten", befund: "6,5 h/Monat Rechnungserstellung", womit: "Make als Verbindung zur Branchensoftware", warum: lang(4, "Weil die Software nur Exporte kennt."), wieWirEsMachen: lang(5, "Wir setzen die Uebergabe auf."), einordnung: "im gebuchten Paket enthalten (1 von 3)" },
     { block: "OKUN Workforce", titel: "Dienstplanung", befund: "16,2 h/Monat Abstimmung", womit: "OKUN Workforce Dienstplanung", warum: lang(4, "Weil 31 Monteure auf 14 Fahrzeugen geplant werden."), wieWirEsMachen: lang(5, "Wir richten Verfuegbarkeiten und Qualifikationen ein."), einordnung: "im gebuchten Paket enthalten" },
   ],
+  nichtUmgesetzt: [
+    { titel: "CRM-System", warum: lang(10, "Die Kundenpflege laeuft heute ueber Outlook und reicht fuer 180 Bestandskunden.") },
+    { titel: "Lagerverwaltung", warum: lang(10, "Zu Bestaenden liegen keine Daten vor; ohne Zahlen keine Zusage.") },
+  ],
   workforceUrteil: lang(8, "Workforce passt: 48 Mitarbeitende, Dienstplanung laeuft heute an einer Tafel."),
   unsereLeistung: lang(24, "Wir erheben die Ablaeufe, richten ein, uebernehmen die Daten und weisen die Monteure ein."),
   einwaende: [

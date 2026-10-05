@@ -95,6 +95,13 @@ export interface GuideDocument {
    */
   umsetzung: Umsetzungsposten[];
   /**
+   * 7c — Was die Auswertung vorschlägt und wir trotzdem nicht tun.
+   *
+   * Damit nichts stillschweigend unter den Tisch fällt: Der Kunde hat die
+   * Empfehlungen im Bericht gelesen.
+   */
+  nichtUmgesetzt: NichtUmgesetzt[];
+  /**
    * 7b — Passt OKUN Workforce für diesen Betrieb?
    *
    * Eine ausdrückliche Antwort samt Begründung. Ein Personalsystem passt
@@ -143,6 +150,19 @@ export interface Anleitung {
   fallstricke: string[];
   /** Woran wir erkennen, dass der Posten erledigt ist. */
   fertigWenn: string;
+}
+
+/**
+ * Eine Empfehlung der Auswertung, die wir bewusst nicht umsetzen.
+ *
+ * Der Kunde hat den Bericht gelesen und die Empfehlungen darin gesehen.
+ * Taucht eine davon im Gespräch nicht auf, fragt er danach — und dann muss
+ * der Kollege eine Antwort haben, keine Verlegenheit.
+ */
+export interface NichtUmgesetzt {
+  titel: string;
+  /** Warum nicht: schon vorhanden, kein Bedarf, später, oder über dem Paket. */
+  warum: string;
 }
 
 /** Das Urteil der unabhängigen Prüfung zu einem Vorschlag. */

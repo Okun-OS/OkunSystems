@@ -535,6 +535,23 @@ export default function LeitfadenClient({
                 ))}
               </div>
             )}
+            {doc.nichtUmgesetzt.length > 0 && (
+              <div className="mt-5 pt-4 border-t border-dashed border-[#1a2840]">
+                <p className="text-[#f59e0b] text-xs font-semibold uppercase tracking-wider mb-2.5">
+                  Darauf gehen wir hier nicht ein — falls er fragt
+                </p>
+                <div className="space-y-3">
+                  {doc.nichtUmgesetzt.map((n, i) => (
+                    <div key={i}>
+                      <p className="text-[#c9d4e4] text-sm font-semibold">{n.titel}</p>
+                      <p className="text-[#8899b4] text-xs mt-0.5 leading-relaxed">
+                        {n.warum}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </Abschnitt>
 
           <Abschnitt nummer={8} titel="Wie das abläuft">

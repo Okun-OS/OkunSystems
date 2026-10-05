@@ -52,6 +52,37 @@ pruefe("wasWirTun wird uebernommen statt verworfen",
   posten?.wieWirEsMachen === "Wir richten sie ein.", posten?.wieWirEsMachen);
 pruefe("entfallener Abschnitt stuerzt nicht ab", doc !== null);
 
+// Die alte Fassung kennt "nichtUmgesetzt" nicht. Sie muss trotzdem lesbar
+// und druckbar bleiben, und die Liste muss leer sein statt undefined.
+pruefe("fehlende Liste nichtUmgesetzt ist leer, nicht undefined",
+  Array.isArray(doc?.nichtUmgesetzt) && doc?.nichtUmgesetzt.length === 0);
+
+// Umgekehrt: eine neue Fassung mit halb gefuellten Eintraegen.
+const neuDoc = leseGuide(JSON.stringify({
+  befund: "x",
+  nichtUmgesetzt: [{ titel: "CRM-System" }, "Unsinn", { warum: "ohne Titel" }],
+}));
+// Der Eintrag "Unsinn" ist kein Objekt und wird verworfen — gewollt. Es
+// bleiben zwei, jeweils mit beiden Feldern als Zeichenkette.
+pruefe("halbe Eintraege in nichtUmgesetzt werden normalisiert",
+  neuDoc?.nichtUmgesetzt.length === 2 &&
+  neuDoc.nichtUmgesetzt[0].titel === "CRM-System" &&
+  neuDoc.nichtUmgesetzt[0].warum === "" &&
+  neuDoc.nichtUmgesetzt[1].titel === "" &&
+  neuDoc.nichtUmgesetzt[1].warum === "ohne Titel");
+
+try {
+  const html = renderGuideHtml({
+    doc: neuDoc!, protokoll: [], companyName: "Nordlicht (Demo)", packageType: "operations",
+    version: 3, erstelltAm: new Date(), blueprintAbgeschlossen: new Date(),
+  });
+  pruefe("nichtUmgesetzt erscheint im Druck", html.includes("CRM-System"));
+  pruefe("Ueberschrift dazu steht im Druck", html.includes("Darauf gehen wir hier nicht ein"));
+  pruefe("kein undefined in der neuen Liste", !html.includes("undefined"));
+} catch (e) {
+  pruefe("neue Fassung rendert ohne Absturz", false, String(e));
+}
+
 pruefe("Unsinn ergibt null statt Absturz", leseGuide("kein json") === null);
 pruefe("leeres Objekt ergibt leeres Dokument", leseGuide("{}")?.befund === "");
 

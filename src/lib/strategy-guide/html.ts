@@ -118,6 +118,27 @@ export function renderGuideHtml(params: {
           )
           .join("");
 
+  /*
+   * Der Kunde hat den Bericht gelesen. Steht dort eine Empfehlung, die im
+   * Gespraech nicht vorkommt, fragt er danach — und dann braucht der Kollege
+   * eine Antwort. Darum fuehrt der Leitfaden auch auf, was wir bewusst nicht
+   * angehen, und warum.
+   */
+  const nichtUmgesetzt =
+    doc.nichtUmgesetzt.length === 0
+      ? ""
+      : `<div class="offen">
+          <div class="offen-titel">Darauf gehen wir hier nicht ein — falls er fragt</div>
+          ${doc.nichtUmgesetzt
+            .map(
+              (n) => `<div class="offen-posten">
+                <div class="offen-name">${esc(n.titel)}</div>
+                <div class="karte-text grau">${esc(n.warum)}</div>
+              </div>`
+            )
+            .join("")}
+        </div>`;
+
   const einwaende = doc.einwaende
     .map(
       (e) => `<div class="karte">
@@ -246,6 +267,15 @@ export function renderGuideHtml(params: {
     display: block; font-size: 8pt; font-weight: 600; color: #64748b;
     margin-top: 2px; line-height: 1.35;
   }
+  .offen { margin-top: 12px; border-top: 1px dashed #cbd5e1; padding-top: 8px; }
+  .offen-titel {
+    font-size: 8pt; text-transform: uppercase; letter-spacing: 0.8px;
+    color: #b45309; font-weight: 700; margin-bottom: 5px;
+  }
+  .offen-posten { margin-bottom: 6px; break-inside: avoid; }
+  .offen-posten:last-child { margin-bottom: 0; }
+  .offen-name { font-weight: 700; font-size: 9.5pt; }
+  .offen .karte-text { margin-top: 2px; font-size: 9.5pt; }
   .einwand { font-style: italic; color: #475569; }
   .ablauf { margin-top: 11px; background: #f6f8fa; padding: 10px 13px; border-radius: 4px; }
   .ablauf-titel {
@@ -292,7 +322,7 @@ export function renderGuideHtml(params: {
   ${abschnitt(
     7,
     "Was wir umsetzen und womit",
-    umsetzung
+    umsetzung + nichtUmgesetzt
   )}
   ${abschnitt(8, "Wie das abläuft", p(doc.unsereLeistung))}
   ${abschnitt(9, "Womit du rechnen musst", einwaende)}
