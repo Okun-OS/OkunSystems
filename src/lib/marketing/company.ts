@@ -19,9 +19,13 @@ export const COMPANY = {
   phoneHref: "+493013883330",
   email: "kontakt@okun-systems.com",
 
-  /** Steht bis zur Eintragung leer — die Seite sagt das dann auch so. */
-  registerCourt: "",
-  registerNumber: "",
+  /* Eingetragen am Amtsgericht Charlottenburg, Berlin. */
+  registerCourt: "Amtsgericht Charlottenburg (Berlin)",
+  registerNumber: "HRB 292175 B",
+  /**
+   * Steht leer, solange die Nummer nicht vorliegt — das Impressum sagt das
+   * dann auch so, statt eine Zeile zu zeigen, die vergessen aussieht.
+   */
   vatId: "",
 } as const;
 
