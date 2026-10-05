@@ -13,7 +13,10 @@ import { packageLabel } from "@/lib/packages";
  * Ausdruck, der auf dem Tisch liegen bleibt, sagt das sonst niemandem.
  */
 
-function esc(s: string): string {
+function esc(s: unknown): string {
+  // Nimmt auch entgegen, was kein Text ist. Ein fehlendes Feld in einer alten
+  // Fassung soll eine Lücke im Dokument sein, kein Absturz beim Drucken.
+  if (typeof s !== "string") return "";
   return s
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")

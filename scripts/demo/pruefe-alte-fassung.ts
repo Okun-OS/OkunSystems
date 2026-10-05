@@ -10,6 +10,12 @@ const alt = JSON.stringify({
   expertise: "Es ist derselbe Moment.",
   empfehlung: "Zuerst der Servicebericht.",
   customVorschlaege: [{ titel: "Servicebericht vor Ort", aufhaenger: "32,5 h/Monat", idee: "App", nutzen: "spart", groessenordnung: "Keine Zahl", geprueftInRunde: 1 }],
+  // Ein Posten aus der Zeit vor der Umbenennung: Er kennt "wasWirTun", aber
+  // weder womit noch warum noch wieWirEsMachen. Genau daran ist das PDF eines
+  // echten Kunden gescheitert.
+  umsetzung: [{ block: "Digitale Grundlagen", titel: "Zentrale Ablage", befund: "18 h/Monat", wasWirTun: "Wir richten sie ein.", einordnung: "im Paket" }],
+  // Ein Abschnitt, den es nicht mehr gibt.
+  standardLoesungen: [{ titel: "Entfallen", aufhaenger: "x", loesung: "y", nutzen: "z", einordnung: "im Paket" }],
   einwaende: [{ einwand: "Zu teuer", antwort: "32,5 h sind auch ein Preis." }],
   abschluss: "Ein Termin.",
 });
@@ -32,10 +38,19 @@ try {
     version: 2, erstelltAm: new Date(), blueprintAbgeschlossen: new Date(),
   });
   pruefe("alte Fassung rendert ohne Absturz", html.length > 1000, `${html.length} Zeichen`);
-  pruefe("leerer Abschnitt 7 wird erklaert", html.includes("nicht hinterlegt"));
+  pruefe("alter Posten erscheint im Druck", html.includes("Zentrale Ablage"));
+  pruefe("leeres Feld bleibt leer statt undefined", !html.includes("undefined"));
 } catch (e) {
   pruefe("alte Fassung rendert ohne Absturz", false, String(e));
 }
+
+const posten = doc?.umsetzung[0];
+pruefe("alter Posten bleibt erhalten", posten?.titel === "Zentrale Ablage");
+pruefe("fehlende Felder sind leer, nicht undefined",
+  typeof posten?.womit === "string" && typeof posten?.warum === "string");
+pruefe("wasWirTun wird uebernommen statt verworfen",
+  posten?.wieWirEsMachen === "Wir richten sie ein.", posten?.wieWirEsMachen);
+pruefe("entfallener Abschnitt stuerzt nicht ab", doc !== null);
 
 pruefe("Unsinn ergibt null statt Absturz", leseGuide("kein json") === null);
 pruefe("leeres Objekt ergibt leeres Dokument", leseGuide("{}")?.befund === "");
