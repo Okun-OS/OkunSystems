@@ -9,6 +9,7 @@ import { uploadPdfToR2, buildReportKey } from "@/lib/blueprint/storage";
 import { sendBlueprintReportReady } from "@/lib/email";
 import fs from "fs";
 import path from "path";
+import { lebenszeichen } from "@/lib/strom";
 
 // Force Node.js runtime — Puppeteer cannot run in the Edge runtime
 export const runtime = "nodejs";
@@ -84,7 +85,11 @@ export async function POST(req: NextRequest) {
         if (!offen) return;
         controller.enqueue(encoder.encode(JSON.stringify(o) + "\n"));
       };
-      const puls = setInterval(() => schreibe({ status: "laeuft" }), 10_000);
+      const puls = setInterval(() => {
+        // Nicht über schreibe(), weil das Lebenszeichen seine Füllung braucht,
+        // um durch den Komprimierer zu kommen.
+        if (offen) controller.enqueue(encoder.encode(lebenszeichen()));
+      }, 10_000);
 
       try {
     schreibe({ status: "schritt", schritt: "Daten werden zusammengestellt" });

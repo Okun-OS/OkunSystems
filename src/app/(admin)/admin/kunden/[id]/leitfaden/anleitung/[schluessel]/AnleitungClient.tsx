@@ -30,7 +30,34 @@ export default function AnleitungClient({
   const [wartet, setWartet] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);
 
+  /**
+   * Sieht nach, ob die Anleitung inzwischen abgelegt ist.
+   *
+   * Dieselbe Vorkehrung wie beim Leitfaden: Reißt die Verbindung während der
+   * Erzeugung ab, arbeitet der Server weiter und legt ab — nur die Antwort
+   * kommt nicht mehr an. Der Browser meldet dann "network error", obwohl
+   * nichts fehlgeschlagen ist.
+   */
+  async function wartenAufAnleitung(vorher: string | null): Promise<boolean> {
+    const bisMax = Date.now() + 10 * 60 * 1000;
+    while (Date.now() < bisMax) {
+      await new Promise((r) => setTimeout(r, 10_000));
+      try {
+        const res = await fetch(
+          `/api/admin/strategy-guide/anleitung?sessionId=${encodeURIComponent(sessionId)}&schluessel=${encodeURIComponent(schluessel)}`
+        );
+        if (!res.ok) continue;
+        const d = (await res.json()) as { stand?: string | null };
+        if (d.stand && d.stand !== vorher) return true;
+      } catch {
+        // Auch das Nachsehen kann scheitern — dann eben beim nächsten Mal.
+      }
+    }
+    return false;
+  }
+
   async function erzeugen() {
+    const vorher = erstelltAm;
     setLaeuft(true);
     setWartet(false);
     setFehler(null);
@@ -69,10 +96,29 @@ export default function AnleitungClient({
           if (e.status === "fertig") fertig = true;
         }
       }
-      if (!fertig) throw new Error("Der Strom endete vorzeitig");
+      if (!fertig) throw new TypeError("Der Strom endete vorzeitig");
       router.refresh();
     } catch (e) {
-      setFehler(e instanceof Error ? e.message : "Unbekannter Fehler");
+      // Eine abgerissene Leitung wirft einen TypeError — im Browser heißt das
+      // je nach Hersteller "network error" oder "Failed to fetch". Ein
+      // abgelehnter Aufruf liefert dagegen eine Meldung vom Server.
+      if (e instanceof TypeError) {
+        setWartet(true);
+        const da = await wartenAufAnleitung(vorher);
+        setWartet(false);
+        if (da) {
+          router.refresh();
+          setLaeuft(false);
+          return;
+        }
+        setFehler(
+          "Die Verbindung ist abgerissen und auch nach zehn Minuten war keine " +
+            "Anleitung da. Laden Sie die Seite neu — manchmal ist sie trotzdem " +
+            "fertig geworden."
+        );
+      } else {
+        setFehler(e instanceof Error ? e.message : "Unbekannter Fehler");
+      }
     } finally {
       setLaeuft(false);
       setWartet(false);
@@ -147,7 +193,13 @@ export default function AnleitungClient({
           className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#00b8ff]/10 border border-[#00b8ff]/25 text-[#00b8ff] text-sm hover:bg-[#00b8ff]/15 disabled:opacity-50 transition-colors"
         >
           {laeuft ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
-          {wartet ? "Wird geschrieben…" : laeuft ? "Startet…" : anleitung ? "Neu erzeugen" : "Erzeugen"}
+          {wartet
+            ? "Verbindung weg — wird nachgesehen…"
+            : laeuft
+              ? "Wird geschrieben…"
+              : anleitung
+                ? "Neu erzeugen"
+                : "Erzeugen"}
         </button>
       </div>
 

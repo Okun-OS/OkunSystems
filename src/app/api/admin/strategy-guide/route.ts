@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getActor } from "@/lib/auth-guards";
 import { mayDoStrategy } from "@/lib/team/roles";
 import { speichereNeueFassung } from "@/lib/strategy-guide/service";
+import { lebenszeichen } from "@/lib/strom";
 
 export const runtime = "nodejs";
 /**
@@ -84,7 +85,11 @@ export async function POST(req: NextRequest) {
       };
 
       schreibe({ status: "gestartet" });
-      const puls = setInterval(() => schreibe({ status: "laeuft" }), 10_000);
+      const puls = setInterval(() => {
+        // Nicht über schreibe(), weil das Lebenszeichen seine Füllung braucht,
+        // um durch den Komprimierer zu kommen.
+        if (offen) controller.enqueue(encoder.encode(lebenszeichen()));
+      }, 10_000);
 
       try {
         const { version, ergebnis } = await speichereNeueFassung({

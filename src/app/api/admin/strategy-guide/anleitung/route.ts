@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/db";
 import { getActor } from "@/lib/auth-guards";
 import { mayDoStrategy } from "@/lib/team/roles";
 import { findePosten, speichereAnleitung } from "@/lib/strategy-guide/anleitung";
+import { lebenszeichen } from "@/lib/strom";
 
 export const runtime = "nodejs";
 export const maxDuration = 600;
@@ -63,7 +65,11 @@ export async function POST(req: NextRequest) {
         controller.enqueue(encoder.encode(JSON.stringify(o) + "\n"));
       };
       schreibe({ status: "gestartet" });
-      const puls = setInterval(() => schreibe({ status: "laeuft" }), 10_000);
+      const puls = setInterval(() => {
+        // Nicht über schreibe(), weil das Lebenszeichen seine Füllung braucht,
+        // um durch den Komprimierer zu kommen.
+        if (offen) controller.enqueue(encoder.encode(lebenszeichen()));
+      }, 10_000);
 
       try {
         const anleitung = await speichereAnleitung({
@@ -97,4 +103,39 @@ export async function POST(req: NextRequest) {
       "X-Accel-Buffering": "no",
     },
   });
+}
+
+
+/**
+ * GET /api/admin/strategy-guide/anleitung?sessionId=…&schluessel=…
+ *
+ * Sagt, ob zu diesem Posten bereits eine Anleitung abgelegt ist und wann.
+ *
+ * Fürs Nachsehen nach einem Verbindungsabbruch: Der Server arbeitet weiter
+ * und legt ab, nur die Antwort kommt nicht mehr an.
+ */
+export async function GET(req: NextRequest) {
+  const actor = await getActor();
+  if (!actor) {
+    return NextResponse.json({ error: "Nicht angemeldet" }, { status: 401 });
+  }
+  if (!mayDoStrategy(actor.role, actor.canStrategy)) {
+    return NextResponse.json({ error: "Kein Zugriff" }, { status: 403 });
+  }
+
+  const sessionId = req.nextUrl.searchParams.get("sessionId");
+  const schluessel = req.nextUrl.searchParams.get("schluessel");
+  if (!sessionId || !schluessel) {
+    return NextResponse.json(
+      { error: "sessionId oder schluessel fehlt" },
+      { status: 400 }
+    );
+  }
+
+  const abgelegt = await db.umsetzungsAnleitung.findUnique({
+    where: { sessionId_schluessel: { sessionId, schluessel } },
+    select: { updatedAt: true },
+  });
+
+  return NextResponse.json({ stand: abgelegt?.updatedAt.toISOString() ?? null });
 }
