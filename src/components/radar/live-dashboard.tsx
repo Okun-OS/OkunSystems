@@ -39,10 +39,13 @@ export function LiveDashboard({
   profil,
   kompakt,
   maxKarten = 4,
+  ruhig,
 }: {
   profil: LiveProfil;
   kompakt?: boolean;
   maxKarten?: number;
+  /** Abgeschlossene Analyse: Das Bild ist ein Bericht, kein Messgerät mehr. */
+  ruhig?: boolean;
 }) {
   const nochNichts = profil.erfassteDimensionen === 0;
   const karten = profil.beobachtungen.slice(0, maxKarten);
@@ -75,6 +78,7 @@ export function LiveDashboard({
             dimensionen={profil.dimensionen}
             groesse={kompakt ? 258 : 334}
             kompakt={kompakt}
+            sweep={!ruhig}
           />
         </div>
 

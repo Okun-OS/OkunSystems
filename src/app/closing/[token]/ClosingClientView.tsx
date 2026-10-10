@@ -284,7 +284,34 @@ export function ClosingClientView({ initialState, token }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-[#060a10] flex flex-col">
+    <div className="relative min-h-screen bg-[#04070d] flex flex-col">
+      {/*
+        Dieselbe Materialschicht wie im Cockpit.
+
+        Ohne sie fällt der Interessent beim Verlassen des Radars von einer
+        Oberfläche mit Tiefe auf eine flache schwarze Seite — und merkt, dass
+        nur ein Teil des Hauses gebaut wurde. Lichtkegel, Körnung und Vignette
+        kosten nichts und halten den Eindruck zusammen.
+      */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-0"
+        style={{
+          background:
+            "radial-gradient(1200px 640px at 10% -10%, rgba(0,160,255,0.08), transparent 60%)," +
+            "radial-gradient(980px 560px at 92% 4%, rgba(46,230,197,0.045), transparent 58%)",
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-0 opacity-[0.035] mix-blend-overlay"
+        style={{
+          backgroundImage:
+            "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E\")",
+          backgroundRepeat: "repeat",
+        }}
+      />
+      <div className="relative z-10 flex flex-col flex-1">
       <ModusUebergang modus={modus} />
       {state.recordingActive && <AufzeichnungsBand />}
 
@@ -613,6 +640,7 @@ export function ClosingClientView({ initialState, token }: Props) {
           onClose={() => setOfferOpen(false)}
         />
       )}
+      </div>
     </div>
   );
 }

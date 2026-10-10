@@ -31,7 +31,9 @@ import {
   ChevronRight,
 } from "lucide-react";
 import type { SymbolKey } from "@/lib/radar/catalog";
+import { useEffect, useState } from "react";
 import type { KundenErgebnis } from "@/lib/radar/views";
+import { useZaehler } from "./einschlag";
 
 /**
  * Die gemeinsamen Bausteine des Radar.
@@ -294,6 +296,81 @@ export function Fragekarte({
   );
 }
 
+/**
+ * Eine Achse im Ergebnisbericht.
+ *
+ * Der Balken läuft von null hoch, die Zahl zählt mit. Das ist der Moment, auf
+ * den die Viertelstunde hinausläuft — er darf sich anfühlen wie ein Ergebnis
+ * und nicht wie ein geladenes Formular. Die Werte stehen längst fest, bevor
+ * hier etwas läuft; die Bewegung erfindet nichts.
+ */
+function Achse({
+  achse: a,
+  aufgebaut,
+  verzug,
+}: {
+  achse: KundenErgebnis["achsen"][number];
+  aufgebaut: boolean;
+  verzug: number;
+}) {
+  const gezaehlt = useZaehler(aufgebaut && a.wert !== null ? a.wert : 0, 900);
+
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-3 mb-1.5">
+        <span className="text-[#c9d4e4] text-[13px] font-medium">{a.label}</span>
+        {a.wert === null ? (
+          <span
+            className="text-[11px] font-semibold uppercase tracking-wider"
+            style={{ color: BAND_FARBE[a.band] ?? "#8899b4" }}
+          >
+            {a.band}
+          </span>
+        ) : (
+          <span className="text-[#eef2f7] text-[15px] font-bold tabular-nums">
+            {Math.round(gezaehlt ?? 0)}
+            <span className="text-[#44546b] text-[11px] font-normal"> / 100</span>
+          </span>
+        )}
+      </div>
+      {a.wert === null ? (
+        // Ohne belastbare Zahl keine Balkenlänge, die eine vorgaukelt —
+        // stattdessen eine Pegelanzeige, bis zum erreichten Band aufgefüllt.
+        // Nur das dritte Segment einzufärben liest sich wie „wenig“, obwohl
+        // „hoch“ gemeint ist.
+        <div className="flex gap-1">
+          {["gering", "mittel", "hoch"].map((stufe, i) => (
+            <span
+              key={stufe}
+              className="h-[5px] flex-1 rounded-full transition-colors duration-500"
+              style={{
+                background:
+                  aufgebaut && i <= ["gering", "mittel", "hoch"].indexOf(a.band)
+                    ? (BAND_FARBE[a.band] ?? "#8899b4")
+                    : "#101b2c",
+                transitionDelay: `${verzug + i * 90}ms`,
+              }}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="relative h-[5px] rounded-full bg-[#0d1b2c] overflow-hidden">
+          <div
+            className="h-full rounded-full transition-[width] duration-[900ms] ease-out"
+            style={{
+              width: `${aufgebaut ? a.wert : 0}%`,
+              background: `linear-gradient(90deg,${BAND_FARBE[a.band] ?? "#8899b4"},#2ee6c5)`,
+              transitionDelay: `${verzug}ms`,
+              boxShadow: `0 0 14px -2px ${BAND_FARBE[a.band] ?? "#8899b4"}`,
+            }}
+          />
+        </div>
+      )}
+      <p className="text-[#44546b] text-[11px] mt-1.5 leading-snug">{a.frage}</p>
+    </div>
+  );
+}
+
 // ─── Ergebnisbericht ─────────────────────────────────────────────────────────
 
 /**
@@ -315,13 +392,30 @@ export function Ergebnisbericht({
 }) {
   const farbe = STUFEN_FARBE[ergebnis.stufe] ?? STUFEN_FARBE.B;
 
+  /*
+    Der Bericht baut sich auf, statt da zu sein.
+
+    Das ist der Moment, auf den die ganze Viertelstunde hinausläuft — der
+    Berater gibt frei, und der Interessent sieht sein Ergebnis zum ersten Mal.
+    Lautlos erscheinen zu lassen, was man gerade gemeinsam erarbeitet hat,
+    verschenkt genau diesen Moment. Die Balken laufen von null hoch, die
+    Zahlen zählen mit, die Felder kommen gestaffelt nach.
+
+    Rein darstellend: Die Werte stehen längst fest, bevor hier etwas läuft.
+  */
+  const [aufgebaut, setAufgebaut] = useState(false);
+  useEffect(() => {
+    const id = setTimeout(() => setAufgebaut(true), 120);
+    return () => clearTimeout(id);
+  }, []);
+
   return (
     <div className="space-y-4">
       {/* Kopf */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[#5b6b7f] text-[11px] uppercase tracking-[0.18em]">
-            OKUN Radar · Potenzialanalyse
+            Potenzialanalyse
           </p>
           <h2 className={`text-[#eef2f7] font-bold mt-0.5 ${kompakt ? "text-lg" : "text-2xl"}`}>
             {companyName}
@@ -347,57 +441,11 @@ export function Ergebnisbericht({
       </div>
 
       {/* Achsen */}
-      <div className="space-y-2.5">
-        {ergebnis.achsen.map((a) => (
-          <div key={a.label}>
-            <div className="flex items-baseline justify-between gap-3 mb-1">
-              <span className="text-[#c9d4e4] text-[13px] font-medium">{a.label}</span>
-              {a.wert === null ? (
-                <span
-                  className="text-[11px] font-semibold uppercase tracking-wider"
-                  style={{ color: BAND_FARBE[a.band] ?? "#8899b4" }}
-                >
-                  {a.band}
-                </span>
-              ) : (
-                <span className="text-[#eef2f7] text-[13px] font-bold tabular-nums">
-                  {a.wert}
-                  <span className="text-[#44546b] font-normal"> / 100</span>
-                </span>
-              )}
-            </div>
-            {a.wert === null ? (
-              // Ohne belastbare Zahl keine Balkenlänge, die eine vorgaukelt —
-              // stattdessen eine Pegelanzeige, bis zum erreichten Band
-              // aufgefüllt. Nur das dritte Segment einzufärben liest sich wie
-              // „wenig“, obwohl „hoch“ gemeint ist.
-              <div className="flex gap-1">
-                {["gering", "mittel", "hoch"].map((stufe, i) => (
-                  <span
-                    key={stufe}
-                    className="h-1.5 flex-1 rounded-full"
-                    style={{
-                      background:
-                        i <= ["gering", "mittel", "hoch"].indexOf(a.band)
-                          ? (BAND_FARBE[a.band] ?? "#8899b4")
-                          : "#101b2c",
-                    }}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="h-1.5 rounded-full bg-[#101b2c] overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-[width] duration-700 ease-out"
-                  style={{ width: `${a.wert}%`, background: BAND_FARBE[a.band] ?? "#8899b4" }}
-                />
-              </div>
-            )}
-            <p className="text-[#44546b] text-[11px] mt-1 leading-snug">{a.frage}</p>
-          </div>
+      <div className="space-y-3">
+        {ergebnis.achsen.map((a, i) => (
+          <Achse key={a.label} achse={a} aufgebaut={aufgebaut} verzug={i * 140} />
         ))}
       </div>
-
       {/* Potenzialfelder */}
       {ergebnis.felder.length > 0 && (
         <div>
@@ -405,8 +453,11 @@ export function Ergebnisbericht({
             Erkannte Potenzialfelder
           </p>
           <div className={`grid gap-2 ${kompakt ? "" : "sm:grid-cols-3"}`}>
-            {ergebnis.felder.map((f) => (
-              <div key={f.label} className="rounded-lg border border-[#16283d] bg-[#0a111c] px-3 py-2.5">
+            {ergebnis.felder.map((f, i) => (
+              <div
+                key={f.label}
+                style={{ animationDelay: `${520 + i * 110}ms` }}
+                className="rounded-lg border border-[#16283d] bg-[linear-gradient(160deg,#0b1424,#080f1b)] px-3 py-2.5 motion-safe:animate-[karte-ein_.55s_cubic-bezier(.22,1,.36,1)_both]">
                 <p className="text-[#eef2f7] text-[13px] font-semibold">{f.label}</p>
                 <p className="text-[#5b6b7f] text-[11px] mt-0.5 leading-snug">{f.beschreibung}</p>
                 <ul className="mt-2 space-y-1">

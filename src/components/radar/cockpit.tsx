@@ -1,7 +1,7 @@
 "use client";
 
 import { Check } from "lucide-react";
-import { OkunRing } from "@/components/marketing/okun-ring";
+import { OkunLogo } from "@/components/layout/okun-logo";
 import type { LiveProfil } from "@/lib/radar/live";
 import { LiveDashboard } from "./live-dashboard";
 
@@ -63,6 +63,8 @@ type Props = {
   laufzeitSekunden?: number | null;
   teilnehmer?: number | null;
   profil: LiveProfil;
+  /** Die Analyse ist abgeschlossen — das Live-Bild steht still. */
+  ruhig?: boolean;
   verbunden?: boolean;
   beraterName?: string | null;
   children: React.ReactNode;
@@ -81,6 +83,7 @@ export function RadarCockpit({
   laufzeitSekunden,
   teilnehmer,
   profil,
+  ruhig,
   verbunden = true,
   beraterName,
   children,
@@ -147,13 +150,13 @@ export function RadarCockpit({
               beraterName={beraterName}
             />
             <div className="hidden lg:block flex-1 min-h-0 overflow-y-auto px-4 pb-4">
-              <LiveDashboard profil={profil} />
+              <LiveDashboard profil={profil} ruhig={ruhig} />
             </div>
           </aside>
 
           {/* Am Telefon steht die Analyse unter der Frage, nicht über ihr. */}
           <div className="order-3 lg:hidden px-4 pb-5">
-            <LiveDashboard profil={profil} kompakt />
+            <LiveDashboard profil={profil} kompakt ruhig={ruhig} />
           </div>
         </div>
       </div>
@@ -185,17 +188,16 @@ function Markenleiste({
   return (
     <header className="flex-shrink-0 border-b border-[#0f1d2f] bg-[linear-gradient(180deg,rgba(9,16,27,0.9),rgba(6,11,20,0.75))]">
       <div className="px-4 sm:px-6 h-[68px] flex items-center gap-4">
-        {/* Marke */}
-        <div className="flex items-center gap-3 flex-shrink-0">
-          <OkunRing className="w-8 h-8 flex-shrink-0" />
-          <div className="hidden sm:block leading-none">
-            <p className="text-[#f4f8fd] text-[13.5px] font-bold tracking-[0.14em] uppercase">
-              Okun Radar
-            </p>
-            <p className="text-[#3f5572] text-[9.5px] tracking-[0.2em] uppercase mt-[3px]">
-              Potenzialanalyse
-            </p>
-          </div>
+        {/*
+          Der Absender ist OKUN Systems — kein zweiter Markenname daneben.
+
+          Der Interessent weiß, bei wem er sitzt. Ein „OKUN Radar“ als eigene
+          Wortmarke in derselben Ecke macht aus einem Haus zwei und verwässert
+          beide. Wofür dieser Bildschirm da ist, sagt die Phasenschiene
+          darunter deutlicher, als eine Wortmarke es könnte.
+        */}
+        <div className="w-[122px] sm:w-[138px] flex-shrink-0">
+          <OkunLogo size="sm" />
         </div>
 
         <span className="hidden md:block w-px h-8 bg-[linear-gradient(180deg,transparent,#17293f,transparent)] flex-shrink-0" />
@@ -205,9 +207,9 @@ function Markenleiste({
           <p className="text-[#dce7f5] text-[13.5px] font-semibold truncate leading-tight">
             {firma}
           </p>
-          {eckdaten && (
-            <p className="text-[#4a6383] text-[11px] truncate leading-tight mt-[2px]">{eckdaten}</p>
-          )}
+          <p className="text-[#4a6383] text-[11px] truncate leading-tight mt-[2px]">
+            Potenzialanalyse{eckdaten ? ` · ${eckdaten}` : ""}
+          </p>
         </div>
 
         {/* Ansichten */}

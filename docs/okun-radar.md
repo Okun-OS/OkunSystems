@@ -467,6 +467,36 @@ mit anderen Fragen entstanden ist.
 
 ---
 
+## 9a. Markenführung
+
+Absender gegenüber dem Interessenten ist **OKUN Systems** — kein zweiter
+Markenname daneben. Er weiß, bei wem er sitzt; ein „OKUN Radar“ als eigene
+Wortmarke in derselben Ecke macht aus einem Haus zwei und verwässert beide.
+
+* Kopfleiste: das OKUN-Systems-Logo, daneben der Unternehmensname und die
+  Zeile „Potenzialanalyse · Branche · Größe“.
+* Übergang: die Bildmarke, darunter „OKUN SYSTEMS“, darunter der Zusammenhang
+  („Interaktive Potenzialanalyse“, „Ihre Auswertung“, „Ihr Angebot“, „Zurück
+  ins Gespräch“).
+* Ergebnisbericht: Überschrift „Potenzialanalyse“, ohne Wortmarke.
+
+Intern — im Steuerpult des Closers — heißt es weiterhin OKUN Radar. Dort ist
+es ein Werkzeugname unter mehreren und genau richtig.
+
+### Die Mitte der Bildmarke
+
+Der Ring der Marke sitzt bei (642, 612), die Mitte ihres Zeichenrahmens aber
+bei (575, 612) — der waagerechte Balken läuft nach links hinaus und zieht den
+Rahmen mit. Wer die Marke mittig setzt, setzt damit **den Rahmen** mittig, und
+der Ring steht 67 Einheiten daneben.
+
+`radar-marke.tsx` legt deshalb Wellen, Strahl und Marke in ein einziges
+Koordinatensystem, dessen Mitte der Ringmittelpunkt ist. Alles darunter teilt
+sich damit eine Achse — ohne Rechnerei mit Versätzen, die beim nächsten
+Größenwechsel wieder nicht stimmt.
+
+---
+
 ## 10a. Der Schnitt zwischen den Werkzeugen
 
 Wechselt der Interessent vom Videogespräch in das Radar — oder vom Radar
@@ -477,6 +507,11 @@ quer durchs Bild, „OKUN RADAR" und die Unterzeile.
 Das ist kein Zierrat. Ein Bildschirm, der lautlos seinen Inhalt tauscht, fühlt
 sich an wie eine Webseite; ein Schnitt fühlt sich an wie Software, die jemand
 gebaut hat. Genau das ist im Verkaufsgespräch die Aussage.
+
+Vier Übergänge: `radar`, `ergebnis`, `angebot`, `gespraech` — jeder mit
+eigener Unterzeile. Die Marke sendet dabei Wellen nach außen und wird von
+einem umlaufenden Strahl abgetastet; das Ding heißt Radar, und das Bild soll
+halten, was der Name verspricht.
 
 `modus-uebergang.tsx`, gesteuert über `ClosingClientView`. Er läuft nur bei
 einem **Wechsel**, nicht beim ersten Aufbau — wer die Seite neu lädt, während
@@ -525,6 +560,27 @@ Was den Eindruck trägt, und warum es so gebaut ist:
 * **Eigene SVG-Kennungen je Diagramm** (`useId`). Standen zwei Diagramme auf
   einer Seite — im Steuerpult war genau das der Fall —, kollidierten die
   Kennungen für Verlauf und Weichzeichner und die Fläche verschwand in beiden.
+
+---
+
+## 11b. Die drei Momente
+
+Was aus einer Oberfläche ein Erlebnis macht, sind nicht gleichmäßig verteilte
+Effekte, sondern drei Stellen, an denen etwas passiert:
+
+1. **Der Eintritt.** Der Schnitt mit der Marke — der Interessent merkt, dass
+   er in ein anderes Werkzeug gewechselt ist.
+2. **Der Einschlag.** Jede Antwort landet sichtbar: Am getroffenen Messpunkt
+   läuft eine Welle nach außen, die Zahl zählt auf ihren neuen Wert zu, die
+   Zeile leuchtet kurz auf (`einschlag.ts`). Ohne diesen Moment bleibt „wir
+   durchleuchten Ihren Betrieb gemeinsam“ eine Behauptung — die Zahl springt,
+   und niemand merkt es.
+3. **Die Enthüllung.** Gibt der Berater das Ergebnis frei, baut sich der
+   Bericht auf: Die Balken laufen von null hoch, die Werte zählen mit, die
+   Potenzialfelder kommen gestaffelt nach. Das ist der Moment, auf den die
+   Viertelstunde hinausläuft.
+
+Alle drei sind rein darstellend. Die Werte stehen fest, bevor etwas läuft.
 
 ---
 

@@ -2,6 +2,8 @@
 
 import { useId } from "react";
 
+import { useEinschlag, useZaehler } from "./einschlag";
+
 import { DIMENSION_MAX } from "@/lib/radar/catalog";
 import type { DimensionWert } from "@/lib/radar/live";
 
@@ -28,6 +30,8 @@ type Props = {
   /** Kantenlänge der Zeichenfläche. */
   groesse?: number;
   kompakt?: boolean;
+  /** Der umlaufende Strahl. Auf der Ergebnisseite steht er still. */
+  sweep?: boolean;
 };
 
 const AKZENT = "#00b8ff";
@@ -45,7 +49,8 @@ function umfang(punkte: Array<{ x: number; y: number }>): number {
   return Math.ceil(laenge);
 }
 
-export function RadarChart({ dimensionen, groesse = 300, kompakt }: Props) {
+export function RadarChart({ dimensionen, groesse = 300, kompakt, sweep = true }: Props) {
+  const { getroffen, marke } = useEinschlag(dimensionen);
   const mitte = groesse / 2;
   const radius = mitte - (kompakt ? 10 : 14);
   const n = dimensionen.length;
@@ -113,6 +118,18 @@ export function RadarChart({ dimensionen, groesse = 300, kompakt }: Props) {
           <stop offset="0%" stopColor={AKZENT} />
           <stop offset="100%" stopColor="#2ee6c5" />
         </linearGradient>
+        {/* Der Strahl: voll an der Kante, durchsichtig zur Mitte hin. */}
+        <linearGradient
+          id={`${id}-strahl`}
+          gradientUnits="userSpaceOnUse"
+          x1={mitte}
+          y1={mitte}
+          x2={mitte + radius}
+          y2={mitte}
+        >
+          <stop offset="0%" stopColor={AKZENT} stopOpacity={0} />
+          <stop offset="100%" stopColor={AKZENT} stopOpacity={0.1} />
+        </linearGradient>
         <filter id={`${id}-schein`} x="-50%" y="-50%" width="200%" height="200%">
           <feGaussianBlur stdDeviation="4" result="weich" />
           <feMerge>
@@ -137,6 +154,24 @@ export function RadarChart({ dimensionen, groesse = 300, kompakt }: Props) {
           opacity={r === ringe.length - 1 ? 0.9 : 0.5}
         />
       ))}
+
+      {/*
+        Der umlaufende Strahl.
+
+        Das Ding heißt Radar — ein Strahl, der die Fläche abtastet, ist hier
+        kein Effekt, sondern das Bild, das der Name verspricht. Langsam und
+        blass, damit er im Gespräch nicht den Blick von der Frage zieht.
+      */}
+      {sweep && (
+        <g className="diagramm-sweep" style={{ transformOrigin: `${mitte}px ${mitte}px` }}>
+          <path
+            d={`M ${mitte} ${mitte} L ${mitte + radius} ${mitte} A ${radius} ${radius} 0 0 0 ${
+              mitte + radius * Math.cos(-Math.PI / 4.5)
+            } ${mitte + radius * Math.sin(-Math.PI / 4.5)} Z`}
+            fill={`url(#${id}-strahl)`}
+          />
+        </g>
+      )}
 
       {dimensionen.map((d, i) => {
         const aussen = punkt(i, 1);
@@ -204,6 +239,20 @@ export function RadarChart({ dimensionen, groesse = 300, kompakt }: Props) {
       {/* Messpunkte. Groß genug, dass sie auch auf dem Telefon treffbar sind. */}
       {gemessen.map((x) => (
         <g key={x.d.key} className="transition-all duration-700 ease-out">
+          {/* Der Einschlag: eine Welle genau dort, wo die Antwort gelandet ist. */}
+          {getroffen === x.d.key && (
+            <circle
+              key={marke}
+              className="einschlag-welle"
+              cx={x.p.x}
+              cy={x.p.y}
+              r={9}
+              fill="none"
+              stroke={AKZENT}
+              strokeWidth={2}
+              style={{ transformOrigin: `${x.p.x}px ${x.p.y}px` }}
+            />
+          )}
           <circle cx={x.p.x} cy={x.p.y} r={7} fill={AKZENT} opacity={0.18} />
           <circle cx={x.p.x} cy={x.p.y} r={5} fill="#070d17" />
           <circle cx={x.p.x} cy={x.p.y} r={3.6} fill={AKZENT}>
@@ -249,38 +298,70 @@ export function DimensionsListe({
   dimensionen: DimensionWert[];
   kompakt?: boolean;
 }) {
+  const { getroffen, marke } = useEinschlag(dimensionen);
+
   return (
-    <ul className={`space-y-2 ${kompakt ? "text-[11px]" : "text-xs"}`}>
+    <ul className={`space-y-2 ${kompakt ? "text-[11px]" : "text-[11.5px]"}`}>
       {dimensionen.map((d) => (
-        <li key={d.key}>
-          <div className="flex items-center justify-between gap-2 mb-1">
-            <span className={d.wert === null ? "text-[#5b6b7f]" : "text-[#c9d4e4]"}>{d.label}</span>
-            {d.wert === null ? (
-              <span className="text-[#44546b] flex-shrink-0 text-[9.5px] uppercase tracking-[0.12em]">
-                noch offen
-              </span>
-            ) : (
-              <span className="text-[#eef2f7] font-semibold tabular-nums flex-shrink-0">
-                {d.wert.toLocaleString("de-DE", { minimumFractionDigits: 1 })}
-                <span className="text-[#44546b] font-normal"> / {DIMENSION_MAX},0</span>
-              </span>
-            )}
-          </div>
-          {/*
-            Ein Balken je Dimension, zusätzlich zum Netz.
-            Das Netz zeigt die Form, der Balken den einzelnen Wert — aus einem
-            Fünfeck eine Zahl abzulesen gelingt niemandem zuverlässig.
-          */}
-          <div className="h-[3px] rounded-full bg-[#101d31] overflow-hidden">
-            {d.wert !== null && (
-              <div
-                className="h-full rounded-full bg-[linear-gradient(90deg,#00b8ff,#2ee6c5)] transition-[width] duration-700 ease-out"
-                style={{ width: `${(d.wert / DIMENSION_MAX) * 100}%` }}
-              />
-            )}
-          </div>
-        </li>
+        <DimensionsZeile
+          key={d.key}
+          dimension={d}
+          getroffen={getroffen === d.key}
+          marke={marke}
+        />
       ))}
     </ul>
+  );
+}
+
+function DimensionsZeile({
+  dimension: d,
+  getroffen,
+  marke,
+}: {
+  dimension: DimensionWert;
+  getroffen: boolean;
+  marke: number;
+}) {
+  // Die Zahl läuft auf ihren neuen Wert zu, statt zu springen. Eine springende
+  // Zahl liest sich wie ein Formularfeld, eine zulaufende wie eine Messung.
+  const gezaehlt = useZaehler(d.wert);
+  const anzeige = gezaehlt ?? d.wert;
+
+  return (
+    <li
+      key={getroffen ? marke : "ruhig"}
+      className={`rounded-lg px-1.5 -mx-1.5 py-0.5 ${getroffen ? "einschlag-zeile" : ""}`}
+    >
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <span className={d.wert === null ? "text-[#4a6383]" : "text-[#c9d4e4]"}>{d.label}</span>
+        {d.wert === null ? (
+          <span className="text-[#3f5572] flex-shrink-0 text-[9.5px] uppercase tracking-[0.12em]">
+            noch offen
+          </span>
+        ) : (
+          <span className="text-[#eef2f7] font-semibold tabular-nums flex-shrink-0">
+            {(anzeige ?? 0).toLocaleString("de-DE", {
+              minimumFractionDigits: 1,
+              maximumFractionDigits: 1,
+            })}
+            <span className="text-[#3f5572] font-normal"> / {DIMENSION_MAX},0</span>
+          </span>
+        )}
+      </div>
+      {/*
+        Ein Balken je Dimension, zusätzlich zum Netz.
+        Das Netz zeigt die Form, der Balken den einzelnen Wert — aus einem
+        Fünfeck eine Zahl abzulesen gelingt niemandem zuverlässig.
+      */}
+      <div className="h-[3px] rounded-full bg-[#0d1b2c] overflow-hidden">
+        {d.wert !== null && (
+          <div
+            className="h-full rounded-full bg-[linear-gradient(90deg,#00b8ff,#2ee6c5)] transition-[width] duration-700 ease-out"
+            style={{ width: `${((anzeige ?? 0) / DIMENSION_MAX) * 100}%` }}
+          />
+        )}
+      </div>
+    </li>
   );
 }

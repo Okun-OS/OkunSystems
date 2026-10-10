@@ -190,6 +190,7 @@ export function RadarStage({
       onBereich={setBereich}
       phasen={ansicht.phasen}
       profil={ansicht.live}
+      ruhig={ansicht.abgeschlossen || zeigt === "ergebnisse"}
       video={video}
       videoSteuerung={videoSteuerung}
       videoHinweis={videoHinweis}

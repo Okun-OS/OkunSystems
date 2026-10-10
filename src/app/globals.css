@@ -210,3 +210,82 @@ body {
     animation-iteration-count: 1 !important;
   }
 }
+
+/* ─── Bildmarke mit Radarwellen ──────────────────────────────────────────── */
+
+/*
+ * Die Wellen laufen vom Logo nach außen und verblassen.
+ *
+ * Sie starten knapp außerhalb des Rings, nicht in der Mitte — ein Impuls, der
+ * aus dem Nichts im Zentrum entsteht, sieht aus wie ein Ladekringel. Einer,
+ * der am Ring beginnt, sieht aus, als sende die Marke ihn aus.
+ */
+@keyframes marke-welle {
+  0%   { transform: scale(1);    opacity: 0.75; }
+  70%  { opacity: 0.12; }
+  100% { transform: scale(1.78); opacity: 0; }
+}
+
+.marke-welle {
+  animation: marke-welle 2.25s cubic-bezier(0.18, 0.62, 0.32, 1) infinite;
+}
+
+/* Der Strahl braucht eine volle Umdrehung; langsam, sonst flimmert er. */
+@keyframes marke-sweep {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.marke-sweep {
+  animation: marke-sweep 5.5s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marke-welle { animation: none; opacity: 0.18; }
+  .marke-sweep { animation: none; }
+}
+
+/* ─── Einschlag im Live-Diagramm ─────────────────────────────────────────── */
+
+/*
+ * Die Welle am getroffenen Messpunkt.
+ *
+ * Sie läuft einmal, kurz und knapp. Der Interessent soll den Zusammenhang
+ * zwischen seinem Klick und der Veränderung sehen — nicht eine Animation
+ * bewundern.
+ */
+@keyframes einschlag-welle {
+  0%   { transform: scale(0.35); opacity: 0.9; }
+  100% { transform: scale(3.4);  opacity: 0; }
+}
+
+.einschlag-welle {
+  animation: einschlag-welle 1.05s cubic-bezier(0.16, 0.7, 0.3, 1) both;
+}
+
+/* Die getroffene Zeile leuchtet kurz auf. */
+@keyframes einschlag-zeile {
+  0%   { background-color: rgba(0, 184, 255, 0); }
+  18%  { background-color: rgba(0, 184, 255, 0.11); }
+  100% { background-color: rgba(0, 184, 255, 0); }
+}
+
+.einschlag-zeile {
+  animation: einschlag-zeile 1.3s ease-out both;
+}
+
+/* Der Radarstrahl im Netzdiagramm. */
+@keyframes diagramm-sweep {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.diagramm-sweep {
+  animation: diagramm-sweep 7s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .einschlag-welle,
+  .einschlag-zeile { animation: none; }
+  .diagramm-sweep  { animation: none; opacity: 0; }
+}
