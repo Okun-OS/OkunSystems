@@ -12,6 +12,8 @@
     "seed:blueprint": "tsx prisma/seed-blueprint.ts",
     "seed:closing": "tsx prisma/seed-closing.ts",
     "test:unit": "tsx tests/unit.ts",
+    "test:radar": "tsx tests/radar.ts",
+    "test:radar-e2e": "tsx tests/radar-e2e.ts",
     "test:e2e": "tsx tests/e2e-closing.ts",
     "test:http": "tsx tests/http-closing.ts",
     "test:roles": "tsx tests/http-roles.ts",

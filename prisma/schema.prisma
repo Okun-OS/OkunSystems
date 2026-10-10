@@ -63,6 +63,7 @@ model User {
   closingEvents         ClosingEvent[]
   createdPresentations  ClosingPresentation[]        @relation("PresentationCreatedBy")
   approvedPresentations ClosingPresentation[]        @relation("PresentationApprovedBy")
+  radarSessions         RadarSession[]               @relation("RadarCloser")
 }
 
 model Company {
@@ -144,6 +145,7 @@ model Company {
   presentations       ClosingPresentation[]
   contextSessions     CompanyContextSession[]      @relation("CompanyContextSessions")
   strategyGuides      StrategyGuide[]
+  radarSessions       RadarSession[]
 }
 
 model Project {
@@ -975,6 +977,11 @@ model ClosingSession {
   /// Seite innerhalb einer PDF-Folie, 1-basiert.
   liveSlidePage      Int?
 
+  /// Läuft gerade eine Radar-Analyse? Nach demselben Muster wie die
+  /// Präsentation: Der Berater schaltet sie auf, die Kundenseite sieht sie
+  /// daraufhin — und nur dann.
+  liveRadarSessionId String?
+
   offers             Offer[]
   consentRecords     ConsentRecord[]
   contractSnapshot   ContractSnapshot?
@@ -984,6 +991,7 @@ model ClosingSession {
   invoices           Invoice[]
   events             ClosingEvent[]
   presentations      ClosingPresentation[]
+  radarSessions      RadarSession[]
 }
 
 model OfferTemplate {
@@ -1761,13 +1769,13 @@ model BlueprintFlowStation {
 /// Je Blueprint-Sitzung einer, mit beliebig vielen Fassungen — der Kollege
 /// schärft nach, und jede Fassung bleibt nachvollziehbar erhalten.
 model StrategyGuide {
-  id        String   @id @default(cuid())
-  sessionId String   @unique
+  id        String          @id @default(cuid())
+  sessionId String          @unique
   session   AnalysisSession @relation(fields: [sessionId], references: [id])
   companyId String
-  company   Company  @relation(fields: [companyId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  company   Company         @relation(fields: [companyId], references: [id])
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
 
   versions StrategyGuideVersion[]
 }
@@ -1821,8 +1829,102 @@ model StrategyGuideVersion {
   rounds Int @default(1)
 
   createdById String
-  createdBy   User   @relation(fields: [createdById], references: [id])
+  createdBy   User     @relation(fields: [createdById], references: [id])
   createdAt   DateTime @default(now())
 
   @@unique([guideId, version])
+}
+
+// ─── OKUN Radar ──────────────────────────────────────────────────────────────
+// Die kostenlose Kurzdiagnose im laufenden Potenzialgespräch. Eigene Modelle
+// statt weiterer Einträge im Blueprint-Katalog: Das Radar ist eine andere
+// Zusage als der Blueprint — kürzer, unverbindlich, vorläufig. Beides in
+// dieselben Tabellen zu legen, hieße, eine Viertelstunde Gespräch später nicht
+// mehr von einer bezahlten Vollerhebung unterscheiden zu können.
+
+/// Eine Radar-Analyse. Gehört zu genau einem Closing-Gespräch.
+model RadarSession {
+  id String @id @default(cuid())
+
+  /// vorbereitet | laeuft | ausgewertet | abgeschlossen | abgebrochen
+  status String @default("vorbereitet")
+  /// profil | potenzial | spotlight | ergebnis
+  phase  String @default("profil")
+
+  /// Fingerabdruck des Fragenkatalogs zum Zeitpunkt der Analyse. Ein später
+  /// geänderter Katalog macht ein altes Ergebnis nicht falsch — aber nicht
+  /// mehr vergleichbar, und das muss man sehen können.
+  katalogVersion String
+
+  /// Die Frage, die beide Seiten gerade sehen.
+  cursorKey    String?
+  /// Der im Spotlight betrachtete Prozess.
+  spotlightKey String?
+
+  /// Das Unternehmensprofil aus Phase 1 als JSON.
+  profil String @default("{}")
+
+  /// Interne Gesprächsnotizen des Closers. Verlassen den Server nie in
+  /// Richtung Kundenseite — die Kundensicht wird in `client-view.ts` eigens
+  /// zusammengestellt und kennt dieses Feld nicht.
+  internalNotes String?
+
+  /// Das berechnete Ergebnis als JSON, eingefroren zum Zeitpunkt der
+  /// Auswertung. Es wird nicht bei jedem Aufruf neu gerechnet: Was dem Kunden
+  /// gezeigt wurde, muss später noch dasselbe sein.
+  ergebnis   String?
+  ergebnisAm DateTime?
+
+  /// Die abweichende Einschätzung des Closers. Überschreibt das Systemurteil
+  /// nicht, sondern tritt daneben — beide bleiben lesbar.
+  closerStufe   String?
+  closerNotiz   String?
+  closerStufeAm DateTime?
+
+  /// Zählt bei jeder Änderung hoch. Beide Seiten erkennen daran, ob ihr Stand
+  /// veraltet ist, ohne das ganze Dokument zu vergleichen.
+  rev Int @default(0)
+
+  /// Gesetzt beim Abschluss. Ein zweiter Abschluss ändert nichts mehr.
+  abgeschlossenAm DateTime?
+  freigegebenAm   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  closingSessionId String
+  closingSession   ClosingSession @relation(fields: [closingSessionId], references: [id], onDelete: Cascade)
+  companyId        String
+  company          Company        @relation(fields: [companyId], references: [id])
+  closerId         String
+  closer           User           @relation("RadarCloser", fields: [closerId], references: [id])
+
+  antworten RadarAnswer[]
+
+  @@index([closingSessionId])
+  @@index([companyId])
+  @@index([status])
+}
+
+/// Eine Antwort im Radar. `quelle` hält fest, wer sie gesetzt hat — der
+/// Interessent selbst oder der Closer für ihn. Das ist kein Beiwerk: Eine vom
+/// Closer eingetragene Antwort ist eine Fremdaussage und im Protokoll als
+/// solche erkennbar.
+model RadarAnswer {
+  id             String       @id @default(cuid())
+  radarSessionId String
+  radarSession   RadarSession @relation(fields: [radarSessionId], references: [id], onDelete: Cascade)
+
+  frageKey      String
+  /// JSON-Liste der gewählten Optionsschlüssel.
+  optionKeys    String  @default("[]")
+  /// Bewusst übersprungen — unterscheidbar von „noch nicht gefragt“.
+  uebersprungen Boolean @default(false)
+
+  /// closer | client
+  quelle     String
+  answeredAt DateTime @default(now())
+
+  @@unique([radarSessionId, frageKey])
+  @@index([radarSessionId])
 }

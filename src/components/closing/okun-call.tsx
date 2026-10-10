@@ -28,6 +28,7 @@ import {
   VideoOff,
 } from "lucide-react";
 import { PdfPage } from "./pdf-page";
+import { meldeStups, registriereSender } from "@/lib/radar/kanal";
 
 /**
  * Das Videogespräch in OKUN-Oberfläche.
@@ -36,10 +37,13 @@ import { PdfPage } from "./pdf-page";
  * Präsentationsbühne gehören zu OKUN, damit der Kunde das Gespräch nicht als
  * Fremdprodukt wahrnimmt.
  *
- * Die Bühne kennt drei Zustände, in dieser Reihenfolge:
+ * Die Bühne kennt vier Zustände, in dieser Reihenfolge:
  *   1. jemand teilt seinen Bildschirm  → Bildschirm groß
- *   2. eine Präsentation läuft         → Folie groß, Teilnehmer als Streifen
- *   3. sonst                           → Gegenüber groß, man selbst klein
+ *   2. eine eigene Bühne ist gesetzt   → sie groß, Teilnehmer als Streifen
+ *      (das OKUN Radar nutzt das — die Analyse steht im Mittelpunkt, die
+ *      Gesichter daneben, und das Gespräch läuft durchgehend weiter)
+ *   3. eine Präsentation läuft         → Folie groß, Teilnehmer als Streifen
+ *   4. sonst                           → Gegenüber groß, man selbst klein
  *
  * Über der Folie kann der Berater zeigen. Die Zeigerposition läuft über Dailys
  * Datenkanal (`sendAppMessage`) und wird nirgends gespeichert — sie ist so
@@ -67,13 +71,21 @@ export type CallSlide = {
 type CallMessage =
   | { k: "pointer"; x: number; y: number }
   | { k: "pointer-off" }
-  | { k: "refresh" };
+  | { k: "refresh" }
+  // Im Radar hat etwas sich geändert. Trägt keinen Inhalt — die Gegenseite
+  // holt den Stand beim Server. Siehe lib/radar/kanal.ts.
+  | { k: "radar" };
 
 export type OkunCallProps = {
   roomUrl: string;
   userName: string;
   role: "advisor" | "client";
   slide: CallSlide | null;
+  /**
+   * Eigener Inhalt für die Bühne. Hat Vorrang vor einer laufenden
+   * Präsentation, weicht aber einem geteilten Bildschirm.
+   */
+  stage?: React.ReactNode;
   onLeave: () => void;
   /** Kundenseite: der Berater hat etwas geändert, Stand neu holen. */
   onRemoteChange?: () => void;
@@ -139,6 +151,7 @@ function describeFailure(raw: string | null): string {
 function CallSurface({
   role,
   slide,
+  stage,
   onLeave,
   onRemoteChange,
   onPrev,
@@ -245,6 +258,8 @@ function CallSurface({
         setRemotePointer(null);
       } else if (data.k === "refresh") {
         onRemoteChange?.();
+      } else if (data.k === "radar") {
+        meldeStups();
       }
     };
     daily.on("app-message", handler);
@@ -269,6 +284,10 @@ function CallSurface({
   // nächsten Abfragetakt warten muss.
   const announceChange = useCallback(() => send({ k: "refresh" }), [send]);
 
+  // Das Radar liegt in einer anderen Komponente und kommt an diesen Kanal
+  // nicht heran. Hier bekommt es einen Draht dorthin — in beide Richtungen.
+  useEffect(() => registriereSender(() => send({ k: "radar" })), [send]);
+
   function toggleMic() {
     const next = !micOn;
     setMicOn(next);
@@ -288,11 +307,13 @@ function CallSurface({
   }
 
   const screenId = screens[0]?.screenId ?? null;
-  const stageMode: "screen" | "slide" | "people" = screenId
+  const stageMode: "screen" | "eigen" | "slide" | "people" = screenId
     ? "screen"
-    : slide
-      ? "slide"
-      : "people";
+    : stage
+      ? "eigen"
+      : slide
+        ? "slide"
+        : "people";
 
   return (
     <div className="flex flex-col h-full min-h-0 bg-[#05090f]">
@@ -315,6 +336,10 @@ function CallSurface({
                     automirror={false}
                     className="w-full h-full object-contain"
                   />
+                </div>
+              ) : stageMode === "eigen" ? (
+                <div className="h-full rounded-xl overflow-hidden border border-[#12203a] bg-[#070d15]">
+                  {stage}
                 </div>
               ) : (
                 slide && (
@@ -341,7 +366,7 @@ function CallSurface({
         )}
       </div>
 
-      {slide && (
+      {slide && stageMode !== "eigen" && (
         <div className="px-3 pb-2 flex flex-wrap items-center gap-2">
           <span className="text-[#5b6b7f] text-xs truncate flex-1 min-w-0">
             {slide.slideTitle ?? slide.title}

@@ -3,6 +3,9 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { ClosingWorkspaceClient } from "./ClosingWorkspaceClient";
 import { loadContractClosureData } from "./closure-data";
+import { KATALOG_VERSION } from "@/lib/radar/catalog";
+import { ladeRadar } from "@/lib/radar/service";
+import { closerAnsicht } from "@/lib/radar/views";
 
 export default async function ClosingWorkspacePage({
   params,
@@ -100,6 +103,15 @@ export default async function ClosingWorkspacePage({
   const closure = await loadContractClosureData(sessionId);
   if (!closure) redirect("/admin/sales");
 
+  // Die laufende oder zuletzt geführte Radar-Analyse dieses Gesprächs. Ohne
+  // sie zeigt der Reiter den Startknopf.
+  const letztesRadar = await db.radarSession.findFirst({
+    where: { closingSessionId: sessionId },
+    orderBy: { createdAt: "desc" },
+    select: { id: true },
+  });
+  const radarDatensatz = letztesRadar ? await ladeRadar(letztesRadar.id) : null;
+
   const presentations = await db.closingPresentation.findMany({
     where: { closingSessionId: sessionId },
     orderBy: { createdAt: "asc" },
@@ -131,6 +143,8 @@ export default async function ClosingWorkspacePage({
         approvedAt: p.approvedAt ? p.approvedAt.toISOString() : null,
         slides: p.slides,
       }))}
+      radar={radarDatensatz ? closerAnsicht(radarDatensatz, KATALOG_VERSION) : null}
+      radarAufBuehne={Boolean(closingSession.liveRadarSessionId)}
       livePresentationId={closingSession.livePresentationId}
       liveSlidePosition={closingSession.liveSlidePosition}
       liveSlidePage={closingSession.liveSlidePage}

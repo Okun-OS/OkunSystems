@@ -15,6 +15,7 @@ import { OkunLogo } from "@/components/layout/okun-logo";
 import { OkunCall, type CallSlide } from "@/components/closing/okun-call";
 import { PdfPage } from "@/components/closing/pdf-page";
 import type { ClientClosingState } from "@/lib/closing/client-view";
+import { RadarStage } from "@/components/radar/radar-stage";
 
 /**
  * Kundenseite des Closings.
@@ -132,6 +133,13 @@ export function ClosingClientView({ initialState, token }: Props) {
   const offerPdfUrl = `/api/closing/offer-pdf?token=${encodeURIComponent(token)}`;
   const showStage = Boolean(state.meetingUrl) && !state.isActivated;
 
+  // Das OKUN Radar steht auf der Bühne des Gesprächs — die Gesichter daneben,
+  // das Gespräch läuft weiter. Es holt seinen Stand selbst, deutlich häufiger
+  // als der Rest der Seite; hier steht nur, ob es überhaupt läuft.
+  const radarStage = state.radarActive ? (
+    <RadarStage token={token} initial={null} />
+  ) : null;
+
   const slide: CallSlide | null = state.presentation
     ? {
         slideId: state.presentation.slideId,
@@ -234,6 +242,7 @@ export function ClosingClientView({ initialState, token }: Props) {
                     userName={state.contactName ?? state.companyName}
                     role="client"
                     slide={slide}
+                    stage={radarStage}
                     onLeave={() => setJoined(false)}
                     onRemoteChange={refresh}
                   />
@@ -249,7 +258,30 @@ export function ClosingClientView({ initialState, token }: Props) {
                 />
               ))}
 
-            {!showStage && !state.isActivated && (
+            {/*
+              Die Analyse außerhalb des Gesprächsfensters.
+
+              Normalerweise steht sie auf der Bühne des Gesprächs. Aber sie darf
+              nicht daran hängen, dass ein Videoraum zustande kommt: Wenn die
+              Kamera streikt, der Browser kein WebRTC kann, der Interessent den
+              Raum verlassen hat oder der Raum noch gar nicht eingerichtet ist,
+              soll er trotzdem mitmachen können, statt vor einem Ladekreis zu
+              sitzen. Das Gespräch läuft dann eben über Telefon weiter.
+            */}
+            {state.radarActive && !state.isActivated && !(showStage && joined) && (
+              // Mindesthöhe statt fester Höhe: Außerhalb des Gesprächsfensters
+              // ist Platz da, und der Bericht soll am Stück lesbar sein statt
+              // in einem Kasten mit eigener Bildlaufleiste zu stecken, die auf
+              // dem Telefon kaum jemand findet.
+              <div
+                className="rounded-2xl border border-[#12203a] bg-[#0a111c] overflow-hidden"
+                style={{ minHeight: "min(calc(100vh - 320px), 620px)" }}
+              >
+                <RadarStage token={token} initial={null} />
+              </div>
+            )}
+
+            {!showStage && !state.radarActive && !state.isActivated && (
               <Card>
                 <div className="px-5 py-10 text-center">
                   <Loader2 size={20} className="text-[#5b6b7f] animate-spin mx-auto mb-3" />

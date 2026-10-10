@@ -6,9 +6,11 @@ import Link from "next/link";
 import {
   Building2, Mail, Phone,
   FolderOpen, Lightbulb, MessageSquare, FileText, CalendarDays, Brain, Target, CheckCircle2, Clock,
+  Radar as RadarIcon,
 } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 import { BlueprintReportButton } from "./BlueprintReportButton";
+import { radarUebernahme } from "@/lib/radar/blueprint-handover";
 
 export default async function KundeDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -35,6 +37,10 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
   const assessment = company.assessments[0];
   const project = company.projects[0];
   const activeSession = company.analysisSessions[0];
+
+  // Was aus einer früheren Radar-Analyse bereits bekannt ist. Null, solange
+  // keine abgeschlossene vorliegt — eine halb geführte ist kein Stand.
+  const radar = await radarUebernahme(id);
 
   async function handleSaveNote(formData: FormData) {
     "use server";
@@ -145,6 +151,68 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
               )}
             </div>
           </div>
+
+          {/* Was aus dem Radar schon bekannt ist */}
+          {radar && (
+            <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-[#f0f0f0] font-semibold text-sm flex items-center gap-2">
+                  <RadarIcon size={14} className="text-[#00b8ff]" />
+                  Aus dem OKUN Radar
+                </h2>
+                <span className="text-[#555] text-xs">{formatDateTime(new Date(radar.erhobenAm))}</span>
+              </div>
+
+              {/*
+                Ausdrücklich als vorläufig gekennzeichnet. Diese Angaben stammen
+                aus einer Viertelstunde Gespräch, nicht aus einer Erhebung — der
+                Blueprint darf sie vorschlagen, aber nicht als erhoben behandeln.
+              */}
+              <p className="text-[#f59e0b] text-[11px] mb-3 leading-relaxed">
+                Vorläufige Angaben aus der kostenlosen Kurzdiagnose. Im Blueprint bestätigen
+                lassen, bevor sie als Befund gelten.
+              </p>
+
+              {radar.ergebnis && (
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  <span className="px-2 py-1 rounded-lg border border-[#1a2840] text-[#c9d4e4] text-[11px] font-semibold">
+                    Stufe {radar.ergebnis.stufe} · {radar.ergebnis.stufeTitel}
+                  </span>
+                  <span className="text-[#555] text-[11px]">
+                    Aussagekraft {radar.ergebnis.aussagekraft} %
+                  </span>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                {radar.profil.map((f) => (
+                  <div key={f.key} className="flex justify-between gap-3 text-sm">
+                    <span className="text-[#888] text-xs flex-shrink-0">{f.label}</span>
+                    <span className="text-[#c9d4e4] text-xs text-right min-w-0">{f.wert}</span>
+                  </div>
+                ))}
+              </div>
+
+              {radar.spotlight && (
+                <p className="text-[#888] text-xs mt-3 pt-3 border-t border-[#101b2c]">
+                  Betrachteter Ablauf: <span className="text-[#c9d4e4]">{radar.spotlight}</span>
+                </p>
+              )}
+
+              {radar.ergebnis && radar.ergebnis.offeneFragen.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-[#101b2c]">
+                  <p className="text-[#555] text-[11px] uppercase tracking-wider mb-1.5">
+                    Im Radar offen geblieben — Einstieg für den Blueprint
+                  </p>
+                  <ul className="space-y-1">
+                    {radar.ergebnis.offeneFragen.map((f, i) => (
+                      <li key={i} className="text-[#888] text-xs leading-snug">{f}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Blueprint Analysis Status */}
           <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">

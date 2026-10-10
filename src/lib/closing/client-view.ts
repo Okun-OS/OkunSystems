@@ -54,6 +54,12 @@ export type ClientClosingState = {
   /** Der Berater ist im Videoraum (Heartbeat jünger als ADVISOR_PRESENCE_TTL_MS). */
   advisorPresent: boolean;
   presentation: ClientPresentation | null;
+  /**
+   * Der Berater hat das OKUN Radar aufgeschaltet. Nur das Signal — die
+   * Analyse selbst holt sich die Kundenseite über `/api/closing/radar`, weil
+   * sie währenddessen deutlich häufiger nachfragt als nach dem Rest.
+   */
+  radarActive: boolean;
   snapshotReady: boolean;
   offer: {
     packageName: string | null;
@@ -267,6 +273,7 @@ export async function buildClientClosingState(
     appointmentStart: session.appointment?.startTime.toISOString() ?? null,
     advisorPresent,
     presentation,
+    radarActive: Boolean(session.liveRadarSessionId),
     snapshotReady: Boolean(data),
     offer,
     offerPdfAvailable,

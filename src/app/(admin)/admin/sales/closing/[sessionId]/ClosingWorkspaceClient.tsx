@@ -40,6 +40,8 @@ import { ContractClosurePanel, type ContractClosureData } from "./ContractClosur
 import { PresentationPanel, type PresentationItem } from "./PresentationPanel";
 import { OkunCall, type CallSlide } from "@/components/closing/okun-call";
 import { showSlide, stopPresentation } from "./presentation-actions";
+import { RadarPanel } from "./RadarPanel";
+import type { RadarCloserAnsicht } from "@/lib/radar/views";
 
 // ─── Closing checklist definition ────────────────────────────────────────────
 const CLOSING_CHECKLIST = [
@@ -267,6 +269,10 @@ interface Props {
   /** Rolle des angemeldeten Benutzers — nur ADMIN gibt Präsentationen frei. */
   viewerRole: string;
   presentations: PresentationItem[];
+  /** Die laufende oder zuletzt geführte Radar-Analyse, aus Closer-Sicht. */
+  radar: RadarCloserAnsicht | null;
+  /** Sieht der Interessent das Radar gerade in seinem Gesprächsfenster? */
+  radarAufBuehne: boolean;
   livePresentationId: string | null;
   liveSlidePosition: number | null;
   liveSlidePage: number | null;
@@ -308,13 +314,22 @@ export function ClosingWorkspaceClient({
   closure,
   viewerRole,
   presentations,
+  radar,
+  radarAufBuehne,
   livePresentationId,
   liveSlidePosition,
   liveSlidePage,
 }: Props) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<
-    "overview" | "maske" | "praesentation" | "skript" | "angebot" | "abschluss" | "protokoll"
+    | "overview"
+    | "maske"
+    | "radar"
+    | "praesentation"
+    | "skript"
+    | "angebot"
+    | "abschluss"
+    | "protokoll"
   >("overview");
   const [callActive, setCallActive] = useState(false);
   const [callExpanded, setCallExpanded] = useState(false);
@@ -784,6 +799,14 @@ export function ClosingWorkspaceClient({
           [
             { key: "overview", label: "Übersicht" },
             { key: "maske", label: "Gesprächs-Maske" },
+            {
+              key: "radar",
+              label: radarAufBuehne
+                ? "OKUN Radar (läuft)"
+                : radar
+                  ? `OKUN Radar (${radar.fortschritt.prozent} %)`
+                  : "OKUN Radar",
+            },
             {
               key: "praesentation",
               label: livePresentationId
@@ -1322,6 +1345,17 @@ export function ClosingWorkspaceClient({
         </div>
       )}
 
+
+      {activeTab === "radar" && (
+        <RadarPanel
+          closingSessionId={closingSession.id}
+          initial={radar}
+          radarAufBuehne={radarAufBuehne}
+          companyName={closingSession.company.name}
+          onZumAngebot={() => setActiveTab("angebot")}
+          onGeaendert={() => router.refresh()}
+        />
+      )}
 
       {activeTab === "praesentation" && (
         <PresentationPanel
