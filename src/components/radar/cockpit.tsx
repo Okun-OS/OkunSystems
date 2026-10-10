@@ -1,6 +1,6 @@
 "use client";
 
-import { Check } from "lucide-react";
+import { Check, Video } from "lucide-react";
 import { OkunLogo } from "@/components/layout/okun-logo";
 import type { LiveProfil } from "@/lib/radar/live";
 import { LiveDashboard } from "./live-dashboard";
@@ -124,7 +124,12 @@ export function RadarCockpit({
           verbunden={verbunden}
         />
 
-        <Phasenschiene phasen={phasen} />
+        <Phasenschiene
+          phasen={phasen}
+          bereiche={bereiche}
+          aktiverBereich={aktiverBereich}
+          onBereich={onBereich}
+        />
 
         <div className="flex-1 lg:min-h-0 flex flex-col lg:flex-row">
           {/* ── Bühne ─────────────────────────────────────────────────── */}
@@ -141,7 +146,15 @@ export function RadarCockpit({
           </main>
 
           {/* ── Panel ─────────────────────────────────────────────────── */}
-          <aside className="order-1 lg:order-none flex-shrink-0 lg:w-[400px] border-b lg:border-b-0 lg:border-l border-[#0f1d2f] bg-[#060b14]/85 backdrop-blur-sm flex flex-col lg:min-h-0">
+          {/*
+            Das Panel schwebt über dem Hintergrund, statt daneben zu kleben.
+
+            Eine angrenzende Fläche mit einer Trennlinie ist ein Layout. Eine
+            Platte mit Rand, Schatten und eigener Tiefe ist ein Gerät — und
+            genau das soll die rechte Spalte sein. Am Telefon bleibt sie eine
+            Leiste; dort kostet ein schwebender Kasten nur Rand.
+          */}
+          <aside className="order-1 lg:order-none flex-shrink-0 lg:w-[428px] lg:my-3 lg:mr-3 lg:rounded-[22px] border-b lg:border-b-0 lg:border border-[#122339] bg-[#060b14]/90 backdrop-blur-sm lg:shadow-[0_28px_70px_-32px_rgba(0,0,0,0.95),inset_0_1px_0_rgba(255,255,255,0.045)] overflow-hidden flex flex-col lg:min-h-0">
             <Gespraechsraum
               video={video}
               steuerung={videoSteuerung}
@@ -149,8 +162,8 @@ export function RadarCockpit({
               teilnehmer={teilnehmer}
               beraterName={beraterName}
             />
-            <div className="hidden lg:block flex-1 min-h-0 overflow-y-auto px-4 pb-4">
-              <LiveDashboard profil={profil} ruhig={ruhig} />
+            <div className="hidden lg:block flex-1 min-h-0 px-4 pb-4 pt-3">
+              <LiveDashboard profil={profil} ruhig={ruhig} fuellt />
             </div>
           </aside>
 
@@ -207,7 +220,7 @@ function Markenleiste({
           <p className="text-[#dce7f5] text-[13.5px] font-semibold truncate leading-tight">
             {firma}
           </p>
-          <p className="text-[#4a6383] text-[11px] truncate leading-tight mt-[2px]">
+          <p className="font-mono text-[#4a6383] text-[10px] uppercase tracking-[0.1em] truncate leading-tight mt-[3px]">
             Potenzialanalyse{eckdaten ? ` · ${eckdaten}` : ""}
           </p>
         </div>
@@ -259,13 +272,13 @@ function Markenleiste({
               {verbunden ? "Live" : "Getrennt"}
             </span>
             {typeof laufzeitSekunden === "number" && (
-              <span className="text-[#dce7f5] tabular-nums font-semibold">
+              <span className="font-mono text-[#dce7f5] tabular-nums font-semibold tracking-tight">
                 {uhr(laufzeitSekunden)}
               </span>
             )}
           </span>
           {typeof teilnehmer === "number" && teilnehmer > 0 && (
-            <span className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-[#132439] text-[#6d86a6] text-[11px] tabular-nums">
+            <span className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-[#132439] font-mono text-[#6d86a6] text-[10.5px] tabular-nums">
               <span className="w-1 h-1 rounded-full bg-[#2b5078]" />
               {teilnehmer} im Raum
             </span>
@@ -284,10 +297,82 @@ function Markenleiste({
  * Jede Phase ist ein Segment mit eigenem Füllstand, nicht nur ein Punkt. So
  * sieht man beides: wo man ist und wie weit die laufende Phase schon ist.
  */
-function Phasenschiene({ phasen }: { phasen: CockpitPhase[] }) {
+function Phasenschiene({
+  phasen,
+  bereiche,
+  aktiverBereich,
+  onBereich,
+}: {
+  phasen: CockpitPhase[];
+  bereiche: CockpitBereich[];
+  aktiverBereich: string;
+  onBereich: (key: string) => void;
+}) {
+  // Nach der letzten Phase ist keine mehr aktiv — dann steht dort die
+  // Auswertung und nicht die zuletzt erledigte Phase, die ja hinter einem liegt.
+  const laufend = phasen.find((p) => p.aktiv) ?? null;
+
   return (
     <div className="flex-shrink-0 border-b border-[#0f1d2f] bg-[#050a12]/60">
-      <ol className="flex items-stretch overflow-x-auto">
+      {/*
+        Am Telefon eine Zeile statt dreier Segmente.
+
+        Drei Segmente nebeneinander lassen auf 420 Pixeln keinen Platz für
+        ihre Beschriftung — übrig bleiben drei Abzeichen ohne Text, die nichts
+        sagen. Eine Zeile sagt dasselbe in Worten: wo man ist, wie weit es
+        noch geht. Rechts daneben die Ansichten, die in der Kopfzeile keinen
+        Platz mehr haben.
+      */}
+      <div className="md:hidden flex items-center gap-3 px-4 py-2.5">
+        <span className="flex items-center gap-1 flex-shrink-0">
+          {phasen.map((p) => (
+            <span
+              key={p.key}
+              className={`h-1.5 rounded-full transition-all duration-300 ${
+                p.aktiv
+                  ? "w-5 bg-[#00b8ff] shadow-[0_0_10px_rgba(0,184,255,0.7)]"
+                  : p.erledigt
+                    ? "w-1.5 bg-[#22c55e]"
+                    : "w-1.5 bg-[#1b2d44]"
+              }`}
+            />
+          ))}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-mono text-[#3d5c7e] text-[9px] uppercase tracking-[0.18em] leading-none">
+            {laufend ? `Phase ${laufend.nummer} von ${phasen.length}` : "Alle Phasen erledigt"}
+          </p>
+          <p className="text-[#dce7f5] text-[12px] font-semibold truncate leading-tight mt-1">
+            {laufend ? laufend.label : "Auswertung"}
+          </p>
+        </div>
+        <nav className="flex items-center gap-0.5 p-0.5 rounded-lg border border-[#132439] bg-[#070e1a] flex-shrink-0">
+          {bereiche.map((b) => {
+            const aktiv = b.key === aktiverBereich;
+            const Symbol = b.Symbol;
+            return (
+              <button
+                key={b.key}
+                onClick={() => b.verfuegbar && onBereich(b.key)}
+                disabled={!b.verfuegbar}
+                aria-label={b.label}
+                aria-current={aktiv ? "page" : undefined}
+                className={`p-2 rounded-md transition-colors ${
+                  aktiv
+                    ? "bg-[rgba(0,184,255,0.16)] text-[#5fd4ff]"
+                    : b.verfuegbar
+                      ? "text-[#6d86a6]"
+                      : "text-[#2c3e55]"
+                }`}
+              >
+                <Symbol size={14} />
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+
+      <ol className="hidden md:flex items-stretch overflow-x-auto">
         {phasen.map((p, i) => (
           <li
             key={p.key}
@@ -296,7 +381,7 @@ function Phasenschiene({ phasen }: { phasen: CockpitPhase[] }) {
             } ${p.aktiv ? "bg-[linear-gradient(180deg,rgba(0,184,255,0.07),transparent)]" : ""}`}
           >
             <span
-              className={`flex-shrink-0 w-[30px] h-[30px] rounded-xl border flex items-center justify-center text-[11.5px] font-bold transition-all duration-300 ${
+              className={`flex-shrink-0 w-[30px] h-[30px] rounded-xl border flex items-center justify-center font-mono text-[12px] font-bold transition-all duration-300 ${
                 p.erledigt
                   ? "border-[#1d5236] bg-[rgba(34,197,94,0.1)] text-[#4ade80]"
                   : p.aktiv
@@ -306,7 +391,7 @@ function Phasenschiene({ phasen }: { phasen: CockpitPhase[] }) {
             >
               {p.erledigt ? <Check size={14} strokeWidth={3} /> : p.nummer}
             </span>
-            <div className="min-w-0 hidden sm:block">
+            <div className="min-w-0">
               <p
                 className={`text-[12.5px] font-semibold leading-tight truncate ${
                   p.aktiv ? "text-[#dce7f5]" : p.erledigt ? "text-[#8aa3c0]" : "text-[#49607e]"
@@ -360,58 +445,79 @@ function Gespraechsraum({
   teilnehmer?: number | null;
   beraterName?: string | null;
 }) {
+  /*
+    Der reservierte Platz hat dieselbe Form wie das echte Bild: das Gegenüber
+    groß, man selbst als Einblendung. Wer die Oberfläche zum ersten Mal sieht,
+    erkennt daran, wo wer erscheinen wird.
+  */
   const platzhalter = (
-    <div className="grid grid-cols-2 gap-2">
-      {[beraterName || "Ihr Berater", "Sie"].map((wer) => (
-        <div
-          key={wer}
-          className="relative aspect-[4/3] rounded-2xl border border-[#132439] bg-[linear-gradient(155deg,#0b1726,#060d18)] overflow-hidden flex flex-col items-center justify-center gap-2"
-        >
-          <span
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.07),transparent)]"
-          />
-          {/* Ein feines Raster im leeren Platz — er soll nach Gerät aussehen,
-              nicht nach fehlendem Bild. */}
-          <span
-            aria-hidden
-            className="pointer-events-none absolute inset-0 opacity-[0.55]"
-            style={{
-              backgroundImage:
-                "linear-gradient(rgba(35,64,95,0.14) 1px,transparent 1px)," +
-                "linear-gradient(90deg,rgba(35,64,95,0.14) 1px,transparent 1px)",
-              backgroundSize: "16px 16px",
-              maskImage: "radial-gradient(circle at 50% 50%, black 10%, transparent 72%)",
-            }}
-          />
-          <span className="relative w-9 h-9 rounded-full border border-dashed border-[#23405f] flex items-center justify-center">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#2b5078]" />
-          </span>
-          <span className="relative text-[#3f5572] text-[10px] px-2 text-center leading-tight">{wer}</span>
-        </div>
-      ))}
+    <div className="relative">
+      <LeereKachel label={beraterName || "Ihr Berater"} />
+      <div className="absolute bottom-2.5 right-2.5 w-[38%] max-w-[150px]">
+        <LeereKachel label="Sie" winzig />
+      </div>
     </div>
   );
 
   return (
     <div className="flex-shrink-0 p-4 space-y-3 border-b border-[#0f1d2f]">
       <div className="flex items-center justify-between gap-2">
-        <span className="flex items-center gap-2 text-[#3f5572] text-[10px] uppercase tracking-[0.2em] font-semibold">
+        <span className="flex items-center gap-2 font-mono text-[#3f5572] text-[9.5px] uppercase tracking-[0.2em] font-semibold">
           <span className="w-4 h-px bg-[#1d3b59]" />
           Gesprächsraum
         </span>
         {typeof teilnehmer === "number" && teilnehmer > 0 && (
-          <span className="text-[#3f5572] text-[10px] tabular-nums">{teilnehmer} verbunden</span>
+          <span className="font-mono text-[#3f5572] text-[9.5px] tabular-nums">{teilnehmer} verbunden</span>
         )}
       </div>
 
-      <div className="lg:[&_.aspect-video]:aspect-[4/3]">{video ?? platzhalter}</div>
+      {video ?? platzhalter}
 
       {(steuerung || hinweis) && (
         <div className="flex items-center justify-between gap-2 pt-0.5">
           {hinweis ? <div className="min-w-0 flex-1">{hinweis}</div> : <span />}
           {steuerung && <div className="scale-[0.84] origin-right flex-shrink-0">{steuerung}</div>}
         </div>
+      )}
+    </div>
+  );
+}
+
+function LeereKachel({ label, winzig }: { label: string; winzig?: boolean }) {
+  return (
+    <div
+      className={`relative overflow-hidden border border-[#132439] bg-[linear-gradient(155deg,#0b1726,#060d18)] flex flex-col items-center justify-center gap-2 ${
+        winzig ? "aspect-video rounded-xl" : "aspect-[16/10] rounded-2xl"
+      }`}
+    >
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.07),transparent)]"
+      />
+      {/* Ein feines Raster im leeren Platz — er soll nach Gerät aussehen,
+          nicht nach fehlendem Bild. */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-[0.55]"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(35,64,95,0.14) 1px,transparent 1px)," +
+            "linear-gradient(90deg,rgba(35,64,95,0.14) 1px,transparent 1px)",
+          backgroundSize: "18px 18px",
+          maskImage: "radial-gradient(circle at 50% 46%, black 8%, transparent 70%)",
+        }}
+      />
+      <span
+        className={`relative rounded-full border border-dashed border-[#23405f] flex items-center justify-center ${
+          winzig ? "w-6 h-6" : "w-10 h-10"
+        }`}
+      >
+        <Video size={winzig ? 10 : 15} className="text-[#24415f]" />
+      </span>
+      {!winzig && (
+        <span className="relative font-mono text-[#3f5572] text-[9.5px] uppercase tracking-[0.16em] px-2 text-center leading-tight">
+          {label}
+        </span>
       )}
     </div>
   );

@@ -294,14 +294,27 @@ export function RadarChart({ dimensionen, groesse = 300, kompakt, sweep = true }
 export function DimensionsListe({
   dimensionen,
   kompakt,
+  spalten,
 }: {
   dimensionen: DimensionWert[];
   kompakt?: boolean;
+  /**
+   * Zwei Spalten statt einer.
+   *
+   * Im Panel konkurriert die Liste mit dem Diagramm um dieselbe Höhe. Fünf
+   * Zeilen untereinander kosten dort so viel Platz, dass das Diagramm auf
+   * Briefmarkengröße schrumpfen müsste — nebeneinander kosten sie die Hälfte.
+   */
+  spalten?: boolean;
 }) {
   const { getroffen, marke } = useEinschlag(dimensionen);
 
   return (
-    <ul className={`space-y-2 ${kompakt ? "text-[11px]" : "text-[11.5px]"}`}>
+    <ul
+      className={`${spalten ? "grid grid-cols-2 gap-x-4 gap-y-1.5" : "space-y-2"} ${
+        kompakt ? "text-[11px]" : "text-[11.5px]"
+      }`}
+    >
       {dimensionen.map((d) => (
         <DimensionsZeile
           key={d.key}
@@ -336,11 +349,11 @@ function DimensionsZeile({
       <div className="flex items-center justify-between gap-2 mb-1">
         <span className={d.wert === null ? "text-[#4a6383]" : "text-[#c9d4e4]"}>{d.label}</span>
         {d.wert === null ? (
-          <span className="text-[#3f5572] flex-shrink-0 text-[9.5px] uppercase tracking-[0.12em]">
+          <span className="font-mono text-[#3f5572] flex-shrink-0 text-[9px] uppercase tracking-[0.14em]">
             noch offen
           </span>
         ) : (
-          <span className="text-[#eef2f7] font-semibold tabular-nums flex-shrink-0">
+          <span className="font-mono text-[#eef2f7] font-semibold tabular-nums flex-shrink-0 tracking-tight">
             {(anzeige ?? 0).toLocaleString("de-DE", {
               minimumFractionDigits: 1,
               maximumFractionDigits: 1,

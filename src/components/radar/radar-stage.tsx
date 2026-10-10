@@ -12,6 +12,7 @@ import {
 import { beiStups, stupseGegenseite } from "@/lib/radar/kanal";
 import type { RadarKundenAnsicht } from "@/lib/radar/views";
 import { RadarCockpit, type CockpitBereich } from "./cockpit";
+import { PhasenSchnitt } from "./phasen-schnitt";
 import { Ergebnisbericht, Fragekarte } from "./pieces";
 
 /**
@@ -181,6 +182,16 @@ export function RadarStage({
     ? "ergebnisse"
     : bereich;
 
+  /*
+    Die Kapitelansage beim Phasenwechsel.
+
+    Nur für die drei Arbeitsphasen: Den Sprung in die Auswertung kündigt der
+    große Moduswechsel an (`ModusUebergang`), und zwei Vorhänge hintereinander
+    wären einer zu viel.
+  */
+  const phasenAnsage =
+    ansicht.phase === "ergebnis" ? null : ansicht.phasen.find((p) => p.aktiv) ?? null;
+
   return (
     <RadarCockpit
       firma={ansicht.companyName}
@@ -202,6 +213,8 @@ export function RadarStage({
       verbunden={verbunden}
       beraterName={ansicht.closerName}
     >
+      <PhasenSchnitt phase={phasenAnsage} />
+
       {fehler && (
         <div className="mb-4 rounded-xl border border-[#f59e0b]/25 bg-[rgba(245,158,11,0.06)] px-4 py-2.5">
           <p className="text-[#fbbf24] text-[12px]">{fehler}</p>
@@ -286,7 +299,7 @@ function Fussleiste({
       </button>
 
       <div className="flex-1 min-w-0">
-        <p className="text-[#5b6b7f] text-[11.5px] text-center mb-1.5">
+        <p className="font-mono text-[#4a6383] text-[10px] uppercase tracking-[0.16em] text-center mb-2 tabular-nums">
           {ansicht.fortschritt.beantwortet} von {ansicht.fortschritt.gesamt} Fragen
         </p>
         <div className="relative h-1 rounded-full bg-[#101d31]">
@@ -374,8 +387,8 @@ function Profilteil({
   return (
     <div className="w-full max-w-[860px] mx-auto space-y-6">
       <div>
-        <p className="text-[#44546b] text-[10.5px] uppercase tracking-[0.18em] font-semibold mb-2.5">
-          Phase 1 · Unternehmensprofil
+        <p className="font-mono text-[#3d5c7e] text-[10px] uppercase tracking-[0.2em] font-semibold mb-3">
+          Phase 01 · Unternehmensprofil
         </p>
         <h3 className="text-[#f4f8fd] text-[24px] sm:text-[28px] font-bold tracking-tight leading-tight">
           Kurz zu <span className="text-[#00b8ff]">Ihrem Unternehmen</span>
@@ -393,7 +406,7 @@ function Profilteil({
             feld.art === "mehrfach" || feld.key === "herausforderung" || feld.key === "ziel";
           return (
             <div key={feld.key} className={voll ? "sm:col-span-2" : ""}>
-              <p className="text-[#5b6b7f] text-[10.5px] uppercase tracking-[0.14em] mb-2">
+              <p className="font-mono text-[#3d5c7e] text-[9.5px] uppercase tracking-[0.16em] mb-2">
                 {feld.label}
               </p>
               {feld.art === "text" ? (

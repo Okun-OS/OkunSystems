@@ -34,7 +34,7 @@ const TEXTE: Record<Modus, string> = {
 
 const DAUER_MS = 1900;
 
-export function ModusUebergang({ modus }: { modus: Modus }) {
+export function ModusUebergang({ modus, firma }: { modus: Modus; firma?: string | null }) {
   const [laeuft, setLaeuft] = useState<Modus | null>(null);
   const vorher = useRef(modus);
 
@@ -111,6 +111,23 @@ export function ModusUebergang({ modus }: { modus: Modus }) {
         >
           {TEXTE[laeuft]}
         </p>
+
+        {/*
+          Beim Eintritt in die Analyse steht der Firmenname groß darunter.
+
+          Nicht als Dekor: Der Interessent soll in der Sekunde des Wechsels
+          sehen, dass hier über seinen Betrieb gesprochen wird und nicht über
+          einen Musterfall. Deshalb nur bei `radar` — bei „zurück ins
+          Gespräch“ wäre es eine Wiederholung.
+        */}
+        {laeuft === "radar" && firma ? (
+          <p
+            className="mt-3 max-w-[18ch] text-[#f4f8fd] text-[21px] sm:text-[30px] font-bold tracking-[-0.02em] leading-tight text-center"
+            style={{ animation: "karte-ein .62s cubic-bezier(.22,1,.36,1) .88s both" }}
+          >
+            {firma}
+          </p>
+        ) : null}
       </div>
     </div>
   );

@@ -375,7 +375,7 @@ entscheidet darüber, ob jemand überhaupt danach sucht.
 
 | Breite | Zuschnitt |
 |---|---|
-| ab `lg` | Eigener Block oben in der rechten Spalte, über dem Live-Bild. Zwei Kacheln im Seitenverhältnis 16:9, darüber die Überschrift „Gesprächsraum" und die Steuerung. |
+| ab `lg` | Eigener Block oben in der rechten Spalte, über dem Live-Bild. Das Gegenüber groß im Seitenverhältnis 16:10, man selbst als Einblendung unten rechts — dieselbe Form, die jede Videoanwendung benutzt, damit niemand sie erklären muss. Darüber die Überschrift „Gesprächsraum" und die Steuerung. |
 | darunter | Schmale, am oberen Rand klebende Gesprächsleiste: zwei kleine Bilder links, Steuerung rechts — wie in jeder Telefonie-App. Ein leerer Gesprächsraum darf auf dem Telefon kein Drittel des Bildschirms einnehmen. |
 
 Jede Kachel trägt einen farbigen Strich (Türkis für das Gegenüber, Grün für
@@ -387,10 +387,32 @@ das, was nur er sieht: Absicht und Vorlesesatz je Frage, Herkunft der Antworten,
 auffällige Antworten, interne Notizen. Sein Video bleibt im bekannten
 verschiebbaren Fenster.
 
-**Schmale Bildschirme** stapeln in der Reihenfolge Navigation → Frage →
-Live-Bild. Die Höhenbegrenzungen des Dreispaltenlayouts greifen erst ab `lg`;
-ohne diese Trennung quetscht `flex-1 min-h-0` die Mittelspalte auf dem Telefon
-auf wenige Pixel zusammen.
+**Schmale Bildschirme** stapeln in der Reihenfolge Gesprächsraum → Frage →
+Live-Bild. Die Höhenbegrenzungen des Zweizonenlayouts greifen erst ab `lg`;
+ohne diese Trennung quetscht `flex-1 min-h-0` die Bühne auf dem Telefon auf
+wenige Pixel zusammen.
+
+Unter `md` wird die Phasenschiene zu **einer Zeile**: drei Punkte, „Phase 2 von
+3" und der Name der laufenden Phase — daneben die Ansichten als Symbole, die
+in der Kopfzeile keinen Platz mehr haben. Drei Segmente nebeneinander lassen
+auf 420 Pixeln keinen Platz für ihre Beschriftung; übrig blieben drei Abzeichen
+ohne Text, die nichts sagen.
+
+### Das Panel füllt seine Höhe
+
+Die Live-Analyse im Panel bekommt keine feste Größe, sondern rechnet sie aus
+der übrigen Höhe (`fuellt`, gemessen über einen `ResizeObserver`): Das
+Netzdiagramm nimmt, was zwischen Gesprächsraum, Dimensionsliste und
+Beobachtungen übrig bleibt (186–330 Pixel, auf flachen Fenstern notfalls
+weniger, dafür vollständig), die Dimensionen stehen zweispaltig, und es werden
+nur so viele Beobachtungen gezeigt, wie **ganz** hineinpassen.
+
+Der Grund ist nicht Ästhetik: Eine feste Größe schob die Beobachtungen auf
+jedem Laptop unter den Rand, und was unter dem Rand steht, sieht im Gespräch
+niemand — im Gespräch scrollt niemand. Im Panel trägt jede Karte nur ihre
+Überschrift; der Satz darunter gehört dem Berater und steht in der Auswertung.
+Beim Closer, wo das Dashboard in einer eigenen Spalte steht, bleiben die
+Karten vollständig.
 
 ---
 
@@ -500,9 +522,15 @@ Größenwechsel wieder nicht stimmt.
 ## 10a. Der Schnitt zwischen den Werkzeugen
 
 Wechselt der Interessent vom Videogespräch in das Radar — oder vom Radar
-weiter zum Angebot —, legt sich für 1,75 Sekunden die Marke über den
-Bildschirm: die Bildmarke mit Schein, zwei aufziehende Ringe, ein Lichtstreifen
-quer durchs Bild, „OKUN RADAR" und die Unterzeile.
+weiter zum Angebot —, legt sich für 1,9 Sekunden die Marke über den
+Bildschirm: die Bildmarke mit Schein, aufziehende Ringe, ein Lichtstreifen
+quer durchs Bild, „OKUN SYSTEMS", eine Trennlinie und die Unterzeile. Beim
+Eintritt in die Analyse steht darunter der **Firmenname** im Großformat — der
+Interessent soll in der Sekunde des Wechsels sehen, dass hier über seinen
+Betrieb gesprochen wird und nicht über einen Musterfall.
+
+Absender ist OKUN Systems, nicht „OKUN Radar". Der Interessent weiß, bei wem
+er sitzt; ein zweiter Markenname daneben macht aus einem Haus zwei.
 
 Das ist kein Zierrat. Ein Bildschirm, der lautlos seinen Inhalt tauscht, fühlt
 sich an wie eine Webseite; ein Schnitt fühlt sich an wie Software, die jemand
@@ -513,7 +541,13 @@ eigener Unterzeile. Die Marke sendet dabei Wellen nach außen und wird von
 einem umlaufenden Strahl abgetastet; das Ding heißt Radar, und das Bild soll
 halten, was der Name verspricht.
 
-`modus-uebergang.tsx`, gesteuert über `ClosingClientView`. Er läuft nur bei
+`modus-uebergang.tsx`, gesteuert über `ClosingClientView`. Er steht dort
+**über** beiden Zweigen, nicht in einem davon: Radar und Gespräch sind zwei
+verschiedene Bäume, und beim Umschalten verschwindet der eine, während der
+andere entsteht. Stünde der Übergang in einem davon, würde er genau in dem
+Moment neu aufgebaut, in dem er laufen soll — und ein frisch aufgebauter
+Übergang hält sich für den ersten Aufbau und schweigt. (Genau so war es, bis
+es auffiel.) Er läuft nur bei
 einem **Wechsel**, nicht beim ersten Aufbau — wer die Seite neu lädt, während
 das Radar schon läuft, soll nicht jedes Mal den Vorspann sehen. Wer Bewegung
 abbestellt hat (`prefers-reduced-motion`), bekommt denselben Schnitt als kurzes
@@ -523,6 +557,22 @@ Aufblenden: Die Information, dass das Werkzeug gewechselt hat, bleibt.
 drei Sekunden nach, nicht mehr alle acht. Der Berater klickt „Radar starten",
 und beim Interessenten passierte vorher eine halbe Ewigkeit lang nichts — im
 Verkaufsgespräch die längsten acht Sekunden des Tages.
+
+### Der Kapitelwechsel
+
+Innerhalb des Radars bekommt jeder Phasenwechsel einen kürzeren Schnitt:
+1,15 Sekunden, ohne Marke, dafür mit großer Ziffer, Phasenname, Unterzeile und
+**Zielzeit** aus dem Katalog (`phasen-schnitt.tsx`, eingehängt in
+`radar-stage.tsx`). Aus drei Abschnitten werden damit drei Akte, und der
+Interessent weiß nach einem Blick, wo er steht und was noch kommt.
+
+Kein Markenschnitt an dieser Stelle: Das ist kein Werkzeugwechsel, sondern ein
+Kapitelwechsel innerhalb desselben Werkzeugs. Und beim Sprung in die
+Auswertung läuft nur der große Schnitt — zwei Vorhänge hintereinander wären
+einer zu viel.
+
+Wer eine Zielzeit ansagt, muss sie halten können; sie kommt deshalb aus dem
+Katalog und nicht aus einer Schätzung in der Oberfläche.
 
 ---
 
@@ -560,6 +610,22 @@ Was den Eindruck trägt, und warum es so gebaut ist:
 * **Eigene SVG-Kennungen je Diagramm** (`useId`). Standen zwei Diagramme auf
   einer Seite — im Steuerpult war genau das der Fall —, kollidierten die
   Kennungen für Verlauf und Weichzeichner und die Fläche verschwand in beiden.
+* **Drei Zuschnitte für die Antworten**, je nachdem, was zu zeigen ist
+  (`Fragekarte`): bis zu vier Antworten als 2×2-Raster mit großen Flächen,
+  mehr als vier als Zeilen, Mehrfachauswahl zweispaltig. Ein einziges Raster
+  für alles macht entweder die kurze Frage leer oder die lange unübersichtlich.
+* **Zifferntasten 1–9.** Jede Antwort trägt ihre Nummer als Abzeichen, die
+  Taste wählt sie. Der Berater führt damit durch das Gespräch, ohne die Maus
+  zu suchen. Der Horcher hängt am Fenster und ignoriert Eingabefelder,
+  `contentEditable` und jede Kombination mit Strg/Alt/Meta — sonst würde das
+  Profilformular bei jeder getippten Ziffer eine Antwort setzen.
+* **Zahlen und Marken in Geist Mono.** Uhr, Teilnehmerzahl, Phasenziffern,
+  Dimensionswerte, Fortschritt und Prozentzahlen stehen im Monospace-Schnitt;
+  Fließtext in Space Grotesk. Zwei Schnitte mit klarer Aufgabenteilung sehen
+  gebaut aus, einer für alles sieht nach Vorlage aus.
+* **Das Panel schwebt.** Rand, Schatten und eine Lichtkante oben machen aus der
+  rechten Spalte ein Gerät statt einer angrenzenden Fläche mit Trennlinie. Am
+  Telefon bleibt sie eine Leiste; dort kostet ein schwebender Kasten nur Rand.
 
 ---
 

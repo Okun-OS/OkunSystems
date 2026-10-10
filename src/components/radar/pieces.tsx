@@ -31,7 +31,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import type { SymbolKey } from "@/lib/radar/catalog";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { KundenErgebnis } from "@/lib/radar/views";
 import { useZaehler } from "./einschlag";
 
@@ -133,35 +133,171 @@ function BetonteFrage({ text, betonung }: { text: string; betonung: string[] }) 
   );
 }
 
+/**
+ * Die Frage mit ihren Antworten.
+ *
+ * Drei Zuschnitte, je nachdem, was die Frage verlangt — und das ist der
+ * Punkt: Eine Oberfläche, auf der Frage 2 genau aussieht wie Frage 11, liest
+ * sich als Formular, egal wie gut die einzelne Zeile gestaltet ist. Die Form
+ * muss mitsprechen.
+ *
+ *   • bis vier Sachantworten  → Raster aus großen Kacheln, zwei mal zwei
+ *   • mehr als vier           → Zeilen (vier große Kacheln passen noch, acht
+ *                                nicht mehr auf einen Blick)
+ *   • Mehrfachauswahl         → zwei Spalten kompakter Kacheln
+ *
+ * Jede Antwort trägt ihre Taste. Der Closer kann damit blind bedienen und
+ * seinen Kunden ansehen statt den Bildschirm — und sichtbare Tastenkürzel
+ * lassen jedes Werkzeug nach Werkzeug aussehen.
+ */
 export function Fragekarte({
   frage,
   gewaehlt,
   onWaehlen,
   disabled,
   kompakt,
+  tastatur = true,
 }: {
   frage: FrageDarstellung;
   gewaehlt: string[];
   onWaehlen: (optionKeys: string[]) => void;
   disabled?: boolean;
   kompakt?: boolean;
+  /** Tastenbedienung. Im Steuerpult aus, wenn dort getippt wird. */
+  tastatur?: boolean;
 }) {
-  function klick(key: string) {
-    if (disabled) return;
-    if (frage.modus === "einfach") {
-      onWaehlen([key]);
-      return;
+  const klick = useCallback(
+    (key: string) => {
+      if (disabled) return;
+      if (frage.modus === "einfach") {
+        onWaehlen([key]);
+        return;
+      }
+      onWaehlen(gewaehlt.includes(key) ? gewaehlt.filter((k) => k !== key) : [...gewaehlt, key]);
+    },
+    [disabled, frage.modus, gewaehlt, onWaehlen]
+  );
+
+  /*
+    Ziffern 1 bis 9 wählen die Antwort.
+
+    Eingabefelder bleiben ausgenommen: Im Steuerpult steht ein Notizfeld
+    daneben, und eine „3“ in der Gesprächsnotiz darf keine Antwort setzen.
+  */
+  useEffect(() => {
+    if (!tastatur || disabled) return;
+    function auf(e: KeyboardEvent) {
+      const ziel = e.target as HTMLElement | null;
+      if (
+        ziel &&
+        (ziel.tagName === "INPUT" ||
+          ziel.tagName === "TEXTAREA" ||
+          ziel.isContentEditable)
+      ) {
+        return;
+      }
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const n = Number(e.key);
+      if (!Number.isInteger(n) || n < 1 || n > frage.optionen.length) return;
+      e.preventDefault();
+      klick(frage.optionen[n - 1].key);
     }
-    onWaehlen(gewaehlt.includes(key) ? gewaehlt.filter((k) => k !== key) : [...gewaehlt, key]);
-  }
+    window.addEventListener("keydown", auf);
+    return () => window.removeEventListener("keydown", auf);
+  }, [tastatur, disabled, frage.optionen, klick]);
 
   const Sachsymbol = frage.symbol ? SYMBOLE[frage.symbol] : FileText;
+  const sachantworten = frage.optionen.filter((o) => (o.rolle ?? "sache") === "sache").length;
+  const zuschnitt: "raster" | "zeilen" | "spalten" =
+    frage.modus === "mehrfach" ? "spalten" : sachantworten <= 4 ? "raster" : "zeilen";
 
   return (
-    <div className="space-y-5">
-      <div>
+    <div className="space-y-6">
+      <Fragekopf frage={frage} kompakt={kompakt} />
+
+      {zuschnitt === "raster" ? (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {frage.optionen.map((o, i) => (
+            <Kachel
+              key={o.key}
+              option={o}
+              nummer={i + 1}
+              aktiv={gewaehlt.includes(o.key)}
+              disabled={disabled}
+              mehrfach={false}
+              Sachsymbol={Sachsymbol}
+              onKlick={() => klick(o.key)}
+              verzug={i * 55}
+            />
+          ))}
+        </div>
+      ) : zuschnitt === "spalten" ? (
+        <div className="grid gap-2.5 sm:grid-cols-2">
+          {frage.optionen.map((o, i) => (
+            <Kachel
+              key={o.key}
+              option={o}
+              nummer={i + 1}
+              aktiv={gewaehlt.includes(o.key)}
+              disabled={disabled}
+              mehrfach
+              flach
+              Sachsymbol={Sachsymbol}
+              onKlick={() => klick(o.key)}
+              verzug={i * 45}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-2.5">
+          {frage.optionen.map((o, i) => (
+            <Kachel
+              key={o.key}
+              option={o}
+              nummer={i + 1}
+              aktiv={gewaehlt.includes(o.key)}
+              disabled={disabled}
+              mehrfach={false}
+              flach
+              Sachsymbol={Sachsymbol}
+              onKlick={() => klick(o.key)}
+              verzug={i * 45}
+            />
+          ))}
+        </div>
+      )}
+
+      {tastatur && !disabled && frage.optionen.length <= 9 && (
+        <p className="font-mono text-[#2d4360] text-[10px] uppercase tracking-[0.2em]">
+          Tasten 1–{frage.optionen.length}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function Fragekopf({ frage, kompakt }: { frage: FrageDarstellung; kompakt?: boolean }) {
+  return (
+    <div className="relative">
+      {/*
+        Die Fragennummer als Anker im Hintergrund.
+
+        Sehr schwach, sehr groß: Sie gibt jeder Frage einen eigenen Ort und
+        nimmt der Bühne das Gefühl, immer dasselbe leere Feld zu sein. Lesbar
+        muss sie nicht sein — sie wird gespürt, nicht gelesen.
+      */}
+      {!kompakt && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -top-[46px] -left-2 select-none font-mono font-bold leading-none text-[130px] text-[#0c1a2b]"
+        >
+          {String(frage.nummer).padStart(2, "0")}
+        </span>
+      )}
+
+      <div className="relative">
         <div className="flex flex-wrap items-center gap-2.5 mb-3">
-          <span className="text-[#44546b] text-[10.5px] uppercase tracking-[0.18em] font-semibold">
+          <span className="font-mono text-[#3d5c7e] text-[10.5px] uppercase tracking-[0.2em] font-semibold">
             Analyse {String(frage.nummer).padStart(2, "0")} / {frage.gesamt}
           </span>
           {frage.thema && (
@@ -170,129 +306,181 @@ export function Fragekarte({
             </span>
           )}
           {frage.modus === "mehrfach" && (
-            <span className="px-2.5 py-1 rounded-full border border-[#17304d] bg-[#0b1524] text-[#8899b4] text-[10.5px]">
+            <span className="px-2.5 py-1 rounded-full border border-[#2a4059] bg-[rgba(0,184,255,0.06)] text-[#5fd4ff] text-[10.5px]">
               Mehrfachauswahl
             </span>
           )}
         </div>
         <h3
           className={`text-[#f4f8fd] font-bold leading-[1.18] ${
-            kompakt ? "text-[20px] tracking-tight" : "text-[27px] sm:text-[34px] lg:text-[38px] tracking-[-0.022em]"
+            kompakt
+              ? "text-[20px] tracking-tight"
+              : "text-[27px] sm:text-[34px] lg:text-[38px] tracking-[-0.022em]"
           }`}
         >
           <BetonteFrage text={frage.frage} betonung={frage.betonung ?? []} />
         </h3>
       </div>
-
-      <div className="grid gap-2.5">
-        {frage.optionen.map((o, i) => {
-          const aktiv = gewaehlt.includes(o.key);
-          const Symbol =
-            o.rolle === "unbekannt"
-              ? CircleHelp
-              : o.rolle === "keinBefund"
-                ? MinusCircle
-                : o.symbol
-                  ? SYMBOLE[o.symbol]
-                  : Sachsymbol;
-          return (
-            <button
-              key={o.key}
-              type="button"
-              onClick={() => klick(o.key)}
-              disabled={disabled}
-              aria-pressed={aktiv}
-              style={{ animationDelay: `${i * 45}ms` }}
-              className={`group relative overflow-hidden text-left rounded-2xl border outline-none transition-[transform,border-color,background-color,box-shadow] duration-200 ease-out
-                motion-safe:animate-[karte-ein_.45s_cubic-bezier(.22,1,.36,1)_both]
-                focus-visible:ring-2 focus-visible:ring-[#00b8ff]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#070d17]
-                disabled:cursor-not-allowed ${kompakt ? "px-3.5 py-3" : "px-5 py-[18px]"} ${
-                  aktiv
-                    ? "border-[#00b8ff]/60 bg-[linear-gradient(110deg,rgba(0,184,255,0.13),rgba(0,184,255,0.04)_55%,transparent)] shadow-[0_0_0_1px_rgba(0,184,255,0.22),0_14px_40px_-18px_rgba(0,184,255,0.75)]"
-                    : "border-[#14263e] bg-[linear-gradient(160deg,#0b1626,#090f1b)] hover:border-[#2b5078] hover:bg-[#0d1828] motion-safe:hover:-translate-y-[2px] hover:shadow-[0_12px_32px_-20px_rgba(0,184,255,0.55)]"
-                } ${disabled ? "opacity-60" : ""}`}
-            >
-              {/*
-                Die Glaskante: eine Haarlinie Licht an der Oberkante. Ohne sie
-                sehen dunkle Flächen flach aus — mit ihr bekommen sie eine
-                Oberfläche, auf die Licht fällt.
-              */}
-              <span
-                aria-hidden
-                className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.09)_35%,rgba(255,255,255,0.09)_65%,transparent)]"
-              />
-              {/* Der Akzentstrich links wächst beim Überfahren und bleibt bei Auswahl. */}
-              <span
-                aria-hidden
-                className={`pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 w-[3px] rounded-r-full bg-[linear-gradient(180deg,#00b8ff,#2ee6c5)] transition-all duration-300 ease-out ${
-                  aktiv ? "h-[62%] opacity-100" : "h-0 opacity-0 group-hover:h-[38%] group-hover:opacity-70"
-                }`}
-              />
-
-              <span className="relative flex items-center gap-3.5">
-                <span
-                  className={`flex-shrink-0 w-[19px] h-[19px] flex items-center justify-center border-2 transition-all duration-200 ${
-                    frage.modus === "mehrfach" ? "rounded-[6px]" : "rounded-full"
-                  } ${
-                    aktiv
-                      ? "border-[#00b8ff] bg-[#00b8ff] motion-safe:scale-105"
-                      : "border-[#2a4059] group-hover:border-[#4b7cab]"
-                  }`}
-                >
-                  {aktiv &&
-                    (frage.modus === "mehrfach" ? (
-                      <Check size={11} className="text-[#041018]" strokeWidth={3.5} />
-                    ) : (
-                      <span className="w-[7px] h-[7px] rounded-full bg-[#041018]" />
-                    ))}
-                </span>
-
-                <span
-                  className={`relative flex-shrink-0 w-10 h-10 rounded-xl border flex items-center justify-center transition-all duration-250 ${
-                    aktiv
-                      ? "border-[#00b8ff]/45 bg-[linear-gradient(145deg,rgba(0,184,255,0.22),rgba(46,230,197,0.1))] text-[#5fd4ff] shadow-[0_0_18px_-4px_rgba(0,184,255,0.7),inset_0_1px_0_rgba(255,255,255,0.1)]"
-                      : "border-[#17304d] bg-[#0c1829] text-[#4a5f7d] group-hover:border-[#2b5078] group-hover:text-[#7fb6e0] group-hover:bg-[#101f33] group-hover:shadow-[0_0_14px_-5px_rgba(0,184,255,0.55)]"
-                  }`}
-                >
-                  <Symbol size={17} strokeWidth={aktiv ? 2.1 : 1.8} />
-                </span>
-
-                <span className="min-w-0 flex-1">
-                  <span
-                    className={`block leading-snug font-medium transition-colors duration-200 ${
-                      kompakt ? "text-[13.5px]" : "text-[16px]"
-                    } ${aktiv ? "text-[#f4f8fd]" : "text-[#c9d4e4] group-hover:text-[#eef2f7]"}`}
-                  >
-                    {o.label}
-                  </span>
-                  {o.hinweis && (
-                    <span className="block text-[#5b6b7f] text-[11.5px] mt-1 leading-snug">
-                      {o.hinweis}
-                    </span>
-                  )}
-                </span>
-
-                {/*
-                  Der Pfeil am rechten Rand. Er zeigt beim Überfahren, dass die
-                  ganze Fläche anklickbar ist — auf einer breiten Karte ist das
-                  sonst nicht selbstverständlich — und füllt den Raum, der
-                  rechts neben kurzen Antworten entsteht.
-                */}
-                <ChevronRight
-                  size={16}
-                  aria-hidden
-                  className={`flex-shrink-0 transition-all duration-200 ${
-                    aktiv
-                      ? "text-[#00b8ff] opacity-90 translate-x-0"
-                      : "text-[#2b5078] opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0"
-                  }`}
-                />
-              </span>
-            </button>
-          );
-        })}
-      </div>
     </div>
+  );
+}
+
+/**
+ * Eine Antwort.
+ *
+ * `flach` ist die Zeilenform, sonst die hohe Kachel fürs Raster. Beides
+ * dasselbe Bauteil, damit Auswahlzustand, Schein und Taste überall gleich
+ * aussehen — zwei getrennte Karten driften mit der Zeit auseinander.
+ */
+function Kachel({
+  option: o,
+  nummer,
+  aktiv,
+  disabled,
+  mehrfach,
+  flach,
+  Sachsymbol,
+  onKlick,
+  verzug,
+}: {
+  option: FrageDarstellung["optionen"][number];
+  nummer: number;
+  aktiv: boolean;
+  disabled?: boolean;
+  mehrfach: boolean;
+  flach?: boolean;
+  Sachsymbol: React.ComponentType<LucideProps>;
+  onKlick: () => void;
+  verzug: number;
+}) {
+  const Symbol =
+    o.rolle === "unbekannt"
+      ? CircleHelp
+      : o.rolle === "keinBefund"
+        ? MinusCircle
+        : o.symbol
+          ? SYMBOLE[o.symbol]
+          : Sachsymbol;
+
+  return (
+    <button
+      type="button"
+      onClick={onKlick}
+      disabled={disabled}
+      aria-pressed={aktiv}
+      style={{ animationDelay: `${verzug}ms` }}
+      className={`group relative overflow-hidden text-left rounded-2xl border outline-none
+        transition-[transform,border-color,background-color,box-shadow] duration-200 ease-out
+        motion-safe:animate-[karte-ein_.45s_cubic-bezier(.22,1,.36,1)_both]
+        focus-visible:ring-2 focus-visible:ring-[#00b8ff]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#060b14]
+        disabled:cursor-not-allowed ${flach ? "px-4 py-3.5" : "px-5 pt-5 pb-[18px] min-h-[132px] flex flex-col"} ${
+          aktiv
+            ? "border-[#00b8ff]/65 bg-[linear-gradient(145deg,rgba(0,184,255,0.15),rgba(46,230,197,0.05)_60%,transparent)] shadow-[0_0_0_1px_rgba(0,184,255,0.25),0_18px_46px_-20px_rgba(0,184,255,0.85)] motion-safe:-translate-y-[2px]"
+            : "border-[#14263e] bg-[linear-gradient(160deg,#0b1626,#090f1b)] hover:border-[#2b5078] hover:bg-[#0d1828] motion-safe:hover:-translate-y-[2px] hover:shadow-[0_14px_36px_-22px_rgba(0,184,255,0.6)]"
+        } ${disabled ? "opacity-60" : ""}`}
+    >
+      {/* Glaskante */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.1)_35%,rgba(255,255,255,0.1)_65%,transparent)]"
+      />
+      {/* Akzentstrich */}
+      <span
+        aria-hidden
+        className={`pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 w-[3px] rounded-r-full bg-[linear-gradient(180deg,#00b8ff,#2ee6c5)] transition-all duration-300 ease-out ${
+          aktiv ? "h-[58%] opacity-100" : "h-0 opacity-0 group-hover:h-[34%] group-hover:opacity-70"
+        }`}
+      />
+
+      {flach ? (
+        <span className="relative flex items-center gap-3.5">
+          <Taste nummer={nummer} aktiv={aktiv} mehrfach={mehrfach} />
+          <Symbolfeld Symbol={Symbol} aktiv={aktiv} klein />
+          <span className="min-w-0 flex-1">
+            <span
+              className={`block leading-snug font-medium text-[15px] transition-colors duration-200 ${
+                aktiv ? "text-[#f4f8fd]" : "text-[#c9d4e4] group-hover:text-[#eef2f7]"
+              }`}
+            >
+              {o.label}
+            </span>
+            {o.hinweis && (
+              <span className="block text-[#5b6b7f] text-[11.5px] mt-1 leading-snug">{o.hinweis}</span>
+            )}
+          </span>
+          <ChevronRight
+            size={16}
+            aria-hidden
+            className={`flex-shrink-0 transition-all duration-200 ${
+              aktiv
+                ? "text-[#00b8ff] opacity-90 translate-x-0"
+                : "text-[#2b5078] opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0"
+            }`}
+          />
+        </span>
+      ) : (
+        <>
+          <span className="relative flex items-start justify-between gap-3 mb-auto">
+            <Taste nummer={nummer} aktiv={aktiv} mehrfach={mehrfach} />
+            <Symbolfeld Symbol={Symbol} aktiv={aktiv} />
+          </span>
+          <span className="relative block mt-4">
+            <span
+              className={`block leading-snug font-semibold text-[16.5px] transition-colors duration-200 ${
+                aktiv ? "text-[#f4f8fd]" : "text-[#c9d4e4] group-hover:text-[#eef2f7]"
+              }`}
+            >
+              {o.label}
+            </span>
+            {o.hinweis && (
+              <span className="block text-[#5b6b7f] text-[11.5px] mt-1.5 leading-snug">
+                {o.hinweis}
+              </span>
+            )}
+          </span>
+        </>
+      )}
+    </button>
+  );
+}
+
+/** Die Tastenziffer. Monospace, weil sie eine Taste ist und kein Wort. */
+function Taste({ nummer, aktiv, mehrfach }: { nummer: number; aktiv: boolean; mehrfach: boolean }) {
+  return (
+    <span
+      className={`flex-shrink-0 w-[22px] h-[22px] rounded-md border flex items-center justify-center font-mono text-[11px] font-bold transition-all duration-200 ${
+        aktiv
+          ? "border-[#00b8ff] bg-[#00b8ff] text-[#041018]"
+          : "border-[#20374f] text-[#3d5c7e] group-hover:border-[#2f5a81] group-hover:text-[#6b93bd]"
+      }`}
+      title={mehrfach ? "Taste zum An- und Abwählen" : "Taste zum Auswählen"}
+    >
+      {aktiv && mehrfach ? <Check size={12} strokeWidth={3.5} /> : nummer}
+    </span>
+  );
+}
+
+function Symbolfeld({
+  Symbol,
+  aktiv,
+  klein,
+}: {
+  Symbol: React.ComponentType<LucideProps>;
+  aktiv: boolean;
+  klein?: boolean;
+}) {
+  return (
+    <span
+      className={`flex-shrink-0 rounded-xl border flex items-center justify-center transition-all duration-250 ${
+        klein ? "w-10 h-10" : "w-12 h-12"
+      } ${
+        aktiv
+          ? "border-[#00b8ff]/45 bg-[linear-gradient(145deg,rgba(0,184,255,0.24),rgba(46,230,197,0.1))] text-[#5fd4ff] shadow-[0_0_22px_-5px_rgba(0,184,255,0.85),inset_0_1px_0_rgba(255,255,255,0.1)]"
+          : "border-[#17304d] bg-[#0c1829] text-[#4a5f7d] group-hover:border-[#2b5078] group-hover:text-[#7fb6e0] group-hover:bg-[#101f33] group-hover:shadow-[0_0_16px_-6px_rgba(0,184,255,0.6)]"
+      }`}
+    >
+      <Symbol size={klein ? 17 : 20} strokeWidth={aktiv ? 2.1 : 1.8} />
+    </span>
   );
 }
 
@@ -321,13 +509,13 @@ function Achse({
         <span className="text-[#c9d4e4] text-[13px] font-medium">{a.label}</span>
         {a.wert === null ? (
           <span
-            className="text-[11px] font-semibold uppercase tracking-wider"
+            className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.14em]"
             style={{ color: BAND_FARBE[a.band] ?? "#8899b4" }}
           >
             {a.band}
           </span>
         ) : (
-          <span className="text-[#eef2f7] text-[15px] font-bold tabular-nums">
+          <span className="font-mono text-[#eef2f7] text-[16px] font-bold tabular-nums tracking-tight">
             {Math.round(gezaehlt ?? 0)}
             <span className="text-[#44546b] text-[11px] font-normal"> / 100</span>
           </span>
@@ -414,7 +602,7 @@ export function Ergebnisbericht({
       {/* Kopf */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[#5b6b7f] text-[11px] uppercase tracking-[0.18em]">
+          <p className="font-mono text-[#3d5c7e] text-[10px] uppercase tracking-[0.2em]">
             Potenzialanalyse
           </p>
           <h2 className={`text-[#eef2f7] font-bold mt-0.5 ${kompakt ? "text-lg" : "text-2xl"}`}>
@@ -449,7 +637,7 @@ export function Ergebnisbericht({
       {/* Potenzialfelder */}
       {ergebnis.felder.length > 0 && (
         <div>
-          <p className="text-[#5b6b7f] text-[11px] uppercase tracking-[0.18em] mb-2">
+          <p className="font-mono text-[#3d5c7e] text-[10px] uppercase tracking-[0.2em] mb-2.5">
             Erkannte Potenzialfelder
           </p>
           <div className={`grid gap-2 ${kompakt ? "" : "sm:grid-cols-3"}`}>
@@ -476,7 +664,7 @@ export function Ergebnisbericht({
 
       {/* Nächster Schritt */}
       <div className="rounded-xl border border-[#16283d] bg-[#070d15] px-4 py-3">
-        <p className="text-[#5b6b7f] text-[11px] uppercase tracking-[0.18em] mb-1">
+        <p className="font-mono text-[#3d5c7e] text-[10px] uppercase tracking-[0.2em] mb-1.5">
           Nächster sinnvoller Schritt
         </p>
         <p className="text-[#c9d4e4] text-[13px] leading-relaxed">{ergebnis.naechsterSchritt}</p>

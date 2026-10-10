@@ -230,8 +230,19 @@ export function ClosingClientView({ initialState, token }: Props) {
   */
   if (state.radarActive && !state.isActivated) {
     return (
-      <div className="h-screen flex flex-col bg-[#04070d]">
-        <ModusUebergang modus={modus} />
+      /*
+        Der Schnitt steht über dem Zweig, nicht darin.
+
+        Radar und Gespräch sind zwei verschiedene Bäume — beim Umschalten
+        verschwindet der eine und der andere entsteht. Stünde der Übergang in
+        einem davon, würde er genau in dem Moment neu aufgebaut, in dem er
+        laufen soll, und ein frisch aufgebauter Übergang hält sich für den
+        ersten Aufbau und schweigt. Als Geschwister über beiden Zweigen bleibt
+        er stehen und sieht den Wechsel.
+      */
+      <>
+        <ModusUebergang modus={modus} firma={state.companyName} />
+        <div key="radar" className="h-screen flex flex-col bg-[#04070d]">
         {state.recordingActive && <AufzeichnungsBand />}
         <div className="flex-1 min-h-0">
           {showStage && joined ? (
@@ -279,12 +290,15 @@ export function ClosingClientView({ initialState, token }: Props) {
             />
           )}
         </div>
-      </div>
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="relative min-h-screen bg-[#04070d] flex flex-col">
+    <>
+      <ModusUebergang modus={modus} firma={state.companyName} />
+      <div key="gespraech" className="relative min-h-screen bg-[#04070d] flex flex-col">
       {/*
         Dieselbe Materialschicht wie im Cockpit.
 
@@ -312,7 +326,6 @@ export function ClosingClientView({ initialState, token }: Props) {
         }}
       />
       <div className="relative z-10 flex flex-col flex-1">
-      <ModusUebergang modus={modus} />
       {state.recordingActive && <AufzeichnungsBand />}
 
       <header className="sticky top-0 z-20 border-b border-[#12203a] bg-[#080d16]/95 backdrop-blur">
@@ -641,7 +654,8 @@ export function ClosingClientView({ initialState, token }: Props) {
         />
       )}
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 

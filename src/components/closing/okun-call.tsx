@@ -392,21 +392,33 @@ function CallSurface({
       die Frage aufkommt.
     */
     const gegenueber = remoteIds[0] ?? null;
+    /*
+      Das Gegenüber groß, man selbst als Einblendung in der Ecke.
+
+      Zwei gleich große Briefmarken nebeneinander geben beiden zu wenig Raum —
+      und das Gesicht des Gegenübers ist im Verkaufsgespräch das Wichtigste auf
+      dem Bildschirm. Das eigene Bild braucht nur so viel Platz, dass man sieht,
+      ob man noch im Bild ist.
+    */
     const kacheln = (
-      <div className="grid grid-cols-2 gap-2">
+      <div className="relative">
         <Kachel
           sessionId={gegenueber}
           rolle={isAdvisor ? "Interessent" : "OKUN Systems · Berater"}
           akzent="#00b8ff"
           platzhalter={connecting ? "verbindet…" : "wartet auf Beitritt"}
+          gross
         />
-        <Kachel
-          sessionId={localSessionId}
-          rolle={isAdvisor ? "OKUN Systems · Sie" : "Ihr Unternehmen"}
-          akzent="#22c55e"
-          istSelbst
-          platzhalter={connecting ? "verbindet…" : "Kamera aus"}
-        />
+        <div className="absolute bottom-2.5 right-2.5 w-[38%] max-w-[150px] rounded-xl overflow-hidden shadow-[0_10px_30px_-10px_rgba(0,0,0,0.9)] ring-1 ring-[#0a1726]">
+          <Kachel
+            sessionId={localSessionId}
+            rolle={isAdvisor ? "Sie" : "Ihr Unternehmen"}
+            akzent="#22c55e"
+            istSelbst
+            platzhalter={connecting ? "verbindet…" : "Kamera aus"}
+            winzig
+          />
+        </div>
       </div>
     );
     const zustand = connecting ? "verbindet" : gegenueber ? "verbunden" : "allein";
@@ -698,27 +710,61 @@ function Kachel({
   akzent,
   istSelbst,
   platzhalter,
+  gross,
+  winzig,
 }: {
   sessionId: string | null;
   rolle: string;
   akzent: string;
   istSelbst?: boolean;
   platzhalter: string;
+  /** Die große Kachel des Gegenübers. */
+  gross?: boolean;
+  /** Die eingeblendete eigene Kachel. */
+  winzig?: boolean;
 }) {
+  const form = gross ? "aspect-[16/10] rounded-2xl" : winzig ? "aspect-video rounded-xl" : "aspect-video rounded-xl";
+
   if (!sessionId) {
     return (
-      <div className="relative aspect-video rounded-xl overflow-hidden border border-[#13243c] bg-[linear-gradient(160deg,#0b1726,#070d17)]">
+      <div
+        className={`relative ${form} overflow-hidden border border-[#13243c] bg-[linear-gradient(160deg,#0b1726,#070d17)]`}
+      >
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-50"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(35,64,95,0.13) 1px,transparent 1px)," +
+              "linear-gradient(90deg,rgba(35,64,95,0.13) 1px,transparent 1px)",
+            backgroundSize: "18px 18px",
+            maskImage: "radial-gradient(circle at 50% 46%, black 8%, transparent 70%)",
+          }}
+        />
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5">
-          <span className="w-8 h-8 rounded-full border border-dashed border-[#24415f] flex items-center justify-center">
-            <VideoIcon size={13} className="text-[#2a4059]" />
+          <span
+            className={`rounded-full border border-dashed border-[#24415f] flex items-center justify-center ${
+              winzig ? "w-6 h-6" : "w-10 h-10"
+            }`}
+          >
+            <VideoIcon size={winzig ? 10 : 15} className="text-[#2a4059]" />
           </span>
-          <span className="text-[#44546b] text-[9.5px]">{platzhalter}</span>
+          {!winzig && <span className="text-[#44546b] text-[10px]">{platzhalter}</span>}
         </div>
-        <KachelName rolle={rolle} name={null} akzent={akzent} stumm={false} />
+        <KachelName rolle={rolle} name={null} akzent={akzent} stumm={false} winzig={winzig} />
       </div>
     );
   }
-  return <BelegteKachel sessionId={sessionId} rolle={rolle} akzent={akzent} istSelbst={istSelbst} />;
+  return (
+    <BelegteKachel
+      sessionId={sessionId}
+      rolle={rolle}
+      akzent={akzent}
+      istSelbst={istSelbst}
+      form={form}
+      winzig={winzig}
+    />
+  );
 }
 
 function BelegteKachel({
@@ -726,18 +772,22 @@ function BelegteKachel({
   rolle,
   akzent,
   istSelbst,
+  form,
+  winzig,
 }: {
   sessionId: string;
   rolle: string;
   akzent: string;
   istSelbst?: boolean;
+  form: string;
+  winzig?: boolean;
 }) {
   const name = useParticipantProperty(sessionId, "user_name");
   const audioOn = useParticipantProperty(sessionId, "audio");
   const videoOn = useParticipantProperty(sessionId, "video");
 
   return (
-    <div className="relative aspect-video rounded-xl overflow-hidden border border-[#13243c] bg-[#0a111c]">
+    <div className={`relative ${form} overflow-hidden border border-[#13243c] bg-[#0a111c]`}>
       {videoOn ? (
         <DailyVideo
           sessionId={sessionId}
@@ -761,6 +811,7 @@ function BelegteKachel({
         name={name || (istSelbst ? "Sie" : null)}
         akzent={akzent}
         stumm={!audioOn}
+        winzig={winzig}
       />
     </div>
   );
@@ -771,28 +822,41 @@ function KachelName({
   name,
   akzent,
   stumm,
+  winzig,
 }: {
   rolle: string;
   name: string | null;
   akzent: string;
   stumm: boolean;
+  winzig?: boolean;
 }) {
+  if (winzig) {
+    return (
+      <div className="absolute inset-x-0 bottom-0 bg-[linear-gradient(to_top,rgba(5,9,15,0.9),transparent)] px-1.5 pt-4 pb-1 flex items-center gap-1">
+        <span className="w-[2px] h-[10px] rounded-full flex-shrink-0" style={{ background: akzent }} />
+        <span className="text-[#c9d4e4] text-[8.5px] leading-tight truncate">{name ?? rolle}</span>
+        {stumm && <MicOff size={8} className="text-[#fca5a5] flex-shrink-0 ml-auto" />}
+      </div>
+    );
+  }
   return (
-    <div className="absolute inset-x-0 bottom-0 bg-[linear-gradient(to_top,rgba(5,9,15,0.92),transparent)] px-2 pt-5 pb-1.5">
-      <div className="flex items-center gap-1.5 min-w-0">
+    <div className="absolute inset-x-0 bottom-0 bg-[linear-gradient(to_top,rgba(5,9,15,0.94),transparent)] px-3 pt-8 pb-2.5">
+      <div className="flex items-center gap-2 min-w-0">
         <span
-          className="w-[2px] h-[18px] rounded-full flex-shrink-0"
-          style={{ background: akzent }}
+          className="w-[3px] h-[22px] rounded-full flex-shrink-0"
+          style={{ background: akzent, boxShadow: `0 0 10px ${akzent}` }}
         />
         <span className="min-w-0">
           {name && (
-            <span className="block text-[#eef2f7] text-[10.5px] font-semibold leading-tight truncate">
+            <span className="block text-[#f4f8fd] text-[12.5px] font-semibold leading-tight truncate">
               {name}
             </span>
           )}
-          <span className="block text-[#8899b4] text-[9px] leading-tight truncate">{rolle}</span>
+          <span className="block font-mono text-[#5f88ae] text-[9px] uppercase tracking-[0.14em] leading-tight truncate mt-[2px]">
+            {rolle}
+          </span>
         </span>
-        {stumm && <MicOff size={9} className="text-[#fca5a5] flex-shrink-0 ml-auto" />}
+        {stumm && <MicOff size={11} className="text-[#fca5a5] flex-shrink-0 ml-auto" />}
       </div>
     </div>
   );

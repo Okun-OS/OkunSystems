@@ -138,6 +138,8 @@ export type RadarKundenAnsicht = {
     nummer: number;
     label: string;
     unterzeile: string;
+    /** „2–3 Minuten“ — aus dem Katalog, nicht geschätzt. */
+    zielzeit: string;
     aktiv: boolean;
     erledigt: boolean;
   }>;
@@ -207,6 +209,7 @@ export function kundenAnsicht(d: RadarDatensatz): RadarKundenAnsicht {
       nummer: i + 1,
       label: p.label,
       unterzeile: PHASEN_UNTERZEILE[p.key] ?? p.zielzeit,
+      zielzeit: p.zielzeit,
       aktiv: d.phase === p.key,
       erledigt:
         d.phase === "ergebnis" ||
@@ -393,6 +396,7 @@ export function closerAnsicht(d: RadarDatensatz, katalogVersion: string): RadarC
       nummer: i + 1,
       label: p.label,
       unterzeile: PHASEN_UNTERZEILE[p.key] ?? p.zielzeit,
+      zielzeit: p.zielzeit,
       aktiv: d.phase === p.key,
       erledigt: d.phase === "ergebnis" || PHASEN.findIndex((x) => x.key === d.phase) > i,
     })),

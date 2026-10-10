@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { Activity, CircleAlert, Sparkles, Star } from "lucide-react";
 import type { LiveProfil } from "@/lib/radar/live";
 import { DimensionsListe, RadarChart } from "./radar-chart";
@@ -35,25 +36,92 @@ const ART = {
   },
 } as const;
 
+/**
+ * Wie groß das Diagramm im Panel sein darf.
+ *
+ * Nicht fest, sondern aus der übrigen Höhe gerechnet. Eine feste Größe sieht
+ * auf einem großen Bildschirm verloren aus und schiebt auf einem Laptop die
+ * Beobachtungen unter den Rand — und was unter dem Rand steht, sieht im
+ * Gespräch niemand, weil im Gespräch niemand scrollt.
+ */
+const DIAGRAMM_MIN = 160;
+const DIAGRAMM_MAX = 330;
+/** Kopfzeile, Dimensionsliste und Innenabstände der Diagrammkachel. */
+const KACHEL_BEIWERK = 176;
+/** Platz für die Beobachtungen darunter — zwei Karten, wenn die Höhe reicht. */
+const KARTEN_PLATZ = 116;
+/** Eine kompakte Karte samt Abstand. Aus der gemessenen Höhe, nicht geschätzt. */
+const KARTE_HOCH = 62;
+
+function useDiagrammgroesse(an: boolean) {
+  const rahmen = useRef<HTMLDivElement>(null);
+  const [mass, setMass] = useState<{ groesse: number; sichtbar: number } | null>(null);
+
+  useEffect(() => {
+    const el = rahmen.current;
+    if (!an || !el) return;
+    const messen = () => {
+      const hoehe = el.clientHeight;
+      const frei = hoehe - KACHEL_BEIWERK - 10 - KARTEN_PLATZ;
+      /*
+        Die Untergrenze gilt, solange die Kachel sie trägt.
+
+        Auf einem flachen Fenster — Laptop mit 800 Zeilen, Browser mit zwei
+        Leisten — ist weniger Diagramm besser als ein abgeschnittenes: Lieber
+        ein kleines Netz samt vollständiger Dimensionsliste als ein großes,
+        dessen untere Hälfte hinter dem Rand liegt.
+      */
+      const platzFuerDiagramm = hoehe - KACHEL_BEIWERK;
+      const groesse = Math.round(
+        Math.max(
+          96,
+          Math.min(DIAGRAMM_MAX, Math.max(DIAGRAMM_MIN, frei), platzFuerDiagramm)
+        )
+      );
+      // Nur so viele Karten zeigen, wie ganz hineinpassen. Eine angeschnittene
+      // Karte sieht aus wie ein Fehler, nicht wie eine Fortsetzung.
+      const flaeche = hoehe - KACHEL_BEIWERK - 10 - groesse;
+      setMass({ groesse, sichtbar: Math.max(0, Math.floor((flaeche + 8) / KARTE_HOCH)) });
+    };
+    messen();
+    const beobachter = new ResizeObserver(messen);
+    beobachter.observe(el);
+    return () => beobachter.disconnect();
+  }, [an]);
+
+  return { rahmen, mass };
+}
+
 export function LiveDashboard({
   profil,
   kompakt,
   maxKarten = 4,
   ruhig,
+  fuellt,
 }: {
   profil: LiveProfil;
   kompakt?: boolean;
   maxKarten?: number;
   /** Abgeschlossene Analyse: Das Bild ist ein Bericht, kein Messgerät mehr. */
   ruhig?: boolean;
+  /**
+   * Panelbetrieb: Das Dashboard füllt die ihm gegebene Höhe aus, statt sie
+   * selbst zu bestimmen. Das Diagramm nimmt, was übrig ist; die Beobachtungen
+   * laufen darunter weiter.
+   */
+  fuellt?: boolean;
 }) {
   const nochNichts = profil.erfassteDimensionen === 0;
-  const karten = profil.beobachtungen.slice(0, maxKarten);
+  const { rahmen, mass } = useDiagrammgroesse(Boolean(fuellt));
+  const karten = profil.beobachtungen.slice(0, fuellt ? mass?.sichtbar ?? 0 : maxKarten);
 
   return (
-    <div className="space-y-3">
+    <div
+      ref={rahmen}
+      className={fuellt ? "h-full min-h-0 flex flex-col gap-2.5" : "space-y-3"}
+    >
       {/* Diagramm */}
-      <div className="relative rounded-2xl border border-[#12203a] bg-[linear-gradient(165deg,#0b1424,#070d17)] overflow-hidden">
+      <div className="relative flex-shrink-0 rounded-2xl border border-[#12203a] bg-[linear-gradient(165deg,#0b1424,#070d17)] overflow-hidden">
         <span
           aria-hidden
           className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(0,184,255,0.3),transparent)]"
@@ -67,7 +135,7 @@ export function LiveDashboard({
               Ihr Betrieb, aus Ihren eigenen Angaben
             </p>
           </div>
-          <span className="flex items-center gap-1.5 flex-shrink-0 px-2.5 py-1 rounded-full border border-[#17304d] bg-[rgba(0,184,255,0.06)] text-[#00b8ff] text-[10px] font-medium">
+          <span className="flex items-center gap-1.5 flex-shrink-0 px-2.5 py-1 rounded-full border border-[#17304d] bg-[rgba(0,184,255,0.06)] font-mono text-[#00b8ff] text-[9.5px] font-medium tabular-nums">
             <span className="radar-puls w-1.5 h-1.5 rounded-full bg-[#00b8ff] shadow-[0_0_8px_2px_rgba(0,184,255,0.5)]" />
             {profil.erfassteDimensionen} / {profil.dimensionen.length} erfasst
           </span>
@@ -76,14 +144,18 @@ export function LiveDashboard({
         <div className="px-3 pb-1 flex flex-col items-center">
           <RadarChart
             dimensionen={profil.dimensionen}
-            groesse={kompakt ? 258 : 334}
+            groesse={fuellt ? mass?.groesse ?? DIAGRAMM_MIN : kompakt ? 258 : 334}
             kompakt={kompakt}
             sweep={!ruhig}
           />
         </div>
 
         <div className="px-4 pb-4">
-          <DimensionsListe dimensionen={profil.dimensionen} kompakt={kompakt} />
+          <DimensionsListe
+            dimensionen={profil.dimensionen}
+            kompakt={kompakt}
+            spalten={fuellt}
+          />
         </div>
 
         {nochNichts && (
@@ -98,7 +170,13 @@ export function LiveDashboard({
 
       {/* Beobachtungen */}
       {karten.length > 0 && (
-        <div className={`grid gap-2 ${kompakt ? "" : "sm:grid-cols-1"}`}>
+        <div
+          className={
+            fuellt
+              ? "flex-1 min-h-0 flex flex-col gap-2 overflow-hidden"
+              : `grid gap-2 ${kompakt ? "" : "sm:grid-cols-1"}`
+          }
+        >
           {karten.map((b, i) => {
             const art = ART[b.art];
             const Symbol = art.Symbol;
@@ -106,7 +184,10 @@ export function LiveDashboard({
               <div
                 key={b.key}
                 style={{ animationDelay: `${i * 70}ms` }}
-                className={`relative overflow-hidden rounded-xl border pl-4 pr-3.5 py-3 ${art.rand} ${art.flaeche} transition-colors motion-safe:animate-[karte-ein_.5s_cubic-bezier(.22,1,.36,1)_both]`}
+                title={fuellt ? `${b.titel} — ${b.text}` : undefined}
+                className={`relative overflow-hidden rounded-xl border pl-4 pr-3.5 ${
+                  fuellt ? "py-2 flex-shrink-0" : "py-3"
+                } ${art.rand} ${art.flaeche} transition-colors motion-safe:animate-[karte-ein_.5s_cubic-bezier(.22,1,.36,1)_both]`}
               >
                 <span
                   aria-hidden
@@ -125,15 +206,31 @@ export function LiveDashboard({
                     Wer nur die Tönung sieht, soll den Unterschied trotzdem lesen.
                   */}
                   <span
-                    className="text-[9.5px] font-bold uppercase tracking-[0.12em]"
+                    className="font-mono text-[9px] font-bold uppercase tracking-[0.14em]"
                     style={{ color: art.farbe }}
                   >
                     {art.label}
                   </span>
                   <span className="text-[#44546b] text-[9.5px]">· {b.dimensionLabel}</span>
                 </div>
-                <p className="text-[#eef2f7] text-[12.5px] font-semibold leading-snug">{b.titel}</p>
-                <p className="text-[#8899b4] text-[11.5px] leading-snug mt-0.5">{b.text}</p>
+                <p
+                  className={`text-[#eef2f7] text-[12.5px] font-semibold leading-snug ${
+                    fuellt ? "truncate" : ""
+                  }`}
+                >
+                  {b.titel}
+                </p>
+                {/*
+                  Im Panel nur die Überschrift.
+
+                  Der Satz darunter gehört dem Berater: Er liest ihn vor, die
+                  Auswertung schreibt ihn aus. Auf dem Bildschirm wäre er die
+                  dritte Textebene neben Frage und Antworten — und die erste,
+                  die niemand liest.
+                */}
+                {!fuellt && (
+                  <p className="text-[#8899b4] text-[11.5px] leading-snug mt-0.5">{b.text}</p>
+                )}
               </div>
             );
           })}
@@ -150,7 +247,7 @@ export function LiveDashboard({
         </div>
       )}
 
-      {profil.beobachtungen.length > maxKarten && (
+      {!fuellt && profil.beobachtungen.length > maxKarten && (
         <p className="text-[#44546b] text-[10.5px] px-1 flex items-center gap-1.5">
           <Sparkles size={10} />
           {profil.beobachtungen.length - maxKarten} weitere Beobachtungen stehen in der
