@@ -145,3 +145,68 @@ body {
     animation: none;
   }
 }
+
+/* ─── Moduswechsel ───────────────────────────────────────────────────────── */
+
+/*
+ * Der Übergang zwischen Gespräch, Radar und Angebot.
+ *
+ * Er dauert knapp anderthalb Sekunden. Kürzer wirkt es wie ein Ruckeln,
+ * länger wie Warten — und im Verkaufsgespräch ist Warten teuer. Die Bewegung
+ * soll sagen: Hier wechselt das Werkzeug, nicht die Seite.
+ */
+@keyframes ueber-vorhang-auf {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes ueber-vorhang-zu {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(1.06); }
+}
+
+@keyframes ueber-marke {
+  0%   { opacity: 0; transform: scale(0.72); filter: blur(10px); }
+  45%  { opacity: 1; transform: scale(1.04); filter: blur(0); }
+  100% { opacity: 1; transform: scale(1); filter: blur(0); }
+}
+
+/* Der Lichtstreifen, der einmal quer durchläuft. */
+@keyframes ueber-streifen {
+  0%   { transform: translateX(-130%); opacity: 0; }
+  22%  { opacity: 1; }
+  78%  { opacity: 1; }
+  100% { transform: translateX(130%); opacity: 0; }
+}
+
+@keyframes ueber-schrift {
+  from { opacity: 0; transform: translateY(9px); letter-spacing: 0.58em; }
+  to   { opacity: 1; transform: translateY(0);   letter-spacing: 0.34em; }
+}
+
+/* Ein Ring, der sich einmal aufzieht — die Analyse „erfasst“ den Raum. */
+@keyframes ueber-puls {
+  0%   { transform: scale(0.5); opacity: 0.55; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+
+@keyframes ueber-linie {
+  from { transform: scaleX(0); opacity: 0; }
+  to   { transform: scaleX(1); opacity: 1; }
+}
+
+/*
+ * Wer Bewegung abbestellt hat, bekommt denselben Übergang als kurzes
+ * Aufblenden — nicht gar keinen. Der Schnitt trägt die Information, dass das
+ * Werkzeug gewechselt hat; die Bewegung ist nur ihre Verpackung.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .ueber-marke,
+  .ueber-streifen,
+  .ueber-puls,
+  .ueber-schrift,
+  .ueber-linie {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

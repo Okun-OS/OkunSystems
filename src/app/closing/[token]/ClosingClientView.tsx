@@ -16,6 +16,7 @@ import { OkunCall, type CallSlide } from "@/components/closing/okun-call";
 import { PdfPage } from "@/components/closing/pdf-page";
 import type { ClientClosingState } from "@/lib/closing/client-view";
 import { RadarStage } from "@/components/radar/radar-stage";
+import { ModusUebergang, type Modus } from "@/components/radar/modus-uebergang";
 
 /**
  * Kundenseite des Closings.
@@ -86,7 +87,18 @@ export function ClosingClientView({ initialState, token }: Props) {
   // Der Berater meldet Änderungen über den Datenkanal des Gesprächs; die
   // Abfrage ist nur die Rückfallebene, falls jemand noch nicht beigetreten ist.
   useEffect(() => {
-    const interval = state.isActivated ? 60_000 : joined ? 15_000 : 8_000;
+    /*
+      Vor dem Beitritt schnell nachfragen.
+
+      Vorher waren es acht Sekunden. Der Berater klickt „Radar starten“, und
+      beim Interessenten passiert eine halbe Ewigkeit lang nichts — im
+      Verkaufsgespräch die längsten acht Sekunden des Tages. Drei Sekunden
+      sind eine kleine JSON-Abfrage wert.
+
+      Wer im Gespräch sitzt, bekommt Änderungen ohnehin sofort über den
+      Datenkanal gemeldet; dort bleibt der Takt die Rückfallebene.
+    */
+    const interval = state.isActivated ? 60_000 : joined ? 15_000 : 3_000;
     pollRef.current = setInterval(refresh, interval);
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
@@ -188,6 +200,22 @@ export function ClosingClientView({ initialState, token }: Props) {
     state.offerPresented || state.consents.length > 0 || Boolean(state.invoice);
 
   /*
+    In welchem Werkzeug der Interessent gerade ist.
+
+    Der Wechsel zwischen ihnen bekommt einen Schnitt mit der Marke — er soll
+    merken, dass er in ein anderes Werkzeug gewechselt ist, und zwar in eines,
+    das jemand gebaut hat. Ein Bildschirm, der lautlos seinen Inhalt tauscht,
+    fühlt sich an wie eine Webseite.
+  */
+  const modus: Modus = state.isActivated
+    ? "angebot"
+    : state.radarActive
+      ? "radar"
+      : state.offerPresented
+        ? "angebot"
+        : "gespraech";
+
+  /*
     Läuft das OKUN Radar, bekommt es den Bildschirm.
 
     Nicht aus Effekthascherei: Das Cockpit lebt von der Fläche — links der
@@ -202,7 +230,8 @@ export function ClosingClientView({ initialState, token }: Props) {
   */
   if (state.radarActive && !state.isActivated) {
     return (
-      <div className="h-screen flex flex-col bg-[#05090f]">
+      <div className="h-screen flex flex-col bg-[#04070d]">
+        <ModusUebergang modus={modus} />
         {state.recordingActive && <AufzeichnungsBand />}
         <div className="flex-1 min-h-0">
           {showStage && joined ? (
@@ -256,6 +285,7 @@ export function ClosingClientView({ initialState, token }: Props) {
 
   return (
     <div className="min-h-screen bg-[#060a10] flex flex-col">
+      <ModusUebergang modus={modus} />
       {state.recordingActive && <AufzeichnungsBand />}
 
       <header className="sticky top-0 z-20 border-b border-[#12203a] bg-[#080d16]/95 backdrop-blur">

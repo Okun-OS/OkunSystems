@@ -1,21 +1,27 @@
 "use client";
 
-import { Building2, Check, Users, Video, WifiOff } from "lucide-react";
-import { OkunLogo } from "@/components/layout/okun-logo";
+import { Check } from "lucide-react";
+import { OkunRing } from "@/components/marketing/okun-ring";
 import type { LiveProfil } from "@/lib/radar/live";
 import { LiveDashboard } from "./live-dashboard";
 
 /**
- * Die Hülle des OKUN Radar: das Cockpit.
+ * Die Hülle des OKUN Radar.
  *
- * Drei Spalten — links der Betrieb, in der Mitte die Analyse, rechts das Bild,
- * das dabei entsteht. Beide Seiten des Gesprächs arbeiten in derselben Hülle;
- * was sie unterscheidet, ist der Inhalt, den sie hineinreichen, nicht das
- * Layout. Säßen Berater und Interessent vor verschieden gebauten Oberflächen,
- * redeten sie im Gespräch über verschiedene Bilder.
+ * Zwei Zonen statt dreier Spalten: links die Bühne mit der Frage, rechts ein
+ * durchgehendes Panel aus Gesprächsraum und Live-Analyse. Der erste Entwurf
+ * hatte drei Spalten unterschiedlicher Länge — und darunter jeweils eine große
+ * schwarze Fläche, weil keine die andere ausfüllte. Zwei Zonen, die beide bis
+ * zum Rand reichen, haben dieses Problem nicht: Die Bühne zentriert ihren
+ * Inhalt, das Panel lässt die Analyse den Rest einnehmen.
  *
- * Auf schmalen Bildschirmen stapeln sich die drei Spalten in der Reihenfolge,
- * in der sie gebraucht werden: Frage zuerst, Diagramm darunter, Kontext zuletzt.
+ * Die Navigation ist in die Markenleiste gewandert. Drei Einträge, von denen
+ * während des Gesprächs meist zwei gesperrt sind, rechtfertigen keine eigene
+ * Spalte — sie haben nur Platz gekostet und Leere erzeugt.
+ *
+ * Material: Über allem liegt eine feine Körnung und eine Vignette. Beides
+ * zusammen nimmt der dunklen Fläche das Billige — ohne sie sieht jeder
+ * Verlauf nach Bildschirmschoner aus, mit ihnen nach Oberfläche.
  */
 
 export type CockpitBereich = {
@@ -34,6 +40,16 @@ export type CockpitPhase = {
   erledigt: boolean;
 };
 
+/**
+ * Feine Körnung als Datenbild.
+ *
+ * Der eine Kunstgriff, der dunkle Oberflächen am stärksten aufwertet: Er
+ * bricht die Farbverläufe auf, die sonst in sichtbaren Stufen bandieren, und
+ * gibt der Fläche eine Textur statt einer Farbe.
+ */
+const KOERNUNG =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E\")";
+
 type Props = {
   firma: string;
   eckdaten: string | null;
@@ -41,27 +57,14 @@ type Props = {
   aktiverBereich: string;
   onBereich: (key: string) => void;
   phasen: CockpitPhase[];
-  /**
-   * Die beiden Videokacheln aus dem laufenden Gespräch.
-   *
-   * Fehlen sie, bleibt der Platz trotzdem stehen und sagt, was dort hingehört.
-   * Ein Bereich, der erst erscheint, wenn er belegt ist, ist für jeden, der die
-   * Oberfläche zum ersten Mal sieht, schlicht nicht vorhanden.
-   */
   video?: React.ReactNode;
-  /** Mikrofon, Kamera, Verlassen — gehört neben die Kacheln. */
   videoSteuerung?: React.ReactNode;
-  /** Was an der Stelle der Kacheln steht, solange das Gespräch nicht läuft. */
   videoHinweis?: React.ReactNode;
-  /** Laufzeit der Sitzung in Sekunden, für die Anzeige in der Kopfzeile. */
   laufzeitSekunden?: number | null;
   teilnehmer?: number | null;
   profil: LiveProfil;
-  /** Rechts in der Kopfzeile — weitere Aktionen. */
-  kopfzeile?: React.ReactNode;
   verbunden?: boolean;
-  /** Unten links, unter der Navigation. */
-  fuss?: React.ReactNode;
+  beraterName?: string | null;
   children: React.ReactNode;
 };
 
@@ -78,163 +81,336 @@ export function RadarCockpit({
   laufzeitSekunden,
   teilnehmer,
   profil,
-  kopfzeile,
   verbunden = true,
-  fuss,
+  beraterName,
   children,
 }: Props) {
   return (
-    /*
-      Auf breiten Bildschirmen drei Spalten in voller Höhe, jede mit eigener
-      Bildlaufleiste. Darunter untereinander und die ganze Seite scrollt.
-
-      Die Höhenbegrenzungen gelten deshalb erst ab `lg`. Ohne diese Trennung
-      quetschte `flex-1 min-h-0` auf dem Telefon die Mittelspalte auf wenige
-      Pixel zusammen — die Frage war schlicht nicht mehr da.
-    */
-    <div className="relative h-full min-h-0 flex flex-col bg-[#05090f] overflow-y-auto lg:overflow-hidden">
-      {/*
-        Zwei sehr schwache Lichtkegel hinter allem.
-
-        Ohne sie ist die Fläche flaches Schwarz und jede Karte schwebt im
-        Nichts. Mit ihnen gibt es oben links und rechts unten eine Lichtquelle,
-        an der sich Ränder und Kanten orientieren — der Unterschied zwischen
-        „dunkles Design“ und „teures dunkles Design“.
-      */}
+    <div className="relative h-full min-h-0 flex flex-col bg-[#04070d] overflow-y-auto lg:overflow-hidden">
+      {/* Lichtquellen, Körnung, Vignette — die Materialschicht. */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 z-0"
         style={{
           background:
-            "radial-gradient(1100px 600px at 12% -8%, rgba(0,184,255,0.055), transparent 62%)," +
-            "radial-gradient(900px 520px at 88% 108%, rgba(46,230,197,0.04), transparent 60%)",
+            "radial-gradient(1200px 640px at 10% -10%, rgba(0,160,255,0.09), transparent 60%)," +
+            "radial-gradient(980px 560px at 92% 4%, rgba(46,230,197,0.055), transparent 58%)," +
+            "radial-gradient(1400px 800px at 50% 120%, rgba(0,110,190,0.05), transparent 62%)",
         }}
       />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-0 opacity-[0.035] mix-blend-overlay"
+        style={{ backgroundImage: KOERNUNG, backgroundRepeat: "repeat" }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-0"
+        style={{ boxShadow: "inset 0 0 220px 60px rgba(0,0,0,0.6)" }}
+      />
+
       <div className="relative z-10 flex flex-col h-full min-h-0">
-      {/* ── Kopfzeile ──────────────────────────────────────────────────── */}
-      <header className="flex-shrink-0 border-b border-[#101d31] bg-[#070d17]">
-        <div className="px-4 sm:px-5 py-3 flex items-center gap-4">
-          <div className="hidden sm:flex w-[132px] flex-shrink-0 items-center">
-            <OkunLogo size="sm" />
-          </div>
-          <div className="hidden sm:block w-px h-7 bg-[#13243c] flex-shrink-0" />
-          <div className="min-w-0 flex-1">
-            <p className="text-[#eef2f7] text-[15px] font-semibold leading-tight">OKUN Radar</p>
-            <p className="text-[#5b6b7f] text-[11.5px] truncate leading-tight">
-              Potenzialanalyse · {firma}
-            </p>
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {!verbunden ? (
-              <span className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[#f59e0b]/30 bg-[rgba(245,158,11,0.07)] text-[#fbbf24] text-[11px]">
-                <WifiOff size={11} /> Verbindung unterbrochen
-              </span>
-            ) : (
-              <span className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#1a3a2a] bg-[rgba(34,197,94,0.07)] text-[11px]">
-                <span className="relative flex w-1.5 h-1.5">
-                  <span className="absolute inline-flex w-full h-full rounded-full bg-[#22c55e] opacity-60 motion-safe:animate-ping" />
-                  <span className="relative inline-flex w-1.5 h-1.5 rounded-full bg-[#22c55e]" />
-                </span>
-                <span className="text-[#86efac] font-medium hidden sm:inline">
-                  Live-Analyse
-                </span>
-                {typeof laufzeitSekunden === "number" && (
-                  <span className="text-[#c9d4e4] tabular-nums font-semibold">
-                    {uhr(laufzeitSekunden)}
-                  </span>
-                )}
-              </span>
-            )}
-            {typeof teilnehmer === "number" && teilnehmer > 0 && (
-              <span className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-[#13243c] text-[#8899b4] text-[11px]">
-                <Users size={11} /> {teilnehmer}
-              </span>
-            )}
-            {kopfzeile}
-          </div>
-        </div>
-      </header>
+        <Markenleiste
+          firma={firma}
+          eckdaten={eckdaten}
+          bereiche={bereiche}
+          aktiverBereich={aktiverBereich}
+          onBereich={onBereich}
+          laufzeitSekunden={laufzeitSekunden}
+          teilnehmer={teilnehmer}
+          verbunden={verbunden}
+        />
 
-      {/*
-        Breit: ein Raster aus drei Spalten, rechts oben das Gespräch, rechts
-        darunter das Live-Bild. Schmal: untereinander, und zwar so, dass das
-        Gespräch oben klebt — am Telefon soll man sein Gegenüber sehen, ohne
-        zur Seite zu scrollen.
+        <Phasenschiene phasen={phasen} />
 
-        Als verschachtelte Spalten ging das nicht: Ein Knoten kann nicht je
-        nach Bildschirmbreite an zwei verschiedenen Stellen hängen.
-      */}
-      <div className="flex-1 lg:min-h-0 flex flex-col lg:grid lg:grid-cols-[212px_minmax(0,1fr)_332px] lg:grid-rows-[auto_minmax(0,1fr)]">
-        {/* ── Linke Spalte: der Betrieb ──────────────────────────────── */}
-        <aside className="order-2 lg:order-none lg:col-start-1 lg:row-span-2 flex-shrink-0 border-b lg:border-b-0 lg:border-r border-[#101d31] bg-[#070d17] flex lg:flex-col lg:overflow-y-auto">
-          <div className="hidden lg:block px-3.5 py-4 border-b border-[#101d31]">
-            <div className="flex items-start gap-2.5">
-              <span className="flex-shrink-0 w-9 h-9 rounded-lg bg-[#0d1a2b] border border-[#17304d] flex items-center justify-center">
-                <Building2 size={15} className="text-[#4a5f7d]" />
-              </span>
-              <div className="min-w-0">
-                <p className="text-[#eef2f7] text-[12.5px] font-semibold leading-snug break-words">
-                  {firma}
-                </p>
-                {eckdaten && (
-                  <p className="text-[#5b6b7f] text-[11px] leading-snug mt-0.5">{eckdaten}</p>
-                )}
-              </div>
+        <div className="flex-1 lg:min-h-0 flex flex-col lg:flex-row">
+          {/* ── Bühne ─────────────────────────────────────────────────── */}
+          <main className="order-2 lg:order-none flex-1 min-w-0 lg:min-h-0 lg:overflow-y-auto flex">
+            {/*
+              Zentriert über `my-auto`, nicht über `justify-center`.
+
+              Mit `justify-center` schneidet ein Inhalt, der höher ist als die
+              Bühne, oben und unten ab — und der obere Rand ist genau der, an
+              dem die Frage steht. `margin: auto` zentriert, solange Platz da
+              ist, und gibt ihn sonst sauber dem Bildlauf frei.
+            */}
+            <div className="w-full my-auto px-5 sm:px-10 lg:px-14 py-8 lg:py-10">{children}</div>
+          </main>
+
+          {/* ── Panel ─────────────────────────────────────────────────── */}
+          <aside className="order-1 lg:order-none flex-shrink-0 lg:w-[400px] border-b lg:border-b-0 lg:border-l border-[#0f1d2f] bg-[#060b14]/85 backdrop-blur-sm flex flex-col lg:min-h-0">
+            <Gespraechsraum
+              video={video}
+              steuerung={videoSteuerung}
+              hinweis={videoHinweis}
+              teilnehmer={teilnehmer}
+              beraterName={beraterName}
+            />
+            <div className="hidden lg:block flex-1 min-h-0 overflow-y-auto px-4 pb-4">
+              <LiveDashboard profil={profil} />
             </div>
-          </div>
+          </aside>
 
-          <nav className="flex lg:flex-col gap-1 p-2.5 flex-1 overflow-x-auto">
-            {bereiche.map((b) => {
-              const aktiv = b.key === aktiverBereich;
-              const Symbol = b.Symbol;
-              return (
-                <button
-                  key={b.key}
-                  onClick={() => b.verfuegbar && onBereich(b.key)}
-                  disabled={!b.verfuegbar}
-                  className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[12.5px] font-medium whitespace-nowrap transition-all duration-150 ${
-                    aktiv
-                      ? "bg-[rgba(0,184,255,0.1)] border border-[#00b8ff]/35 text-[#00b8ff]"
-                      : b.verfuegbar
-                        ? "border border-transparent text-[#8899b4] hover:text-[#eef2f7] hover:bg-[#0c1626]"
-                        : "border border-transparent text-[#36455c] cursor-not-allowed"
-                  }`}
-                >
-                  <Symbol size={14} className="flex-shrink-0" />
-                  {b.label}
-                </button>
-              );
-            })}
-          </nav>
-
-          {fuss && <div className="hidden lg:block p-2.5 border-t border-[#101d31]">{fuss}</div>}
-        </aside>
-
-        {/* ── Mitte: die Analyse ─────────────────────────────────────── */}
-        <main className="order-3 lg:order-none lg:col-start-2 lg:row-span-2 min-w-0 lg:min-h-0 flex flex-col">
-          <PhasenStepper phasen={phasen} />
-          <div className="lg:flex-1 lg:min-h-0 lg:overflow-y-auto px-4 sm:px-6 py-5">
-            {children}
-          </div>
-        </main>
-
-        {/* ── Rechte Spalte: Video und Live-Bild ─────────────────────── */}
-        {/* Das Gespräch — am Telefon klebend, am Rechner rechts oben. */}
-        <section className="order-1 lg:order-none lg:col-start-3 lg:row-start-1 sticky top-0 z-30 lg:static border-b lg:border-b-0 lg:border-l border-[#101d31] bg-[#070d17]/95 backdrop-blur lg:backdrop-blur-none">
-          <Gespraechsbereich
-            video={video}
-            steuerung={videoSteuerung}
-            hinweis={videoHinweis}
-          />
-        </section>
-
-        <aside className="order-4 lg:order-none lg:col-start-3 lg:row-start-2 lg:min-h-0 border-t lg:border-t-0 lg:border-l border-[#101d31] bg-[#070d17] lg:overflow-y-auto">
-          <div className="p-3">
+          {/* Am Telefon steht die Analyse unter der Frage, nicht über ihr. */}
+          <div className="order-3 lg:hidden px-4 pb-5">
             <LiveDashboard profil={profil} kompakt />
           </div>
-        </aside>
+        </div>
       </div>
+    </div>
+  );
+}
+
+// ─── Markenleiste ────────────────────────────────────────────────────────────
+
+function Markenleiste({
+  firma,
+  eckdaten,
+  bereiche,
+  aktiverBereich,
+  onBereich,
+  laufzeitSekunden,
+  teilnehmer,
+  verbunden,
+}: {
+  firma: string;
+  eckdaten: string | null;
+  bereiche: CockpitBereich[];
+  aktiverBereich: string;
+  onBereich: (key: string) => void;
+  laufzeitSekunden?: number | null;
+  teilnehmer?: number | null;
+  verbunden: boolean;
+}) {
+  return (
+    <header className="flex-shrink-0 border-b border-[#0f1d2f] bg-[linear-gradient(180deg,rgba(9,16,27,0.9),rgba(6,11,20,0.75))]">
+      <div className="px-4 sm:px-6 h-[68px] flex items-center gap-4">
+        {/* Marke */}
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <OkunRing className="w-8 h-8 flex-shrink-0" />
+          <div className="hidden sm:block leading-none">
+            <p className="text-[#f4f8fd] text-[13.5px] font-bold tracking-[0.14em] uppercase">
+              Okun Radar
+            </p>
+            <p className="text-[#3f5572] text-[9.5px] tracking-[0.2em] uppercase mt-[3px]">
+              Potenzialanalyse
+            </p>
+          </div>
+        </div>
+
+        <span className="hidden md:block w-px h-8 bg-[linear-gradient(180deg,transparent,#17293f,transparent)] flex-shrink-0" />
+
+        {/* Unternehmen */}
+        <div className="min-w-0 flex-1">
+          <p className="text-[#dce7f5] text-[13.5px] font-semibold truncate leading-tight">
+            {firma}
+          </p>
+          {eckdaten && (
+            <p className="text-[#4a6383] text-[11px] truncate leading-tight mt-[2px]">{eckdaten}</p>
+          )}
+        </div>
+
+        {/* Ansichten */}
+        <nav className="hidden md:flex items-center gap-0.5 p-1 rounded-xl border border-[#132439] bg-[#070e1a] flex-shrink-0">
+          {bereiche.map((b) => {
+            const aktiv = b.key === aktiverBereich;
+            const Symbol = b.Symbol;
+            return (
+              <button
+                key={b.key}
+                onClick={() => b.verfuegbar && onBereich(b.key)}
+                disabled={!b.verfuegbar}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11.5px] font-medium whitespace-nowrap transition-all duration-200 ${
+                  aktiv
+                    ? "bg-[linear-gradient(135deg,rgba(0,184,255,0.18),rgba(46,230,197,0.08))] text-[#5fd4ff] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+                    : b.verfuegbar
+                      ? "text-[#6d86a6] hover:text-[#cfe0f2]"
+                      : "text-[#2c3e55] cursor-not-allowed"
+                }`}
+              >
+                <Symbol size={13} />
+                {b.label}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Zustand */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-[11px] ${
+              verbunden
+                ? "border-[#13402c] bg-[rgba(34,197,94,0.06)]"
+                : "border-[#4a3410] bg-[rgba(245,158,11,0.08)]"
+            }`}
+          >
+            <span className="relative flex w-1.5 h-1.5">
+              {verbunden && (
+                <span className="absolute inline-flex w-full h-full rounded-full bg-[#22c55e] opacity-60 motion-safe:animate-ping" />
+              )}
+              <span
+                className="relative inline-flex w-1.5 h-1.5 rounded-full"
+                style={{ background: verbunden ? "#22c55e" : "#f59e0b" }}
+              />
+            </span>
+            <span className="hidden lg:inline text-[#8bb3a0] font-medium tracking-wide">
+              {verbunden ? "Live" : "Getrennt"}
+            </span>
+            {typeof laufzeitSekunden === "number" && (
+              <span className="text-[#dce7f5] tabular-nums font-semibold">
+                {uhr(laufzeitSekunden)}
+              </span>
+            )}
+          </span>
+          {typeof teilnehmer === "number" && teilnehmer > 0 && (
+            <span className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-[#132439] text-[#6d86a6] text-[11px] tabular-nums">
+              <span className="w-1 h-1 rounded-full bg-[#2b5078]" />
+              {teilnehmer} im Raum
+            </span>
+          )}
+        </div>
       </div>
+    </header>
+  );
+}
+
+// ─── Phasenschiene ───────────────────────────────────────────────────────────
+
+/**
+ * Die drei Phasen über die volle Breite.
+ *
+ * Jede Phase ist ein Segment mit eigenem Füllstand, nicht nur ein Punkt. So
+ * sieht man beides: wo man ist und wie weit die laufende Phase schon ist.
+ */
+function Phasenschiene({ phasen }: { phasen: CockpitPhase[] }) {
+  return (
+    <div className="flex-shrink-0 border-b border-[#0f1d2f] bg-[#050a12]/60">
+      <ol className="flex items-stretch overflow-x-auto">
+        {phasen.map((p, i) => (
+          <li
+            key={p.key}
+            className={`relative flex-1 min-w-[150px] px-4 sm:px-6 py-3.5 flex items-center gap-3 ${
+              i > 0 ? "border-l border-[#0f1d2f]" : ""
+            } ${p.aktiv ? "bg-[linear-gradient(180deg,rgba(0,184,255,0.07),transparent)]" : ""}`}
+          >
+            <span
+              className={`flex-shrink-0 w-[30px] h-[30px] rounded-xl border flex items-center justify-center text-[11.5px] font-bold transition-all duration-300 ${
+                p.erledigt
+                  ? "border-[#1d5236] bg-[rgba(34,197,94,0.1)] text-[#4ade80]"
+                  : p.aktiv
+                    ? "border-[#00b8ff]/70 bg-[linear-gradient(140deg,rgba(0,184,255,0.2),rgba(46,230,197,0.08))] text-[#5fd4ff] shadow-[0_0_20px_-4px_rgba(0,184,255,0.7)]"
+                    : "border-[#152940] text-[#3a4f6b]"
+              }`}
+            >
+              {p.erledigt ? <Check size={14} strokeWidth={3} /> : p.nummer}
+            </span>
+            <div className="min-w-0 hidden sm:block">
+              <p
+                className={`text-[12.5px] font-semibold leading-tight truncate ${
+                  p.aktiv ? "text-[#dce7f5]" : p.erledigt ? "text-[#8aa3c0]" : "text-[#49607e]"
+                }`}
+              >
+                {p.label}
+              </p>
+              <p className="text-[#3f5572] text-[10.5px] leading-tight truncate mt-[2px]">
+                {p.unterzeile}
+              </p>
+            </div>
+
+            {/* Der Lichtbalken unter der laufenden Phase. */}
+            <span
+              aria-hidden
+              className={`absolute inset-x-0 bottom-0 h-[2px] transition-opacity duration-500 ${
+                p.aktiv ? "opacity-100" : "opacity-0"
+              }`}
+              style={{
+                background: "linear-gradient(90deg,transparent,#00b8ff,#2ee6c5,transparent)",
+                boxShadow: "0 0 14px rgba(0,184,255,0.6)",
+              }}
+            />
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+// ─── Gesprächsraum ───────────────────────────────────────────────────────────
+
+/**
+ * Der Gesprächsraum.
+ *
+ * Er steht oben im Panel und nimmt dort echten Platz ein — das Gespräch ist
+ * nicht die Randnotiz der Analyse, sondern ihr Anlass. Die Kacheln stehen
+ * nebeneinander über die volle Panelbreite; ohne laufendes Gespräch stehen
+ * dort zwei beschriftete, reservierte Plätze.
+ */
+function Gespraechsraum({
+  video,
+  steuerung,
+  hinweis,
+  teilnehmer,
+  beraterName,
+}: {
+  video?: React.ReactNode;
+  steuerung?: React.ReactNode;
+  hinweis?: React.ReactNode;
+  teilnehmer?: number | null;
+  beraterName?: string | null;
+}) {
+  const platzhalter = (
+    <div className="grid grid-cols-2 gap-2">
+      {[beraterName || "Ihr Berater", "Sie"].map((wer) => (
+        <div
+          key={wer}
+          className="relative aspect-[4/3] rounded-2xl border border-[#132439] bg-[linear-gradient(155deg,#0b1726,#060d18)] overflow-hidden flex flex-col items-center justify-center gap-2"
+        >
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.07),transparent)]"
+          />
+          {/* Ein feines Raster im leeren Platz — er soll nach Gerät aussehen,
+              nicht nach fehlendem Bild. */}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-0 opacity-[0.55]"
+            style={{
+              backgroundImage:
+                "linear-gradient(rgba(35,64,95,0.14) 1px,transparent 1px)," +
+                "linear-gradient(90deg,rgba(35,64,95,0.14) 1px,transparent 1px)",
+              backgroundSize: "16px 16px",
+              maskImage: "radial-gradient(circle at 50% 50%, black 10%, transparent 72%)",
+            }}
+          />
+          <span className="relative w-9 h-9 rounded-full border border-dashed border-[#23405f] flex items-center justify-center">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#2b5078]" />
+          </span>
+          <span className="relative text-[#3f5572] text-[10px] px-2 text-center leading-tight">{wer}</span>
+        </div>
+      ))}
+    </div>
+  );
+
+  return (
+    <div className="flex-shrink-0 p-4 space-y-3 border-b border-[#0f1d2f]">
+      <div className="flex items-center justify-between gap-2">
+        <span className="flex items-center gap-2 text-[#3f5572] text-[10px] uppercase tracking-[0.2em] font-semibold">
+          <span className="w-4 h-px bg-[#1d3b59]" />
+          Gesprächsraum
+        </span>
+        {typeof teilnehmer === "number" && teilnehmer > 0 && (
+          <span className="text-[#3f5572] text-[10px] tabular-nums">{teilnehmer} verbunden</span>
+        )}
+      </div>
+
+      <div className="lg:[&_.aspect-video]:aspect-[4/3]">{video ?? platzhalter}</div>
+
+      {(steuerung || hinweis) && (
+        <div className="flex items-center justify-between gap-2 pt-0.5">
+          {hinweis ? <div className="min-w-0 flex-1">{hinweis}</div> : <span />}
+          {steuerung && <div className="scale-[0.84] origin-right flex-shrink-0">{steuerung}</div>}
+        </div>
+      )}
     </div>
   );
 }
@@ -244,120 +420,4 @@ function uhr(sekunden: number): string {
   const m = Math.floor(sekunden / 60);
   const sek = Math.floor(sekunden % 60);
   return `${m}:${String(sek).padStart(2, "0")}`;
-}
-
-/**
- * Der Gesprächsbereich.
- *
- * Er steht immer da — auch ohne laufendes Gespräch. Dann zeigt er zwei
- * reservierte Plätze und sagt, wie man hineinkommt. Das ist der Unterschied
- * zwischen „hier ist kein Video“ und „hier ist noch kein Video“, und nur der
- * zweite Satz lässt jemanden danach suchen.
- */
-function Gespraechsbereich({
-  video,
-  steuerung,
-  hinweis,
-}: {
-  video?: React.ReactNode;
-  steuerung?: React.ReactNode;
-  hinweis?: React.ReactNode;
-}) {
-  const platzhalter = (
-    <div className="grid grid-cols-2 gap-2 w-full">
-      {["Berater", "Sie"].map((wer) => (
-        <div
-          key={wer}
-          className="relative aspect-video rounded-xl border border-dashed border-[#1a3050] bg-[linear-gradient(160deg,#0b1726,#070d17)] flex flex-col items-center justify-center gap-1"
-        >
-          <Video size={13} className="text-[#24415f]" />
-          <span className="text-[#44546b] text-[9.5px]">{wer}</span>
-        </div>
-      ))}
-    </div>
-  );
-
-  /*
-    Zwei Zuschnitte für dieselben Kacheln.
-
-    Am Rechner stehen sie groß in der rechten Spalte — dort ist Platz, und das
-    Gegenüber soll gut zu sehen sein. Am Telefon wird daraus die schmale
-    Gesprächsleiste, wie man sie von jeder Telefonie-App kennt: zwei kleine
-    Bilder links, die Steuerung rechts. Ein leerer Gesprächsraum darf dort
-    nicht ein Drittel des Bildschirms einnehmen.
-  */
-  return (
-    <div className="p-3">
-      {/* Telefon: schmale Leiste */}
-      <div className="lg:hidden flex items-center gap-2.5">
-        <div className="w-[188px] flex-shrink-0">{video ?? platzhalter}</div>
-        <div className="min-w-0 flex-1 flex items-center justify-end gap-2">
-          {hinweis && <div className="min-w-0 flex-1">{hinweis}</div>}
-          {steuerung && <div className="scale-[0.78] origin-right flex-shrink-0">{steuerung}</div>}
-        </div>
-      </div>
-
-      {/* Rechner: eigener Block in der rechten Spalte */}
-      <div className="hidden lg:block space-y-2.5">
-        <div className="flex items-center justify-between gap-2">
-          <span className="flex items-center gap-1.5 text-[#5b6b7f] text-[10px] uppercase tracking-[0.16em] font-semibold">
-            <Video size={11} /> Gesprächsraum
-          </span>
-          {steuerung && <div className="scale-[0.82] origin-right">{steuerung}</div>}
-        </div>
-        {video ?? platzhalter}
-        {hinweis && <div className="pt-0.5">{hinweis}</div>}
-      </div>
-    </div>
-  );
-}
-
-/**
- * Die Phasenleiste.
- *
- * Erledigte Phasen bekommen einen Haken, die laufende den Akzent. Der
- * Interessent soll jederzeit sehen, wie weit es noch ist — eine Analyse ohne
- * sichtbares Ende fühlt sich länger an, als sie ist.
- */
-function PhasenStepper({ phasen }: { phasen: CockpitPhase[] }) {
-  return (
-    <div className="flex-shrink-0 border-b border-[#101d31] px-4 sm:px-6 py-3.5 overflow-x-auto">
-      <ol className="flex items-center gap-2 sm:gap-3 min-w-max">
-        {phasen.map((p, i) => (
-          <li key={p.key} className="flex items-center gap-2 sm:gap-3">
-            <div className="flex items-center gap-2.5">
-              <span
-                className={`flex-shrink-0 w-7 h-7 rounded-full border flex items-center justify-center text-[11px] font-bold transition-all duration-300 ${
-                  p.erledigt
-                    ? "border-[#22c55e]/50 bg-[rgba(34,197,94,0.1)] text-[#22c55e]"
-                    : p.aktiv
-                      ? "border-[#00b8ff] bg-[rgba(0,184,255,0.12)] text-[#00b8ff] shadow-[0_0_14px_rgba(0,184,255,0.25)]"
-                      : "border-[#17304d] text-[#44546b]"
-                }`}
-              >
-                {p.erledigt ? <Check size={13} strokeWidth={3} /> : p.nummer}
-              </span>
-              <div className="hidden sm:block min-w-0">
-                <p
-                  className={`text-[12.5px] font-semibold leading-tight ${
-                    p.aktiv ? "text-[#00b8ff]" : p.erledigt ? "text-[#c9d4e4]" : "text-[#5b6b7f]"
-                  }`}
-                >
-                  {p.nummer}. {p.label}
-                </p>
-                <p className="text-[#44546b] text-[10.5px] leading-tight">{p.unterzeile}</p>
-              </div>
-            </div>
-            {i < phasen.length - 1 && (
-              <span
-                className={`hidden sm:block h-px w-8 lg:w-12 ${
-                  p.erledigt ? "bg-[#1d3f5c]" : "bg-[#13243c]"
-                }`}
-              />
-            )}
-          </li>
-        ))}
-      </ol>
-    </div>
-  );
 }

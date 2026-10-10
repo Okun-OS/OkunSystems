@@ -38,7 +38,7 @@ const ART = {
 export function LiveDashboard({
   profil,
   kompakt,
-  maxKarten = 3,
+  maxKarten = 4,
 }: {
   profil: LiveProfil;
   kompakt?: boolean;
@@ -73,7 +73,7 @@ export function LiveDashboard({
         <div className="px-3 pb-1 flex flex-col items-center">
           <RadarChart
             dimensionen={profil.dimensionen}
-            groesse={kompakt ? 258 : 300}
+            groesse={kompakt ? 258 : 334}
             kompakt={kompakt}
           />
         </div>

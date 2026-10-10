@@ -28,6 +28,7 @@ import {
   Users,
   Workflow,
   Zap,
+  ChevronRight,
 } from "lucide-react";
 import type { SymbolKey } from "@/lib/radar/catalog";
 import type { KundenErgebnis } from "@/lib/radar/views";
@@ -173,8 +174,8 @@ export function Fragekarte({
           )}
         </div>
         <h3
-          className={`text-[#f4f8fd] font-bold tracking-tight leading-[1.25] ${
-            kompakt ? "text-[20px]" : "text-[24px] sm:text-[30px]"
+          className={`text-[#f4f8fd] font-bold leading-[1.18] ${
+            kompakt ? "text-[20px] tracking-tight" : "text-[27px] sm:text-[34px] lg:text-[38px] tracking-[-0.022em]"
           }`}
         >
           <BetonteFrage text={frage.frage} betonung={frage.betonung ?? []} />
@@ -203,7 +204,7 @@ export function Fragekarte({
               className={`group relative overflow-hidden text-left rounded-2xl border outline-none transition-[transform,border-color,background-color,box-shadow] duration-200 ease-out
                 motion-safe:animate-[karte-ein_.45s_cubic-bezier(.22,1,.36,1)_both]
                 focus-visible:ring-2 focus-visible:ring-[#00b8ff]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#070d17]
-                disabled:cursor-not-allowed ${kompakt ? "px-3.5 py-3" : "px-4 sm:px-5 py-4"} ${
+                disabled:cursor-not-allowed ${kompakt ? "px-3.5 py-3" : "px-5 py-[18px]"} ${
                   aktiv
                     ? "border-[#00b8ff]/60 bg-[linear-gradient(110deg,rgba(0,184,255,0.13),rgba(0,184,255,0.04)_55%,transparent)] shadow-[0_0_0_1px_rgba(0,184,255,0.22),0_14px_40px_-18px_rgba(0,184,255,0.75)]"
                     : "border-[#14263e] bg-[linear-gradient(160deg,#0b1626,#090f1b)] hover:border-[#2b5078] hover:bg-[#0d1828] motion-safe:hover:-translate-y-[2px] hover:shadow-[0_12px_32px_-20px_rgba(0,184,255,0.55)]"
@@ -257,7 +258,7 @@ export function Fragekarte({
                 <span className="min-w-0 flex-1">
                   <span
                     className={`block leading-snug font-medium transition-colors duration-200 ${
-                      kompakt ? "text-[13.5px]" : "text-[15.5px]"
+                      kompakt ? "text-[13.5px]" : "text-[16px]"
                     } ${aktiv ? "text-[#f4f8fd]" : "text-[#c9d4e4] group-hover:text-[#eef2f7]"}`}
                   >
                     {o.label}
@@ -268,6 +269,22 @@ export function Fragekarte({
                     </span>
                   )}
                 </span>
+
+                {/*
+                  Der Pfeil am rechten Rand. Er zeigt beim Überfahren, dass die
+                  ganze Fläche anklickbar ist — auf einer breiten Karte ist das
+                  sonst nicht selbstverständlich — und füllt den Raum, der
+                  rechts neben kurzen Antworten entsteht.
+                */}
+                <ChevronRight
+                  size={16}
+                  aria-hidden
+                  className={`flex-shrink-0 transition-all duration-200 ${
+                    aktiv
+                      ? "text-[#00b8ff] opacity-90 translate-x-0"
+                      : "text-[#2b5078] opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0"
+                  }`}
+                />
               </span>
             </button>
           );

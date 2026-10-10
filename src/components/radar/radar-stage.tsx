@@ -8,7 +8,6 @@ import {
   FileText,
   Loader2,
   Radar as RadarIcon,
-  Users,
 } from "lucide-react";
 import { beiStups, stupseGegenseite } from "@/lib/radar/kanal";
 import type { RadarKundenAnsicht } from "@/lib/radar/views";
@@ -56,6 +55,10 @@ export function RadarStage({
   teilnehmer,
 }: Props) {
   const [ansicht, setAnsicht] = useState<RadarKundenAnsicht | null>(initial);
+  // Ob überhaupt schon eine Antwort vom Server da war. Ohne diese
+  // Unterscheidung behauptet die Oberfläche beim ersten Aufbau „Die Analyse
+  // ist nicht geöffnet“ — obwohl sie es schlicht noch nicht weiß.
+  const [geladen, setGeladen] = useState(initial !== null);
   const [verbunden, setVerbunden] = useState(true);
   const [sendet, setSendet] = useState<string | null>(null);
   const [bereich, setBereich] = useState("analyse");
@@ -79,6 +82,7 @@ export function RadarStage({
       if (!res.ok) return;
       const data = (await res.json()) as { radar: RadarKundenAnsicht | null };
       setVerbunden(true);
+      setGeladen(true);
       if (tippt.current) return;
       setAnsicht(data.radar);
     } catch {
@@ -89,8 +93,18 @@ export function RadarStage({
 
   useEffect(() => {
     const takt = ansicht?.abgeschlossen ? TAKT_LANGSAM_MS : TAKT_MS;
+    /*
+      Der erste Abruf läuft sofort los, nicht erst nach einem Takt — sonst
+      stünde beim Wechsel ins Radar bis zu zweieinhalb Sekunden ein
+      Ladezeichen. Über einen Timer und nicht direkt, damit das Setzen des
+      Zustands nicht im Renderpfad des Effekts landet.
+    */
+    const sofort = setTimeout(holen, 0);
     const id = setInterval(holen, takt);
-    return () => clearInterval(id);
+    return () => {
+      clearTimeout(sofort);
+      clearInterval(id);
+    };
   }, [holen, ansicht?.abgeschlossen]);
 
   useEffect(() => beiStups(() => void holen()), [holen]);
@@ -145,9 +159,18 @@ export function RadarStage({
 
   if (!ansicht) {
     return (
-      <div className="h-full flex flex-col items-center justify-center gap-3 text-center px-6 bg-[#05090f]">
-        <RadarIcon size={26} className="text-[#2a3a55]" />
-        <p className="text-[#8899b4] text-sm">Die Analyse ist gerade nicht geöffnet.</p>
+      <div className="h-full flex flex-col items-center justify-center gap-3 text-center px-6 bg-[#04070d]">
+        {geladen ? (
+          <>
+            <RadarIcon size={26} className="text-[#2a3a55]" />
+            <p className="text-[#8899b4] text-sm">Die Analyse ist gerade nicht geöffnet.</p>
+          </>
+        ) : (
+          <>
+            <Loader2 size={22} className="text-[#2a3a55] animate-spin" />
+            <p className="text-[#44546b] text-[13px]">Analyse wird geladen…</p>
+          </>
+        )}
       </div>
     );
   }
@@ -176,23 +199,7 @@ export function RadarStage({
       )}
       teilnehmer={teilnehmer ?? null}
       verbunden={verbunden}
-      fuss={
-        ansicht.closerName ? (
-          <div className="flex items-center gap-2.5 px-1 py-1">
-            <span className="w-7 h-7 rounded-full bg-[#0d1a2b] border border-[#17304d] flex items-center justify-center flex-shrink-0">
-              <Users size={12} className="text-[#4a5f7d]" />
-            </span>
-            <div className="min-w-0">
-              <p className="text-[#5b6b7f] text-[10px] uppercase tracking-wider leading-tight">
-                Ihr Berater
-              </p>
-              <p className="text-[#c9d4e4] text-[11.5px] truncate leading-tight">
-                {ansicht.closerName}
-              </p>
-            </div>
-          </div>
-        ) : null
-      }
+      beraterName={ansicht.closerName}
     >
       {fehler && (
         <div className="mb-4 rounded-xl border border-[#f59e0b]/25 bg-[rgba(245,158,11,0.06)] px-4 py-2.5">
@@ -222,7 +229,7 @@ export function RadarStage({
       ) : ansicht.spotlightAuswahl ? (
         <Warten text="Sie wählen gleich gemeinsam einen Ablauf aus, den wir uns genauer ansehen." />
       ) : ansicht.frage ? (
-        <div className="max-w-[760px]">
+        <div className="w-full max-w-[860px] mx-auto">
           <Fragekarte
             frage={ansicht.frage}
             gewaehlt={ansicht.antworten[ansicht.frage.key] ?? []}
@@ -364,7 +371,7 @@ function Profilteil({
   }
 
   return (
-    <div className="max-w-[760px] space-y-5">
+    <div className="w-full max-w-[860px] mx-auto space-y-6">
       <div>
         <p className="text-[#44546b] text-[10.5px] uppercase tracking-[0.18em] font-semibold mb-2.5">
           Phase 1 · Unternehmensprofil
@@ -466,7 +473,7 @@ function Angaben({
 
   if (gewaehlteFrage) {
     return (
-      <div className="max-w-[760px] space-y-4">
+      <div className="w-full max-w-[860px] mx-auto space-y-4">
         <button
           onClick={() => setOffen(null)}
           className="flex items-center gap-1.5 text-[#8899b4] text-[12px] hover:text-[#00b8ff] transition-colors"
@@ -484,7 +491,7 @@ function Angaben({
   }
 
   return (
-    <div className="max-w-[760px] space-y-4">
+    <div className="w-full max-w-[860px] mx-auto space-y-4">
       <div>
         <h3 className="text-[#f4f8fd] text-[22px] font-bold tracking-tight">Ihre Angaben</h3>
         <p className="text-[#8899b4] text-[13px] mt-1.5">

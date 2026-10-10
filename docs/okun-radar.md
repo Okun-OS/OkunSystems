@@ -340,10 +340,24 @@ ausdrücklich als vorläufig gekennzeichnet.
 
 ## 8a. Das Cockpit
 
-Drei Spalten: links der Betrieb und die Navigation, in der Mitte die Frage,
-rechts die Videokacheln und das Live-Bild. Beide Seiten arbeiten in **derselben
-Hülle** (`cockpit.tsx`) — säßen sie vor verschieden gebauten Oberflächen,
-redeten sie im Gespräch über verschiedene Bilder.
+**Zwei Zonen**, nicht drei Spalten: links die Bühne mit der Frage, rechts ein
+durchgehendes Panel aus Gesprächsraum und Live-Analyse. Darüber die
+Markenleiste und die Phasenschiene über die volle Breite.
+
+Der erste Entwurf hatte drei Spalten unterschiedlicher Länge — und unter jeder
+eine große schwarze Fläche, weil keine die andere ausfüllte. Zwei Zonen, die
+beide bis zum Rand reichen, haben das Problem nicht: Die Bühne zentriert ihren
+Inhalt über `my-auto` (nicht über `justify-center` — das schneidet einen zu
+hohen Inhalt oben und unten ab, und oben steht die Frage), das Panel lässt die
+Analyse den Rest einnehmen.
+
+Die Navigation ist in die Markenleiste gewandert. Drei Einträge, von denen
+während des Gesprächs meist zwei gesperrt sind, rechtfertigen keine eigene
+Spalte.
+
+Beide Seiten arbeiten in **derselben Hülle** (`cockpit.tsx`) — säßen sie vor
+verschieden gebauten Oberflächen, redeten sie im Gespräch über verschiedene
+Bilder.
 
 **Beim Interessenten** nimmt das Cockpit den ganzen Bildschirm, solange die
 Analyse läuft. Das Videogespräch läuft darin weiter: `OkunCall` bekommt ein
@@ -453,15 +467,44 @@ mit anderen Fragen entstanden ist.
 
 ---
 
+## 10a. Der Schnitt zwischen den Werkzeugen
+
+Wechselt der Interessent vom Videogespräch in das Radar — oder vom Radar
+weiter zum Angebot —, legt sich für 1,75 Sekunden die Marke über den
+Bildschirm: die Bildmarke mit Schein, zwei aufziehende Ringe, ein Lichtstreifen
+quer durchs Bild, „OKUN RADAR" und die Unterzeile.
+
+Das ist kein Zierrat. Ein Bildschirm, der lautlos seinen Inhalt tauscht, fühlt
+sich an wie eine Webseite; ein Schnitt fühlt sich an wie Software, die jemand
+gebaut hat. Genau das ist im Verkaufsgespräch die Aussage.
+
+`modus-uebergang.tsx`, gesteuert über `ClosingClientView`. Er läuft nur bei
+einem **Wechsel**, nicht beim ersten Aufbau — wer die Seite neu lädt, während
+das Radar schon läuft, soll nicht jedes Mal den Vorspann sehen. Wer Bewegung
+abbestellt hat (`prefers-reduced-motion`), bekommt denselben Schnitt als kurzes
+Aufblenden: Die Information, dass das Werkzeug gewechselt hat, bleibt.
+
+**Dazu gehört der Abfragetakt.** Vor dem Beitritt fragt die Kundenseite alle
+drei Sekunden nach, nicht mehr alle acht. Der Berater klickt „Radar starten",
+und beim Interessenten passierte vorher eine halbe Ewigkeit lang nichts — im
+Verkaufsgespräch die längsten acht Sekunden des Tages.
+
+---
+
 ## 11a. Gestaltung
 
 Was den Eindruck trägt, und warum es so gebaut ist:
 
-* **Tiefe statt Flächen.** Zwei sehr schwache Lichtkegel hinter dem Cockpit
-  (Türkis oben links, Grün unten rechts, 4–5 % Deckkraft) geben der dunklen
-  Fläche eine Lichtquelle. Jede Karte bekommt an der Oberkante eine Haarlinie
-  Licht. Das ist der Unterschied zwischen „dunkles Design" und „teures dunkles
-  Design".
+* **Material statt Farbe.** Über allem liegen drei Lichtkegel, eine feine
+  Körnung (3,5 % Deckkraft, `feTurbulence` als Datenbild) und eine Vignette.
+  Die Körnung ist der wirksamste Kunstgriff für dunkle Oberflächen: Sie bricht
+  die Verläufe auf, die sonst in sichtbaren Stufen bandieren, und gibt der
+  Fläche eine Textur statt einer Farbe. Jede Karte bekommt an der Oberkante
+  eine Haarlinie Licht.
+* **Die Phasenschiene** läuft über die volle Breite, jede Phase ein eigenes
+  Segment mit Lichtbalken unter der laufenden. Keine Punktreihe.
+* **Die Frage** steht bei 38 px mit enger Laufweite — sie ist der Gegenstand
+  des Gesprächs und soll aussehen wie einer.
 * **Antwortkarten reagieren.** Beim Überfahren: ein Akzentstrich wächst links
   hinein, die Karte hebt sich zwei Pixel, das Bildzeichen bekommt Farbe und
   einen Schein. Bei Auswahl: Verlauf, Außenschein und ein gefüllter Marker.
