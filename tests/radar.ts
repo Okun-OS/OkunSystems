@@ -15,7 +15,16 @@ import {
   spotlightVorschlaege,
   type RadarAntwort,
 } from "../src/lib/radar/engine";
-import { FRAGEN, SCHWELLEN, frage, option } from "../src/lib/radar/catalog";
+import {
+  BEOBACHTUNGEN,
+  DIMENSIONEN,
+  DIMENSION_MAX,
+  FRAGEN,
+  SCHWELLEN,
+  frage,
+  option,
+} from "../src/lib/radar/catalog";
+import { liveProfil } from "../src/lib/radar/live";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -351,6 +360,117 @@ test("Spotlight-Fragen erscheinen erst nach der Prozesswahl", () => {
   assert.ok(!aktiveFragen({ antworten: [] }).some((f) => f.phase === "spotlight"));
   assert.ok(
     aktiveFragen({ antworten: [], spotlightKey: "sp_rechnung" }).some((f) => f.phase === "spotlight")
+  );
+});
+
+// ─── Live-Bild ───────────────────────────────────────────────────────────────
+
+test("ohne Antworten hat keine Dimension einen Wert — auch nicht null", () => {
+  const p = liveProfil({ antworten: [] });
+  assert.equal(p.dimensionen.length, 5);
+  for (const d of p.dimensionen) {
+    assert.equal(d.wert, null, `${d.key} zeigt ${d.wert} statt „noch offen“`);
+    assert.equal(d.status, "offen");
+  }
+  assert.equal(p.erfassteDimensionen, 0);
+  assert.equal(p.beobachtungen.length, 0);
+});
+
+test("eine Antwort füllt genau die Dimension, zu der sie gehört", () => {
+  const p = liveProfil({ antworten: [a("P3", "P3-C")] });
+  const systeme = p.dimensionen.find((d) => d.key === "systeme")!;
+  assert.notEqual(systeme.wert, null, "Systemlandschaft gehört zu den Systemen");
+  assert.equal(p.erfassteDimensionen, 1, "Keine andere Dimension darf sich mitfüllen");
+});
+
+test("die Werte bleiben zwischen 0 und der Skala", () => {
+  const p = liveProfil({ antworten: szenarioHandarbeit, spotlightKey: "sp_rechnung" });
+  for (const d of p.dimensionen) {
+    if (d.wert === null) continue;
+    assert.ok(d.wert >= 0 && d.wert <= DIMENSION_MAX, `${d.key}: ${d.wert}`);
+  }
+});
+
+test("ein gut aufgestellter Betrieb bekommt hohe Werte, ein schwacher niedrige", () => {
+  const schwach = liveProfil({ antworten: szenarioHandarbeit, spotlightKey: "sp_rechnung" });
+  const stark = liveProfil({ antworten: szenarioRund, spotlightKey: "sp_auftrag" });
+  const mittel = (x: ReturnType<typeof liveProfil>) => {
+    const werte = x.dimensionen.map((d) => d.wert).filter((w): w is number => w !== null);
+    return werte.reduce((s2, w) => s2 + w, 0) / werte.length;
+  };
+  assert.ok(mittel(stark) > mittel(schwach), `${mittel(stark)} sollte über ${mittel(schwach)} liegen`);
+});
+
+test("Beobachtungen entstehen nur aus tatsächlich gegebenen Antworten", () => {
+  const ohne = liveProfil({ antworten: [a("P3", "P3-B")] });
+  assert.equal(ohne.beobachtungen.length, 0, "P3 hat keine Beobachtung hinterlegt");
+
+  const mit = liveProfil({ antworten: [a("P4", "P4-C")] });
+  const medienbruch = mit.beobachtungen.find((b) => b.key === "medienbruch");
+  assert.ok(medienbruch, "P4-C muss den Medienbruch auslösen");
+  assert.equal(medienbruch!.art, "hinweis");
+  assert.equal(medienbruch!.quelle, "P4");
+});
+
+test("Stärken werden genauso benannt wie Schwächen", () => {
+  const p = liveProfil({ antworten: szenarioRund, spotlightKey: "sp_auftrag" });
+  assert.ok(
+    p.beobachtungen.some((b) => b.art === "staerke"),
+    "Ein gut aufgestellter Betrieb muss Stärken angezeigt bekommen"
+  );
+  assert.ok(
+    !p.beobachtungen.some((b) => b.art === "hinweis"),
+    `Hier darf kein Hinweis stehen: ${p.beobachtungen.filter((b) => b.art === "hinweis").map((b) => b.key).join(", ")}`
+  );
+});
+
+test("Hinweise stehen vor Stärken — im Gespräch ist das die Information", () => {
+  const p = liveProfil({ antworten: [a("P4", "P4-C"), a("P10", "P10-A")] });
+  assert.equal(p.beobachtungen[0].art, "hinweis");
+});
+
+test("keine Beobachtung erfindet Zahlen, Vergleiche oder Versprechen", () => {
+  // Das Referenzbild zeigte „bis zu 40 % Effizienzgewinn“ und einen
+  // Branchenvergleich. Beides haben wir nicht und erfinden wir nicht.
+  const verboten = /\d\s*%|Euro|€|durchschnittlich|Branche|Benchmark|Vergleich|spar|Potenzial von|bis zu/i;
+  for (const b of BEOBACHTUNGEN) {
+    assert.ok(!verboten.test(b.text), `„${b.key}“ behauptet etwas Erfundenes: ${b.text}`);
+    assert.ok(!verboten.test(b.titel), `„${b.key}“ behauptet etwas Erfundenes: ${b.titel}`);
+  }
+});
+
+test("jede Beobachtung zeigt auf eine Frage und Optionen, die es gibt", () => {
+  for (const b of BEOBACHTUNGEN) {
+    assert.ok(frage(b.frage), `${b.key}: unbekannte Frage ${b.frage}`);
+    for (const k of b.optionen) {
+      assert.ok(option(b.frage, k), `${b.key}: unbekannte Option ${k}`);
+    }
+    assert.ok(b.dimension in DIMENSIONEN, `${b.key}: unbekannte Dimension ${b.dimension}`);
+  }
+});
+
+test("eine übersprungene Frage füllt ihre Dimension nicht", () => {
+  const p = liveProfil({
+    antworten: [{ frageKey: "P3", optionKeys: [], uebersprungen: true }],
+  });
+  assert.equal(p.dimensionen.find((d) => d.key === "systeme")!.wert, null);
+});
+
+test("das Live-Bild deckt sich mit dem Reifegrad der Auswertung", () => {
+  // Beide rechnen dieselbe Achse. Wenn sie auseinanderlaufen, reden Gespräch
+  // und Bericht über verschiedene Betriebe.
+  const schwach = liveProfil({ antworten: szenarioHandarbeit, spotlightKey: "sp_rechnung" });
+  const ergebnis = bewerteRadar({ antworten: szenarioHandarbeit, spotlightKey: "sp_rechnung" });
+  const mittel =
+    (schwach.dimensionen.map((d) => d.wert).filter((w): w is number => w !== null)
+      .reduce((s2, w) => s2 + w, 0) /
+      schwach.erfassteDimensionen /
+      DIMENSION_MAX) *
+    100;
+  const reife = ergebnis.achsen.find((x) => x.achse === "reife")!.wert;
+  assert.ok(
+    Math.abs(mittel - reife) < 25,
+    `Live-Mittel ${Math.round(mittel)} gegen Reifegrad ${reife} — das driftet auseinander`
   );
 });
 

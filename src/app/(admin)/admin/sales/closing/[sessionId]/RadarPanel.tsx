@@ -21,6 +21,7 @@ import { beiStups, stupseGegenseite } from "@/lib/radar/kanal";
 import type { RadarCloserAnsicht } from "@/lib/radar/views";
 import { kundenErgebnis } from "@/lib/radar/views";
 import { Ergebnisbericht, Fragekarte, STUFEN_FARBE } from "@/components/radar/pieces";
+import { LiveDashboard } from "@/components/radar/live-dashboard";
 import {
   radarAbschliessen,
   radarAntwortSetzen,
@@ -195,6 +196,25 @@ export function RadarPanel({
           </p>
         </div>
 
+        <div className="hidden md:flex items-center gap-1.5 flex-shrink-0 mr-2">
+          {ansicht.phasen.map((p) => (
+            <span
+              key={p.key}
+              title={p.unterzeile}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[11px] ${
+                p.aktiv
+                  ? "border-[#00b8ff]/40 bg-[rgba(0,184,255,0.1)] text-[#00b8ff]"
+                  : p.erledigt
+                    ? "border-[#1a2840] text-[#22c55e]"
+                    : "border-[#1a2840] text-[#44546b]"
+              }`}
+            >
+              {p.erledigt ? <Check size={10} /> : <span className="font-bold">{p.nummer}</span>}
+              {p.label}
+            </span>
+          ))}
+        </div>
+
         <div className="flex items-center gap-2 flex-wrap">
           <span
             className={`flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded-lg border ${
@@ -238,7 +258,13 @@ export function RadarPanel({
       )}
       {fehler && <Hinweis ton="fehler">{fehler}</Hinweis>}
 
-      <div className="grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)] gap-4 items-start">
+      {/*
+        Dieselbe Dreiteilung wie beim Interessenten: links der Ablauf, in der
+        Mitte die Frage, rechts das Bild, das daraus entsteht. Beide Seiten
+        sollen dieselbe Fläche vor sich haben — sonst redet der Berater im
+        Gespräch über ein anderes Diagramm als sein Gegenüber.
+      */}
+      <div className="grid grid-cols-1 xl:grid-cols-[246px_minmax(0,1fr)_304px] lg:grid-cols-[246px_minmax(0,1fr)] gap-4 items-start">
         {/* ── Fragenliste ──────────────────────────────────────────────── */}
         <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl overflow-hidden">
           <div className="px-3.5 py-2.5 border-b border-[#1a2840] flex items-center justify-between">
@@ -455,6 +481,11 @@ export function RadarPanel({
             </div>
           )}
 
+          {/* Auf schmalen Bildschirmen rutscht das Live-Bild unter die Frage. */}
+          <div className="xl:hidden">
+            <LiveDashboard profil={ansicht.live} kompakt />
+          </div>
+
           {/* Interne Notizen */}
           <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-4">
             <label className="flex items-center gap-1.5 text-[#5b6b7f] text-[10px] uppercase tracking-wider mb-2">
@@ -468,6 +499,11 @@ export function RadarPanel({
               className="w-full px-3 py-2.5 rounded-lg bg-[#070d15] border border-[#16283d] text-[#c9d4e4] text-[13px] outline-none focus:border-[#00b8ff]/40 transition-colors resize-y"
             />
           </div>
+        </div>
+
+        {/* ── Live-Bild ────────────────────────────────────────────────── */}
+        <div className="hidden xl:block">
+          <LiveDashboard profil={ansicht.live} kompakt />
         </div>
       </div>
     </div>

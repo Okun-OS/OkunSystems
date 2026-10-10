@@ -37,6 +37,9 @@ import { meldeStups, registriereSender } from "@/lib/radar/kanal";
  * Präsentationsbühne gehören zu OKUN, damit der Kunde das Gespräch nicht als
  * Fremdprodukt wahrnimmt.
  *
+ * Gibt der Aufrufer ein `stageLayout` mit, übernimmt er die ganze Fläche und
+ * bekommt Kacheln und Steuerung gereicht. Sonst gilt:
+ *
  * Die Bühne kennt vier Zustände, in dieser Reihenfolge:
  *   1. jemand teilt seinen Bildschirm  → Bildschirm groß
  *   2. eine eigene Bühne ist gesetzt   → sie groß, Teilnehmer als Streifen
@@ -86,6 +89,19 @@ export type OkunCallProps = {
    * Präsentation, weicht aber einem geteilten Bildschirm.
    */
   stage?: React.ReactNode;
+  /**
+   * Eigenes Layout für die ganze Gesprächsfläche.
+   *
+   * Statt Bühne plus Kachelstreifen plus Steuerleiste übernimmt der Aufrufer
+   * die Anordnung und bekommt die beiden Teile gereicht, die er nicht selbst
+   * bauen kann: die Teilnehmerkacheln und die Steuerung. Das OKUN Radar nutzt
+   * das — dort sitzen die Kacheln in der rechten Spalte und die Steuerung in
+   * der Kopfzeile, weil die Analyse die Fläche trägt und nicht das Video.
+   *
+   * Hat Vorrang vor `stage`, weicht aber einem geteilten Bildschirm: Wer
+   * gerade etwas zeigt, soll es auch groß zeigen können.
+   */
+  stageLayout?: (teile: { kacheln: React.ReactNode; steuerung: React.ReactNode }) => React.ReactNode;
   onLeave: () => void;
   /** Kundenseite: der Berater hat etwas geändert, Stand neu holen. */
   onRemoteChange?: () => void;
@@ -152,6 +168,7 @@ function CallSurface({
   role,
   slide,
   stage,
+  stageLayout,
   onLeave,
   onRemoteChange,
   onPrev,
@@ -315,6 +332,67 @@ function CallSurface({
         ? "slide"
         : "people";
 
+  // Die Steuerung — einmal gebaut, zweimal verwendet: in der eigenen Leiste
+  // unten und, falls der Aufrufer das Layout übernimmt, bei ihm.
+  const steuerung = (
+    <div className="flex items-center gap-2">
+      <ControlButton active={micOn} onClick={toggleMic} label={micOn ? "Stumm" : "Ton an"}>
+        {micOn ? <Mic size={15} /> : <MicOff size={15} />}
+      </ControlButton>
+      <ControlButton active={camOn} onClick={toggleCam} label={camOn ? "Kamera aus" : "Kamera an"}>
+        {camOn ? <VideoIcon size={15} /> : <VideoOff size={15} />}
+      </ControlButton>
+      {isAdvisor && (
+        <ControlButton
+          active={isSharingScreen}
+          onClick={() => (isSharingScreen ? stopScreenShare() : startScreenShare())}
+          label={isSharingScreen ? "Teilen beenden" : "Bildschirm teilen"}
+        >
+          <MonitorUp size={15} />
+        </ControlButton>
+      )}
+      <button
+        onClick={leave}
+        className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[rgba(239,68,68,0.12)] border border-[#ef4444]/30 text-[#fca5a5] text-xs font-semibold hover:bg-[rgba(239,68,68,0.2)] transition-colors"
+      >
+        <PhoneOff size={14} /> Verlassen
+      </button>
+    </div>
+  );
+
+  /**
+   * Der Aufrufer übernimmt die Fläche.
+   *
+   * Nur, solange niemand seinen Bildschirm teilt — und erst, wenn das Gespräch
+   * steht. Davor gelten Fehlermeldung und Verbindungsanzeige wie sonst auch,
+   * sonst stünde der Interessent vor einem Cockpit ohne Bild und ohne Grund.
+   */
+  if (stageLayout && !screenId) {
+    if (failureMessage) {
+      return (
+        <div className="h-full min-h-0 bg-[#05090f] p-3">
+          <CallProblem message={failureMessage} onRetry={retry} />
+        </div>
+      );
+    }
+    const kacheln = (
+      <div className="grid grid-cols-2 gap-2">
+        {remoteIds.slice(0, 1).map((id) => (
+          <Tile key={id} sessionId={id} compact />
+        ))}
+        {localSessionId && <Tile sessionId={localSessionId} compact isLocal />}
+        {remoteIds.length === 0 && (
+          <div className="aspect-video rounded-xl border border-[#12203a] bg-[#0a111c] flex items-center justify-center">
+            <p className="text-[#44546b] text-[10.5px] text-center px-2">
+              {connecting ? "verbindet…" : "wartet"}
+            </p>
+          </div>
+        )}
+      </div>
+    );
+    return <>{stageLayout({ kacheln, steuerung })}</>;
+  }
+
   return (
     <div className="flex flex-col h-full min-h-0 bg-[#05090f]">
       <div className="flex-1 min-h-0 p-3">
@@ -433,28 +511,8 @@ function CallSurface({
         </div>
       )}
 
-      <div className="px-3 py-2.5 border-t border-[#12203a] flex items-center justify-center gap-2">
-        <ControlButton active={micOn} onClick={toggleMic} label={micOn ? "Stumm" : "Ton an"}>
-          {micOn ? <Mic size={15} /> : <MicOff size={15} />}
-        </ControlButton>
-        <ControlButton active={camOn} onClick={toggleCam} label={camOn ? "Kamera aus" : "Kamera an"}>
-          {camOn ? <VideoIcon size={15} /> : <VideoOff size={15} />}
-        </ControlButton>
-        {isAdvisor && (
-          <ControlButton
-            active={isSharingScreen}
-            onClick={() => (isSharingScreen ? stopScreenShare() : startScreenShare())}
-            label={isSharingScreen ? "Teilen beenden" : "Bildschirm teilen"}
-          >
-            <MonitorUp size={15} />
-          </ControlButton>
-        )}
-        <button
-          onClick={leave}
-          className="ml-2 flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[rgba(239,68,68,0.12)] border border-[#ef4444]/30 text-[#fca5a5] text-xs font-semibold hover:bg-[rgba(239,68,68,0.2)] transition-colors"
-        >
-          <PhoneOff size={14} /> Verlassen
-        </button>
+      <div className="px-3 py-2.5 border-t border-[#12203a] flex items-center justify-center">
+        {steuerung}
       </div>
     </div>
   );

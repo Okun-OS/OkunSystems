@@ -52,8 +52,9 @@ durchgehend weiter.
 
 | Datei | Inhalt |
 |---|---|
-| `src/lib/radar/catalog.ts` | Fragen, Antworten, Gewichte, Verzweigungsregeln, Potenzialfelder, Widersprüche, Schwellen, Ergebnisformulierungen |
+| `src/lib/radar/catalog.ts` | Fragen, Antworten, Gewichte, Verzweigungsregeln, Potenzialfelder, Widersprüche, Schwellen, Ergebnisformulierungen, Live-Dimensionen, Live-Beobachtungen |
 | `src/lib/radar/engine.ts` | Aktive Fragen, Bewertung, Stufenentscheidung, Fortschritt, auffällige Antworten |
+| `src/lib/radar/live.ts` | Das Live-Bild: fünf Dimensionen und die Beobachtungen dazu |
 
 Beide Dateien greifen nicht auf die Datenbank zu. Das ist Absicht: Die
 Interessentenansicht ist eine Client-Komponente, und was `db` importiert,
@@ -76,7 +77,10 @@ kommt dort nicht an.
 
 | Datei | Inhalt |
 |---|---|
-| `src/components/radar/pieces.tsx` | Gemeinsame Bausteine: Phasenleiste, Fragekarte, Ergebnisbericht |
+| `src/components/radar/cockpit.tsx` | Die Hülle: drei Spalten, Kopfzeile, Phasenleiste |
+| `src/components/radar/radar-chart.tsx` | Das Netzdiagramm (SVG) und die Dimensionsliste |
+| `src/components/radar/live-dashboard.tsx` | Diagramm plus Beobachtungskarten |
+| `src/components/radar/pieces.tsx` | Fragekarte und Ergebnisbericht |
 | `src/components/radar/radar-stage.tsx` | Interessentenansicht |
 | `src/app/(admin)/admin/sales/closing/[sessionId]/RadarPanel.tsx` | Steuerpult des Closers |
 
@@ -209,6 +213,58 @@ Systemurteil.
 
 ---
 
+## 5a. Das Live-Bild
+
+Während des Gesprächs wächst rechts ein Netzdiagramm über fünf Dimensionen:
+**Prozesse, Systeme, Automatisierung, Daten, Organisation**. Es zeigt denselben
+Reifegrad wie die Auswertung, nur nicht als eine Zahl, sondern als fünf — jede
+Frage zahlt über ihr Thema auf genau eine Dimension ein (`DIMENSIONEN` im
+Katalog). Ein Test prüft, dass Live-Bild und Reifegrad nicht auseinanderlaufen.
+
+Nicht dabei sind **Veränderungsbereitschaft** und **wirtschaftliche Relevanz**.
+Beides sind gute Fragen, aber sie sagen nichts darüber aus, wie der Betrieb
+digital dasteht — sie gehören zur Passung. Zwei verschiedene Dinge in dieselbe
+Fläche zu malen macht die Fläche bedeutungslos.
+
+### Was dort nicht steht
+
+Die Designvorlage zeigte einen „Branchen-Benchmark", „bis zu 40 % Effizienz­gewinn
+möglich" und einen „KI-Insight" mit einem Durchschnittswert. **Nichts davon ist
+umgesetzt**, und zwar absichtlich: Wir haben keine Branchendaten, keine
+Wirkungsmessung und keine Grundlage für eine Hochrechnung. Eine erfundene Zahl
+auf dem Bildschirm ist eine Zahl, nach der der Kunde fragt — und dann steht der
+Kollege da. Ein Test (`keine Beobachtung erfindet Zahlen, Vergleiche oder
+Versprechen`) hält das offen.
+
+Stattdessen:
+
+* **eine Reihe statt zwei** — der Betrieb selbst, kein Vergleichsring
+* **Beobachtungen statt Erkenntnisse** — jede Karte nennt die Frage, aus der sie
+  folgt (`BEOBACHTUNGEN` im Katalog), und formuliert nur, was die Antwort hergibt
+* **Stärken genauso wie Hinweise** — ein gut aufgestellter Betrieb bekommt grüne
+  Karten, keine erfundenen Probleme
+
+### Fehlende Daten sehen aus wie fehlende Daten
+
+Eine Dimension ohne Antwort trägt `wert: null` und erscheint als gestrichelte
+Achse mit hohlem Ring und der Beschriftung „noch offen". Sie auf null zu
+zeichnen hieße „null von fünf" zu behaupten, und das hat niemand gesagt.
+
+Eine Dimension, die tatsächlich bei 0,0 landet, bekommt im Diagramm einen
+kleinen Sockel (10 % des Radius), damit sie nicht im Mittelpunkt verschwindet
+und dort mit „nicht erfasst" verwechselt wird. Der Sockel ist reine
+Darstellung — die Zahl daneben ist die gemessene.
+
+### Farben
+
+Eine Reihe in der Markenfarbe; die Farbe trägt keine Bedeutung. Die
+Beobachtungskarten nutzen Statusfarben (Bernstein für Hinweise, Grün für
+Stärken). Geprüft mit dem Palettenvalidator: Grün und Bernstein liegen für
+Rotblindheit bei ΔE 5,7 und damit zu dicht beieinander — die Karten tragen
+deshalb **Symbol und Beschriftung**, nicht nur die Tönung.
+
+---
+
 ## 6. Die Grenze zur Kundenseite
 
 `src/lib/radar/views.ts` stellt die Kundensicht **eigens zusammen**, statt
@@ -282,6 +338,32 @@ ausdrücklich als vorläufig gekennzeichnet.
 
 ---
 
+## 8a. Das Cockpit
+
+Drei Spalten: links der Betrieb und die Navigation, in der Mitte die Frage,
+rechts die Videokacheln und das Live-Bild. Beide Seiten arbeiten in **derselben
+Hülle** (`cockpit.tsx`) — säßen sie vor verschieden gebauten Oberflächen,
+redeten sie im Gespräch über verschiedene Bilder.
+
+**Beim Interessenten** nimmt das Cockpit den ganzen Bildschirm, solange die
+Analyse läuft. Das Videogespräch läuft darin weiter: `OkunCall` bekommt ein
+`stageLayout` und reicht die Teilnehmerkacheln in die rechte Spalte und die
+Gesprächssteuerung in die Kopfzeile. Kommt kein Videoraum zustande — keine
+Kamera, kein WebRTC, Raum noch nicht eingerichtet —, läuft die Analyse trotzdem;
+dann eben mit dem Telefon am Ohr.
+
+**Beim Closer** liegt dasselbe Dreigespann im Reiter „OKUN Radar", ergänzt um
+das, was nur er sieht: Absicht und Vorlesesatz je Frage, Herkunft der Antworten,
+auffällige Antworten, interne Notizen. Sein Video bleibt im bekannten
+verschiebbaren Fenster.
+
+**Schmale Bildschirme** stapeln in der Reihenfolge Navigation → Frage →
+Live-Bild. Die Höhenbegrenzungen des Dreispaltenlayouts greifen erst ab `lg`;
+ohne diese Trennung quetscht `flex-1 min-h-0` die Mittelspalte auf dem Telefon
+auf wenige Pixel zusammen.
+
+---
+
 ## 9. Berechtigungen
 
 | Wer | Weg | Schranke |
@@ -290,8 +372,13 @@ ausdrücklich als vorläufig gekennzeichnet.
 | Interessent | `/api/closing/radar` | das Token des Einladungslinks. Es wird **keine** Analyse-ID entgegengenommen — die ergibt sich aus der Closing Session |
 | PDF | `/api/admin/radar/pdf` | ADMIN, oder der Closer, dem das Gespräch gehört |
 
-Der Interessent darf: antworten, korrigieren, sein Profil ergänzen.
-Er darf nicht: blättern, überspringen, auswerten, freigeben, abschließen.
+Der Interessent darf: antworten, korrigieren, sein Profil ergänzen, den
+Spotlight-Ablauf mitwählen und zwischen den Fragen blättern. Das Blättern ist
+bewusst erlaubt — es ist seine Analyse, und ein Knopf, der nur beim Berater
+liegt, macht aus dem gemeinsamen Gespräch eine Vorführung. Weiter geht erst,
+wenn die Frage beantwortet ist.
+
+Er darf nicht: überspringen, auswerten, freigeben, abschließen.
 
 Antworten auf Fragen, die in dieser Analyse gar nicht gestellt werden, werden
 abgelehnt (409). Erfundene Antwortoptionen werden verworfen. Unbekannte
@@ -306,7 +393,13 @@ npx tsx tests/radar.ts                                     # Bewertungslogik, 25
 DATABASE_URL=… npx tsx tests/radar-e2e.ts                  # Datenbank und Route, 24 Tests
 ```
 
-`tests/radar.ts` deckt die Szenarien aus dem Entwicklungsauftrag ab:
+`tests/radar.ts` deckt neben der Bewertung auch das Live-Bild ab: dass ohne
+Antworten keine Dimension einen Wert trägt, dass eine Antwort genau ihre
+Dimension füllt, dass Beobachtungen nur aus gegebenen Antworten entstehen, dass
+keine davon Zahlen, Vergleiche oder Versprechen erfindet, und dass Live-Bild und
+Reifegrad nicht auseinanderlaufen.
+
+Die Szenarien aus dem Entwicklungsauftrag:
 
 1. viele manuelle Abläufe → Stufe A mit belegten Feldern
 2. hoher Digitalisierungsgrad mit Integrationspotenzial → Stufe A über den

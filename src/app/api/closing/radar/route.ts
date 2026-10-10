@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyClosingToken } from "@/lib/closing/token";
-import { frage as frageAusKatalog } from "@/lib/radar/catalog";
+import { SPOTLIGHT_PROZESSE, frage as frageAusKatalog } from "@/lib/radar/catalog";
 import { aktiveFragen } from "@/lib/radar/engine";
-import { ladeLaufendesRadar, setzeAntwort, setzeProfil, type RadarProfil } from "@/lib/radar/service";
-import { kundenAnsicht } from "@/lib/radar/views";
+import {
+  ladeLaufendesRadar,
+  setzeAntwort,
+  setzePhase,
+  setzeProfil,
+  setzeSpotlight,
+  type RadarProfil,
+} from "@/lib/radar/service";
+import { kundenAnsicht, naechsterSchritt } from "@/lib/radar/views";
 
 export const dynamic = "force-dynamic";
 
@@ -17,8 +24,13 @@ export const dynamic = "force-dynamic";
  * nirgendwohin, weil keine entgegengenommen wird.
  *
  * Was der Interessent darf: antworten, eine Antwort korrigieren, sein Profil
- * ergänzen. Was er nicht darf: weiterblättern, überspringen, auswerten,
- * freigeben, abschließen. Das Gespräch führt der Berater; das Radar auch.
+ * ergänzen, den Spotlight-Ablauf mitwählen und zwischen den Fragen blättern.
+ * Das Blättern ist bewusst erlaubt: Es ist seine Analyse, und ein Knopf, der
+ * nur beim Berater liegt, macht aus dem gemeinsamen Gespräch eine Vorführung.
+ *
+ * Was er nicht darf: überspringen, auswerten, freigeben, abschließen. Und
+ * weiterblättern erst, wenn die Frage beantwortet ist — sonst entsteht am Ende
+ * eine Lücke, die niemandem aufgefallen ist.
  */
 
 async function laden(token: string) {
@@ -46,8 +58,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   let body: {
     token?: string;
-    aktion?: "antwort" | "profil";
+    aktion?: "antwort" | "profil" | "weiter" | "zurueck" | "spotlight";
     frageKey?: string;
+    spotlightKey?: string;
     optionKeys?: unknown;
     profil?: unknown;
   };
@@ -82,6 +95,59 @@ export async function POST(request: NextRequest) {
     // Welche Felder überhaupt existieren, entscheidet der Katalog — nicht der
     // Browser. `setzeProfil` verwirft alles Unbekannte.
     await setzeProfil(radar.id, profil as RadarProfil);
+    const neu = await ladeLaufendesRadar(ergebnis.closingSessionId!);
+    return NextResponse.json({ radar: neu ? kundenAnsicht(neu) : null });
+  }
+
+  if (body.aktion === "spotlight") {
+    const key = typeof body.spotlightKey === "string" ? body.spotlightKey : "";
+    if (!SPOTLIGHT_PROZESSE.some((p) => p.key === key)) {
+      return NextResponse.json({ error: "Diesen Ablauf gibt es nicht." }, { status: 400 });
+    }
+    await setzeSpotlight(radar.id, key);
+    const nach = await ladeLaufendesRadar(ergebnis.closingSessionId!);
+    if (nach) {
+      const schritt = naechsterSchritt(nach);
+      await setzePhase(nach.id, schritt.phase, schritt.frageKey);
+    }
+    const neu = await ladeLaufendesRadar(ergebnis.closingSessionId!);
+    return NextResponse.json({ radar: neu ? kundenAnsicht(neu) : null });
+  }
+
+  if (body.aktion === "weiter" || body.aktion === "zurueck") {
+    const bereiche = Array.isArray(radar.profil.bereiche) ? radar.profil.bereiche : [];
+    const aktiv = aktiveFragen({
+      antworten: radar.antworten,
+      spotlightKey: radar.spotlightKey,
+      bereiche,
+    });
+
+    if (body.aktion === "zurueck") {
+      const index = aktiv.findIndex((f) => f.key === radar.cursorKey);
+      if (index <= 0) {
+        await setzePhase(radar.id, "profil", null);
+      } else {
+        const vorherige = aktiv[index - 1];
+        await setzePhase(radar.id, vorherige.phase, vorherige.key);
+      }
+    } else {
+      // Weiter nur mit Antwort. Eine stillschweigend übersprungene Frage ist
+      // später eine Lücke, die niemand mehr zuordnen kann — überspringen darf
+      // ausschließlich der Berater, und dann steht es auch so da.
+      const aktuelle = radar.antworten.find((a) => a.frageKey === radar.cursorKey);
+      const beantwortet =
+        radar.cursorKey === null ||
+        Boolean(aktuelle && (aktuelle.optionKeys.length > 0 || aktuelle.uebersprungen));
+      if (!beantwortet) {
+        return NextResponse.json(
+          { error: "Bitte zuerst eine Antwort wählen." },
+          { status: 409 }
+        );
+      }
+      const schritt = naechsterSchritt(radar);
+      await setzePhase(radar.id, schritt.phase, schritt.frageKey);
+    }
+
     const neu = await ladeLaufendesRadar(ergebnis.closingSessionId!);
     return NextResponse.json({ radar: neu ? kundenAnsicht(neu) : null });
   }

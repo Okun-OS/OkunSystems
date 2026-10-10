@@ -1,6 +1,24 @@
 "use client";
 
-import { Check, Circle, Minus } from "lucide-react";
+import {
+  BarChart3,
+  Check,
+  CircleHelp,
+  Clock,
+  Database,
+  FileText,
+  LayoutGrid,
+  Link2,
+  Minus,
+  MinusCircle,
+  Target,
+  Timer,
+  UserRound,
+  Users,
+  Workflow,
+  Zap,
+} from "lucide-react";
+import type { SymbolKey } from "@/lib/radar/catalog";
 import type { KundenErgebnis } from "@/lib/radar/views";
 
 /**
@@ -27,56 +45,68 @@ const BAND_FARBE: Record<string, string> = {
   hoch: "#00b8ff",
 };
 
-// ─── Fortschritt ─────────────────────────────────────────────────────────────
-
-export function Phasenleiste({
-  phasen,
-  prozent,
-}: {
-  phasen: Array<{ key: string; label: string; aktiv: boolean; erledigt: boolean }>;
-  prozent: number;
-}) {
-  return (
-    <div className="space-y-2.5">
-      <div className="flex items-center gap-1.5 flex-wrap">
-        {phasen.map((p, i) => (
-          <div key={p.key} className="flex items-center gap-1.5">
-            <span
-              className={`flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full border transition-colors ${
-                p.aktiv
-                  ? "border-[#00b8ff]/50 bg-[rgba(0,184,255,0.12)] text-[#00b8ff]"
-                  : p.erledigt
-                    ? "border-[#1a2840] text-[#22c55e]"
-                    : "border-[#1a2840] text-[#5b6b7f]"
-              }`}
-            >
-              {p.erledigt ? <Check size={10} /> : <Circle size={7} className={p.aktiv ? "fill-current" : ""} />}
-              {p.label}
-            </span>
-            {i < phasen.length - 1 && <span className="text-[#1a2840] text-xs">·</span>}
-          </div>
-        ))}
-      </div>
-      <div className="h-1 rounded-full bg-[#101b2c] overflow-hidden">
-        <div
-          className="h-full bg-[#00b8ff] transition-[width] duration-500 ease-out"
-          style={{ width: `${prozent}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-
-// ─── Frage ───────────────────────────────────────────────────────────────────
-
 export type FrageDarstellung = {
   key: string;
   frage: string;
+  thema?: string;
   modus: "einfach" | "mehrfach";
   nummer: number;
   gesamt: number;
-  optionen: Array<{ key: string; label: string; hinweis: string | null }>;
+  symbol?: SymbolKey | null;
+  betonung?: string[];
+  optionen: Array<{
+    key: string;
+    label: string;
+    hinweis: string | null;
+    rolle?: "sache" | "unbekannt" | "keinBefund";
+  }>;
 };
+
+const SYMBOLE: Record<SymbolKey, React.ComponentType<{ size?: number; className?: string }>> = {
+  papier: FileText,
+  uhr: Timer,
+  programme: LayoutGrid,
+  verbindung: Link2,
+  daten: Database,
+  menschen: UserRound,
+  blitz: Zap,
+  zeit: Clock,
+  zahlen: BarChart3,
+  team: Users,
+  ziel: Target,
+  ablauf: Workflow,
+};
+
+/**
+ * Die Frage mit Betonungen.
+ *
+ * Rein gestalterisch: Der hervorgehobene Teil gibt dem Blick einen Halt,
+ * während der Berater vorliest. Er sagt nichts über die Antwort aus.
+ */
+function BetonteFrage({ text, betonung }: { text: string; betonung: string[] }) {
+  if (betonung.length === 0) return <>{text}</>;
+
+  // Nach den zu betonenden Stellen zerlegen, Reihenfolge im Text erhalten.
+  const muster = betonung
+    .filter(Boolean)
+    .map((b) => b.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("|");
+  const teile = text.split(new RegExp(`(${muster})`, "gi"));
+
+  return (
+    <>
+      {teile.map((teil, i) =>
+        betonung.some((b) => b.toLowerCase() === teil.toLowerCase()) ? (
+          <span key={i} className="text-[#00b8ff]">
+            {teil}
+          </span>
+        ) : (
+          <span key={i}>{teil}</span>
+        )
+      )}
+    </>
+  );
+}
 
 export function Fragekarte({
   frage,
@@ -100,25 +130,40 @@ export function Fragekarte({
     onWaehlen(gewaehlt.includes(key) ? gewaehlt.filter((k) => k !== key) : [...gewaehlt, key]);
   }
 
+  const Sachsymbol = frage.symbol ? SYMBOLE[frage.symbol] : FileText;
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div>
-        <p className="text-[#5b6b7f] text-[11px] uppercase tracking-[0.18em] mb-1.5">
-          Frage {frage.nummer} von {frage.gesamt}
-          {frage.modus === "mehrfach" && " · Mehrfachauswahl"}
-        </p>
+        <div className="flex flex-wrap items-center gap-2.5 mb-3">
+          <span className="text-[#44546b] text-[10.5px] uppercase tracking-[0.18em] font-semibold">
+            Analyse {String(frage.nummer).padStart(2, "0")} / {frage.gesamt}
+          </span>
+          {frage.thema && (
+            <span className="px-2.5 py-1 rounded-full border border-[#17304d] bg-[#0b1524] text-[#8899b4] text-[10.5px]">
+              {frage.thema}
+            </span>
+          )}
+          {frage.modus === "mehrfach" && (
+            <span className="px-2.5 py-1 rounded-full border border-[#17304d] bg-[#0b1524] text-[#8899b4] text-[10.5px]">
+              Mehrfachauswahl
+            </span>
+          )}
+        </div>
         <h3
-          className={`text-[#eef2f7] font-semibold leading-snug ${
-            kompakt ? "text-base" : "text-[19px] sm:text-[22px]"
+          className={`text-[#f4f8fd] font-bold tracking-tight leading-[1.25] ${
+            kompakt ? "text-[20px]" : "text-[24px] sm:text-[30px]"
           }`}
         >
-          {frage.frage}
+          <BetonteFrage text={frage.frage} betonung={frage.betonung ?? []} />
         </h3>
       </div>
 
-      <div className="grid gap-2">
+      <div className="grid gap-2.5">
         {frage.optionen.map((o) => {
           const aktiv = gewaehlt.includes(o.key);
+          const Symbol =
+            o.rolle === "unbekannt" ? CircleHelp : o.rolle === "keinBefund" ? MinusCircle : Sachsymbol;
           return (
             <button
               key={o.key}
@@ -126,32 +171,56 @@ export function Fragekarte({
               onClick={() => klick(o.key)}
               disabled={disabled}
               aria-pressed={aktiv}
-              className={`group text-left rounded-xl border transition-all duration-150 disabled:cursor-not-allowed ${
-                kompakt ? "px-3.5 py-2.5" : "px-4 py-3.5"
+              className={`group text-left rounded-2xl border transition-all duration-200 disabled:cursor-not-allowed ${
+                kompakt ? "px-3.5 py-3" : "px-4 sm:px-5 py-4"
               } ${
                 aktiv
-                  ? "border-[#00b8ff]/60 bg-[rgba(0,184,255,0.1)]"
-                  : "border-[#16283d] bg-[#0a111c] hover:border-[#2a3a55] hover:bg-[#0c1520]"
+                  ? "border-[#00b8ff]/70 bg-[rgba(0,184,255,0.08)] shadow-[0_0_0_1px_rgba(0,184,255,0.18),0_8px_28px_-14px_rgba(0,184,255,0.6)]"
+                  : "border-[#14263e] bg-[#0a1322] hover:border-[#24415f] hover:bg-[#0d1828] hover:translate-x-[1px]"
               } ${disabled ? "opacity-60" : ""}`}
             >
-              <span className="flex items-start gap-3">
+              <span className="flex items-center gap-3.5">
+                {/* Auswahlmarkierung */}
                 <span
-                  className={`flex-shrink-0 mt-0.5 w-[18px] h-[18px] flex items-center justify-center border transition-colors ${
-                    frage.modus === "mehrfach" ? "rounded-[5px]" : "rounded-full"
-                  } ${aktiv ? "border-[#00b8ff] bg-[#00b8ff]" : "border-[#2a3a55] group-hover:border-[#44546b]"}`}
+                  className={`flex-shrink-0 w-[19px] h-[19px] flex items-center justify-center border-2 transition-all duration-200 ${
+                    frage.modus === "mehrfach" ? "rounded-[6px]" : "rounded-full"
+                  } ${
+                    aktiv
+                      ? "border-[#00b8ff] bg-[#00b8ff]"
+                      : "border-[#2a4059] group-hover:border-[#3d5c7e]"
+                  }`}
                 >
-                  {aktiv && <Check size={11} className="text-[#041018]" strokeWidth={3} />}
+                  {aktiv &&
+                    (frage.modus === "mehrfach" ? (
+                      <Check size={11} className="text-[#041018]" strokeWidth={3.5} />
+                    ) : (
+                      <span className="w-[7px] h-[7px] rounded-full bg-[#041018]" />
+                    ))}
                 </span>
-                <span className="min-w-0">
+
+                {/* Bildzeichen — für alle Sachantworten dasselbe */}
+                <span
+                  className={`flex-shrink-0 w-9 h-9 rounded-xl border flex items-center justify-center transition-colors duration-200 ${
+                    aktiv
+                      ? "border-[#00b8ff]/40 bg-[rgba(0,184,255,0.12)] text-[#00b8ff]"
+                      : "border-[#17304d] bg-[#0c1829] text-[#4a5f7d] group-hover:text-[#6b84a6]"
+                  }`}
+                >
+                  <Symbol size={16} />
+                </span>
+
+                <span className="min-w-0 flex-1">
                   <span
-                    className={`block leading-snug ${kompakt ? "text-[13px]" : "text-[15px]"} ${
-                      aktiv ? "text-[#eef2f7] font-medium" : "text-[#c9d4e4]"
-                    }`}
+                    className={`block leading-snug font-medium ${
+                      kompakt ? "text-[13.5px]" : "text-[15.5px]"
+                    } ${aktiv ? "text-[#f4f8fd]" : "text-[#c9d4e4]"}`}
                   >
                     {o.label}
                   </span>
                   {o.hinweis && (
-                    <span className="block text-[#5b6b7f] text-[11px] mt-1 leading-snug">{o.hinweis}</span>
+                    <span className="block text-[#5b6b7f] text-[11.5px] mt-1 leading-snug">
+                      {o.hinweis}
+                    </span>
                   )}
                 </span>
               </span>

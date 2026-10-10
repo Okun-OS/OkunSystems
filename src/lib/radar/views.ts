@@ -1,13 +1,16 @@
 import {
   ACHSEN_FRAGE,
+  DIMENSION_MAX,
   PHASEN,
   PROFIL_FELDER,
   SCHWELLEN,
   SPOTLIGHT_PROZESSE,
   STUFEN,
+  THEMEN,
   frage as frageAusKatalog,
   type ErgebnisStufe,
   type RadarPhase,
+  type SymbolKey,
 } from "./catalog";
 import {
   aktiveFragen,
@@ -17,6 +20,7 @@ import {
   spotlightVorschlaege,
   type RadarErgebnis,
 } from "./engine";
+import { liveProfil, type LiveProfil } from "./live";
 import type { RadarDatensatz } from "./service";
 
 /**
@@ -39,11 +43,24 @@ import type { RadarDatensatz } from "./service";
 export type FrageAnsicht = {
   key: string;
   phase: RadarPhase;
+  thema: string;
   frage: string;
   modus: "einfach" | "mehrfach";
   nummer: number;
   gesamt: number;
-  optionen: Array<{ key: string; label: string; hinweis: string | null }>;
+  symbol: SymbolKey | null;
+  betonung: string[];
+  optionen: Array<{
+    key: string;
+    label: string;
+    hinweis: string | null;
+    /**
+     * Wofür die Antwort steht. Nicht, wie gut sie ist — das bleibt drinnen.
+     * Die Oberfläche braucht es nur, um „weiß ich nicht“ anders zu zeichnen
+     * als eine Sachantwort.
+     */
+    rolle: "sache" | "unbekannt" | "keinBefund";
+  }>;
 };
 
 /**
@@ -59,14 +76,18 @@ function frageAnsicht(key: string, aktiv: Array<{ key: string }>): FrageAnsicht 
   return {
     key: f.key,
     phase: f.phase,
+    thema: THEMEN[f.thema],
     frage: f.frage,
     modus: f.modus,
     nummer: index >= 0 ? index + 1 : 0,
     gesamt: aktiv.length,
+    symbol: f.symbol ?? null,
+    betonung: f.betonung ?? [],
     optionen: f.optionen.map((o) => ({
       key: o.key,
       label: o.label,
       hinweis: o.hinweis ?? null,
+      rolle: o.unbekannt ? ("unbekannt" as const) : o.keinBefund ? ("keinBefund" as const) : ("sache" as const),
     })),
   };
 }
@@ -104,13 +125,33 @@ export type RadarKundenAnsicht = {
   rev: number;
   companyName: string;
   closerName: string | null;
+  /** Branche und Größe als eine Zeile für die Seitenleiste. */
+  eckdaten: string | null;
   phase: RadarPhase | "ergebnis";
-  phasen: Array<{ key: string; label: string; aktiv: boolean; erledigt: boolean }>;
+  phasen: Array<{
+    key: string;
+    nummer: number;
+    label: string;
+    unterzeile: string;
+    aktiv: boolean;
+    erledigt: boolean;
+  }>;
+  /**
+   * Das Live-Bild: fünf Dimensionen und die Beobachtungen dazu.
+   *
+   * Ausschließlich aus den gegebenen Antworten. Nicht erfasste Dimensionen
+   * tragen `wert: null` — sie werden nicht auf null gezeichnet, denn „null“
+   * hat niemand gesagt.
+   */
+  live: LiveProfil;
+  /** Skala des Diagramms, damit die Oberfläche sie nicht selbst kennen muss. */
+  dimensionMax: number;
   fortschritt: { beantwortet: number; gesamt: number; prozent: number };
   profilFelder: Array<{
     key: string;
     label: string;
     art: string;
+    hinweis: string | null;
     optionen: Array<{ key: string; label: string }> | null;
     wert: string | string[] | null;
   }>;
@@ -154,19 +195,25 @@ export function kundenAnsicht(d: RadarDatensatz): RadarKundenAnsicht {
     companyName: d.companyName,
     closerName: d.closerName,
     phase: d.phase,
+    eckdaten: eckdatenZeile(d.profil),
     phasen: PHASEN.map((p, i) => ({
       key: p.key,
+      nummer: i + 1,
       label: p.label,
+      unterzeile: PHASEN_UNTERZEILE[p.key] ?? p.zielzeit,
       aktiv: d.phase === p.key,
       erledigt:
         d.phase === "ergebnis" ||
         PHASEN.findIndex((x) => x.key === d.phase) > i,
     })),
+    live: liveProfil(eingabe),
+    dimensionMax: DIMENSION_MAX,
     fortschritt: { beantwortet: f.beantwortet, gesamt: f.gesamt, prozent: f.prozent },
     profilFelder: PROFIL_FELDER.map((feld) => ({
       key: feld.key,
       label: feld.label,
       art: feld.art,
+      hinweis: feld.hinweis ?? null,
       optionen: feld.optionen ? feld.optionen.map((o) => ({ key: o.key, label: o.label })) : null,
       wert: d.profil[feld.key] ?? null,
     })),
@@ -225,6 +272,33 @@ export function kundenErgebnis(e: RadarErgebnis, erstelltAm: Date | string): Kun
   };
 }
 
+/** Kurze Unterzeilen für die Phasenleiste. */
+const PHASEN_UNTERZEILE: Record<string, string> = {
+  profil: "Eckdaten und Ausgangslage",
+  potenzial: "Ihre Kernbereiche",
+  spotlight: "Ein Ablauf im Detail",
+};
+
+/**
+ * Branche und Größe als eine Zeile.
+ *
+ * Nur, was tatsächlich angegeben wurde. Steht nichts da, steht nichts da —
+ * eine erfundene Branche in der Seitenleiste fällt sofort auf und kostet mehr
+ * Vertrauen, als die Zeile wert ist.
+ */
+function eckdatenZeile(profil: Record<string, string | string[]>): string | null {
+  const groesseFeld = PROFIL_FELDER.find((f) => f.key === "groesse");
+  const teile: string[] = [];
+  if (typeof profil.branche === "string" && profil.branche.trim()) {
+    teile.push(profil.branche.trim());
+  }
+  if (typeof profil.groesse === "string") {
+    const label = groesseFeld?.optionen?.find((o) => o.key === profil.groesse)?.label;
+    if (label) teile.push(`${label} Mitarbeitende`);
+  }
+  return teile.length > 0 ? teile.join(" · ") : null;
+}
+
 // ─── Closersicht ─────────────────────────────────────────────────────────────
 
 export type CloserFrageAnsicht = FrageAnsicht & {
@@ -232,7 +306,6 @@ export type CloserFrageAnsicht = FrageAnsicht & {
   absicht: string;
   /** Ein Satz zum Vorlesen, für Kollegen, die den Betrieb nicht kennen. */
   vorlesen: string | null;
-  thema: string;
   kern: boolean;
   /** Wer die Antwort gesetzt hat. */
   quelle: "closer" | "client" | null;
@@ -256,6 +329,10 @@ export type RadarCloserAnsicht = {
   spotlightAuswahl: Array<{ key: string; label: string; empfohlen: boolean }>;
   spotlightKey: string | null;
   fortschritt: { beantwortet: number; gesamt: number; prozent: number };
+  eckdaten: string | null;
+  /** Dasselbe Live-Bild wie beim Interessenten — beide sehen dieselbe Fläche. */
+  live: LiveProfil;
+  phasen: RadarKundenAnsicht["phasen"];
   auffaellig: Array<{ frageKey: string; optionKey: string; grund: string }>;
   internalNotes: string;
   ergebnis: RadarErgebnis | null;
@@ -281,7 +358,6 @@ export function closerAnsicht(d: RadarDatensatz, katalogVersion: string): RadarC
       ...basis,
       absicht: frage.absicht,
       vorlesen: frage.vorlesen ?? null,
-      thema: frage.thema,
       kern: Boolean(frage.kern),
       quelle: antwort ? (d.quellen[frage.key] ?? null) : null,
       gewaehlt: antwort?.optionKeys ?? [],
@@ -304,6 +380,16 @@ export function closerAnsicht(d: RadarDatensatz, katalogVersion: string): RadarC
     spotlightAuswahl: spotlightVorschlaege(bereiche),
     spotlightKey: d.spotlightKey,
     fortschritt: { beantwortet: f.beantwortet, gesamt: f.gesamt, prozent: f.prozent },
+    eckdaten: eckdatenZeile(d.profil),
+    live: liveProfil(eingabe),
+    phasen: PHASEN.map((p, i) => ({
+      key: p.key,
+      nummer: i + 1,
+      label: p.label,
+      unterzeile: PHASEN_UNTERZEILE[p.key] ?? p.zielzeit,
+      aktiv: d.phase === p.key,
+      erledigt: d.phase === "ergebnis" || PHASEN.findIndex((x) => x.key === d.phase) > i,
+    })),
     auffaellig: auffaelligeAntworten(eingabe),
     internalNotes: d.internalNotes ?? "",
     ergebnis: d.ergebnis,

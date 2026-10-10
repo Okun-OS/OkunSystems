@@ -150,10 +150,42 @@ export type RadarBedingung =
   | { art: "laufwert_mindestens"; achse: RadarAchse; wert: number }
   | { art: "laufwert_hoechstens"; achse: RadarAchse; wert: number };
 
+/**
+ * Bildzeichen für die Antwortkarten.
+ *
+ * Eines je Frage, nicht je Antwort — und das ist Absicht. Gäbe man der
+ * „besten“ Antwort ein anderes Zeichen als den übrigen, verriete die Oberfläche,
+ * welche Antwort uns lieber wäre. Dann klickt der Interessent irgendwann das
+ * Zeichen statt der Wahrheit, und die ganze Analyse ist nichts mehr wert.
+ *
+ * Ausnahme sind „weiß ich nicht“ und „nichts davon“: Die sind keine Antwort auf
+ * die Sachfrage und dürfen sich auch so zeigen.
+ */
+export type SymbolKey =
+  | "papier"
+  | "uhr"
+  | "programme"
+  | "verbindung"
+  | "daten"
+  | "menschen"
+  | "blitz"
+  | "zeit"
+  | "zahlen"
+  | "team"
+  | "ziel"
+  | "ablauf";
+
 export type RadarFrage = {
   key: string;
   phase: RadarPhase;
   thema: ThemaKey;
+  /** Bildzeichen aller Antwortkarten dieser Frage. */
+  symbol?: SymbolKey;
+  /**
+   * Wörter, die in der Frage hervorgehoben werden. Rein gestalterisch — sie
+   * geben dem Blick einen Halt, wenn die Frage vorgelesen wird.
+   */
+  betonung?: string[];
   /** Worauf die Frage hinauswill. Nur der Closer sieht das. */
   absicht: string;
   frage: string;
@@ -285,6 +317,8 @@ const FRAGEN_POTENZIAL: RadarFrage[] = [
     key: "P1",
     phase: "potenzial",
     thema: "digitalisierungsgrad",
+    symbol: "papier",
+    betonung: ["Auftrag", "Papier"],
     kern: true,
     absicht: "Grundlinie: Wie viel läuft überhaupt digital? Ordnet alles Folgende ein.",
     frage: "Wenn bei Ihnen ein Auftrag durchs Haus geht — wie viel davon läuft auf Papier?",
@@ -331,6 +365,8 @@ const FRAGEN_POTENZIAL: RadarFrage[] = [
     key: "P2",
     phase: "potenzial",
     thema: "handarbeit",
+    symbol: "uhr",
+    betonung: ["Stunden pro Woche", "Abtippen"],
     kern: true,
     absicht:
       "Die wichtigste Zahl des Radar. Sie trägt später die Wirtschaftlichkeit — und sie ist die Zahl, die der Kunde selbst genannt hat.",
@@ -395,6 +431,8 @@ const FRAGEN_POTENZIAL: RadarFrage[] = [
     key: "P3",
     phase: "potenzial",
     thema: "systemlandschaft",
+    symbol: "programme",
+    betonung: ["Programme"],
     kern: true,
     absicht: "Wie breit ist die Programmlandschaft? Legt fest, ob Integration überhaupt Thema ist.",
     frage: "Wie viele verschiedene Programme braucht einer Ihrer Mitarbeiter an einem normalen Tag?",
@@ -438,6 +476,8 @@ const FRAGEN_POTENZIAL: RadarFrage[] = [
     key: "P4",
     phase: "potenzial",
     thema: "systemlandschaft",
+    symbol: "verbindung",
+    betonung: ["Daten", "von Hand"],
     kern: true,
     // Bei ein bis zwei Programmen gibt es nichts zu verbinden. Die Frage dann
     // trotzdem zu stellen, kostet Gesprächszeit und liefert nichts.
@@ -489,6 +529,8 @@ const FRAGEN_POTENZIAL: RadarFrage[] = [
     key: "P5",
     phase: "potenzial",
     thema: "informationsfluss",
+    symbol: "daten",
+    betonung: ["mehreren Stellen"],
     kern: true,
     absicht: "Doppelerfassung belegen — unabhängig davon, ob er sie vorher als Problem benannt hat.",
     frage: "Kommt es vor, dass dieselbe Angabe bei Ihnen an mehreren Stellen eingetragen wird?",
@@ -534,6 +576,8 @@ const FRAGEN_POTENZIAL: RadarFrage[] = [
     key: "P6",
     phase: "potenzial",
     thema: "prozessorganisation",
+    symbol: "menschen",
+    betonung: ["zwei Wochen ausfällt"],
     kern: true,
     absicht:
       "Hängt der Betrieb an Systemen oder an Köpfen? Die Ausfallfrage bringt das schneller zutage als jede Frage nach Dokumentation.",
@@ -582,6 +626,8 @@ const FRAGEN_POTENZIAL: RadarFrage[] = [
     key: "P7",
     phase: "potenzial",
     thema: "automatisierung",
+    symbol: "blitz",
+    betonung: ["automatisch"],
     kern: true,
     absicht: "Ist Automatisierung schon ein Begriff im Haus? Entscheidet über den weiteren Gesprächsweg.",
     frage: "Läuft bei Ihnen heute schon irgendetwas automatisch — ohne dass jemand es anstößt?",
@@ -626,6 +672,8 @@ const FRAGEN_POTENZIAL: RadarFrage[] = [
     key: "P8",
     phase: "potenzial",
     thema: "automatisierung",
+    symbol: "blitz",
+    betonung: ["hakt"],
     kern: true,
     // Der wichtigste Zweig des Radar: Wer schon weit ist, wird nicht nach dem
     // Offensichtlichen gefragt, sondern danach, ob überhaupt noch etwas übrig
@@ -685,6 +733,8 @@ const FRAGEN_POTENZIAL: RadarFrage[] = [
     key: "P9",
     phase: "potenzial",
     thema: "engpaesse",
+    symbol: "zeit",
+    betonung: ["Zeit verloren"],
     kern: true,
     modus: "mehrfach",
     absicht:
@@ -765,6 +815,8 @@ const FRAGEN_POTENZIAL: RadarFrage[] = [
     key: "P10",
     phase: "potenzial",
     thema: "transparenz",
+    symbol: "zahlen",
+    betonung: ["offen sind", "wie lange"],
     kern: true,
     absicht: "Hat er Zahlen oder Bauchgefühl? Die Antwort trägt später das Thema Steuerung.",
     frage:
@@ -811,6 +863,8 @@ const FRAGEN_POTENZIAL: RadarFrage[] = [
     key: "P11",
     phase: "potenzial",
     thema: "bereitschaft",
+    symbol: "team",
+    betonung: ["neuen Programm"],
     kern: true,
     absicht:
       "Zahlt ausschließlich auf die Passung ein. Das beste Potenzial nützt nichts, wenn niemand mitgeht.",
@@ -848,6 +902,8 @@ const FRAGEN_POTENZIAL: RadarFrage[] = [
     key: "P12",
     phase: "potenzial",
     thema: "relevanz",
+    symbol: "ziel",
+    betonung: ["unverändert"],
     kern: true,
     absicht:
       "Die Relevanzfrage. Ohne wirtschaftlichen Druck ist auch ein großes Potenzial kein Auftrag — und das darf das Ergebnis ruhig sagen.",
@@ -925,6 +981,8 @@ const FRAGEN_SPOTLIGHT: RadarFrage[] = [
     key: "S1",
     phase: "spotlight",
     thema: "spotlight",
+    symbol: "ablauf",
+    betonung: ["heute hauptsächlich"],
     kern: true,
     absicht: "Wie viel Hand steckt in diesem einen Ablauf?",
     frage: "Wie läuft dieser Ablauf heute hauptsächlich?",
@@ -963,6 +1021,8 @@ const FRAGEN_SPOTLIGHT: RadarFrage[] = [
     key: "S2",
     phase: "spotlight",
     thema: "spotlight",
+    symbol: "programme",
+    betonung: ["Programme und Personen"],
     kern: true,
     absicht: "Wie viele Beteiligte und Programme hängen an dem Ablauf?",
     frage: "Wie viele Programme und Personen sind daran beteiligt?",
@@ -997,6 +1057,8 @@ const FRAGEN_SPOTLIGHT: RadarFrage[] = [
     key: "S3",
     phase: "spotlight",
     thema: "spotlight",
+    symbol: "uhr",
+    betonung: ["regelmäßig"],
     kern: true,
     modus: "mehrfach",
     absicht: "Die konkreten Reibungspunkte — belegbar und im Gespräch sofort anschlussfähig.",
@@ -1046,6 +1108,8 @@ const FRAGEN_SPOTLIGHT: RadarFrage[] = [
     key: "S4",
     phase: "spotlight",
     thema: "spotlight",
+    symbol: "zeit",
+    betonung: ["wie oft"],
     kern: true,
     absicht: "Häufigkeit mal Aufwand — erst daraus wird aus einem Ärgernis ein Geschäftsfall.",
     frage: "Wie oft läuft dieser Ablauf ungefähr?",
@@ -1087,6 +1151,8 @@ const FRAGEN_SPOTLIGHT: RadarFrage[] = [
     key: "S5",
     phase: "spotlight",
     thema: "spotlight",
+    symbol: "ziel",
+    betonung: ["Problem"],
     kern: true,
     absicht:
       "Die Eigenwahrnehmung. Was der Betrieb selbst nicht als Problem sieht, verkaufen wir ihm auch nicht.",
@@ -1273,3 +1339,208 @@ export function band(wert: number): string {
  * zwei Ergebnisse zu vergleichen, die nie vergleichbar waren.
  */
 export const KATALOG_VERSION = "radar-1";
+
+// ─── Live-Dimensionen ────────────────────────────────────────────────────────
+
+/**
+ * Die fünf Dimensionen des Live-Diagramms.
+ *
+ * Sie zeigen, **wie der Betrieb heute aufgestellt ist** — aufgeschlüsselt nach
+ * Bereichen. Es ist derselbe Reifegrad wie auf der Achse „reife“, nur nicht als
+ * eine Zahl, sondern als fünf.
+ *
+ * Bewusst nicht dabei: Veränderungsbereitschaft und wirtschaftliche Relevanz.
+ * Beides sind gute Fragen, aber sie sagen nichts darüber aus, wie der Betrieb
+ * digital dasteht — sie gehören zur Passung. Sie hier einzuzeichnen hieße, zwei
+ * verschiedene Dinge in dieselbe Fläche zu malen.
+ */
+export const DIMENSIONEN = {
+  prozesse: {
+    label: "Prozesse",
+    themen: ["digitalisierungsgrad", "engpaesse", "spotlight"] as ThemaKey[],
+  },
+  systeme: { label: "Systeme", themen: ["systemlandschaft"] as ThemaKey[] },
+  automatisierung: {
+    label: "Automatisierung",
+    themen: ["automatisierung", "handarbeit"] as ThemaKey[],
+  },
+  daten: { label: "Daten", themen: ["informationsfluss", "transparenz"] as ThemaKey[] },
+  organisation: { label: "Organisation", themen: ["prozessorganisation"] as ThemaKey[] },
+} as const;
+
+export type DimensionKey = keyof typeof DIMENSIONEN;
+
+/** Reihenfolge im Diagramm — im Uhrzeigersinn ab oben. */
+export const DIMENSION_REIHENFOLGE: DimensionKey[] = [
+  "prozesse",
+  "systeme",
+  "automatisierung",
+  "daten",
+  "organisation",
+];
+
+/** Die Skala des Diagramms. Fünf Punkte, wie es jeder von Schulnoten kennt. */
+export const DIMENSION_MAX = 5;
+
+// ─── Live-Beobachtungen ──────────────────────────────────────────────────────
+
+/**
+ * Was während des Gesprächs rechts auftaucht.
+ *
+ * Jede Beobachtung hängt an einer konkreten Antwort und sagt, welcher. Es gibt
+ * hier keine Branchenvergleiche, keine Einsparquoten und keine Hochrechnungen —
+ * nichts, was über das hinausgeht, was der Betrieb selbst gesagt hat. Der Grund
+ * ist nicht Zurückhaltung: Eine erfundene Zahl im Gespräch ist eine Zahl, die
+ * der Kunde nachfragt, und dann steht der Kollege da.
+ *
+ * `text` muss aus der Antwort folgen. Wer hier etwas hineinschreibt, das die
+ * Antwort nicht hergibt, baut genau den Blender, den das Radar nicht sein soll.
+ */
+export type BeobachtungsArt = "hinweis" | "staerke";
+
+export const BEOBACHTUNGEN: Array<{
+  key: string;
+  frage: string;
+  optionen: string[];
+  art: BeobachtungsArt;
+  dimension: DimensionKey;
+  titel: string;
+  text: string;
+}> = [
+  {
+    key: "medienbruch",
+    frage: "P4",
+    optionen: ["P4-C"],
+    art: "hinweis",
+    dimension: "systeme",
+    titel: "Medienbruch erkannt",
+    text: "Zwischen den Programmen überträgt ausschließlich ein Mensch.",
+  },
+  {
+    key: "medienbruch-teilweise",
+    frage: "P4",
+    optionen: ["P4-B"],
+    art: "hinweis",
+    dimension: "systeme",
+    titel: "Teilweise verbunden",
+    text: "Ein Teil der Übergaben zwischen den Programmen läuft von Hand.",
+  },
+  {
+    key: "doppelerfassung",
+    frage: "P5",
+    optionen: ["P5-C"],
+    art: "hinweis",
+    dimension: "daten",
+    titel: "Mehrfacherfassung",
+    text: "Dieselbe Angabe wird nach eigener Aussage regelmäßig mehrfach eingetragen.",
+  },
+  {
+    key: "handarbeit-hoch",
+    frage: "P2",
+    optionen: ["P2-C", "P2-D"],
+    art: "hinweis",
+    dimension: "automatisierung",
+    titel: "Hoher Übertragungsaufwand",
+    text: "Mehr als fünf Stunden pro Woche gehen für Abtippen und Übertragen drauf.",
+  },
+  {
+    key: "handarbeit-unbekannt",
+    frage: "P2",
+    optionen: ["P2-X"],
+    art: "hinweis",
+    dimension: "daten",
+    titel: "Aufwand nicht bekannt",
+    text: "Der Zeitaufwand für Übertragungsarbeit wird im Betrieb nicht gemessen.",
+  },
+  {
+    key: "papier",
+    frage: "P1",
+    optionen: ["P1-C"],
+    art: "hinweis",
+    dimension: "prozesse",
+    titel: "Papier im Auftragsdurchlauf",
+    text: "Der Weg vom Auftrag zur Rechnung läuft überwiegend über Zettel und Ausdrucke.",
+  },
+  {
+    key: "personenabhaengig",
+    frage: "P6",
+    optionen: ["P6-C"],
+    art: "hinweis",
+    dimension: "organisation",
+    titel: "Abläufe hängen an Personen",
+    text: "Fällt jemand aus, ist unklar, wie seine Abläufe weitergehen.",
+  },
+  {
+    key: "keine-automatisierung",
+    frage: "P7",
+    optionen: ["P7-C"],
+    art: "hinweis",
+    dimension: "automatisierung",
+    titel: "Nichts läuft automatisch",
+    text: "Jeder wiederkehrende Ablauf wird heute von einem Menschen angestoßen.",
+  },
+  {
+    key: "zahlen-fehlen",
+    frage: "P10",
+    optionen: ["P10-C"],
+    art: "hinweis",
+    dimension: "daten",
+    titel: "Zahlen auf Nachfrage",
+    text: "Betriebszahlen entstehen durch Nachfragen oder Nachzählen.",
+  },
+  // ── Stärken: was gut läuft, wird genauso benannt ──────────────────────────
+  {
+    key: "durchgehend-digital",
+    frage: "P1",
+    optionen: ["P1-A"],
+    art: "staerke",
+    dimension: "prozesse",
+    titel: "Durchgehend digital",
+    text: "Der Auftragsdurchlauf kommt ohne Papier aus.",
+  },
+  {
+    key: "systeme-verbunden",
+    frage: "P4",
+    optionen: ["P4-A"],
+    art: "staerke",
+    dimension: "systeme",
+    titel: "Systeme verbunden",
+    text: "Die eingesetzten Programme tauschen ihre Daten automatisch aus.",
+  },
+  {
+    key: "automatisiert",
+    frage: "P7",
+    optionen: ["P7-A"],
+    art: "staerke",
+    dimension: "automatisierung",
+    titel: "Automatisierung vorhanden",
+    text: "Mehrere Abläufe laufen bereits ohne Zutun.",
+  },
+  {
+    key: "dokumentiert",
+    frage: "P6",
+    optionen: ["P6-A"],
+    art: "staerke",
+    dimension: "organisation",
+    titel: "Abläufe festgehalten",
+    text: "Eine Vertretung kann übernehmen, ohne dass es hakt.",
+  },
+  {
+    key: "zahlen-sofort",
+    frage: "P10",
+    optionen: ["P10-A"],
+    art: "staerke",
+    dimension: "daten",
+    titel: "Zahlen auf Knopfdruck",
+    text: "Betriebszahlen sind unmittelbar abrufbar.",
+  },
+  {
+    key: "einmal-erfasst",
+    frage: "P5",
+    optionen: ["P5-A"],
+    art: "staerke",
+    dimension: "daten",
+    titel: "Keine Mehrfacherfassung",
+    text: "Jede Angabe wird nach eigener Aussage nur einmal erfasst.",
+  },
+];

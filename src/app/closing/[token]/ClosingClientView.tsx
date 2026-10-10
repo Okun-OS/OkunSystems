@@ -133,13 +133,6 @@ export function ClosingClientView({ initialState, token }: Props) {
   const offerPdfUrl = `/api/closing/offer-pdf?token=${encodeURIComponent(token)}`;
   const showStage = Boolean(state.meetingUrl) && !state.isActivated;
 
-  // Das OKUN Radar steht auf der Bühne des Gesprächs — die Gesichter daneben,
-  // das Gespräch läuft weiter. Es holt seinen Stand selbst, deutlich häufiger
-  // als der Rest der Seite; hier steht nur, ob es überhaupt läuft.
-  const radarStage = state.radarActive ? (
-    <RadarStage token={token} initial={null} />
-  ) : null;
-
   const slide: CallSlide | null = state.presentation
     ? {
         slideId: state.presentation.slideId,
@@ -194,19 +187,67 @@ export function ClosingClientView({ initialState, token }: Props) {
   const hasSidebar =
     state.offerPresented || state.consents.length > 0 || Boolean(state.invoice);
 
+  /*
+    Läuft das OKUN Radar, bekommt es den Bildschirm.
+
+    Nicht aus Effekthascherei: Das Cockpit lebt von der Fläche — links der
+    Betrieb, in der Mitte die Frage, rechts das Bild, das daraus entsteht. In
+    einen Kasten zwischen Kopfzeile und Angebotsspalte gequetscht wäre es
+    wieder ein Fragebogen mit Diagramm daneben.
+
+    Das Gespräch läuft dabei weiter: Die Videokacheln reicht `OkunCall` in die
+    rechte Spalte, die Steuerung in die Kopfzeile. Und wenn kein Videoraum
+    zustande kommt — keine Kamera, kein WebRTC, Raum noch nicht eingerichtet —,
+    läuft die Analyse trotzdem. Dann eben mit dem Telefon am Ohr.
+  */
+  if (state.radarActive && !state.isActivated) {
+    return (
+      <div className="h-screen flex flex-col bg-[#05090f]">
+        {state.recordingActive && <AufzeichnungsBand />}
+        <div className="flex-1 min-h-0">
+          {showStage && joined ? (
+            <OkunCall
+              roomUrl={callUrl ?? state.meetingUrl!}
+              userName={state.contactName ?? state.companyName}
+              role="client"
+              slide={null}
+              onLeave={() => setJoined(false)}
+              onRemoteChange={refresh}
+              stageLayout={({ kacheln, steuerung }) => (
+                <RadarStage
+                  token={token}
+                  initial={null}
+                  video={kacheln}
+                  kopfzeile={steuerung}
+                />
+              )}
+            />
+          ) : (
+            <RadarStage
+              token={token}
+              initial={null}
+              kopfzeile={
+                showStage ? (
+                  <button
+                    onClick={() => void joinCall()}
+                    disabled={joinPending}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#00b8ff] text-[#041018] text-xs font-bold disabled:opacity-60 transition-opacity"
+                  >
+                    <Video size={13} />
+                    {joinPending ? "Wird verbunden…" : "Gespräch beitreten"}
+                  </button>
+                ) : null
+              }
+            />
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#060a10] flex flex-col">
-      {state.recordingActive && (
-        <div className="bg-[#7f1d1d] border-b border-[#ef4444]/40">
-          <div className="mx-auto w-full max-w-[1500px] px-4 sm:px-6 py-2 flex flex-wrap items-center gap-2">
-            <Radio size={14} className="text-[#fca5a5] animate-pulse" />
-            <span className="text-[#fee2e2] text-xs font-bold">Aufzeichnung läuft</span>
-            <span className="text-[#fca5a5] text-xs">
-              Der Vertragsabschluss wird mit Ihrer Einwilligung aufgezeichnet.
-            </span>
-          </div>
-        </div>
-      )}
+      {state.recordingActive && <AufzeichnungsBand />}
 
       <header className="sticky top-0 z-20 border-b border-[#12203a] bg-[#080d16]/95 backdrop-blur">
         <div className="mx-auto w-full max-w-[1500px] px-4 sm:px-6 py-3 flex flex-wrap items-center gap-x-5 gap-y-3">
@@ -242,7 +283,6 @@ export function ClosingClientView({ initialState, token }: Props) {
                     userName={state.contactName ?? state.companyName}
                     role="client"
                     slide={slide}
-                    stage={radarStage}
                     onLeave={() => setJoined(false)}
                     onRemoteChange={refresh}
                   />
@@ -258,30 +298,7 @@ export function ClosingClientView({ initialState, token }: Props) {
                 />
               ))}
 
-            {/*
-              Die Analyse außerhalb des Gesprächsfensters.
-
-              Normalerweise steht sie auf der Bühne des Gesprächs. Aber sie darf
-              nicht daran hängen, dass ein Videoraum zustande kommt: Wenn die
-              Kamera streikt, der Browser kein WebRTC kann, der Interessent den
-              Raum verlassen hat oder der Raum noch gar nicht eingerichtet ist,
-              soll er trotzdem mitmachen können, statt vor einem Ladekreis zu
-              sitzen. Das Gespräch läuft dann eben über Telefon weiter.
-            */}
-            {state.radarActive && !state.isActivated && !(showStage && joined) && (
-              // Mindesthöhe statt fester Höhe: Außerhalb des Gesprächsfensters
-              // ist Platz da, und der Bericht soll am Stück lesbar sein statt
-              // in einem Kasten mit eigener Bildlaufleiste zu stecken, die auf
-              // dem Telefon kaum jemand findet.
-              <div
-                className="rounded-2xl border border-[#12203a] bg-[#0a111c] overflow-hidden"
-                style={{ minHeight: "min(calc(100vh - 320px), 620px)" }}
-              >
-                <RadarStage token={token} initial={null} />
-              </div>
-            )}
-
-            {!showStage && !state.radarActive && !state.isActivated && (
+            {!showStage && !state.isActivated && (
               <Card>
                 <div className="px-5 py-10 text-center">
                   <Loader2 size={20} className="text-[#5b6b7f] animate-spin mx-auto mb-3" />
@@ -739,6 +756,27 @@ export function DocumentViewer({
         >
           Weiter
         </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Das Band über der Aufzeichnung.
+ *
+ * Steht an zwei Stellen — über dem Cockpit und über der Angebotsseite — und
+ * muss an beiden gleich aussehen und gleich lauten. Eine Einwilligung, die je
+ * nach Ansicht anders angekündigt wird, ist keine saubere Einwilligung.
+ */
+function AufzeichnungsBand() {
+  return (
+    <div className="flex-shrink-0 bg-[#7f1d1d] border-b border-[#ef4444]/40">
+      <div className="mx-auto w-full max-w-[1500px] px-4 sm:px-6 py-2 flex flex-wrap items-center gap-2">
+        <Radio size={14} className="text-[#fca5a5] animate-pulse" />
+        <span className="text-[#fee2e2] text-xs font-bold">Aufzeichnung läuft</span>
+        <span className="text-[#fca5a5] text-xs">
+          Der Vertragsabschluss wird mit Ihrer Einwilligung aufgezeichnet.
+        </span>
       </div>
     </div>
   );
