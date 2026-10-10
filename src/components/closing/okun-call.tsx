@@ -101,7 +101,14 @@ export type OkunCallProps = {
    * Hat Vorrang vor `stage`, weicht aber einem geteilten Bildschirm: Wer
    * gerade etwas zeigt, soll es auch groß zeigen können.
    */
-  stageLayout?: (teile: { kacheln: React.ReactNode; steuerung: React.ReactNode }) => React.ReactNode;
+  stageLayout?: (teile: {
+    kacheln: React.ReactNode;
+    steuerung: React.ReactNode;
+    /** Wie das Gespräch gerade steht — für eine ehrliche Anzeige in der Hülle. */
+    zustand: "verbindet" | "verbunden" | "allein";
+    /** Wie viele im Raum sind, einen selbst eingerechnet. */
+    teilnehmer: number;
+  }) => React.ReactNode;
   onLeave: () => void;
   /** Kundenseite: der Berater hat etwas geändert, Stand neu holen. */
   onRemoteChange?: () => void;
@@ -375,22 +382,36 @@ function CallSurface({
         </div>
       );
     }
+    /*
+      Beide Plätze stehen immer da — auch der leere.
+
+      Vorher erschien die Gegenseite erst, wenn sie beigetreten war, und
+      vorher war an der Stelle schlicht nichts. Wer die Oberfläche zum ersten
+      Mal sieht, konnte nicht erkennen, dass dort überhaupt ein Video
+      hingehört. Ein reservierter, beschrifteter Platz beantwortet das, bevor
+      die Frage aufkommt.
+    */
+    const gegenueber = remoteIds[0] ?? null;
     const kacheln = (
       <div className="grid grid-cols-2 gap-2">
-        {remoteIds.slice(0, 1).map((id) => (
-          <Tile key={id} sessionId={id} compact />
-        ))}
-        {localSessionId && <Tile sessionId={localSessionId} compact isLocal />}
-        {remoteIds.length === 0 && (
-          <div className="aspect-video rounded-xl border border-[#12203a] bg-[#0a111c] flex items-center justify-center">
-            <p className="text-[#44546b] text-[10.5px] text-center px-2">
-              {connecting ? "verbindet…" : "wartet"}
-            </p>
-          </div>
-        )}
+        <Kachel
+          sessionId={gegenueber}
+          rolle={isAdvisor ? "Interessent" : "OKUN Systems · Berater"}
+          akzent="#00b8ff"
+          platzhalter={connecting ? "verbindet…" : "wartet auf Beitritt"}
+        />
+        <Kachel
+          sessionId={localSessionId}
+          rolle={isAdvisor ? "OKUN Systems · Sie" : "Ihr Unternehmen"}
+          akzent="#22c55e"
+          istSelbst
+          platzhalter={connecting ? "verbindet…" : "Kamera aus"}
+        />
       </div>
     );
-    return <>{stageLayout({ kacheln, steuerung })}</>;
+    const zustand = connecting ? "verbindet" : gegenueber ? "verbunden" : "allein";
+    const teilnehmer = remoteIds.length + (localSessionId ? 1 : 0);
+    return <>{stageLayout({ kacheln, steuerung, zustand, teilnehmer })}</>;
   }
 
   return (
@@ -657,6 +678,121 @@ function Tile({
           {name || (isLocal ? "Sie" : "Gast")}
           {isLocal && " (Sie)"}
         </span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Eine Kachel mit festem Platz.
+ *
+ * Anders als `Tile` verschwindet sie nicht, wenn niemand da ist: Ohne
+ * Teilnehmer zeigt sie den reservierten Platz samt Rolle, damit erkennbar
+ * bleibt, wo das Gespräch stattfindet. Der farbige Strich vor dem Namen
+ * unterscheidet die beiden Seiten auf einen Blick — in einer Kachel von
+ * 150 Pixeln Breite ist das schneller gelesen als jede Beschriftung.
+ */
+function Kachel({
+  sessionId,
+  rolle,
+  akzent,
+  istSelbst,
+  platzhalter,
+}: {
+  sessionId: string | null;
+  rolle: string;
+  akzent: string;
+  istSelbst?: boolean;
+  platzhalter: string;
+}) {
+  if (!sessionId) {
+    return (
+      <div className="relative aspect-video rounded-xl overflow-hidden border border-[#13243c] bg-[linear-gradient(160deg,#0b1726,#070d17)]">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5">
+          <span className="w-8 h-8 rounded-full border border-dashed border-[#24415f] flex items-center justify-center">
+            <VideoIcon size={13} className="text-[#2a4059]" />
+          </span>
+          <span className="text-[#44546b] text-[9.5px]">{platzhalter}</span>
+        </div>
+        <KachelName rolle={rolle} name={null} akzent={akzent} stumm={false} />
+      </div>
+    );
+  }
+  return <BelegteKachel sessionId={sessionId} rolle={rolle} akzent={akzent} istSelbst={istSelbst} />;
+}
+
+function BelegteKachel({
+  sessionId,
+  rolle,
+  akzent,
+  istSelbst,
+}: {
+  sessionId: string;
+  rolle: string;
+  akzent: string;
+  istSelbst?: boolean;
+}) {
+  const name = useParticipantProperty(sessionId, "user_name");
+  const audioOn = useParticipantProperty(sessionId, "audio");
+  const videoOn = useParticipantProperty(sessionId, "video");
+
+  return (
+    <div className="relative aspect-video rounded-xl overflow-hidden border border-[#13243c] bg-[#0a111c]">
+      {videoOn ? (
+        <DailyVideo
+          sessionId={sessionId}
+          type="video"
+          fit="cover"
+          automirror
+          className="w-full h-full object-cover"
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center bg-[linear-gradient(160deg,#0d1a2b,#070d17)]">
+          <span
+            className="w-9 h-9 rounded-full text-[13px] font-bold flex items-center justify-center"
+            style={{ background: `${akzent}1f`, color: akzent }}
+          >
+            {(name ?? "?").trim().charAt(0).toUpperCase() || "?"}
+          </span>
+        </div>
+      )}
+      <KachelName
+        rolle={rolle}
+        name={name || (istSelbst ? "Sie" : null)}
+        akzent={akzent}
+        stumm={!audioOn}
+      />
+    </div>
+  );
+}
+
+function KachelName({
+  rolle,
+  name,
+  akzent,
+  stumm,
+}: {
+  rolle: string;
+  name: string | null;
+  akzent: string;
+  stumm: boolean;
+}) {
+  return (
+    <div className="absolute inset-x-0 bottom-0 bg-[linear-gradient(to_top,rgba(5,9,15,0.92),transparent)] px-2 pt-5 pb-1.5">
+      <div className="flex items-center gap-1.5 min-w-0">
+        <span
+          className="w-[2px] h-[18px] rounded-full flex-shrink-0"
+          style={{ background: akzent }}
+        />
+        <span className="min-w-0">
+          {name && (
+            <span className="block text-[#eef2f7] text-[10.5px] font-semibold leading-tight truncate">
+              {name}
+            </span>
+          )}
+          <span className="block text-[#8899b4] text-[9px] leading-tight truncate">{rolle}</span>
+        </span>
+        {stumm && <MicOff size={9} className="text-[#fca5a5] flex-shrink-0 ml-auto" />}
       </div>
     </div>
   );

@@ -1,5 +1,7 @@
 "use client";
 
+import { useId } from "react";
+
 import { DIMENSION_MAX } from "@/lib/radar/catalog";
 import type { DimensionWert } from "@/lib/radar/live";
 
@@ -32,6 +34,17 @@ const AKZENT = "#00b8ff";
 const GITTER = "#17304d";
 const SPEICHE = "#12243c";
 
+/** Umfang eines Polygons — Grundlage für die Zeichenbewegung der Kante. */
+function umfang(punkte: Array<{ x: number; y: number }>): number {
+  let laenge = 0;
+  for (let i = 0; i < punkte.length; i++) {
+    const a = punkte[i];
+    const b = punkte[(i + 1) % punkte.length];
+    laenge += Math.hypot(b.x - a.x, b.y - a.y);
+  }
+  return Math.ceil(laenge);
+}
+
 export function RadarChart({ dimensionen, groesse = 300, kompakt }: Props) {
   const mitte = groesse / 2;
   const radius = mitte - (kompakt ? 10 : 14);
@@ -57,6 +70,15 @@ export function RadarChart({ dimensionen, groesse = 300, kompakt }: Props) {
   const abstand = (wert: number) => SOCKEL + (wert / DIMENSION_MAX) * (1 - SOCKEL);
 
   const ringe = Array.from({ length: DIMENSION_MAX }, (_, r) => (r + 1) / DIMENSION_MAX);
+  /*
+    Je Instanz eigene Kennungen für Verlauf und Weichzeichner.
+
+    Vorher waren sie aus den Dimensionsnamen gebildet und damit in jedem
+    Diagramm gleich. Standen zwei auf einer Seite — im Steuerpult des Closers
+    war genau das der Fall —, kollidierten die Kennungen und die Fläche
+    verschwand in beiden. `useId` liefert pro Einbindung eine eigene.
+  */
+  const id = useId().replace(/:/g, "");
 
   const gemessen = dimensionen
     .map((d, i) => ({ d, i }))
@@ -76,6 +98,29 @@ export function RadarChart({ dimensionen, groesse = 300, kompakt }: Props) {
         .join(", ")}`}
       className="overflow-visible"
     >
+      <defs>
+        {/*
+          Die Fläche bekommt einen Verlauf statt einer glatten Deckfarbe: Von
+          der Mitte nach außen heller, damit sie nicht wie ein ausgeschnittenes
+          Stück Papier auf dem Gitter liegt.
+        */}
+        <radialGradient id={`${id}-flaeche`} cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor={AKZENT} stopOpacity={0.05} />
+          <stop offset="70%" stopColor={AKZENT} stopOpacity={0.2} />
+          <stop offset="100%" stopColor="#2ee6c5" stopOpacity={0.26} />
+        </radialGradient>
+        <linearGradient id={`${id}-kante`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor={AKZENT} />
+          <stop offset="100%" stopColor="#2ee6c5" />
+        </linearGradient>
+        <filter id={`${id}-schein`} x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="4" result="weich" />
+          <feMerge>
+            <feMergeNode in="weich" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
       {/* Gitter — zurückhaltend, es ist Hintergrund und keine Aussage. */}
       {ringe.map((anteil, r) => (
         <polygon
@@ -113,15 +158,36 @@ export function RadarChart({ dimensionen, groesse = 300, kompakt }: Props) {
 
       {/* Die erfasste Fläche. Wächst mit jeder Antwort. */}
       {gemessen.length >= 3 && (
-        <polygon
-          points={flaeche}
-          fill={AKZENT}
-          fillOpacity={0.16}
-          stroke={AKZENT}
-          strokeWidth={2}
-          strokeLinejoin="round"
-          className="transition-all duration-700 ease-out"
-        />
+        <>
+          <polygon
+            points={flaeche}
+            fill={`url(#${id}-flaeche)`}
+            className="transition-all duration-700 ease-out"
+          />
+          {/* Dieselbe Kante zweimal: einmal weichgezeichnet als Schein, einmal scharf. */}
+          <polygon
+            points={flaeche}
+            fill="none"
+            stroke={`url(#${id}-kante)`}
+            strokeWidth={2.5}
+            strokeLinejoin="round"
+            opacity={0.5}
+            filter={`url(#${id}-schein)`}
+            className="transition-all duration-700 ease-out"
+          />
+          <polygon
+            points={flaeche}
+            fill="none"
+            stroke={`url(#${id}-kante)`}
+            strokeWidth={2}
+            strokeLinejoin="round"
+            className="radar-zeichnen transition-all duration-700 ease-out"
+            style={{ ["--umfang" as string]: `${umfang(gemessen.map((x) => x.p))}` }}
+            // Der Schlüssel erzwingt einen Neuaufbau, sobald sich die Form
+            // ändert — sonst liefe die Zeichenbewegung nur ein einziges Mal.
+            key={flaeche}
+          />
+        </>
       )}
       {gemessen.length === 2 && (
         <line
@@ -135,17 +201,12 @@ export function RadarChart({ dimensionen, groesse = 300, kompakt }: Props) {
         />
       )}
 
-      {/* Messpunkte. Mindestens 8px, damit sie auch auf dem Telefon treffbar sind. */}
+      {/* Messpunkte. Groß genug, dass sie auch auf dem Telefon treffbar sind. */}
       {gemessen.map((x) => (
-        <g key={x.d.key}>
-          <circle cx={x.p.x} cy={x.p.y} r={5.5} fill="#0a111c" />
-          <circle
-            cx={x.p.x}
-            cy={x.p.y}
-            r={4}
-            fill={AKZENT}
-            className="transition-all duration-700 ease-out"
-          >
+        <g key={x.d.key} className="transition-all duration-700 ease-out">
+          <circle cx={x.p.x} cy={x.p.y} r={7} fill={AKZENT} opacity={0.18} />
+          <circle cx={x.p.x} cy={x.p.y} r={5} fill="#070d17" />
+          <circle cx={x.p.x} cy={x.p.y} r={3.6} fill={AKZENT}>
             <title>{`${x.d.label}: ${x.d.wert} von ${DIMENSION_MAX}`}</title>
           </circle>
         </g>
@@ -189,26 +250,35 @@ export function DimensionsListe({
   kompakt?: boolean;
 }) {
   return (
-    <ul className={`space-y-1.5 ${kompakt ? "text-[11px]" : "text-xs"}`}>
+    <ul className={`space-y-2 ${kompakt ? "text-[11px]" : "text-xs"}`}>
       {dimensionen.map((d) => (
-        <li key={d.key} className="flex items-center justify-between gap-2">
-          <span className="flex items-center gap-1.5 min-w-0">
-            <span
-              className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-              style={{ background: d.wert === null ? "#2a3a55" : AKZENT }}
-            />
+        <li key={d.key}>
+          <div className="flex items-center justify-between gap-2 mb-1">
             <span className={d.wert === null ? "text-[#5b6b7f]" : "text-[#c9d4e4]"}>{d.label}</span>
-          </span>
-          {d.wert === null ? (
-            <span className="text-[#44546b] flex-shrink-0 text-[10px] uppercase tracking-wider">
-              noch offen
-            </span>
-          ) : (
-            <span className="text-[#eef2f7] font-semibold tabular-nums flex-shrink-0">
-              {d.wert.toLocaleString("de-DE", { minimumFractionDigits: 1 })}
-              <span className="text-[#44546b] font-normal"> / {DIMENSION_MAX},0</span>
-            </span>
-          )}
+            {d.wert === null ? (
+              <span className="text-[#44546b] flex-shrink-0 text-[9.5px] uppercase tracking-[0.12em]">
+                noch offen
+              </span>
+            ) : (
+              <span className="text-[#eef2f7] font-semibold tabular-nums flex-shrink-0">
+                {d.wert.toLocaleString("de-DE", { minimumFractionDigits: 1 })}
+                <span className="text-[#44546b] font-normal"> / {DIMENSION_MAX},0</span>
+              </span>
+            )}
+          </div>
+          {/*
+            Ein Balken je Dimension, zusätzlich zum Netz.
+            Das Netz zeigt die Form, der Balken den einzelnen Wert — aus einem
+            Fünfeck eine Zahl abzulesen gelingt niemandem zuverlässig.
+          */}
+          <div className="h-[3px] rounded-full bg-[#101d31] overflow-hidden">
+            {d.wert !== null && (
+              <div
+                className="h-full rounded-full bg-[linear-gradient(90deg,#00b8ff,#2ee6c5)] transition-[width] duration-700 ease-out"
+                style={{ width: `${(d.wert / DIMENSION_MAX) * 100}%` }}
+              />
+            )}
+          </div>
         </li>
       ))}
     </ul>

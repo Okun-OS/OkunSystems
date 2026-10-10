@@ -481,11 +481,6 @@ export function RadarPanel({
             </div>
           )}
 
-          {/* Auf schmalen Bildschirmen rutscht das Live-Bild unter die Frage. */}
-          <div className="xl:hidden">
-            <LiveDashboard profil={ansicht.live} kompakt />
-          </div>
-
           {/* Interne Notizen */}
           <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-4">
             <label className="flex items-center gap-1.5 text-[#5b6b7f] text-[10px] uppercase tracking-wider mb-2">
@@ -501,8 +496,13 @@ export function RadarPanel({
           </div>
         </div>
 
-        {/* ── Live-Bild ────────────────────────────────────────────────── */}
-        <div className="hidden xl:block">
+        {/*
+          Das Live-Bild. Genau einmal im Baum — zwei Einbindungen nebeneinander
+          hatten kollidierende SVG-Kennungen und löschten sich gegenseitig die
+          Fläche. Auf schmaleren Rastern rutscht es über die volle Breite unter
+          die Arbeitsfläche.
+        */}
+        <div className="lg:col-span-2 xl:col-span-1">
           <LiveDashboard profil={ansicht.live} kompakt />
         </div>
       </div>

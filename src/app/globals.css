@@ -94,3 +94,54 @@ body {
     opacity: 0;
   }
 }
+
+/* ─── OKUN Radar ─────────────────────────────────────────────────────────── */
+
+/*
+ * Die Antwortkarten laufen beim Fragenwechsel gestaffelt ein.
+ *
+ * Kurz und flach: Es soll wirken, als setze sich die Frage zusammen, nicht als
+ * warte man auf eine Animation. Deshalb 450 ms, 10 Pixel Weg und eine Kurve,
+ * die schnell anfängt und sanft ausläuft.
+ */
+@keyframes karte-ein {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/*
+ * Der Lichtpunkt an der Spitze des Fortschrittsbalkens.
+ *
+ * Er atmet, statt zu blinken — ein blinkender Punkt in einem Verkaufsgespräch
+ * zieht den Blick ständig von der Frage weg.
+ */
+@keyframes radar-puls {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50%      { opacity: 1;    transform: scale(1.25); }
+}
+
+.radar-puls {
+  animation: radar-puls 2.4s ease-in-out infinite;
+}
+
+/*
+ * Das Netzdiagramm zeichnet sich beim ersten Erscheinen.
+ *
+ * `stroke-dasharray` wird in der Komponente auf den Umfang gesetzt; hier läuft
+ * nur der Versatz auf null.
+ */
+@keyframes radar-zeichnen {
+  from { stroke-dashoffset: var(--umfang); }
+  to   { stroke-dashoffset: 0; }
+}
+
+.radar-zeichnen {
+  animation: radar-zeichnen 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .radar-puls,
+  .radar-zeichnen {
+    animation: none;
+  }
+}

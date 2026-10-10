@@ -54,6 +54,8 @@ export type FrageAnsicht = {
     key: string;
     label: string;
     hinweis: string | null;
+    /** Eigenes Bildzeichen, wo die Antwort inhaltlich etwas Eigenes bezeichnet. */
+    symbol: SymbolKey | null;
     /**
      * Wofür die Antwort steht. Nicht, wie gut sie ist — das bleibt drinnen.
      * Die Oberfläche braucht es nur, um „weiß ich nicht“ anders zu zeichnen
@@ -87,6 +89,7 @@ function frageAnsicht(key: string, aktiv: Array<{ key: string }>): FrageAnsicht 
       key: o.key,
       label: o.label,
       hinweis: o.hinweis ?? null,
+      symbol: o.symbol ?? null,
       rolle: o.unbekannt ? ("unbekannt" as const) : o.keinBefund ? ("keinBefund" as const) : ("sache" as const),
     })),
   };
@@ -127,6 +130,8 @@ export type RadarKundenAnsicht = {
   closerName: string | null;
   /** Branche und Größe als eine Zeile für die Seitenleiste. */
   eckdaten: string | null;
+  /** Beginn der Analyse — Grundlage der Laufzeitanzeige in der Kopfzeile. */
+  gestartetAm: string;
   phase: RadarPhase | "ergebnis";
   phasen: Array<{
     key: string;
@@ -196,6 +201,7 @@ export function kundenAnsicht(d: RadarDatensatz): RadarKundenAnsicht {
     closerName: d.closerName,
     phase: d.phase,
     eckdaten: eckdatenZeile(d.profil),
+    gestartetAm: d.erstelltAm.toISOString(),
     phasen: PHASEN.map((p, i) => ({
       key: p.key,
       nummer: i + 1,

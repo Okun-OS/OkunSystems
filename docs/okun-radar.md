@@ -347,10 +347,26 @@ redeten sie im Gespräch über verschiedene Bilder.
 
 **Beim Interessenten** nimmt das Cockpit den ganzen Bildschirm, solange die
 Analyse läuft. Das Videogespräch läuft darin weiter: `OkunCall` bekommt ein
-`stageLayout` und reicht die Teilnehmerkacheln in die rechte Spalte und die
-Gesprächssteuerung in die Kopfzeile. Kommt kein Videoraum zustande — keine
-Kamera, kein WebRTC, Raum noch nicht eingerichtet —, läuft die Analyse trotzdem;
-dann eben mit dem Telefon am Ohr.
+`stageLayout` und reicht die Teilnehmerkacheln samt Gesprächssteuerung in den
+Gesprächsbereich. Kommt kein Videoraum zustande — keine Kamera, kein WebRTC,
+Raum noch nicht eingerichtet —, läuft die Analyse trotzdem; dann eben mit dem
+Telefon am Ohr.
+
+### Wo das Video sitzt
+
+Der Gesprächsbereich **steht immer da**, auch ohne laufendes Gespräch. Dann
+zeigt er zwei reservierte, beschriftete Plätze und sagt, wie man hineinkommt.
+Der Unterschied zwischen „hier ist kein Video" und „hier ist noch kein Video"
+entscheidet darüber, ob jemand überhaupt danach sucht.
+
+| Breite | Zuschnitt |
+|---|---|
+| ab `lg` | Eigener Block oben in der rechten Spalte, über dem Live-Bild. Zwei Kacheln im Seitenverhältnis 16:9, darüber die Überschrift „Gesprächsraum" und die Steuerung. |
+| darunter | Schmale, am oberen Rand klebende Gesprächsleiste: zwei kleine Bilder links, Steuerung rechts — wie in jeder Telefonie-App. Ein leerer Gesprächsraum darf auf dem Telefon kein Drittel des Bildschirms einnehmen. |
+
+Jede Kachel trägt einen farbigen Strich (Türkis für das Gegenüber, Grün für
+einen selbst), Namen, Rolle und ein Stummsymbol. Bei abgeschalteter Kamera
+erscheint die Initiale, nicht ein schwarzes Rechteck.
 
 **Beim Closer** liegt dasselbe Dreigespann im Reiter „OKUN Radar", ergänzt um
 das, was nur er sieht: Absicht und Vorlesesatz je Frage, Herkunft der Antworten,
@@ -434,6 +450,38 @@ Alles, was sich ändern soll, steht in `catalog.ts`:
 **Nach jeder Änderung `KATALOG_VERSION` hochzählen.** Sie wird auf jeder
 Analyse gespeichert; das Steuerpult weist darauf hin, wenn ein altes Ergebnis
 mit anderen Fragen entstanden ist.
+
+---
+
+## 11a. Gestaltung
+
+Was den Eindruck trägt, und warum es so gebaut ist:
+
+* **Tiefe statt Flächen.** Zwei sehr schwache Lichtkegel hinter dem Cockpit
+  (Türkis oben links, Grün unten rechts, 4–5 % Deckkraft) geben der dunklen
+  Fläche eine Lichtquelle. Jede Karte bekommt an der Oberkante eine Haarlinie
+  Licht. Das ist der Unterschied zwischen „dunkles Design" und „teures dunkles
+  Design".
+* **Antwortkarten reagieren.** Beim Überfahren: ein Akzentstrich wächst links
+  hinein, die Karte hebt sich zwei Pixel, das Bildzeichen bekommt Farbe und
+  einen Schein. Bei Auswahl: Verlauf, Außenschein und ein gefüllter Marker.
+  Tastaturfokus hat einen eigenen Ring.
+* **Bildzeichen je Antwort** — aber nur, wo die Antworten inhaltlich
+  Verschiedenes bezeichnen (Bereiche, Reibungspunkte). Bei Skalenfragen tragen
+  alle Antworten das Zeichen der Frage: Vier verschiedene Zeichen auf einer
+  Skala sagen nichts über den Inhalt, sondern nur, welche Antwort uns am
+  liebsten wäre.
+* **Bewegung, die etwas bedeutet.** Die Antwortkarten laufen gestaffelt ein
+  (45 ms Versatz), die Netzkante zeichnet sich, der Fortschrittsbalken trägt
+  einen atmenden Lichtpunkt an der Spitze. Alles respektiert
+  `prefers-reduced-motion`.
+* **Das Netzdiagramm** hat einen Verlauf von innen nach außen, eine
+  weichgezeichnete Kante als Schein und Messpunkte mit Halo. Jede Dimension
+  bekommt zusätzlich einen Balken: Aus einem Fünfeck eine Zahl abzulesen
+  gelingt niemandem zuverlässig.
+* **Eigene SVG-Kennungen je Diagramm** (`useId`). Standen zwei Diagramme auf
+  einer Seite — im Steuerpult war genau das der Fall —, kollidierten die
+  Kennungen für Verlauf und Weichzeichner und die Fläche verschwand in beiden.
 
 ---
 

@@ -127,6 +127,16 @@ export type RadarOption = {
    */
   beleg: string;
   /**
+   * Ein eigenes Bildzeichen für diese Antwort.
+   *
+   * Nur dort gesetzt, wo die Antworten inhaltlich Verschiedenes bezeichnen —
+   * etwa die Bereiche, in denen Zeit verloren geht. Bei Skalenfragen („unter
+   * zwei Stunden“ bis „mehr als fünfzehn“) bleibt das Zeichen der Frage für
+   * alle gleich: Vier verschiedene Zeichen auf einer Skala sagen nichts über
+   * den Inhalt, sondern nur, welche Antwort uns am liebsten wäre.
+   */
+  symbol?: SymbolKey;
+  /**
    * „Weiß ich nicht“. Schließt jede andere Auswahl aus und zählt bei der
    * Abdeckung als **nicht** beantwortet — die Frage ist offen geblieben.
    */
@@ -173,7 +183,18 @@ export type SymbolKey =
   | "zahlen"
   | "team"
   | "ziel"
-  | "ablauf";
+  | "ablauf"
+  // Für Antworten, die inhaltlich Verschiedenes bezeichnen.
+  | "angebot"
+  | "auftrag"
+  | "rechnung"
+  | "planung"
+  | "personal"
+  | "suche"
+  | "warten"
+  | "doppelt"
+  | "rueckfrage"
+  | "fehler";
 
 export type RadarFrage = {
   key: string;
@@ -744,6 +765,7 @@ const FRAGEN_POTENZIAL: RadarFrage[] = [
     optionen: [
       {
         key: "P9-ANGEBOT",
+        symbol: "angebot",
         label: "Angebote schreiben und nachfassen",
         signale: [
           { achse: "potenzial", wert: 1.5 },
@@ -754,6 +776,7 @@ const FRAGEN_POTENZIAL: RadarFrage[] = [
       },
       {
         key: "P9-AUFTRAG",
+        symbol: "auftrag",
         label: "Aufträge abwickeln und nachhalten",
         signale: [
           { achse: "potenzial", wert: 1.5 },
@@ -764,6 +787,7 @@ const FRAGEN_POTENZIAL: RadarFrage[] = [
       },
       {
         key: "P9-RECHNUNG",
+        symbol: "rechnung",
         label: "Rechnungen stellen und prüfen",
         signale: [
           { achse: "potenzial", wert: 1.5 },
@@ -774,6 +798,7 @@ const FRAGEN_POTENZIAL: RadarFrage[] = [
       },
       {
         key: "P9-PLANUNG",
+        symbol: "planung",
         label: "Einsätze und Schichten planen",
         signale: [
           { achse: "potenzial", wert: 2 },
@@ -784,6 +809,7 @@ const FRAGEN_POTENZIAL: RadarFrage[] = [
       },
       {
         key: "P9-PERSONAL",
+        symbol: "personal",
         label: "Personalthemen: Zeiten, Urlaub, Unterlagen",
         signale: [
           { achse: "potenzial", wert: 1.5 },
@@ -794,6 +820,7 @@ const FRAGEN_POTENZIAL: RadarFrage[] = [
       },
       {
         key: "P9-SUCHEN",
+        symbol: "suche",
         label: "Unterlagen und Informationen suchen",
         signale: [
           { achse: "potenzial", wert: 2 },
@@ -1066,6 +1093,7 @@ const FRAGEN_SPOTLIGHT: RadarFrage[] = [
     optionen: [
       {
         key: "S3-WARTEN",
+        symbol: "warten",
         label: "Es wird auf jemanden gewartet",
         signale: [{ achse: "potenzial", wert: 1.5 }],
         felder: ["prozessstruktur"],
@@ -1073,6 +1101,7 @@ const FRAGEN_SPOTLIGHT: RadarFrage[] = [
       },
       {
         key: "S3-DOPPELT",
+        symbol: "doppelt",
         label: "Dasselbe wird zweimal eingegeben",
         signale: [{ achse: "potenzial", wert: 2 }],
         felder: ["doppelerfassung"],
@@ -1080,6 +1109,7 @@ const FRAGEN_SPOTLIGHT: RadarFrage[] = [
       },
       {
         key: "S3-NACHFRAGE",
+        symbol: "rueckfrage",
         label: "Es gibt Rückfragen, weil etwas fehlt",
         signale: [{ achse: "potenzial", wert: 1.5 }],
         felder: ["prozessstruktur"],
@@ -1087,6 +1117,7 @@ const FRAGEN_SPOTLIGHT: RadarFrage[] = [
       },
       {
         key: "S3-FEHLER",
+        symbol: "fehler",
         label: "Es passieren Fehler, die später auffallen",
         signale: [
           { achse: "potenzial", wert: 2 },

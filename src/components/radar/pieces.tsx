@@ -4,15 +4,26 @@ import {
   BarChart3,
   Check,
   CircleHelp,
+  ClipboardList,
   Clock,
+  Copy,
   Database,
+  FileSignature,
   FileText,
+  Hourglass,
   LayoutGrid,
   Link2,
+  type LucideProps,
   Minus,
   MinusCircle,
+  MessageCircleQuestion,
+  Receipt,
+  Search,
+  CalendarClock,
   Target,
   Timer,
+  TriangleAlert,
+  UserCog,
   UserRound,
   Users,
   Workflow,
@@ -58,11 +69,12 @@ export type FrageDarstellung = {
     key: string;
     label: string;
     hinweis: string | null;
+    symbol?: SymbolKey | null;
     rolle?: "sache" | "unbekannt" | "keinBefund";
   }>;
 };
 
-const SYMBOLE: Record<SymbolKey, React.ComponentType<{ size?: number; className?: string }>> = {
+const SYMBOLE: Record<SymbolKey, React.ComponentType<LucideProps>> = {
   papier: FileText,
   uhr: Timer,
   programme: LayoutGrid,
@@ -75,6 +87,16 @@ const SYMBOLE: Record<SymbolKey, React.ComponentType<{ size?: number; className?
   team: Users,
   ziel: Target,
   ablauf: Workflow,
+  angebot: FileSignature,
+  auftrag: ClipboardList,
+  rechnung: Receipt,
+  planung: CalendarClock,
+  personal: UserCog,
+  suche: Search,
+  warten: Hourglass,
+  doppelt: Copy,
+  rueckfrage: MessageCircleQuestion,
+  fehler: TriangleAlert,
 };
 
 /**
@@ -160,10 +182,16 @@ export function Fragekarte({
       </div>
 
       <div className="grid gap-2.5">
-        {frage.optionen.map((o) => {
+        {frage.optionen.map((o, i) => {
           const aktiv = gewaehlt.includes(o.key);
           const Symbol =
-            o.rolle === "unbekannt" ? CircleHelp : o.rolle === "keinBefund" ? MinusCircle : Sachsymbol;
+            o.rolle === "unbekannt"
+              ? CircleHelp
+              : o.rolle === "keinBefund"
+                ? MinusCircle
+                : o.symbol
+                  ? SYMBOLE[o.symbol]
+                  : Sachsymbol;
           return (
             <button
               key={o.key}
@@ -171,23 +199,41 @@ export function Fragekarte({
               onClick={() => klick(o.key)}
               disabled={disabled}
               aria-pressed={aktiv}
-              className={`group text-left rounded-2xl border transition-all duration-200 disabled:cursor-not-allowed ${
-                kompakt ? "px-3.5 py-3" : "px-4 sm:px-5 py-4"
-              } ${
-                aktiv
-                  ? "border-[#00b8ff]/70 bg-[rgba(0,184,255,0.08)] shadow-[0_0_0_1px_rgba(0,184,255,0.18),0_8px_28px_-14px_rgba(0,184,255,0.6)]"
-                  : "border-[#14263e] bg-[#0a1322] hover:border-[#24415f] hover:bg-[#0d1828] hover:translate-x-[1px]"
-              } ${disabled ? "opacity-60" : ""}`}
+              style={{ animationDelay: `${i * 45}ms` }}
+              className={`group relative overflow-hidden text-left rounded-2xl border outline-none transition-[transform,border-color,background-color,box-shadow] duration-200 ease-out
+                motion-safe:animate-[karte-ein_.45s_cubic-bezier(.22,1,.36,1)_both]
+                focus-visible:ring-2 focus-visible:ring-[#00b8ff]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#070d17]
+                disabled:cursor-not-allowed ${kompakt ? "px-3.5 py-3" : "px-4 sm:px-5 py-4"} ${
+                  aktiv
+                    ? "border-[#00b8ff]/60 bg-[linear-gradient(110deg,rgba(0,184,255,0.13),rgba(0,184,255,0.04)_55%,transparent)] shadow-[0_0_0_1px_rgba(0,184,255,0.22),0_14px_40px_-18px_rgba(0,184,255,0.75)]"
+                    : "border-[#14263e] bg-[linear-gradient(160deg,#0b1626,#090f1b)] hover:border-[#2b5078] hover:bg-[#0d1828] motion-safe:hover:-translate-y-[2px] hover:shadow-[0_12px_32px_-20px_rgba(0,184,255,0.55)]"
+                } ${disabled ? "opacity-60" : ""}`}
             >
-              <span className="flex items-center gap-3.5">
-                {/* Auswahlmarkierung */}
+              {/*
+                Die Glaskante: eine Haarlinie Licht an der Oberkante. Ohne sie
+                sehen dunkle Flächen flach aus — mit ihr bekommen sie eine
+                Oberfläche, auf die Licht fällt.
+              */}
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.09)_35%,rgba(255,255,255,0.09)_65%,transparent)]"
+              />
+              {/* Der Akzentstrich links wächst beim Überfahren und bleibt bei Auswahl. */}
+              <span
+                aria-hidden
+                className={`pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 w-[3px] rounded-r-full bg-[linear-gradient(180deg,#00b8ff,#2ee6c5)] transition-all duration-300 ease-out ${
+                  aktiv ? "h-[62%] opacity-100" : "h-0 opacity-0 group-hover:h-[38%] group-hover:opacity-70"
+                }`}
+              />
+
+              <span className="relative flex items-center gap-3.5">
                 <span
                   className={`flex-shrink-0 w-[19px] h-[19px] flex items-center justify-center border-2 transition-all duration-200 ${
                     frage.modus === "mehrfach" ? "rounded-[6px]" : "rounded-full"
                   } ${
                     aktiv
-                      ? "border-[#00b8ff] bg-[#00b8ff]"
-                      : "border-[#2a4059] group-hover:border-[#3d5c7e]"
+                      ? "border-[#00b8ff] bg-[#00b8ff] motion-safe:scale-105"
+                      : "border-[#2a4059] group-hover:border-[#4b7cab]"
                   }`}
                 >
                   {aktiv &&
@@ -198,22 +244,21 @@ export function Fragekarte({
                     ))}
                 </span>
 
-                {/* Bildzeichen — für alle Sachantworten dasselbe */}
                 <span
-                  className={`flex-shrink-0 w-9 h-9 rounded-xl border flex items-center justify-center transition-colors duration-200 ${
+                  className={`relative flex-shrink-0 w-10 h-10 rounded-xl border flex items-center justify-center transition-all duration-250 ${
                     aktiv
-                      ? "border-[#00b8ff]/40 bg-[rgba(0,184,255,0.12)] text-[#00b8ff]"
-                      : "border-[#17304d] bg-[#0c1829] text-[#4a5f7d] group-hover:text-[#6b84a6]"
+                      ? "border-[#00b8ff]/45 bg-[linear-gradient(145deg,rgba(0,184,255,0.22),rgba(46,230,197,0.1))] text-[#5fd4ff] shadow-[0_0_18px_-4px_rgba(0,184,255,0.7),inset_0_1px_0_rgba(255,255,255,0.1)]"
+                      : "border-[#17304d] bg-[#0c1829] text-[#4a5f7d] group-hover:border-[#2b5078] group-hover:text-[#7fb6e0] group-hover:bg-[#101f33] group-hover:shadow-[0_0_14px_-5px_rgba(0,184,255,0.55)]"
                   }`}
                 >
-                  <Symbol size={16} />
+                  <Symbol size={17} strokeWidth={aktiv ? 2.1 : 1.8} />
                 </span>
 
                 <span className="min-w-0 flex-1">
                   <span
-                    className={`block leading-snug font-medium ${
+                    className={`block leading-snug font-medium transition-colors duration-200 ${
                       kompakt ? "text-[13.5px]" : "text-[15.5px]"
-                    } ${aktiv ? "text-[#f4f8fd]" : "text-[#c9d4e4]"}`}
+                    } ${aktiv ? "text-[#f4f8fd]" : "text-[#c9d4e4] group-hover:text-[#eef2f7]"}`}
                   >
                     {o.label}
                   </span>

@@ -40,16 +40,34 @@ type Props = {
   initial: RadarKundenAnsicht | null;
   /** Die beiden Videokacheln aus dem laufenden Gespräch. */
   video?: React.ReactNode;
-  /** Rechts in der Kopfzeile — Sitzungsanzeige, Teilnehmerzahl. */
-  kopfzeile?: React.ReactNode;
+  /** Mikrofon, Kamera, Verlassen. */
+  videoSteuerung?: React.ReactNode;
+  /** Was an der Stelle der Kacheln steht, solange das Gespräch nicht läuft. */
+  videoHinweis?: React.ReactNode;
+  teilnehmer?: number | null;
 };
 
-export function RadarStage({ token, initial, video, kopfzeile }: Props) {
+export function RadarStage({
+  token,
+  initial,
+  video,
+  videoSteuerung,
+  videoHinweis,
+  teilnehmer,
+}: Props) {
   const [ansicht, setAnsicht] = useState<RadarKundenAnsicht | null>(initial);
   const [verbunden, setVerbunden] = useState(true);
   const [sendet, setSendet] = useState<string | null>(null);
   const [bereich, setBereich] = useState("analyse");
   const [fehler, setFehler] = useState<string | null>(null);
+  // Die Laufzeit tickt im Sekundentakt — sie kommt nicht vom Server, sondern
+  // wird aus dem Startzeitpunkt gerechnet. Ein Zähler, der im Abfragetakt
+  // springt, sieht kaputt aus.
+  const [jetzt, setJetzt] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setJetzt(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
   // Während getippt wird, darf ein Abfragetakt das Feld nicht überschreiben.
   const tippt = useRef(false);
 
@@ -150,7 +168,13 @@ export function RadarStage({ token, initial, video, kopfzeile }: Props) {
       phasen={ansicht.phasen}
       profil={ansicht.live}
       video={video}
-      kopfzeile={kopfzeile}
+      videoSteuerung={videoSteuerung}
+      videoHinweis={videoHinweis}
+      laufzeitSekunden={Math.max(
+        0,
+        Math.floor((jetzt - new Date(ansicht.gestartetAm).getTime()) / 1000)
+      )}
+      teilnehmer={teilnehmer ?? null}
       verbunden={verbunden}
       fuss={
         ansicht.closerName ? (
@@ -257,11 +281,19 @@ function Fussleiste({
         <p className="text-[#5b6b7f] text-[11.5px] text-center mb-1.5">
           {ansicht.fortschritt.beantwortet} von {ansicht.fortschritt.gesamt} Fragen
         </p>
-        <div className="h-1 rounded-full bg-[#101d31] overflow-hidden">
+        <div className="relative h-1 rounded-full bg-[#101d31]">
           <div
-            className="h-full rounded-full bg-[#00b8ff] transition-[width] duration-500 ease-out"
+            className="absolute inset-y-0 left-0 rounded-full bg-[linear-gradient(90deg,#0082c8,#00b8ff_60%,#2ee6c5)] transition-[width] duration-500 ease-out"
             style={{ width: `${ansicht.fortschritt.prozent}%` }}
           />
+          {/* Der Lichtpunkt an der Spitze — er atmet, statt zu blinken. */}
+          {ansicht.fortschritt.prozent > 0 && ansicht.fortschritt.prozent < 100 && (
+            <span
+              aria-hidden
+              className="radar-puls absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-[#2ee6c5] shadow-[0_0_10px_2px_rgba(46,230,197,0.65)] transition-[left] duration-500 ease-out"
+              style={{ left: `${ansicht.fortschritt.prozent}%` }}
+            />
+          )}
         </div>
       </div>
 

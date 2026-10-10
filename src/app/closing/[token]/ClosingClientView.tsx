@@ -213,12 +213,13 @@ export function ClosingClientView({ initialState, token }: Props) {
               slide={null}
               onLeave={() => setJoined(false)}
               onRemoteChange={refresh}
-              stageLayout={({ kacheln, steuerung }) => (
+              stageLayout={({ kacheln, steuerung, teilnehmer }) => (
                 <RadarStage
                   token={token}
                   initial={null}
                   video={kacheln}
-                  kopfzeile={steuerung}
+                  videoSteuerung={steuerung}
+                  teilnehmer={teilnehmer}
                 />
               )}
             />
@@ -226,17 +227,25 @@ export function ClosingClientView({ initialState, token }: Props) {
             <RadarStage
               token={token}
               initial={null}
-              kopfzeile={
+              videoHinweis={
                 showStage ? (
                   <button
                     onClick={() => void joinCall()}
                     disabled={joinPending}
-                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#00b8ff] text-[#041018] text-xs font-bold disabled:opacity-60 transition-opacity"
+                    className="w-full flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#00b8ff] text-[#041018] text-[11.5px] font-bold disabled:opacity-60 transition-opacity"
                   >
                     <Video size={13} />
-                    {joinPending ? "Wird verbunden…" : "Gespräch beitreten"}
+                    {joinPending ? "Wird verbunden…" : "Mit Video beitreten"}
                   </button>
-                ) : null
+                ) : (
+                  <p className="text-[#44546b] text-[10.5px] leading-snug lg:text-center">
+                    Ihr Berater richtet den Gesprächsraum ein.
+                    <span className="hidden lg:inline">
+                      {" "}
+                      Die Analyse können Sie währenddessen schon ausfüllen.
+                    </span>
+                  </p>
+                )
               }
             />
           )}
