@@ -21,6 +21,7 @@ import {
   DIMENSION_MAX,
   FRAGEN,
   SCHWELLEN,
+  STUFEN,
   frage,
   option,
 } from "../src/lib/radar/catalog";
@@ -152,9 +153,17 @@ test("Szenario 2: ein hoher Reifegrad schließt eine klare Empfehlung nicht aus"
   // den meisten Punkten gut dasteht — und trotzdem muss Stufe A möglich sein.
   assert.ok(potenzial < SCHWELLEN.hoch, `Potenzial ${potenzial} — hier wird der konzentrierte Weg geprüft`);
   assert.equal(r.stufe, "A", `Stufe ${r.stufe} statt A (${JSON.stringify(r.stufeGrund)})`);
+  /*
+    Welcher der beiden Wege zu A führt, hängt an den Zahlen: Seit Oktober 2026
+    trägt eine hohe Achse zusammen mit einer tragfähigen zweiten (ab 45) das
+    Ergebnis; darunter greift weiterhin der konzentrierte Weg über dicht
+    belegte Felder. Beide müssen sich in der Begründung wiederfinden — ein A
+    ohne nachvollziehbaren Weg wäre eine Behauptung.
+  */
+  const begruendung = r.stufeGrund.join(" ");
   assert.ok(
-    r.stufeGrund.join(" ").includes("konzentriert"),
-    `Die Begründung muss den Weg benennen: ${r.stufeGrund.join(" ")}`
+    begruendung.includes("tragfähig") || begruendung.includes("konzentriert"),
+    `Die Begründung muss den Weg benennen: ${begruendung}`
   );
   assert.ok(
     r.felder.some((f) => f.key === "systemintegration"),
@@ -253,7 +262,15 @@ test("Szenario 4c: widersprüchliche Angaben werden benannt", () => {
   assert.ok(r.widersprueche[0].length > 20);
 });
 
-test("zwei Widersprüche verhindern ein A, auch bei starken Werten", () => {
+test("zwei Widersprüche kosten kein A — sie stehen aber in der Begründung", () => {
+  /*
+    Bis Oktober 2026 schickten zwei sich widersprechende Angaben das Ergebnis
+    auf Stufe B. Im Gespräch ist das der falsche Schluss: Der Berater sitzt
+    daneben, sieht den Widerspruch in seiner Ansicht und klärt ihn in zwei
+    Sätzen. Dem Interessenten dafür ein „noch nicht" zu zeigen, sät Zweifel,
+    wo keine hingehören. Erst ab dem dritten Widerspruch steht das Bild
+    insgesamt auf wackligen Füßen.
+  */
   const r = bewerteRadar({
     antworten: [
       ...szenarioHandarbeit.filter((x) => !["P5", "S5"].includes(x.frageKey)),
@@ -263,8 +280,11 @@ test("zwei Widersprüche verhindern ein A, auch bei starken Werten", () => {
     spotlightKey: "sp_rechnung",
   });
   assert.ok(r.widersprueche.length >= 2, `nur ${r.widersprueche.length} Widersprüche erkannt`);
-  assert.notEqual(r.stufe, "A");
-  assert.ok(r.stufeGrund.join(" ").includes("widersprechen"));
+  assert.equal(r.stufe, "A");
+  assert.ok(
+    r.stufeGrund.join(" ").includes("widersprechen"),
+    "der Berater muss den Widerspruch trotzdem sehen"
+  );
 });
 
 // ─── Rechenverhalten ─────────────────────────────────────────────────────────
@@ -472,6 +492,37 @@ test("das Live-Bild deckt sich mit dem Reifegrad der Auswertung", () => {
     Math.abs(mittel - reife) < 25,
     `Live-Mittel ${Math.round(mittel)} gegen Reifegrad ${reife} — das driftet auseinander`
   );
+});
+
+// ─── Wortlaut der Stufen ─────────────────────────────────────────────────────
+
+test("Stufe A lädt zum Angebot ein, statt ein Vielleicht zu formulieren", () => {
+  const text = `${STUFEN.A.titel} ${STUFEN.A.kurz} ${STUFEN.A.naechsterSchritt}`;
+  assert.ok(text.includes("Angebot"), "das Angebot muss vorkommen");
+  assert.ok(/glückwunsch/i.test(STUFEN.A.titel), "der Moment darf gefeiert werden");
+  // Die Verknappung muss wahr sein: Sie stimmt, weil Stufe C existiert.
+  assert.ok(/nicht jede/i.test(STUFEN.A.naechsterSchritt));
+});
+
+test("das ehrliche Nein bleibt ein Nein", () => {
+  assert.ok(/kein/i.test(STUFEN.C.titel));
+  assert.ok(/kein weiterer Schritt/i.test(STUFEN.C.naechsterSchritt));
+});
+
+test("keine Stufe stellt den Interessenten als unfertig hin", () => {
+  /*
+    Der Satz „offene Punkte nachfassen" stand vorher bei Stufe B und klang
+    wie „Sie sind noch nicht so weit, bei uns zu kaufen". Zweifel sollen aus
+    der Sache kommen, nicht aus der Wortwahl.
+  */
+  const zweifel = ["nicht bereit", "noch nicht so weit", "erst wenn Sie", "nachfassen"];
+  for (const stufe of ["A", "B"] as const) {
+    const text =
+      `${STUFEN[stufe].titel} ${STUFEN[stufe].kurz} ${STUFEN[stufe].naechsterSchritt}`.toLowerCase();
+    for (const wendung of zweifel) {
+      assert.ok(!text.includes(wendung), `Stufe ${stufe} enthält „${wendung}"`);
+    }
+  }
 });
 
 console.log(`\n${passed} Tests bestanden.\n`);

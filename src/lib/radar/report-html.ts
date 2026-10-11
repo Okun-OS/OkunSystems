@@ -179,7 +179,7 @@ export function renderRadarReportHtml(params: {
   ${felder}
 
   <section>
-    <h2>Nächster sinnvoller Schritt</h2>
+    <h2>${esc(e.schrittUeberschrift)}</h2>
     <div class="schritt">
       <div class="schritt-text">${esc(e.naechsterSchritt)}</div>
       ${

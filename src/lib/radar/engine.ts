@@ -440,11 +440,32 @@ function bestimmeStufe(input: {
 
   const dichtBelegt = input.felder.filter((f) => f.belege.length >= SCHWELLEN.belegeDichtesFeld);
   const breit = input.potenzial >= SCHWELLEN.hoch && input.fit >= SCHWELLEN.hoch;
-  const konzentriert =
-    !breit && input.fit >= SCHWELLEN.hoch && dichtBelegt.length >= 2;
+  /*
+    Eine Achse hoch, die andere tragfähig — das reicht.
 
-  if (breit || konzentriert) {
-    if (input.widersprueche >= 2) {
+    Vorher mussten beide über 60 liegen, sonst endete alles im Mittelfeld bei
+    Stufe B. Das traf regelmäßig Betriebe, bei denen der Bedarf klar war, und
+    hinterließ beim Interessenten den Eindruck, er sei noch nicht so weit.
+    Die Absage bleibt möglich und hat ihre eigenen Schwellen (siehe oben);
+    das Vielleicht ist der Fall, der niemandem hilft.
+  */
+  const getragen =
+    !breit &&
+    ((input.potenzial >= SCHWELLEN.hoch && input.fit >= SCHWELLEN.tragfaehig) ||
+      (input.fit >= SCHWELLEN.hoch && input.potenzial >= SCHWELLEN.tragfaehig));
+  const konzentriert =
+    !breit && !getragen && input.fit >= SCHWELLEN.hoch && dichtBelegt.length >= 2;
+
+  if (breit || getragen || konzentriert) {
+    /*
+      Widersprüche schicken das Ergebnis erst ab dem dritten nach unten.
+
+      Ein oder zwei sich widersprechende Angaben sind im Gespräch normal und
+      in zwei Sätzen geklärt — der Berater sitzt daneben und sieht sie in
+      seiner Ansicht. Erst wenn sich die Angaben häufen, steht das Bild
+      insgesamt auf wackligen Füßen.
+    */
+    if (input.widersprueche >= 3) {
       gruende.push(
         `Potenzial ${input.potenzial} und Passung ${input.fit} tragen eine Empfehlung — aber ${input.widersprueche} Angaben widersprechen sich. Das ist vor einer Zusage zu klären.`
       );
@@ -453,15 +474,22 @@ function bestimmeStufe(input: {
     gruende.push(
       breit
         ? `Optimierungspotenzial ${input.potenzial} und Passung ${input.fit} liegen beide über ${SCHWELLEN.hoch}.`
-        : `Passung ${input.fit}. Das Gesamtpotenzial liegt mit ${input.potenzial} nur im Mittelfeld — der Betrieb steht in den meisten Punkten gut da. Der Bedarf sitzt konzentriert: ${dichtBelegt
-            .map((f) => `${f.label} (${f.belege.length} Belege)`)
-            .join(", ")}.`
+        : getragen
+          ? `Optimierungspotenzial ${input.potenzial}, Passung ${input.fit}. Eine Achse liegt über ${SCHWELLEN.hoch}, die andere über ${SCHWELLEN.tragfaehig} — tragfähig für ein Angebot, die Einzelheiten klärt das Gespräch.`
+          : `Passung ${input.fit}. Das Gesamtpotenzial liegt mit ${input.potenzial} nur im Mittelfeld — der Betrieb steht in den meisten Punkten gut da. Der Bedarf sitzt konzentriert: ${dichtBelegt
+              .map((f) => `${f.label} (${f.belege.length} Belege)`)
+              .join(", ")}.`
     );
+    if (input.widersprueche > 0) {
+      gruende.push(
+        `${input.widersprueche} Angaben widersprechen sich — im Gespräch klären, bevor das Angebot steht.`
+      );
+    }
     return { stufe: "A", gruende };
   }
 
   gruende.push(
-    `Optimierungspotenzial ${input.potenzial}, Passung ${input.fit}. Anhaltspunkte ja, aber nicht beide über ${SCHWELLEN.hoch}.`
+    `Optimierungspotenzial ${input.potenzial}, Passung ${input.fit}. Anhaltspunkte ja, aber keine Achse über ${SCHWELLEN.hoch} mit einer zweiten über ${SCHWELLEN.tragfaehig}.`
   );
   return { stufe: "B", gruende };
 }

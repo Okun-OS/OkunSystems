@@ -718,7 +718,7 @@ export function Ergebnisbericht({
       {/* Nächster Schritt */}
       <div className="rounded-xl border border-[#16283d] bg-[#070d15] px-4 py-3">
         <p className="font-mono text-[#3d5c7e] text-[10px] uppercase tracking-[0.2em] mb-1.5">
-          Nächster sinnvoller Schritt
+          {ergebnis.schrittUeberschrift}
         </p>
         <p className="text-[#c9d4e4] text-[13px] leading-relaxed">{ergebnis.naechsterSchritt}</p>
         {ergebnis.blueprintEmpfohlen && ergebnis.blueprintBegruendung && (

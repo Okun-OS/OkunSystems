@@ -5,6 +5,7 @@ import {
   PROFIL_FELDER,
   SCHWELLEN,
   SPOTLIGHT_PROZESSE,
+  SCHRITT_UEBERSCHRIFT,
   STUFEN,
   THEMEN,
   frage as frageAusKatalog,
@@ -102,6 +103,8 @@ export type KundenErgebnis = {
   stufeTitel: string;
   einschaetzung: string;
   naechsterSchritt: string;
+  /** Was über dem letzten Abschnitt steht — je nach Stufe. */
+  schrittUeberschrift: string;
   achsen: Array<{
     label: string;
     frage: string;
@@ -261,6 +264,7 @@ export function kundenErgebnis(e: RadarErgebnis, erstelltAm: Date | string): Kun
     stufeTitel: e.stufeTitel,
     einschaetzung: e.einschaetzung,
     naechsterSchritt: STUFEN[e.stufe].naechsterSchritt,
+    schrittUeberschrift: SCHRITT_UEBERSCHRIFT[e.stufe],
     achsen: e.achsen.map((a) => ({
       label: a.label,
       frage: ACHSEN_FRAGE[a.achse],

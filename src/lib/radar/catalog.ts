@@ -1311,7 +1311,18 @@ export const SCHWELLEN = {
    * Stufe B, in beide Richtungen: weder ein Zuschlag noch eine Absage lässt
    * sich auf halbe Daten stützen.
    */
-  aussagekraftFuerUrteil: 70,
+  aussagekraftFuerUrteil: 60,
+  /**
+   * Ab hier trägt eine Achse ein Angebot, auch wenn sie nicht „hoch" ist.
+   *
+   * Zwischen „niedrig" und „hoch" lag vorher ein breites Mittelfeld, das
+   * immer in einem Vielleicht endete. Ein Vielleicht hilft niemandem: Es
+   * klingt für den Interessenten wie „Sie sind noch nicht so weit", obwohl
+   * in Wahrheit wir noch nicht so weit waren. Reicht eine Achse hoch und die
+   * andere bis hierher, ist das genug für ein Angebot — die Einzelheiten
+   * klärt das Gespräch.
+   */
+  tragfaehig: 45,
   /** Ab so vielen stützenden Antworten gilt ein Potenzialfeld als belegt. */
   belegeProFeld: 2,
   /**
@@ -1327,18 +1338,19 @@ export const STUFEN: Record<
   { titel: string; kurz: string; naechsterSchritt: string; ton: "positiv" | "offen" | "zurueckhaltend" }
 > = {
   A: {
-    titel: "Hohes Potenzial für eine Zusammenarbeit",
-    kurz: "Es wurden Herausforderungen erkannt, bei denen wir voraussichtlich helfen können.",
+    titel: "Herzlichen Glückwunsch — wir können Ihnen ein Angebot machen",
+    kurz:
+      "Ihre eigenen Angaben zeigen Stellen, an denen wir nachweislich etwas bewegen können. Das ist nicht bei jedem Betrieb so.",
     naechsterSchritt:
-      "Die erkannten Felder im Detail durchgehen und besprechen, welcher Weg zu Ihrem Betrieb passt.",
+      "Ihr Berater stellt Ihnen gleich ein konkretes Angebot vor. Nicht jede dieser Analysen endet so — wo wir keinen Bedarf sehen, sagen wir das auch. Bei Ihnen sehen wir ihn.",
     ton: "positiv",
   },
   B: {
-    titel: "Vertiefte Prüfung empfohlen",
+    titel: "Gute Grundlage — die letzten Angaben klären wir gemeinsam",
     kurz:
-      "Es gibt Anhaltspunkte, aber die Kurzanalyse reicht für eine klare Empfehlung noch nicht aus.",
+      "Die Viertelstunde hat gereicht, um die Richtung zu sehen. Für ein belastbares Angebot fehlen uns noch ein paar Angaben — das liegt an unserem Anspruch, nicht an Ihrem Betrieb.",
     naechsterSchritt:
-      "Die offenen Punkte gezielt nachschärfen, bevor über eine Umsetzung gesprochen wird.",
+      "Ihr Berater geht die fehlenden Punkte direkt mit Ihnen durch. Danach wissen Sie, was wir für Sie tun können und was es kostet.",
     ton: "offen",
   },
   C: {
@@ -1346,9 +1358,22 @@ export const STUFEN: Record<
     kurz:
       "Der Betrieb ist in den betrachteten Punkten gut aufgestellt; ein Auftrag an uns würde sich daraus heute nicht rechnen.",
     naechsterSchritt:
-      "Heute kein weiterer Schritt. Wir melden uns gern wieder, wenn sich etwas verändert.",
+      "Heute kein weiterer Schritt — das ist ernst gemeint und kein Verhandlungsangebot. Wir melden uns gern wieder, wenn sich bei Ihnen etwas verändert.",
     ton: "zurueckhaltend",
   },
+};
+
+/**
+ * Die Überschrift über dem letzten Abschnitt des Berichts.
+ *
+ * „Nächster sinnvoller Schritt" stand vorher über jeder Stufe. Über einem
+ * Angebot klingt das wie eine Hausaufgabe; über einer Absage wie ein
+ * Hintertürchen. Jede Stufe sagt besser selbst, was dort steht.
+ */
+export const SCHRITT_UEBERSCHRIFT: Record<ErgebnisStufe, string> = {
+  A: "So geht es jetzt weiter",
+  B: "So geht es jetzt weiter",
+  C: "Unsere Empfehlung",
 };
 
 /** Qualitative Bänder, wenn Zahlen nicht tragen. */
