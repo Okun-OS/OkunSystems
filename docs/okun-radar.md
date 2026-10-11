@@ -609,7 +609,12 @@ sich an wie eine Webseite; ein Schnitt fühlt sich an wie Software, die jemand
 gebaut hat. Genau das ist im Verkaufsgespräch die Aussage.
 
 Vier Übergänge: `radar`, `ergebnis`, `angebot`, `gespraech` — jeder mit
-eigener Unterzeile. Die Marke sendet dabei Wellen nach außen und wird von
+eigener Unterzeile. **Gratuliert wird nur beim Angebot und nur einmal je
+Gespräch.** Wechselt der Berater danach zurück ins Radar und wieder zum
+Angebot, steht dort nur noch „Ihr persönliches Angebot": Ein Glückwunsch, der
+sich bei jedem Hin und Her wiederholt, ist keiner mehr. Nach dem Abschluss
+(`isActivated`) entfällt er ganz — wer unterschrieben hat, braucht keine
+Ankündigung eines Angebots mehr. Die Marke sendet dabei Wellen nach außen und wird von
 einem umlaufenden Strahl abgetastet; das Ding heißt Radar, und das Bild soll
 halten, was der Name verspricht.
 

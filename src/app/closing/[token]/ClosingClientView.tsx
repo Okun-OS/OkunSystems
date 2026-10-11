@@ -250,7 +250,11 @@ export function ClosingClientView({ initialState, token }: Props) {
         er stehen und sieht den Wechsel.
       */
       <>
-        <ModusUebergang modus={modus} firma={state.companyName} />
+        <ModusUebergang
+          modus={modus}
+          firma={state.companyName}
+          feiern={!state.isActivated}
+        />
         <div key="radar" className="h-screen flex flex-col bg-[#04070d]">
         {state.recordingActive && <AufzeichnungsBand />}
         <div className="flex-1 min-h-0">
@@ -306,7 +310,11 @@ export function ClosingClientView({ initialState, token }: Props) {
 
   return (
     <>
-      <ModusUebergang modus={modus} firma={state.companyName} />
+      <ModusUebergang
+          modus={modus}
+          firma={state.companyName}
+          feiern={!state.isActivated}
+        />
       <div key="gespraech" className="relative min-h-screen bg-[#04070d] flex flex-col">
       {/*
         Dieselbe Materialschicht wie im Cockpit.

@@ -34,6 +34,7 @@ import {
   schlageSoftwareVor,
 } from "../src/lib/radar/software-katalog";
 import { istSauber, pruefeAntwort } from "../src/lib/radar/deutung";
+import { groszeZeile } from "../src/components/radar/modus-uebergang";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -740,6 +741,34 @@ test("keine Einordnung darf Zahlen erfinden", () => {
   assert.equal(istSauber("Das spart 30 % der Zeit."), false);
   assert.equal(istSauber("Branchenüblich sind hier zwei Systeme."), false);
   assert.equal(istSauber("Bis zu 5.000 EUR im Jahr."), false);
+});
+
+// ─── Der Glückwunsch ─────────────────────────────────────────────────────────
+
+test("gratuliert wird nur beim Angebot — und nur, wenn gefeiert werden darf", () => {
+  /*
+    Der Schirm vor dem Angebot gratuliert. Alle anderen Schnitte nicht: Ein
+    Glückwunsch beim Zurückwechseln ins Gespräch oder beim Öffnen der
+    Auswertung wäre eine Floskel, und eine Floskel, die jeder Wechsel
+    wiederholt, entwertet den einen Moment, auf den das Gespräch zuläuft.
+    Dass er sich innerhalb eines Gesprächs nicht wiederholt, hält der
+    Komponentenzustand fest (`schonGefeiert`); hier steht die Regel selbst.
+  */
+  assert.equal(groszeZeile("angebot", "Nordlicht GmbH"), "Herzlichen Glückwunsch");
+  assert.equal(groszeZeile("angebot", "Nordlicht GmbH", false), null);
+  assert.equal(groszeZeile("radar", "Nordlicht GmbH"), "Nordlicht GmbH");
+  assert.equal(groszeZeile("gespraech", "Nordlicht GmbH"), null);
+  assert.equal(groszeZeile("ergebnis", "Nordlicht GmbH"), null);
+});
+
+test("nur Stufe A gratuliert, B und C nicht", () => {
+  assert.ok(/glückwunsch/i.test(STUFEN.A.titel));
+  assert.ok(!/glückwunsch/i.test(STUFEN.B.titel));
+  assert.ok(!/glückwunsch/i.test(STUFEN.C.titel));
+  // Und der Bericht nimmt den Titel aus der Stufe, nicht aus der Laune.
+  for (const stufe of ["A", "B", "C"] as const) {
+    assert.ok(STUFEN[stufe].titel.length > 10);
+  }
 });
 
 console.log(`\n${passed} Tests bestanden.\n`);

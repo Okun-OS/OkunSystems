@@ -38,32 +38,64 @@ const TEXTE: Record<Modus, string> = {
  * Beim Eintritt in die Analyse der Firmenname — hier geht es um diesen
  * Betrieb, nicht um einen Musterfall. Beim Angebot der Glückwunsch: Es ist
  * der Moment, auf den das ganze Gespräch zuläuft, und er darf sich auch so
- * anfühlen. Bei den übrigen Übergängen steht dort nichts; ein Schnitt, der
- * jedes Mal feiert, feiert nichts.
+ * anfühlen.
+ *
+ * Aber nur **einmal**. Wechselt der Berater danach zurück ins Radar und
+ * wieder zum Angebot, gratulierte der Schirm vorher jedes Mal erneut — und
+ * ein Glückwunsch, der sich wiederholt, ist keiner mehr, sondern eine
+ * Bildschirmschonerzeile. Ab dem zweiten Mal steht dort nur noch, worum es
+ * geht.
  */
-function groszeZeile(modus: Modus, firma?: string | null): string | null {
+export function groszeZeile(
+  modus: Modus,
+  firma?: string | null,
+  feiern = true
+): string | null {
   if (modus === "radar") return firma ?? null;
-  if (modus === "angebot") return "Herzlichen Glückwunsch";
+  if (modus === "angebot" && feiern) return "Herzlichen Glückwunsch";
   return null;
 }
 
 const DAUER_MS = 1900;
 
-export function ModusUebergang({ modus, firma }: { modus: Modus; firma?: string | null }) {
-  const [laeuft, setLaeuft] = useState<Modus | null>(null);
+export function ModusUebergang({
+  modus,
+  firma,
+  feiern = true,
+}: {
+  modus: Modus;
+  firma?: string | null;
+  /**
+   * Ob der Angebotsschnitt gratulieren darf.
+   *
+   * Falsch, sobald der Abschluss durch ist: Wer bereits unterschrieben hat,
+   * bekommt keinen Schirm mehr, der ihm ein Angebot ankündigt.
+   */
+  feiern?: boolean;
+}) {
+  const [laeuft, setLaeuft] = useState<{ modus: Modus; feiern: boolean } | null>(null);
   const vorher = useRef(modus);
+  /** Gratuliert wird einmal je Gespräch, nicht bei jedem Zurückwechseln. */
+  const schonGefeiert = useRef(false);
 
   useEffect(() => {
     if (vorher.current === modus) return;
     vorher.current = modus;
-    setLaeuft(modus);
+    /*
+      Ob dieser Schnitt feiern darf, wird hier entschieden — nicht beim
+      Zeichnen. Ein Merker, der während des Renderns gesetzt wird, läuft bei
+      einem zweiten Durchlauf doppelt und verschluckt den Glückwunsch.
+    */
+    const darfFeiern = modus === "angebot" && feiern && !schonGefeiert.current;
+    if (darfFeiern) schonGefeiert.current = true;
+    setLaeuft({ modus, feiern: darfFeiern });
     const id = setTimeout(() => setLaeuft(null), DAUER_MS);
     return () => clearTimeout(id);
-  }, [modus]);
+  }, [modus, feiern]);
 
   if (!laeuft) return null;
 
-  const grosz = groszeZeile(laeuft, firma);
+  const grosz = groszeZeile(laeuft.modus, firma, laeuft.feiern);
 
   return (
     <div
@@ -126,7 +158,7 @@ export function ModusUebergang({ modus, firma }: { modus: Modus; firma?: string 
           className="mt-4 text-[#5f88ae] text-[10.5px] sm:text-[12px] uppercase text-center"
           style={{ animation: "ueber-schrift .7s cubic-bezier(.22,1,.36,1) .72s both" }}
         >
-          {TEXTE[laeuft]}
+          {TEXTE[laeuft.modus]}
         </p>
 
         {/*
@@ -146,7 +178,7 @@ export function ModusUebergang({ modus, firma }: { modus: Modus; firma?: string 
           </p>
         ) : null}
 
-        {laeuft === "angebot" && firma ? (
+        {laeuft.modus === "angebot" && firma && grosz ? (
           <p
             className="mt-2 max-w-[30ch] text-[#5f88ae] text-[12.5px] sm:text-[14px] leading-snug text-center"
             style={{ animation: "karte-ein .62s cubic-bezier(.22,1,.36,1) 1.02s both" }}
