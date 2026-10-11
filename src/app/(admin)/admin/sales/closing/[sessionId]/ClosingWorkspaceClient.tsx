@@ -38,7 +38,8 @@ import { isFailure } from "@/lib/action-result";
 import { STATUS_LABELS as CLOSING_STATUS_LABELS, normalizeStatus } from "@/lib/closing/state-machine";
 import { ContractClosurePanel, type ContractClosureData } from "./ContractClosurePanel";
 import { PresentationPanel, type PresentationItem } from "./PresentationPanel";
-import { OkunCall, type CallSlide } from "@/components/closing/okun-call";
+import { type CallSlide } from "@/components/closing/okun-call";
+import { useGespraech } from "@/components/closing/gespraech-host";
 import { showSlide, stopPresentation } from "./presentation-actions";
 import { RadarPanel } from "./RadarPanel";
 import type { RadarCloserAnsicht } from "@/lib/radar/views";
@@ -142,31 +143,6 @@ const NEXT_STEP_MAP: Record<
     run: markAgreementReached,
   },
 };
-
-/** Fenstergröße, auf die beim Start einer Präsentation aufgezogen wird. */
-const PRESENTATION_SIZE = { w: 820, h: 560 };
-
-/**
- * Hält das Gesprächsfenster im Sichtbaren.
- *
- * Verschoben werden darf es überall hin — aber nie so weit, dass die
- * Titelleiste und damit der Griff zum Zurückholen verschwindet.
- */
-function clampToViewport(
-  pos: { x: number; y: number },
-  size: { w: number; h: number }
-): { x: number; y: number } {
-  if (typeof window === "undefined") return pos;
-  const MARGIN = 8;
-  const VISIBLE = 200; // so viel Fenster bleibt mindestens greifbar
-  return {
-    x: Math.min(
-      Math.max(pos.x, VISIBLE - size.w),
-      Math.max(window.innerWidth - VISIBLE, MARGIN)
-    ),
-    y: Math.min(Math.max(pos.y, MARGIN), Math.max(window.innerHeight - 48, MARGIN)),
-  };
-}
 
 const CONTENT_TYPE_LABELS: Record<string, string> = {
   closing_script: "Skript",
@@ -331,25 +307,21 @@ export function ClosingWorkspaceClient({
     | "abschluss"
     | "protokoll"
   >("overview");
-  const [callActive, setCallActive] = useState(false);
-  const [callExpanded, setCallExpanded] = useState(false);
-  // Geprüfte Raum-URL aus dem Beitritt; sie hat Vorrang vor der gespeicherten.
-  const [callUrl, setCallUrl] = useState<string | null>(null);
+  /*
+    Das Gespräch gehört nicht dieser Seite.
+
+    Es läuft im Layout (siehe `gespraech-host.tsx`) und überlebt damit jeden
+    Seitenwechsel. Hier wird es nur gestartet, beendet und — solange diese
+    Seite offen ist — um die Folienschaltung ergänzt.
+  */
+  const gespraech = useGespraech();
+  const callActive = gespraech.aktiv;
   const [offerMailPending, setOfferMailPending] = useState(false);
   const [offerMailResult, setOfferMailResult] = useState<
     { ok: true; toEmail: string } | { ok: false; error: string } | null
   >(null);
   const [callJoinPending, setCallJoinPending] = useState(false);
   const [callJoinError, setCallJoinError] = useState<string | null>(null);
-
-  // ─── Draggable + resizable video overlay ──────────────────────────────────
-  const [vidPos, setVidPos] = useState({ x: 0, y: 0 });
-  const [vidSize, setVidSize] = useState({ w: 420, h: 300 });
-  const vidPosInitialized = useRef(false);
-  const isDragging = useRef(false);
-  const isResizing = useRef(false);
-  const dragOrigin = useRef({ mx: 0, my: 0, x: 0, y: 0, w: 0, h: 0 });
-  const resizeOrigin = useRef({ mx: 0, my: 0, w: 0, h: 0 });
 
   // Vor dem Beitritt den Videoraum sicherstellen: ein abgelaufener Raum wird
   // dabei neu angelegt. Sonst bleibt das Gespräch auf beiden Seiten bei
@@ -370,14 +342,26 @@ export function ClosingWorkspaceClient({
         setCallJoinError(data.error ?? "Der Gesprächsraum konnte nicht geöffnet werden.");
         return;
       }
-      setCallUrl(data.meetingUrl);
-      setCallActive(true);
+      gespraech.starten({
+        raumUrl: data.meetingUrl,
+        name: closingSession.closer.name ?? "Berater",
+        closingSessionId: closingSession.id,
+        titel: closingSession.company.name,
+        zurueckLink: `/admin/sales/closing/${closingSession.id}`,
+      });
     } catch {
       setCallJoinError("Keine Verbindung zum Server. Bitte erneut versuchen.");
     } finally {
       setCallJoinPending(false);
     }
-  }, [closingSession.appointment?.id, callJoinPending]);
+  }, [
+    closingSession.appointment?.id,
+    closingSession.id,
+    closingSession.closer.name,
+    closingSession.company.name,
+    callJoinPending,
+    gespraech,
+  ]);
 
   // ─── Präsentationssteuerung ────────────────────────────────────────────────
   // Der Berater blättert zuerst lokal und dann auf dem Server: die Bedienung
@@ -409,15 +393,8 @@ export function ClosingWorkspaceClient({
     // Eine startende Präsentation braucht Platz — aber das Fenster bleibt
     // verschiebbar. Vollbild gibt es weiterhin über die Schaltfläche; es
     // ungefragt zu erzwingen, nahm dem Berater die Kontrolle über sein Bild.
-    if (justStarted) {
-      const grown = vidSize.w < PRESENTATION_SIZE.w ? PRESENTATION_SIZE : vidSize;
-      if (grown !== vidSize) {
-        setVidSize(grown);
-        // Ein breiteres Fenster an der alten Stelle ragt rechts hinaus —
-        // also mitziehen, statt den Berater hinterherschieben zu lassen.
-        setVidPos((pos) => clampToViewport(pos, grown));
-      }
-    }
+    // Das Fenster zieht sich beim Start einer Präsentation selbst auf —
+    // siehe `gespraech-host.tsx`.
   }
 
   const liveIndex = liveSlides.findIndex((slide) => slide.position === slideView.position);
@@ -484,6 +461,29 @@ export function ClosingWorkspaceClient({
     if (previous) moveTo(previous.position, 1);
   }
 
+  /*
+    Die Folienschaltung beim Gesprächsfenster anmelden.
+
+    Sie lebt hier, weil sie zu diesem Closing gehört; das Fenster lebt im
+    Layout, weil es den Seitenwechsel überleben muss. Verlässt der Berater
+    die Seite, meldet sich die Schaltung ab — das Gespräch läuft weiter, nur
+    ohne Blättern, bis er zurück ist.
+  */
+  useEffect(() => {
+    gespraech.setzeSteuerung({
+      slide: liveSlide,
+      onPrev: goToPreviousSlide,
+      onNext: goToNextSlide,
+      canPrev: canPrevSlide,
+      canNext: canNextSlide,
+      onStopPresentation: () => {
+        void stopPresentation(closingSession.id).then(() => router.refresh());
+      },
+      onPageCount: notePageCount,
+    });
+    return () => gespraech.setzeSteuerung(null);
+  });
+
   // Status actions
   const [statusPending, startStatusTransition] = useTransition();
   const [offerPending, startOfferTransition] = useTransition();
@@ -522,86 +522,14 @@ export function ClosingWorkspaceClient({
   const totalCount = ALL_STEP_IDS.length;
   const progress = totalCount > 0 ? Math.round((checkedCount / totalCount) * 100) : 0;
 
-  // ─── Drag + resize events ─────────────────────────────────────────────────
-  useEffect(() => {
-    function onMove(e: MouseEvent) {
-      if (isDragging.current) {
-        const origin = dragOrigin.current;
-        setVidPos(
-          clampToViewport(
-            {
-              x: origin.x + (e.clientX - origin.mx),
-              y: origin.y + (e.clientY - origin.my),
-            },
-            { w: origin.w, h: origin.h }
-          )
-        );
-      }
-      if (isResizing.current) {
-        setVidSize({
-          w: Math.max(280, resizeOrigin.current.w + (e.clientX - resizeOrigin.current.mx)),
-          h: Math.max(180, resizeOrigin.current.h + (e.clientY - resizeOrigin.current.my)),
-        });
-      }
-    }
-    function onUp() {
-      isDragging.current = false;
-      isResizing.current = false;
-    }
-    document.addEventListener("mousemove", onMove);
-    document.addEventListener("mouseup", onUp);
-    return () => {
-      document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("mouseup", onUp);
-    };
-  }, []);
+  /*
+    Die Anwesenheitsmeldung hängt am Gespräch, nicht an dieser Seite.
 
-  useEffect(() => {
-    if (callActive && !vidPosInitialized.current) {
-      setVidPos({ x: Math.max(20, window.innerWidth - 460), y: 108 });
-      vidPosInitialized.current = true;
-    }
-  }, [callActive]);
-
-  // ─── Anwesenheit melden ───────────────────────────────────────────────────
-  // Solange das Gespräch offen ist, wird alle 30 Sekunden ein Heartbeat
-  // gesendet. Der Kunde sieht dadurch „Ihr Berater ist da" statt einer leeren
-  // Warteschleife. Beim Verlassen und beim Schließen des Tabs wird abgemeldet.
-  useEffect(() => {
-    if (!callActive) return;
-    const sessionId = closingSession.id;
-
-    const announce = (present: boolean) => {
-      void fetch("/api/closing/advisor-presence", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ closingSessionId: sessionId, present }),
-        keepalive: true,
-      }).catch(() => {
-        // Ein verpasster Heartbeat ist unkritisch: der Status verfällt von
-        // selbst und der nächste Takt meldet erneut.
-      });
-    };
-
-    announce(true);
-    const interval = setInterval(() => announce(true), 30_000);
-
-    const onUnload = () => {
-      const body = JSON.stringify({ closingSessionId: sessionId, present: false });
-      if (navigator.sendBeacon) {
-        navigator.sendBeacon("/api/closing/advisor-presence", body);
-      } else {
-        announce(false);
-      }
-    };
-    window.addEventListener("pagehide", onUnload);
-
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener("pagehide", onUnload);
-      announce(false);
-    };
-  }, [callActive, closingSession.id]);
+    Vorher endete sie, sobald der Berater eine andere Seite öffnete — der
+    Interessent sah dann „Ihr Berater ist nicht da", obwohl er im Raum saß.
+    Jetzt meldet sie der Host, solange das Gespräch läuft (siehe
+    `gespraech-host.tsx`).
+  */
 
   const handleChecklistChange = useCallback(
     (stepId: string, checked: boolean) => {
@@ -973,7 +901,7 @@ export function ClosingWorkspaceClient({
             <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-4 flex items-center gap-4 flex-wrap">
               {closingSession.appointment?.meetingUrl ? (
                 <button
-                  onClick={() => (callActive ? setCallActive(false) : void joinCall())}
+                  onClick={() => (callActive ? gespraech.beenden() : void joinCall())}
                   disabled={callJoinPending}
                   className={`flex items-center gap-2 px-3 py-2 border text-sm font-medium rounded-lg transition-colors disabled:opacity-60 ${
                     callActive
@@ -1410,110 +1338,6 @@ export function ClosingWorkspaceClient({
               })}
             </div>
           )}
-        </div>
-      )}
-
-      {/* ─── Gesprächsfenster ─────────────────────────────────────────────────
-          Einmal gerendert und nie ausgehängt, damit das Gespräch beim
-          Tabwechsel nicht abreißt. Verschiebbar über die Titelleiste,
-          vergrößerbar über die Ecke — und für die Präsentation auf Vollbild. */}
-      {callActive && (callUrl ?? closingSession.appointment?.meetingUrl) && (
-        <div
-          className={`fixed z-50 flex flex-col shadow-2xl border border-[#1a2840] bg-[#080d14] overflow-hidden ${
-            callExpanded ? "inset-3 rounded-2xl" : "rounded-xl"
-          }`}
-          style={
-            callExpanded
-              ? undefined
-              : {
-                  left: `${vidPos.x}px`,
-                  top: `${vidPos.y}px`,
-                  width: `${vidSize.w}px`,
-                  height: `${vidSize.h}px`,
-                }
-          }
-        >
-          {/* Title bar — drag handle */}
-          <div
-            className="flex items-center justify-between px-3 py-2 bg-[#0c1520] border-b border-[#1a2840] flex-shrink-0 cursor-grab active:cursor-grabbing select-none"
-            onMouseDown={(e) => {
-              isDragging.current = true;
-              dragOrigin.current = {
-                mx: e.clientX,
-                my: e.clientY,
-                x: vidPos.x,
-                y: vidPos.y,
-                w: vidSize.w,
-                h: vidSize.h,
-              };
-              e.preventDefault();
-            }}
-          >
-            <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-[#ef4444] animate-pulse" />
-              <span className="text-xs font-medium text-[#f0f0f0]">Live-Gespräch</span>
-              {activeTab !== "maske" && (
-                <button
-                  onClick={() => setActiveTab("maske")}
-                  className="text-[10px] text-[#00b8ff] hover:underline"
-                  onMouseDown={(e) => e.stopPropagation()}
-                >
-                  → Maske
-                </button>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setCallExpanded((v) => !v)}
-                className="text-[#666] hover:text-[#00b8ff] transition-colors"
-                title={callExpanded ? "Verkleinern" : "Vergrößern"}
-                onMouseDown={(e) => e.stopPropagation()}
-              >
-                {callExpanded ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
-              </button>
-              <button
-                onClick={() => setCallActive(false)}
-                className="text-[#666] hover:text-[#ef4444] transition-colors"
-                title="Gespräch verlassen"
-                onMouseDown={(e) => e.stopPropagation()}
-              >
-                <Square size={11} />
-              </button>
-            </div>
-          </div>
-          <div className="flex-1 min-h-0">
-            <OkunCall
-              roomUrl={(callUrl ?? closingSession.appointment?.meetingUrl)!}
-              userName={closingSession.closer.name ?? "Berater"}
-              role="advisor"
-              slide={liveSlide}
-              onLeave={() => setCallActive(false)}
-              onPrev={goToPreviousSlide}
-              onNext={goToNextSlide}
-              canPrev={canPrevSlide}
-              canNext={canNextSlide}
-              onStopPresentation={() => {
-                void stopPresentation(closingSession.id).then(() => router.refresh());
-              }}
-              onPageCount={notePageCount}
-            />
-          </div>
-          {/* Resize handle — bottom-right corner */}
-          <div
-            hidden={callExpanded}
-            className="absolute bottom-0 right-0 w-5 h-5 cursor-se-resize z-10"
-            onMouseDown={(e) => {
-              isResizing.current = true;
-              resizeOrigin.current = { mx: e.clientX, my: e.clientY, w: vidSize.w, h: vidSize.h };
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-          >
-            <svg width="10" height="10" viewBox="0 0 10 10" className="absolute bottom-1 right-1 text-[#444]">
-              <path d="M 9 3 L 9 9 L 3 9" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M 9 6 L 6 9" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-            </svg>
-          </div>
         </div>
       )}
     </div>

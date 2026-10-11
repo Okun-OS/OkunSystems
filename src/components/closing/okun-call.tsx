@@ -28,6 +28,7 @@ import {
   VideoOff,
 } from "lucide-react";
 import { PdfPage } from "./pdf-page";
+import { CallChat, type ChatNachricht } from "./call-chat";
 import { meldeStups, registriereSender } from "@/lib/radar/kanal";
 
 /**
@@ -77,7 +78,10 @@ type CallMessage =
   | { k: "refresh" }
   // Im Radar hat etwas sich geändert. Trägt keinen Inhalt — die Gegenseite
   // holt den Stand beim Server. Siehe lib/radar/kanal.ts.
-  | { k: "radar" };
+  | { k: "radar" }
+  // Eine Chatnachricht. Flüchtig wie der Zeiger: Sie läuft über den
+  // Datenkanal und wird nirgends gespeichert.
+  | { k: "chat"; text: string; von: string };
 
 export type OkunCallProps = {
   roomUrl: string;
@@ -173,6 +177,7 @@ function describeFailure(raw: string | null): string {
 
 function CallSurface({
   role,
+  userName,
   slide,
   stage,
   stageLayout,
@@ -198,6 +203,9 @@ function CallSurface({
   const [remotePointer, setRemotePointer] = useState<{ x: number; y: number } | null>(null);
   const pointerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
+  const [chat, setChat] = useState<ChatNachricht[]>([]);
+  const [chatOffen, setChatOffen] = useState(false);
+  const [ungelesen, setUngelesen] = useState(0);
   const [takingLong, setTakingLong] = useState(false);
   const [deviceHint, setDeviceHint] = useState<string | null>(null);
   const joinStarted = useRef(false);
@@ -284,6 +292,23 @@ function CallSurface({
         onRemoteChange?.();
       } else if (data.k === "radar") {
         meldeStups();
+      } else if (data.k === "chat" && typeof data.text === "string") {
+        const text = data.text.slice(0, 2000);
+        if (!text.trim()) return;
+        setChat((bisher) => [
+          ...bisher.slice(-49),
+          {
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            von: typeof data.von === "string" && data.von.trim() ? data.von : "Gegenüber",
+            text,
+            zeit: Date.now(),
+            eigen: false,
+          },
+        ]);
+        // Wer den Chat zu hat, soll sehen, dass etwas gekommen ist — aber
+        // nicht aus dem Gespräch gerissen werden. Deshalb eine Zahl am Knopf
+        // und kein Fenster, das sich von selbst aufklappt.
+        setUngelesen((n) => n + 1);
       }
     };
     daily.on("app-message", handler);
@@ -302,6 +327,48 @@ function CallSurface({
       }
     },
     [daily]
+  );
+
+  /*
+    Der Chat.
+
+    Er liegt hier und nicht in einer der Ansichten, damit er in jedem Gespräch
+    da ist — Closing, Radar, Strategiegespräch —, ohne dass jede Oberfläche
+    ihn einbauen muss. Gespeichert wird nichts: Was im Gespräch geschrieben
+    wurde, ist mit dem Gespräch vorbei.
+  */
+  const chatSenden = useCallback(
+    (text: string) => {
+      const sauber = text.trim().slice(0, 2000);
+      if (!sauber) return;
+      send({ k: "chat", text: sauber, von: userName });
+      setChat((bisher) => [
+        ...bisher.slice(-49),
+        {
+          id: `${Date.now()}-eigen`,
+          von: userName,
+          text: sauber,
+          zeit: Date.now(),
+          eigen: true,
+        },
+      ]);
+    },
+    [send, userName]
+  );
+
+  const chatWidget = (
+    <CallChat
+      nachrichten={chat}
+      offen={chatOffen}
+      ungelesen={ungelesen}
+      teilnehmer={remoteIds.length}
+      onOeffnen={() => {
+        setChatOffen(true);
+        setUngelesen(0);
+      }}
+      onSchliessen={() => setChatOffen(false)}
+      onSenden={chatSenden}
+    />
   );
 
   // Der Berater meldet jede Änderung sofort, damit der Kunde nicht auf den
@@ -423,10 +490,16 @@ function CallSurface({
     );
     const zustand = connecting ? "verbindet" : gegenueber ? "verbunden" : "allein";
     const teilnehmer = remoteIds.length + (localSessionId ? 1 : 0);
-    return <>{stageLayout({ kacheln, steuerung, zustand, teilnehmer })}</>;
+    return (
+      <>
+        {stageLayout({ kacheln, steuerung, zustand, teilnehmer })}
+        {chatWidget}
+      </>
+    );
   }
 
   return (
+    <>
     <div className="flex flex-col h-full min-h-0 bg-[#05090f]">
       <div className="flex-1 min-h-0 p-3">
         {failureMessage ? (
@@ -548,6 +621,8 @@ function CallSurface({
         {steuerung}
       </div>
     </div>
+      {chatWidget}
+    </>
   );
 }
 

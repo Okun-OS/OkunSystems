@@ -4,6 +4,7 @@ import { getActor } from "@/lib/auth-guards";
 import { canAccessAdminPath, homeFor } from "@/lib/closing/role-access";
 import { mayDoClosing, mayDoStrategy } from "@/lib/team/roles";
 import { AdminSidebar } from "@/components/layout/admin-sidebar";
+import { GespraechsHost } from "@/components/closing/gespraech-host";
 
 export default async function AdminLayout({
   children,
@@ -24,6 +25,14 @@ export default async function AdminLayout({
   }
 
   return (
+    /*
+      Das Gesprächsfenster hängt im Layout, nicht in der Seite.
+
+      Layouts bleiben beim Seitenwechsel bestehen — nur deshalb kann der
+      Berater zu den Kunden, in die Bibliothek oder in die Einstellungen
+      gehen, ohne aus dem Raum zu fliegen.
+    */
+    <GespraechsHost>
     <div className="min-h-screen bg-[#080c14]">
       <AdminSidebar
         user={{
@@ -37,5 +46,6 @@ export default async function AdminLayout({
         <div className="p-6 md:p-8">{children}</div>
       </main>
     </div>
+    </GespraechsHost>
   );
 }
