@@ -610,6 +610,24 @@ Was den Eindruck trägt, und warum es so gebaut ist:
 * **Eigene SVG-Kennungen je Diagramm** (`useId`). Standen zwei Diagramme auf
   einer Seite — im Steuerpult war genau das der Fall —, kollidierten die
   Kennungen für Verlauf und Weichzeichner und die Fläche verschwand in beiden.
+* **Die Fragennummer als Stein**, nicht als Schatten. Der erste Entwurf legte
+  sie riesig und blass hinter die Frage; das sah auf dem Entwurfsbild gut aus
+  und im Betrieb nach Druckfehler — eine Zahl, die halb hinter Buchstaben
+  verschwindet, liest niemand und stört beim Lesen dessen, was davor steht.
+  Jetzt steht sie neben der Frage, in einem Ring, der zugleich den Füllstand
+  der Analyse zeigt.
+* **Die Bühne hat einen Körper.** Der Inhalt steht auf einer Platte mit Rand,
+  Tiefe und Lichtkante, die die volle Höhe der Bühne einnimmt — oben die Frage,
+  unten die Leiste, in der Mitte die Antworten. Vorher schwamm alles in
+  derselben schwarzen Fläche; auf einem breiten Bildschirm war mehr Nichts zu
+  sehen als Inhalt.
+* **Ein Zifferblatt hinter der Platte:** konzentrische Ringe, ein Fadenkreuz
+  und ein feines Raster, alles unter 5 % Deckkraft und zum Rand hin
+  ausgeblendet. Ein Messgerät hat hinter seiner Anzeige auch keine schwarze
+  Wand. Wer hinschaut, sieht ein Gerät; wer nicht hinschaut, sieht nichts.
+* **Die Leiste mit „Weiter" bleibt stehen.** Nur die Frage läuft, wenn sie zu
+  hoch wird. Hing sie am Ende des Bildlaufs, stand der wichtigste Knopf des
+  Gesprächs auf flachen Fenstern unterhalb des Randes.
 * **Drei Zuschnitte für die Antworten**, je nachdem, was zu zeigen ist
   (`Fragekarte`): bis zu vier Antworten als 2×2-Raster mit großen Flächen,
   mehr als vier als Zeilen, Mehrfachauswahl zweispaltig. Ein einziges Raster

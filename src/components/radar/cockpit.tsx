@@ -133,7 +133,19 @@ export function RadarCockpit({
 
         <div className="flex-1 lg:min-h-0 flex flex-col lg:flex-row">
           {/* ── Bühne ─────────────────────────────────────────────────── */}
-          <main className="order-2 lg:order-none flex-1 min-w-0 lg:min-h-0 lg:overflow-y-auto flex">
+          <main className="relative order-2 lg:order-none flex-1 min-w-0 lg:min-h-0 lg:overflow-hidden flex">
+            {/*
+              Der Hintergrund der Bühne.
+
+              Vorher stand die Frage auf blankem Schwarz, und links und rechts
+              davon lag nichts — auf einem breiten Bildschirm mehr Nichts als
+              Inhalt. Ein Messgerät hat hinter seiner Anzeige auch keine
+              schwarze Wand, sondern ein Zifferblatt: konzentrische Ringe, ein
+              Fadenkreuz, ein feines Raster. Alles sehr schwach; es soll den
+              Blick nicht holen, sondern den Raum tragen.
+            */}
+            <Zifferblatt />
+
             {/*
               Zentriert über `my-auto`, nicht über `justify-center`.
 
@@ -142,7 +154,37 @@ export function RadarCockpit({
               dem die Frage steht. `margin: auto` zentriert, solange Platz da
               ist, und gibt ihn sonst sauber dem Bildlauf frei.
             */}
-            <div className="w-full my-auto px-5 sm:px-10 lg:px-14 py-8 lg:py-10">{children}</div>
+            <div className="relative z-10 w-full lg:h-full px-4 sm:px-8 lg:px-10 py-6 lg:py-8">
+              {/*
+                Die Platte unter dem Inhalt.
+
+                Sie gibt der Frage einen Körper: Rand, Tiefe, eine Lichtkante
+                oben. Ohne sie schwimmt jeder Text in derselben schwarzen
+                Fläche, und die Oberfläche wirkt unfertig — nicht weil etwas
+                fehlt, sondern weil nichts begrenzt ist.
+              */}
+              {/*
+                Die Platte nimmt die ganze Höhe der Bühne ein.
+
+                Nicht aus Symmetrie: Eine Platte, die in der Mitte schwebt,
+                lässt über und unter sich wieder genau die leere Fläche, derer
+                man sich entledigen wollte. Eine, die bis an beide Ränder
+                reicht, ist ein Gerät — oben die Frage, unten die Leiste, in
+                der Mitte die Antworten.
+              */}
+              <div className="mx-auto w-full max-w-[1080px] lg:h-full lg:flex lg:flex-col rounded-[26px] border border-[#122339] bg-[linear-gradient(168deg,rgba(11,21,36,0.92),rgba(6,12,21,0.86))] shadow-[0_44px_100px_-56px_rgba(0,0,0,0.95),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-[2px] px-5 sm:px-9 lg:px-11 py-7 sm:py-9">
+                {/*
+                  Kein Bildlauf an dieser Stelle.
+
+                  Die Leiste mit „Weiter" gehört an den unteren Rand der
+                  Platte und nicht ans Ende eines Bildlaufs — auf einem flachen
+                  Fenster stand sie sonst unterhalb des Randes, und der
+                  wichtigste Knopf des Gesprächs war unsichtbar. Welcher Teil
+                  läuft, entscheidet deshalb die jeweilige Ansicht.
+                */}
+                <div className="lg:flex-1 lg:min-h-0 lg:flex lg:flex-col">{children}</div>
+              </div>
+            </div>
           </main>
 
           {/* ── Panel ─────────────────────────────────────────────────── */}
@@ -173,6 +215,63 @@ export function RadarCockpit({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── Zifferblatt ─────────────────────────────────────────────────────────────
+
+/**
+ * Der ruhige Hintergrund der Bühne.
+ *
+ * Konzentrische Ringe um einen Punkt außerhalb des Bildes, ein Fadenkreuz und
+ * ein feines Raster — alles unter 5 % Deckkraft. Es gibt der Fläche eine
+ * Herkunft: Wer hinschaut, sieht ein Gerät; wer nicht hinschaut, sieht nichts.
+ */
+function Zifferblatt() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+      {/* Raster */}
+      <div
+        className="absolute inset-0 opacity-[0.55]"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(23,48,77,0.14) 1px, transparent 1px)," +
+            "linear-gradient(90deg, rgba(23,48,77,0.14) 1px, transparent 1px)",
+          backgroundSize: "64px 64px",
+          maskImage: "radial-gradient(120% 90% at 40% 45%, #000 20%, transparent 78%)",
+          WebkitMaskImage: "radial-gradient(120% 90% at 40% 45%, #000 20%, transparent 78%)",
+        }}
+      />
+
+      {/* Ringe und Fadenkreuz */}
+      <svg
+        className="absolute left-1/2 top-1/2 w-[1500px] h-[1500px] -translate-x-1/2 -translate-y-1/2"
+        viewBox="0 0 1000 1000"
+        fill="none"
+      >
+        {[180, 290, 400, 495].map((r) => (
+          <circle key={r} cx="500" cy="500" r={r} stroke="#0f2338" strokeWidth="1" />
+        ))}
+        <circle
+          cx="500"
+          cy="500"
+          r="400"
+          stroke="#13405e"
+          strokeWidth="1.5"
+          strokeDasharray="2 12"
+        />
+        <path d="M500 40 L500 960 M40 500 L960 500" stroke="#0d1f32" strokeWidth="1" />
+      </svg>
+
+      {/* Lichtkegel, damit die Mitte wärmer ist als der Rand */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(760px 560px at 42% 46%, rgba(0,150,255,0.07), transparent 70%)",
+        }}
+      />
     </div>
   );
 }

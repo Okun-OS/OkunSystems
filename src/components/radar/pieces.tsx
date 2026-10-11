@@ -31,7 +31,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import type { SymbolKey } from "@/lib/radar/catalog";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import type { KundenErgebnis } from "@/lib/radar/views";
 import { useZaehler } from "./einschlag";
 
@@ -278,28 +278,26 @@ export function Fragekarte({
 
 function Fragekopf({ frage, kompakt }: { frage: FrageDarstellung; kompakt?: boolean }) {
   return (
-    <div className="relative">
+    <div className="flex items-start gap-4 sm:gap-6">
       {/*
-        Die Fragennummer als Anker im Hintergrund.
+        Die Fragennummer als eigenes Objekt, nicht als Schatten hinter dem Text.
 
-        Sehr schwach, sehr groß: Sie gibt jeder Frage einen eigenen Ort und
-        nimmt der Bühne das Gefühl, immer dasselbe leere Feld zu sein. Lesbar
-        muss sie nicht sein — sie wird gespürt, nicht gelesen.
+        Der erste Entwurf legte sie riesig und blass hinter die Frage. Das sah
+        auf dem Entwurfsbild gut aus und im Betrieb nach Druckfehler: Eine Zahl,
+        die zur Hälfte hinter Buchstaben verschwindet, liest niemand — sie
+        stört nur beim Lesen dessen, was davor steht. Jetzt steht sie neben der
+        Frage, in ihrem eigenen Stein, mit dem Stand dazu.
       */}
-      {!kompakt && (
-        <span
-          aria-hidden
-          className="pointer-events-none absolute -top-[46px] -left-2 select-none font-mono font-bold leading-none text-[130px] text-[#0c1a2b]"
-        >
-          {String(frage.nummer).padStart(2, "0")}
-        </span>
-      )}
+      {!kompakt && <Nummernstein nummer={frage.nummer} gesamt={frage.gesamt} />}
 
-      <div className="relative">
+      <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2.5 mb-3">
-          <span className="font-mono text-[#3d5c7e] text-[10.5px] uppercase tracking-[0.2em] font-semibold">
-            Analyse {String(frage.nummer).padStart(2, "0")} / {frage.gesamt}
-          </span>
+          {/* Am Telefon steht der Stand in der Zeile — dort ist kein Platz für den Stein. */}
+          {!kompakt && (
+            <span className="sm:hidden font-mono text-[#3d5c7e] text-[10.5px] uppercase tracking-[0.2em] font-semibold">
+              {String(frage.nummer).padStart(2, "0")} / {frage.gesamt}
+            </span>
+          )}
           {frage.thema && (
             <span className="px-2.5 py-1 rounded-full border border-[#17304d] bg-[#0b1524] text-[#8899b4] text-[10.5px]">
               {frage.thema}
@@ -310,17 +308,72 @@ function Fragekopf({ frage, kompakt }: { frage: FrageDarstellung; kompakt?: bool
               Mehrfachauswahl
             </span>
           )}
+          {kompakt && (
+            <span className="font-mono text-[#3d5c7e] text-[10px] uppercase tracking-[0.18em]">
+              {String(frage.nummer).padStart(2, "0")} / {frage.gesamt}
+            </span>
+          )}
         </div>
         <h3
-          className={`text-[#f4f8fd] font-bold leading-[1.18] ${
+          className={`text-[#f4f8fd] font-bold leading-[1.16] ${
             kompakt
               ? "text-[20px] tracking-tight"
-              : "text-[27px] sm:text-[34px] lg:text-[38px] tracking-[-0.022em]"
+              : "text-[27px] sm:text-[34px] lg:text-[40px] tracking-[-0.022em]"
           }`}
         >
           <BetonteFrage text={frage.frage} betonung={frage.betonung ?? []} />
         </h3>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Der Stein mit der Fragennummer.
+ *
+ * Er trägt zusätzlich den Füllstand als Ring: wie viel der Analyse hinter
+ * einem liegt. Zwei Angaben an einem Ort, wo vorher eine blasse Ziffer im
+ * Hintergrund stand.
+ */
+function Nummernstein({ nummer, gesamt }: { nummer: number; gesamt: number }) {
+  const anteil = Math.max(0, Math.min(1, (nummer - 1) / Math.max(1, gesamt)));
+  const umfang = 2 * Math.PI * 34;
+  // Eigene Kennung je Stein: Zwei gleich benannte Verläufe auf einer Seite
+  // löschen sich gegenseitig aus — im Steuerpult ist das schon passiert.
+  const bogen = useId();
+
+  return (
+    <div className="hidden sm:flex flex-col items-center flex-shrink-0 pt-1">
+      <div className="relative w-[78px] h-[78px]">
+        <svg viewBox="0 0 78 78" className="absolute inset-0 -rotate-90" aria-hidden>
+          <circle cx="39" cy="39" r="34" fill="none" stroke="#132439" strokeWidth="2" />
+          <circle
+            cx="39"
+            cy="39"
+            r="34"
+            fill="none"
+            stroke={`url(#${bogen})`}
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeDasharray={`${anteil * umfang} ${umfang}`}
+            className="transition-[stroke-dasharray] duration-700 ease-out"
+          />
+          <defs>
+            <linearGradient id={bogen} x1="0" y1="0" x2="78" y2="78">
+              <stop offset="0%" stopColor="#0082c8" />
+              <stop offset="100%" stopColor="#2ee6c5" />
+            </linearGradient>
+          </defs>
+        </svg>
+        <div className="absolute inset-[7px] rounded-full border border-[#17304d] bg-[linear-gradient(150deg,rgba(0,184,255,0.13),rgba(6,13,23,0.9))] shadow-[inset_0_1px_0_rgba(255,255,255,0.07)] flex items-center justify-center">
+          <span className="font-mono text-[#8fdcff] text-[26px] font-bold leading-none tabular-nums tracking-tight">
+            {String(nummer).padStart(2, "0")}
+          </span>
+        </div>
+      </div>
+      <span className="font-mono text-[#3d5c7e] text-[9.5px] uppercase tracking-[0.18em] mt-2">
+        von {gesamt}
+      </span>
     </div>
   );
 }

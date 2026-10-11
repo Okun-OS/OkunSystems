@@ -216,13 +216,15 @@ export function RadarStage({
       <PhasenSchnitt phase={phasenAnsage} />
 
       {fehler && (
-        <div className="mb-4 rounded-xl border border-[#f59e0b]/25 bg-[rgba(245,158,11,0.06)] px-4 py-2.5">
+        <div className="flex-shrink-0 mb-4 rounded-xl border border-[#f59e0b]/25 bg-[rgba(245,158,11,0.06)] px-4 py-2.5">
           <p className="text-[#fbbf24] text-[12px]">{fehler}</p>
         </div>
       )}
 
       {zeigt === "ergebnisse" && ansicht.ergebnis ? (
-        <Ergebnisbericht ergebnis={ansicht.ergebnis} companyName={ansicht.companyName} />
+        <div className="lg:flex-1 lg:min-h-0 lg:overflow-y-auto">
+          <Ergebnisbericht ergebnis={ansicht.ergebnis} companyName={ansicht.companyName} />
+        </div>
       ) : zeigt === "angaben" ? (
         <Angaben
           ansicht={ansicht}
@@ -243,7 +245,16 @@ export function RadarStage({
       ) : ansicht.spotlightAuswahl ? (
         <Warten text="Sie wählen gleich gemeinsam einen Ablauf aus, den wir uns genauer ansehen." />
       ) : ansicht.frage ? (
-        <div className="w-full max-w-[860px] mx-auto">
+        <div className="w-full lg:flex-1 lg:min-h-0 lg:flex lg:flex-col">
+          {/* Nur die Frage läuft, wenn sie zu hoch wird — die Leiste bleibt stehen. */}
+          <div className="lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:flex lg:flex-col">
+          {/*
+            Mittig über `my-auto`, nicht über `justify-center`: Zentriert man
+            mit `justify-center` und der Inhalt ist höher als der Platz, wird
+            oben abgeschnitten — und zwar unerreichbar, der Bildlauf kommt dort
+            nicht mehr hin. Genau oben steht die Frage.
+          */}
+          <div className="w-full lg:my-auto">
           <Fragekarte
             frage={ansicht.frage}
             gewaehlt={ansicht.antworten[ansicht.frage.key] ?? []}
@@ -255,6 +266,8 @@ export function RadarStage({
               )
             }
           />
+          </div>
+          </div>
           <Fussleiste
             ansicht={ansicht}
             sendet={sendet}
@@ -289,7 +302,7 @@ function Fussleiste({
   const laeuft = sendet === "weiter" || sendet === "zurueck";
 
   return (
-    <div className="mt-7 pt-5 border-t border-[#101d31] flex items-center gap-4">
+    <div className="flex-shrink-0 mt-7 pt-5 border-t border-[#101d31] flex items-center gap-4">
       <button
         onClick={() => onBlaettern("zurueck")}
         disabled={laeuft}
@@ -385,7 +398,7 @@ function Profilteil({
   }
 
   return (
-    <div className="w-full max-w-[860px] mx-auto space-y-6">
+    <div className="w-full space-y-6 lg:flex-1 lg:min-h-0 lg:overflow-y-auto">
       <div>
         <p className="font-mono text-[#3d5c7e] text-[10px] uppercase tracking-[0.2em] font-semibold mb-3">
           Phase 01 · Unternehmensprofil
@@ -487,7 +500,7 @@ function Angaben({
 
   if (gewaehlteFrage) {
     return (
-      <div className="w-full max-w-[860px] mx-auto space-y-4">
+      <div className="w-full space-y-4 lg:flex-1 lg:min-h-0 lg:overflow-y-auto">
         <button
           onClick={() => setOffen(null)}
           className="flex items-center gap-1.5 text-[#8899b4] text-[12px] hover:text-[#00b8ff] transition-colors"
@@ -505,7 +518,7 @@ function Angaben({
   }
 
   return (
-    <div className="w-full max-w-[860px] mx-auto space-y-4">
+    <div className="w-full space-y-4 lg:flex-1 lg:min-h-0 lg:overflow-y-auto">
       <div>
         <h3 className="text-[#f4f8fd] text-[22px] font-bold tracking-tight">Ihre Angaben</h3>
         <p className="text-[#8899b4] text-[13px] mt-1.5">
