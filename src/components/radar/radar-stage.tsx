@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { beiStups, stupseGegenseite } from "@/lib/radar/kanal";
 import type { RadarKundenAnsicht } from "@/lib/radar/views";
+import { FrageErgaenzung, SoftwareFeld, SonstigesFeld } from "./freitext";
 import { RadarCockpit, type CockpitBereich } from "./cockpit";
 import { PhasenSchnitt } from "./phasen-schnitt";
 import { Ergebnisbericht, Fragekarte } from "./pieces";
@@ -304,6 +305,9 @@ export function RadarStage({
             tipptBis.current = an ? Date.now() + TIPP_SCHONFRIST_MS : 0;
           }}
           onSpeichern={(profil) => void schreiben({ aktion: "profil", profil }, "profil")}
+          onFreitext={(bezug, text) =>
+            void schreiben({ aktion: "freitext", bezug, text }, `freitext:${bezug}`)
+          }
         />
       ) : ansicht.spotlightAuswahl ? (
         <Warten text="Sie wählen gleich gemeinsam einen Ablauf aus, den wir uns genauer ansehen." />
@@ -335,11 +339,26 @@ export function RadarStage({
             }}
           />
           </div>
+            <div className="mt-5">
+              <FrageErgaenzung
+                merkmal={`frage:${ansicht.frage.key}`}
+                wert={ansicht.freitexte[`frage:${ansicht.frage.key}`] ?? ""}
+                onSpeichern={(text) =>
+                  void schreiben(
+                    { aktion: "freitext", bezug: `frage:${ansicht.frage!.key}`, text },
+                    `freitext:${ansicht.frage!.key}`
+                  )
+                }
+              />
+            </div>
           </div>
           <Fussleiste
             ansicht={ansicht}
             sendet={sendet}
-            entwurfOffen={entwurf?.frageKey === ansicht.frage.key && entwurf.optionKeys.length > 0}
+            entwurfOffen={
+              (entwurf?.frageKey === ansicht.frage.key && entwurf.optionKeys.length > 0) ||
+              Boolean(ansicht.freitexte[`frage:${ansicht.frage.key}`])
+            }
             onBlaettern={(richtung) => void schreiben({ aktion: richtung }, richtung)}
           />
         </div>
@@ -438,11 +457,13 @@ function Profilteil({
   sendet,
   onFokus,
   onSpeichern,
+  onFreitext,
 }: {
   ansicht: RadarKundenAnsicht;
   sendet: string | null;
   onFokus: (an: boolean) => void;
   onSpeichern: (profil: Record<string, string | string[]>) => void;
+  onFreitext: (bezug: string, text: string) => void;
 }) {
   const [entwurf, setEntwurf] = useState<Record<string, string | string[]>>(() =>
     Object.fromEntries(
@@ -495,7 +516,19 @@ function Profilteil({
               <p className="font-mono text-[#3d5c7e] text-[9.5px] uppercase tracking-[0.16em] mb-2">
                 {feld.label}
               </p>
-              {feld.art === "text" ? (
+              {feld.art === "software" ? (
+                <SoftwareFeld
+                  werte={Array.isArray(wert) ? wert : wert ? [String(wert)] : []}
+                  zwecke={Object.fromEntries(
+                    Object.entries(ansicht.freitexte)
+                      .filter(([k]) => k.startsWith("software:"))
+                      .map(([k, v]) => [k.slice("software:".length), v])
+                  )}
+                  disabled={sendet === "profil"}
+                  onWerte={(werte) => speichern({ ...entwurf, [feld.key]: werte })}
+                  onZweck={(name, zweck) => onFreitext(`software:${name}`, zweck)}
+                />
+              ) : feld.art === "text" ? (
                 <input
                   value={typeof wert === "string" ? wert : ""}
                   onChange={(e) => setEntwurf({ ...entwurf, [feld.key]: e.target.value })}
@@ -540,6 +573,18 @@ function Profilteil({
                       </button>
                     );
                   })}
+                  {feld.sonstiges && (
+                    <div className="w-full">
+                      <SonstigesFeld
+                        merkmal={`profil:${feld.key}`}
+                        label={feld.sonstiges.label}
+                        platzhalter={feld.sonstiges.platzhalter}
+                        wert={ansicht.freitexte[`profil:${feld.key}`] ?? ""}
+                        disabled={sendet === "profil"}
+                        onSpeichern={(text) => onFreitext(`profil:${feld.key}`, text)}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
               {feld.hinweis && (

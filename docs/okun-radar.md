@@ -416,6 +416,78 @@ Karten vollständig.
 
 ---
 
+## 8b. Eigene Worte: Freitext, Software, Einordnung
+
+Kein Katalog trifft jeden Betrieb. Wer sein Geschäftsmodell in keiner der
+fünf Schubladen wiederfindet, hat vorher die nächstbeste angekreuzt — und
+damit stand in den Daten eine Angabe, die so nie gemacht wurde.
+
+**Drei Stellen nehmen freien Text entgegen:**
+
+| Stelle | Bezug | Wo |
+|---|---|---|
+| Profilfeld mit `sonstiges` (Geschäftsmodell, Bereiche) | `profil:<key>` | unter den Auswahlkacheln |
+| Jede Frage | `frage:<key>` | unter den Antwortkacheln, aufklappbar |
+| Unbekanntes Programm | `software:<name>` | als Rückfrage im Softwarefeld |
+
+Eine Ergänzung **zählt wie eine Antwort**: Sie hebt die Abdeckung und gibt
+„Weiter" frei, auch ohne ausgewählte Kachel. Wer auf eine Frage nichts
+Passendes findet und stattdessen zwei Sätze schreibt, hat geantwortet — nur
+nicht in unseren Schubladen.
+
+### Die Einordnung
+
+`src/lib/radar/deutung.ts` schickt Zusammenhang, Wortlaut und knappe
+Eckdaten an Claude (`claude-opus-5-5`, geringer Aufwand) und bekommt ein
+JSON-Objekt zurück: ein Satz Einordnung, eine Achse, ein Ausschlag von −2 bis
++2, bis zu drei Potenzialfelder und ein `sicher`-Flag. Gespeichert wird beides
+— Wortlaut und Einordnung samt Modellname (`RadarFreitext`).
+
+Drei Regeln machen das vertretbar:
+
+1. **Gedeckelt.** Eine Angabe bewegt eine Achse um höchstens zwei Punkte, je
+   Achse zählen höchstens drei (`FREITEXT_KAPPUNG`, `FREITEXT_MAX_JE_ACHSE`).
+   Der Fragebogen bleibt das Maß. Ein Test hält fest, dass zehn begeisterte
+   Sätze die Stufe nicht kippen.
+2. **Im Zweifel nichts.** Unklar, zu kurz, ohne Bezug zu Abläufen → `sicher:
+   false`, kein Ausschlag. Die Angabe steht trotzdem im Steuerpult, markiert
+   mit „fließt nicht in die Zahlen ein — bitte nachfragen". Das ist die
+   wichtigere Information: Dort muss der Berater nachhaken.
+3. **Keine erfundenen Zahlen.** Prozente, Beträge, Branchenvergleiche und
+   Einsparversprechen werden nachträglich geprüft (`istSauber`) und führen
+   zum Verwerfen der ganzen Einordnung — ein halb gelöschter Satz ergibt
+   keinen verlässlichen Sinn.
+
+Fällt das Modell aus oder fehlt der Schlüssel, bleibt der Wortlaut
+gespeichert und die Bewertung läuft ohne die Einordnung weiter. **Beleg ist
+immer der Wortlaut, nie die Deutung:** Was der Betrieb gesagt hat, trägt; was
+wir daraus lesen, ist Auslegung.
+
+**Der Kunde sieht nur seinen eigenen Text.** Einordnung, Achse und Ausschlag
+bleiben im Steuerpult — nach demselben Schnitt wie Gewichte und Belege.
+
+### Der Softwarekatalog
+
+`src/lib/radar/software-katalog.ts` kennt rund 190 Programme quer durch die
+Branchen: Büro, Buchhaltung, CRM, ERP, Branchensoftware (Handwerk, Bau,
+Pflege, Gesundheit, Gastronomie, Hotel, Logistik, Kfz, Immobilien), Personal,
+Zeiterfassung, Kommunikation, Projekte, Ablage, Automatisierung, Shop und
+Technik. Jeder Eintrag hat Schreibweisen (`ms-outlook`, `o365`, `lexoffice`)
+und einen knappen Zweck — keine Bewertung, kein Marktanteil.
+
+Im Profil wird daraus ein Begriffsfeld: tippen schlägt vor, die Eingabetaste
+übernimmt, der Eintrag erscheint als Chip mit seiner Kategorie. Eine
+angefangene Eingabe zu einem bereits erfassten Programm legt keinen zweiten
+Begriff an. Was der Katalog nicht kennt, wird trotzdem übernommen — in
+Bernstein, mit der Rückfrage „Wofür nutzen Sie das?". Die Antwort darauf
+läuft durch dieselbe Einordnung wie jeder andere Freitext.
+
+Dass der Katalog die Branchensoftware beim Namen kennt, ist kein Komfort,
+sondern eine Aussage: Ein Berater, der TAIFUN, pds und MediFox kennt, muss
+sich nicht mehr vorstellen.
+
+---
+
 ## 9. Berechtigungen
 
 | Wer | Weg | Schranke |

@@ -1909,6 +1909,7 @@ model RadarSession {
   closer           User           @relation("RadarCloser", fields: [closerId], references: [id])
 
   antworten RadarAnswer[]
+  freitexte RadarFreitext[]
 
   @@index([closingSessionId])
   @@index([companyId])
@@ -1919,6 +1920,44 @@ model RadarSession {
 /// Interessent selbst oder der Closer für ihn. Das ist kein Beiwerk: Eine vom
 /// Closer eingetragene Antwort ist eine Fremdaussage und im Protokoll als
 /// solche erkennbar.
+/**
+ * Eine Freitextangabe des Interessenten.
+ *
+ * „Sonstiges" bei einer Frage, ein Geschäftsmodell, das in keiner Schublade
+ * liegt, oder der Zweck eines Programms, das unser Katalog nicht kennt. Drei
+ * Dinge, die vorher gar nicht erfasst werden konnten — und genau die Stellen,
+ * an denen ein Betrieb von allen anderen abweicht.
+ *
+ * Der Text wird eingeordnet (siehe `src/lib/radar/deutung.ts`) und fließt
+ * gedeckelt in die Bewertung ein. Gespeichert wird beides: der Wortlaut und
+ * die Einordnung samt Modellnamen — damit nachvollziehbar bleibt, worauf ein
+ * Ergebnis beruht.
+ */
+model RadarFreitext {
+  id             String       @id @default(cuid())
+  radarSessionId String
+  radarSession   RadarSession @relation(fields: [radarSessionId], references: [id], onDelete: Cascade)
+
+  /// Worauf sich der Text bezieht: frage:<key> | profil:<key> | software:<name>
+  bezug String
+  /// Was der Interessent geschrieben hat, unverändert.
+  text  String
+
+  /// Die Einordnung als JSON. Leer, solange sie noch nicht gelaufen ist.
+  deutung    String?
+  gedeutetAm DateTime?
+  /// Welches Modell geantwortet hat — für die Nachvollziehbarkeit.
+  modell     String?
+
+  /// closer | client
+  quelle         String
+  erstelltAm     DateTime @default(now())
+  aktualisiertAm DateTime @updatedAt
+
+  @@unique([radarSessionId, bezug])
+  @@index([radarSessionId])
+}
+
 model RadarAnswer {
   id             String       @id @default(cuid())
   radarSessionId String

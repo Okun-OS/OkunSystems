@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { deuteFreitext, type Deutung } from "./deutung";
 import {
   KATALOG_VERSION,
   PROFIL_FELDER,
@@ -59,8 +60,26 @@ export type RadarDatensatz = {
   companyName: string;
   closerName: string | null;
   antworten: RadarAntwort[];
+  /** Freitextangaben samt Einordnung. */
+  freitexte: RadarFreitextEintrag[];
   /** Wer welche Antwort gesetzt hat. Nur für die interne Sicht. */
   quellen: Record<string, "closer" | "client">;
+  erstelltAm: Date;
+};
+
+/**
+ * Eine Freitextangabe, wie der Rest des Moduls sie sieht.
+ *
+ * `bezug` sagt, woran sie hängt: `frage:<key>`, `profil:<key>` oder
+ * `software:<name>`. Die Einordnung kann fehlen — entweder weil sie noch
+ * läuft oder weil das Modell nichts Belastbares geliefert hat. Beides ist
+ * kein Fehler, nur weniger Information.
+ */
+export type RadarFreitextEintrag = {
+  bezug: string;
+  text: string;
+  deutung: Deutung | null;
+  quelle: "closer" | "client";
   erstelltAm: Date;
 };
 
@@ -79,6 +98,7 @@ export async function ladeRadar(radarSessionId: string): Promise<RadarDatensatz 
     where: { id: radarSessionId },
     include: {
       antworten: { orderBy: { frageKey: "asc" } },
+      freitexte: { orderBy: { erstelltAm: "asc" } },
       company: { select: { name: true } },
       closer: { select: { name: true } },
     },
@@ -89,6 +109,14 @@ export async function ladeRadar(radarSessionId: string): Promise<RadarDatensatz 
     frageKey: a.frageKey,
     optionKeys: parseJson<string[]>(a.optionKeys, []),
     uebersprungen: a.uebersprungen,
+  }));
+
+  const freitexte: RadarFreitextEintrag[] = row.freitexte.map((f) => ({
+    bezug: f.bezug,
+    text: f.text,
+    deutung: parseJson<Deutung | null>(f.deutung, null),
+    quelle: f.quelle === "client" ? "client" : "closer",
+    erstelltAm: f.erstelltAm,
   }));
 
   const quellen: Record<string, "closer" | "client"> = {};
@@ -104,6 +132,7 @@ export async function ladeRadar(radarSessionId: string): Promise<RadarDatensatz 
     cursorKey: row.cursorKey,
     spotlightKey: row.spotlightKey,
     profil: parseJson<RadarProfil>(row.profil, {}),
+    freitexte,
     internalNotes: row.internalNotes,
     ergebnis: parseJson<RadarErgebnis | null>(row.ergebnis, null),
     ergebnisAm: row.ergebnisAm,
@@ -362,6 +391,7 @@ export async function werteAus(radarSessionId: string): Promise<RadarErgebnis | 
     antworten: datensatz.antworten,
     spotlightKey: datensatz.spotlightKey,
     bereiche: Array.isArray(profilBereiche) ? profilBereiche : [],
+    freitexte: datensatz.freitexte,
   });
 
   await db.radarSession.update({
@@ -484,5 +514,76 @@ export async function radarVerlauf(companyId: string) {
       closer: { select: { name: true } },
       closingSessionId: true,
     },
+  });
+}
+
+// ─── Freitexte ───────────────────────────────────────────────────────────────
+
+/**
+ * Speichert eine Freitextangabe und ordnet sie ein.
+ *
+ * Die Einordnung läuft **nach** dem Speichern und darf scheitern: Der
+ * Wortlaut ist das Wertvolle, die Deutung die Zugabe. Ein leerer Text löscht
+ * den Eintrag — wer seine Ergänzung zurücknimmt, soll sie auch los sein.
+ */
+export async function setzeFreitext(input: {
+  radarSessionId: string;
+  bezug: string;
+  text: string;
+  quelle: "closer" | "client";
+  /** Worum es geht — Frage oder Feldname, für die Einordnung. */
+  zusammenhang: string;
+  /** Knappe Eckdaten des Betriebs, falls vorhanden. */
+  betrieb?: string;
+}): Promise<void> {
+  const text = input.text.trim().slice(0, 1000);
+
+  if (!text) {
+    await db.radarFreitext.deleteMany({
+      where: { radarSessionId: input.radarSessionId, bezug: input.bezug },
+    });
+    await erhoeheRev(input.radarSessionId);
+    return;
+  }
+
+  const vorher = await db.radarFreitext.findUnique({
+    where: { radarSessionId_bezug: { radarSessionId: input.radarSessionId, bezug: input.bezug } },
+  });
+
+  // Unveränderter Text: nichts tun. Sonst liefe bei jedem Tastendruck im
+  // Formular eine neue Einordnung — und das kostet Geld und Zeit.
+  if (vorher?.text === text) return;
+
+  await db.radarFreitext.upsert({
+    where: { radarSessionId_bezug: { radarSessionId: input.radarSessionId, bezug: input.bezug } },
+    create: {
+      radarSessionId: input.radarSessionId,
+      bezug: input.bezug,
+      text,
+      quelle: input.quelle,
+    },
+    update: { text, quelle: input.quelle, deutung: null, gedeutetAm: null, modell: null },
+  });
+  await erhoeheRev(input.radarSessionId);
+
+  const deutung = await deuteFreitext({
+    zusammenhang: input.zusammenhang,
+    text,
+    betrieb: input.betrieb,
+  });
+  if (!deutung) return;
+
+  await db.radarFreitext.updateMany({
+    where: { radarSessionId: input.radarSessionId, bezug: input.bezug, text },
+    data: { deutung: JSON.stringify(deutung), gedeutetAm: new Date(), modell: deutung.modell },
+  });
+  await erhoeheRev(input.radarSessionId);
+}
+
+/** Ein Zähler, an dem beide Seiten sehen, dass sich etwas geändert hat. */
+async function erhoeheRev(radarSessionId: string): Promise<void> {
+  await db.radarSession.update({
+    where: { id: radarSessionId },
+    data: { rev: { increment: 1 } },
   });
 }

@@ -21,10 +21,17 @@ import { beiStups, stupseGegenseite } from "@/lib/radar/kanal";
 import type { RadarCloserAnsicht } from "@/lib/radar/views";
 import { kundenErgebnis } from "@/lib/radar/views";
 import { Ergebnisbericht, Fragekarte, STUFEN_FARBE } from "@/components/radar/pieces";
+import {
+  DeutungZeile,
+  FrageErgaenzung,
+  SoftwareFeld,
+  SonstigesFeld,
+} from "@/components/radar/freitext";
 import { LiveDashboard } from "@/components/radar/live-dashboard";
 import {
   radarAbschliessen,
   radarAntwortSetzen,
+  radarFreitextSetzen,
   radarAusblenden,
   radarAuswerten,
   radarEinblenden,
@@ -340,6 +347,11 @@ export function RadarPanel({
             <ProfilBlock
               ansicht={ansicht}
               laeuft={laeuft}
+              onFreitext={(bezug, text) =>
+                fuehreAus(() =>
+                  radarFreitextSetzen(closingSessionId, ansicht.sessionId, bezug, text)
+                )
+              }
               onSpeichern={(profil) =>
                 fuehreAus(() => radarProfilSpeichern(closingSessionId, ansicht.sessionId, profil))
               }
@@ -379,6 +391,25 @@ export function RadarPanel({
                 onWaehlen={(keys) =>
                   fuehreAus(() =>
                     radarAntwortSetzen(closingSessionId, ansicht.sessionId, aktuelle.key, keys)
+                  )
+                }
+              />
+
+              {/* Was er sagt, aber nicht ankreuzt. */}
+              <FrageErgaenzung
+                merkmal={`frage:${aktuelle.key}`}
+                wert={
+                  ansicht.freitexte.find((f) => f.bezug === `frage:${aktuelle.key}`)?.text ?? ""
+                }
+                disabled={laeuft || ansicht.abgeschlossen}
+                onSpeichern={(text) =>
+                  fuehreAus(() =>
+                    radarFreitextSetzen(
+                      closingSessionId,
+                      ansicht.sessionId,
+                      `frage:${aktuelle.key}`,
+                      text
+                    )
                   )
                 }
               />
@@ -481,6 +512,34 @@ export function RadarPanel({
             </div>
           )}
 
+          {/*
+            Die freien Angaben, wie die Bewertung sie gelesen hat.
+
+            Für den Berater die wichtigste Liste im Steuerpult: Hier steht, was
+            der Betrieb gesagt hat, was wir daraus gemacht haben — und wo wir
+            uns nicht sicher waren. Eine Angabe, die nicht in die Zahlen
+            eingeflossen ist, ist kein Fehler, sondern eine Nachfrage, die im
+            Gespräch noch aussteht.
+          */}
+          {ansicht.freitexte.length > 0 && (
+            <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-4 space-y-2">
+              <p className="flex items-center gap-1.5 text-[#5b6b7f] text-[10px] uppercase tracking-wider">
+                <Lock size={9} /> Eigene Angaben und ihre Einordnung
+              </p>
+              {ansicht.freitexte.map((f) => (
+                <DeutungZeile
+                  key={f.bezug}
+                  woher={f.woher}
+                  text={f.text}
+                  einordnung={f.einordnung}
+                  achse={f.achse}
+                  wert={f.wert}
+                  gezaehlt={f.gezaehlt}
+                />
+              ))}
+            </div>
+          )}
+
           {/* Interne Notizen */}
           <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-4">
             <label className="flex items-center gap-1.5 text-[#5b6b7f] text-[10px] uppercase tracking-wider mb-2">
@@ -537,12 +596,16 @@ function ProfilBlock({
   laeuft,
   onSpeichern,
   onWeiter,
+  onFreitext,
 }: {
   ansicht: RadarCloserAnsicht;
   laeuft: boolean;
   onSpeichern: (profil: Record<string, string | string[]>) => void;
   onWeiter: () => void;
+  onFreitext: (bezug: string, text: string) => void;
 }) {
+  const freitextVon = (bezug: string) =>
+    ansicht.freitexte.find((f) => f.bezug === bezug)?.text ?? "";
   const [entwurf, setEntwurf] = useState<Record<string, string | string[]>>(ansicht.profil);
 
   // Der Interessent tippt mit — seinen Stand übernehmen, wenn er sich ändert.
@@ -582,7 +645,23 @@ function ProfilBlock({
                 {feld.label}
                 {feld.pflicht && <span className="text-[#f59e0b] ml-1">*</span>}
               </p>
-              {feld.art === "text" ? (
+              {feld.art === "software" ? (
+                <SoftwareFeld
+                  werte={Array.isArray(wert) ? wert : wert ? [String(wert)] : []}
+                  zwecke={Object.fromEntries(
+                    ansicht.freitexte
+                      .filter((f) => f.bezug.startsWith("software:"))
+                      .map((f) => [f.bezug.slice("software:".length), f.text])
+                  )}
+                  disabled={laeuft || ansicht.abgeschlossen}
+                  onWerte={(werte) => {
+                    const naechster = { ...entwurf, [feld.key]: werte };
+                    setEntwurf(naechster);
+                    onSpeichern(naechster);
+                  }}
+                  onZweck={(name, zweck) => onFreitext(`software:${name}`, zweck)}
+                />
+              ) : feld.art === "text" ? (
                 <input
                   value={typeof wert === "string" ? wert : ""}
                   onChange={(e) => setEntwurf({ ...entwurf, [feld.key]: e.target.value })}
@@ -623,6 +702,18 @@ function ProfilBlock({
                       </button>
                     );
                   })}
+                  {feld.sonstiges && (
+                    <div className="w-full pt-1">
+                      <SonstigesFeld
+                        merkmal={`profil:${feld.key}`}
+                        label={feld.sonstiges.label}
+                        platzhalter={feld.sonstiges.platzhalter}
+                        wert={freitextVon(`profil:${feld.key}`)}
+                        disabled={laeuft || ansicht.abgeschlossen}
+                        onSpeichern={(text) => onFreitext(`profil:${feld.key}`, text)}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
               {feld.hinweis && (

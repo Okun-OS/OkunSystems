@@ -1,4 +1,5 @@
 import {
+  ACHSEN_LABEL,
   ACHSEN_FRAGE,
   DIMENSION_MAX,
   PHASEN,
@@ -96,6 +97,27 @@ function frageAnsicht(key: string, aktiv: Array<{ key: string }>): FrageAnsicht 
   };
 }
 
+/**
+ * Woran eine freie Angabe hängt, in Worten.
+ *
+ * Im Steuerpult steht sonst „frage:P7" — ein Schlüssel, den der Berater im
+ * Gespräch erst übersetzen müsste.
+ */
+export function bezugLabel(bezug: string): string {
+  if (bezug.startsWith("frage:")) {
+    const f = frageAusKatalog(bezug.slice("frage:".length));
+    return f ? f.frage : bezug;
+  }
+  if (bezug.startsWith("profil:")) {
+    const key = bezug.slice("profil:".length);
+    return PROFIL_FELDER.find((x) => x.key === key)?.label ?? key;
+  }
+  if (bezug.startsWith("software:")) {
+    return `Programm: ${bezug.slice("software:".length)}`;
+  }
+  return bezug;
+}
+
 // ─── Kundensicht ─────────────────────────────────────────────────────────────
 
 export type KundenErgebnis = {
@@ -164,7 +186,16 @@ export type RadarKundenAnsicht = {
     hinweis: string | null;
     optionen: Array<{ key: string; label: string }> | null;
     wert: string | string[] | null;
+    /** Eigene Angabe erlaubt — mit dieser Beschriftung. */
+    sonstiges: { label: string; platzhalter: string } | null;
   }>;
+  /**
+   * Die eigenen Ergänzungen des Interessenten, nach Bezug.
+   *
+   * Nur der Wortlaut. Was wir daraus lesen, bleibt drinnen — eine Deutung,
+   * die der Betrieb nicht selbst gesagt hat, gehört ihm nicht vorgehalten.
+   */
+  freitexte: Record<string, string>;
   frage: FrageAnsicht | null;
   /** Die bereits gegebenen Antworten — damit der Kunde korrigieren kann. */
   antworten: Record<string, string[]>;
@@ -185,7 +216,12 @@ export type RadarKundenAnsicht = {
 
 export function kundenAnsicht(d: RadarDatensatz): RadarKundenAnsicht {
   const bereiche = Array.isArray(d.profil.bereiche) ? d.profil.bereiche : [];
-  const eingabe = { antworten: d.antworten, spotlightKey: d.spotlightKey, bereiche };
+  const eingabe = {
+    antworten: d.antworten,
+    spotlightKey: d.spotlightKey,
+    bereiche,
+    freitexte: d.freitexte,
+  };
   const aktiv = aktiveFragen(eingabe);
   const f = fortschritt(eingabe);
 
@@ -228,7 +264,9 @@ export function kundenAnsicht(d: RadarDatensatz): RadarKundenAnsicht {
       hinweis: feld.hinweis ?? null,
       optionen: feld.optionen ? feld.optionen.map((o) => ({ key: o.key, label: o.label })) : null,
       wert: d.profil[feld.key] ?? null,
+      sonstiges: feld.sonstiges ?? null,
     })),
+    freitexte: Object.fromEntries(d.freitexte.map((f) => [f.bezug, f.text])),
     frage: d.cursorKey ? frageAnsicht(d.cursorKey, aktiv) : null,
     antworten,
     beantworteteFragen: aktiv
@@ -347,6 +385,24 @@ export type RadarCloserAnsicht = {
   live: LiveProfil;
   phasen: RadarKundenAnsicht["phasen"];
   auffaellig: Array<{ frageKey: string; optionKey: string; grund: string }>;
+  /**
+   * Die freien Angaben samt Einordnung — nur für den Berater.
+   *
+   * Er sieht den Wortlaut, was wir daraus gelesen haben und ob es in die
+   * Zahlen eingeflossen ist. „Nicht eingeflossen" ist dabei die wichtigere
+   * Information: Dann muss er nachfragen.
+   */
+  freitexte: Array<{
+    bezug: string;
+    /** Wofür der Text steht, in Worten: die Frage oder das Feld. */
+    woher: string;
+    text: string;
+    einordnung: string | null;
+    achse: string | null;
+    wert: number;
+    gezaehlt: boolean;
+    modell: string | null;
+  }>;
   internalNotes: string;
   ergebnis: RadarErgebnis | null;
   closerStufe: string | null;
@@ -359,7 +415,12 @@ export type RadarCloserAnsicht = {
 
 export function closerAnsicht(d: RadarDatensatz, katalogVersion: string): RadarCloserAnsicht {
   const bereiche = Array.isArray(d.profil.bereiche) ? d.profil.bereiche : [];
-  const eingabe = { antworten: d.antworten, spotlightKey: d.spotlightKey, bereiche };
+  const eingabe = {
+    antworten: d.antworten,
+    spotlightKey: d.spotlightKey,
+    bereiche,
+    freitexte: d.freitexte,
+  };
   const aktiv = aktiveFragen(eingabe);
   const f = fortschritt(eingabe);
   const nachKey = new Map(d.antworten.map((a) => [a.frageKey, a]));
@@ -405,6 +466,19 @@ export function closerAnsicht(d: RadarDatensatz, katalogVersion: string): RadarC
       erledigt: d.phase === "ergebnis" || PHASEN.findIndex((x) => x.key === d.phase) > i,
     })),
     auffaellig: auffaelligeAntworten(eingabe),
+    freitexte: d.freitexte.map((f) => {
+      const deutung = f.deutung;
+      return {
+        bezug: f.bezug,
+        woher: bezugLabel(f.bezug),
+        text: f.text,
+        einordnung: deutung?.einordnung ?? null,
+        achse: deutung?.achse ? ACHSEN_LABEL[deutung.achse] : null,
+        wert: deutung?.wert ?? 0,
+        gezaehlt: Boolean(deutung?.sicher && deutung.wert !== 0),
+        modell: deutung?.modell ?? null,
+      };
+    }),
     internalNotes: d.internalNotes ?? "",
     ergebnis: d.ergebnis,
     closerStufe: d.closerStufe,
@@ -418,7 +492,12 @@ export function closerAnsicht(d: RadarDatensatz, katalogVersion: string): RadarC
 /** Die nächste Frage, auf die der Closer weiterschalten würde. */
 export function naechsterSchritt(d: RadarDatensatz): { frageKey: string | null; phase: RadarPhase | "ergebnis" } {
   const bereiche = Array.isArray(d.profil.bereiche) ? d.profil.bereiche : [];
-  const eingabe = { antworten: d.antworten, spotlightKey: d.spotlightKey, bereiche };
+  const eingabe = {
+    antworten: d.antworten,
+    spotlightKey: d.spotlightKey,
+    bereiche,
+    freitexte: d.freitexte,
+  };
   const offen = naechsteOffeneFrage(eingabe);
   if (offen) return { frageKey: offen.key, phase: offen.phase };
   if (!d.spotlightKey) return { frageKey: null, phase: "spotlight" };

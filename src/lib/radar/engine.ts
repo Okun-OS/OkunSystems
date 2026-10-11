@@ -20,6 +20,7 @@
  *     sich wünscht.
  */
 
+import type { Deutung } from "./deutung";
 import {
   ACHSEN_LABEL,
   FRAGEN,
@@ -37,6 +38,8 @@ import {
   type RadarBedingung,
   type RadarFrage,
   type RadarOption,
+  FREITEXT_KAPPUNG,
+  FREITEXT_MAX_JE_ACHSE,
 } from "./catalog";
 
 // ─── Eingaben ────────────────────────────────────────────────────────────────
@@ -54,7 +57,35 @@ export type RadarEingabe = {
   spotlightKey?: string | null;
   /** Im Profil angegebene Bereiche — steuert die Spotlight-Vorauswahl. */
   bereiche?: string[];
+  /**
+   * Was der Interessent in eigenen Worten ergänzt hat, samt Einordnung.
+   *
+   * Gedeckelt: Jede Angabe bewegt eine Achse um höchstens zwei Punkte, und je
+   * Achse zählen höchstens drei. Ohne Einordnung oder mit `sicher: false`
+   * zählt eine Angabe gar nicht — sie steht dann nur im Steuerpult.
+   */
+  freitexte?: FreitextEingabe[];
 };
+
+export type FreitextEingabe = {
+  /** frage:<key> | profil:<key> | software:<name> */
+  bezug: string;
+  text: string;
+  deutung: Deutung | null;
+};
+
+/** Die Freitexte, die tatsächlich in die Zahlen eingehen. */
+function zaehlendeFreitexte(eingabe: RadarEingabe, achse: RadarAchse): FreitextEingabe[] {
+  return (eingabe.freitexte ?? [])
+    .filter((f) => f.deutung?.sicher && f.deutung.achse === achse && f.deutung.wert !== 0)
+    .slice(0, FREITEXT_MAX_JE_ACHSE);
+}
+
+/** Der Wortlaut als Beleg — gekürzt, in Anführungszeichen, als eigene Angabe kenntlich. */
+function freitextBeleg(f: FreitextEingabe): string {
+  const kurz = f.text.length > 120 ? `${f.text.slice(0, 117).trimEnd()}…` : f.text;
+  return `\u201e${kurz}\u201c (eigene Angabe)`;
+}
 
 // ─── Ergebnis ────────────────────────────────────────────────────────────────
 
@@ -256,10 +287,26 @@ export function bewerteRadar(eingabe: RadarEingabe): RadarErgebnis {
 
   // ── Abdeckung ──────────────────────────────────────────────────────────
   const kernfragen = gewaehlt.filter((g) => g.frage.kern);
+  /*
+    Eine eigene Angabe zählt wie eine Antwort.
+
+    Wer auf eine Frage nichts Passendes findet und stattdessen zwei Sätze
+    schreibt, hat geantwortet — nur eben nicht in unseren Schubladen. Sie als
+    Lücke zu zählen, hieße, ihn für unsere unvollständige Liste zu bestrafen.
+  */
+  const mitFreitext = new Set(
+    (eingabe.freitexte ?? [])
+      .filter((f) => f.bezug.startsWith("frage:") && f.text.trim().length > 0)
+      .map((f) => f.bezug.slice("frage:".length))
+  );
   const aussagekraft =
     kernfragen.length === 0
       ? 0
-      : Math.round((kernfragen.filter((g) => g.zaehlt).length / kernfragen.length) * 100);
+      : Math.round(
+          (kernfragen.filter((g) => g.zaehlt || mitFreitext.has(g.frage.key)).length /
+            kernfragen.length) *
+            100
+        );
   const zahlenBelastbar = aussagekraft >= SCHWELLEN.aussagekraftFuerZahlen;
 
   // ── Achsen ─────────────────────────────────────────────────────────────
@@ -277,6 +324,22 @@ export function bewerteRadar(eingabe: RadarEingabe): RadarErgebnis {
       ist += Math.min(Math.max(roh, s.min), s.max);
       min += s.min;
       max += s.max;
+      beitraege++;
+    }
+
+    /*
+      Freie Angaben zählen mit — aber als eigene, kleine Spanne.
+
+      Jede eingeordnete Angabe hebt Boden und Decke um die Kappung an und
+      trägt ihren Ausschlag dazwischen bei. Damit kann sie das Bild
+      verschieben, aber nicht bestimmen: Drei Angaben mit je zwei Punkten
+      wiegen weniger als eine beantwortete Kernfrage mit voller Spanne.
+    */
+    for (const f of zaehlendeFreitexte(eingabe, achse)) {
+      const wert = Math.min(Math.max(f.deutung!.wert, -FREITEXT_KAPPUNG), FREITEXT_KAPPUNG);
+      ist += wert;
+      min += -FREITEXT_KAPPUNG;
+      max += FREITEXT_KAPPUNG;
       beitraege++;
     }
 
@@ -303,6 +366,14 @@ export function bewerteRadar(eingabe: RadarEingabe): RadarErgebnis {
       }
     }
   }
+  // Der Wortlaut der freien Angabe ist ihr eigener Beleg. Nicht die Deutung:
+  // Was der Betrieb gesagt hat, trägt; was wir daraus lesen, ist Auslegung.
+  for (const achse of ["reife", "potenzial", "fit"] as RadarAchse[]) {
+    for (const f of zaehlendeFreitexte(eingabe, achse)) {
+      const beleg = freitextBeleg(f);
+      if (!belege[achse].includes(beleg)) belege[achse].push(beleg);
+    }
+  }
 
   // ── Potenzialfelder ────────────────────────────────────────────────────
   const feldBelege = new Map<PotenzialfeldKey, string[]>();
@@ -315,6 +386,16 @@ export function bewerteRadar(eingabe: RadarEingabe): RadarErgebnis {
       }
     }
   }
+  for (const f of eingabe.freitexte ?? []) {
+    if (!f.deutung?.sicher) continue;
+    for (const feld of f.deutung.felder) {
+      const liste = feldBelege.get(feld) ?? [];
+      const beleg = freitextBeleg(f);
+      if (!liste.includes(beleg)) liste.push(beleg);
+      feldBelege.set(feld, liste);
+    }
+  }
+
   const felder: PotenzialfeldErgebnis[] = [...feldBelege.entries()]
     .filter(([, b]) => b.length >= SCHWELLEN.belegeProFeld)
     .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]))

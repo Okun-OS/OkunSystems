@@ -248,11 +248,23 @@ export type ProfilQuelle = "company.name" | "company.industry" | "company.contac
 export type RadarProfilFeld = {
   key: string;
   label: string;
-  art: "text" | "auswahl" | "mehrfach";
+  /**
+   * „software" ist ein eigener Zuschnitt: Begriffe mit Vorschlägen aus dem
+   * Katalog, per Eingabetaste übernommen, unbekannte mit Rückfrage.
+   */
+  art: "text" | "auswahl" | "mehrfach" | "software";
   optionen?: Array<{ key: string; label: string }>;
   quelle?: ProfilQuelle;
   pflicht?: boolean;
   hinweis?: string;
+  /**
+   * Zusätzlich zu den Vorgaben eine eigene Angabe erlauben.
+   *
+   * Kein Katalog trifft jeden Betrieb. Wer sein Geschäftsmodell in keiner der
+   * fünf Schubladen wiederfindet, hat vorher die nächstbeste angekreuzt — und
+   * damit stand eine Angabe in den Daten, die so nie gemacht wurde.
+   */
+  sonstiges?: { label: string; platzhalter: string };
 };
 
 export const PROFIL_FELDER: RadarProfilFeld[] = [
@@ -288,6 +300,10 @@ export const PROFIL_FELDER: RadarProfilFeld[] = [
     key: "modell",
     label: "Geschäftsmodell",
     art: "auswahl",
+    sonstiges: {
+      label: "Sonstiges",
+      platzhalter: "Womit verdient der Betrieb sein Geld? In eigenen Worten.",
+    },
     optionen: [
       { key: "m_handwerk", label: "Handwerk / Dienstleistung beim Kunden" },
       { key: "m_dienstleistung", label: "Dienstleistung im Büro" },
@@ -301,6 +317,10 @@ export const PROFIL_FELDER: RadarProfilFeld[] = [
     label: "Bereiche im Haus",
     art: "mehrfach",
     hinweis: "Mehrfachauswahl. Bestimmt, welche Prozesse im Spotlight angeboten werden.",
+    sonstiges: {
+      label: "Noch ein Bereich",
+      platzhalter: "Welcher Bereich fehlt in der Liste?",
+    },
     optionen: [
       { key: "b_vertrieb", label: "Vertrieb und Angebote" },
       { key: "b_auftrag", label: "Auftragsabwicklung" },
@@ -314,7 +334,7 @@ export const PROFIL_FELDER: RadarProfilFeld[] = [
   {
     key: "software",
     label: "Genutzte Software",
-    art: "text",
+    art: "software",
     hinweis: "Was ihm einfällt, in seinen Worten. Keine vollständige Liste — die kommt im Blueprint.",
   },
   {
@@ -1375,6 +1395,17 @@ export const SCHRITT_UEBERSCHRIFT: Record<ErgebnisStufe, string> = {
   B: "So geht es jetzt weiter",
   C: "Unsere Empfehlung",
 };
+
+/**
+ * Wie stark eine freie Angabe die Bewertung bewegen darf.
+ *
+ * Der Fragebogen bleibt das Maß. Eine eingeordnete Freitextangabe verschiebt
+ * eine Achse um höchstens zwei Punkte, und je Achse zählen höchstens drei —
+ * sonst entschiede am Ende die Auslegung eines Satzes über das Ergebnis und
+ * nicht das, was der Betrieb angekreuzt hat.
+ */
+export const FREITEXT_KAPPUNG = 2;
+export const FREITEXT_MAX_JE_ACHSE = 3;
 
 /** Qualitative Bänder, wenn Zahlen nicht tragen. */
 export const BAENDER = [

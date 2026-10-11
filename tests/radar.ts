@@ -26,6 +26,14 @@ import {
   option,
 } from "../src/lib/radar/catalog";
 import { liveProfil } from "../src/lib/radar/live";
+import {
+  KATEGORIE_LABEL,
+  SOFTWARE,
+  findeSoftware,
+  normalisiere,
+  schlageSoftwareVor,
+} from "../src/lib/radar/software-katalog";
+import { istSauber, pruefeAntwort } from "../src/lib/radar/deutung";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -523,6 +531,215 @@ test("keine Stufe stellt den Interessenten als unfertig hin", () => {
       assert.ok(!text.includes(wendung), `Stufe ${stufe} enthält „${wendung}"`);
     }
   }
+});
+
+// ─── Softwarekatalog ─────────────────────────────────────────────────────────
+
+test("der Katalog findet Programme über Name und Schreibweise", () => {
+  assert.equal(findeSoftware("Outlook")?.name, "Microsoft Outlook");
+  assert.equal(findeSoftware("outlook")?.name, "Microsoft Outlook");
+  assert.equal(findeSoftware("MS-Outlook")?.name, "Microsoft Outlook");
+  assert.equal(findeSoftware("o365")?.name, "Microsoft 365");
+  assert.equal(findeSoftware("datev unternehmen online")?.name, "DATEV");
+  assert.equal(findeSoftware("Hausinterne Eigenentwicklung"), null);
+});
+
+test("Vorschläge beginnen mit dem, was vorn passt", () => {
+  const vorschlaege = schlageSoftwareVor("outl");
+  assert.ok(vorschlaege.length > 0, "zu „outl“ muss etwas kommen");
+  assert.equal(vorschlaege[0].name, "Microsoft Outlook");
+  // Ein einzelner Buchstabe ergibt noch keine sinnvolle Liste.
+  assert.equal(schlageSoftwareVor("o").length, 0);
+});
+
+test("der Katalog ist in sich sauber", () => {
+  assert.ok(SOFTWARE.length >= 150, `nur ${SOFTWARE.length} Programme — zu dünn`);
+  const keys = new Set<string>();
+  const formen = new Map<string, string>();
+  for (const eintrag of SOFTWARE) {
+    assert.ok(!keys.has(eintrag.key), `doppelter Schlüssel: ${eintrag.key}`);
+    keys.add(eintrag.key);
+    assert.ok(eintrag.zweck.length > 5, `${eintrag.name} ohne Zweck`);
+    assert.ok(KATEGORIE_LABEL[eintrag.kategorie], `${eintrag.name}: unbekannte Kategorie`);
+    for (const schreibweise of [eintrag.name, ...(eintrag.aliase ?? [])]) {
+      const form = normalisiere(schreibweise);
+      const belegt = formen.get(form);
+      // Eine doppelt belegte Schreibweise würde einen Eintrag unauffindbar
+      // machen — die Suche nimmt den ersten Treffer.
+      assert.ok(!belegt || belegt === eintrag.key, `„${schreibweise}“ zeigt auf ${belegt} und ${eintrag.key}`);
+      formen.set(form, eintrag.key);
+    }
+  }
+});
+
+test("der Katalog deckt mehrere Branchen ab", () => {
+  const kategorien = new Set(SOFTWARE.map((s) => s.kategorie));
+  assert.ok(kategorien.size >= 10, `nur ${kategorien.size} Kategorien`);
+  const branchen = new Set(SOFTWARE.flatMap((s) => s.branchen ?? []));
+  for (const erwartet of ["handwerk", "bau", "pflege", "gastronomie", "logistik"]) {
+    assert.ok(branchen.has(erwartet), `keine Software für ${erwartet}`);
+  }
+});
+
+// ─── Freitexte in der Bewertung ──────────────────────────────────────────────
+
+function deutung(achse: "reife" | "potenzial" | "fit", wert: number, sicher = true) {
+  return { einordnung: "Einordnung", achse, wert, felder: [], sicher, modell: "test" };
+}
+
+test("eine eingeordnete Angabe verschiebt die Achse, eine ungedeutete nicht", () => {
+  const ohne = bewerteRadar({ antworten: szenarioRund, spotlightKey: "sp_auftrag" });
+  const mitDeutung = bewerteRadar({
+    antworten: szenarioRund,
+    spotlightKey: "sp_auftrag",
+    freitexte: [
+      { bezug: "profil:modell", text: "Wir betreiben nebenbei einen Onlineshop.", deutung: deutung("potenzial", 2) },
+    ],
+  });
+  const ohneDeutung = bewerteRadar({
+    antworten: szenarioRund,
+    spotlightKey: "sp_auftrag",
+    freitexte: [{ bezug: "profil:modell", text: "Wir betreiben nebenbei einen Onlineshop.", deutung: null }],
+  });
+
+  const potenzial = (r: ReturnType<typeof bewerteRadar>) =>
+    r.achsen.find((a) => a.achse === "potenzial")!.wert;
+
+  assert.ok(potenzial(mitDeutung) > potenzial(ohne), "die Angabe muss wirken");
+  assert.equal(potenzial(ohneDeutung), potenzial(ohne), "ohne Einordnung darf nichts passieren");
+});
+
+test("unsichere Angaben zählen nicht", () => {
+  const ohne = bewerteRadar({ antworten: szenarioRund, spotlightKey: "sp_auftrag" });
+  const mit = bewerteRadar({
+    antworten: szenarioRund,
+    spotlightKey: "sp_auftrag",
+    freitexte: [{ bezug: "frage:P1", text: "weiß nicht", deutung: deutung("potenzial", 2, false) }],
+  });
+  assert.deepEqual(
+    mit.achsen.map((a) => a.wert),
+    ohne.achsen.map((a) => a.wert)
+  );
+});
+
+test("Freitexte können den Fragebogen nicht überstimmen", () => {
+  /*
+    Zehn begeisterte Sätze dürfen aus einem gut aufgestellten Betrieb keinen
+    Sanierungsfall machen. Je Achse zählen drei Angaben mit je zwei Punkten —
+    das verschiebt, aber es entscheidet nicht.
+  */
+  const ohne = bewerteRadar({ antworten: szenarioRund, spotlightKey: "sp_auftrag" });
+  const viele = bewerteRadar({
+    antworten: szenarioRund,
+    spotlightKey: "sp_auftrag",
+    freitexte: Array.from({ length: 10 }, (_, i) => ({
+      bezug: `frage:X${i}`,
+      text: `Angabe ${i}`,
+      deutung: deutung("potenzial", 2),
+    })),
+  });
+  const potenzial = (r: ReturnType<typeof bewerteRadar>) =>
+    r.achsen.find((a) => a.achse === "potenzial")!.wert;
+  assert.ok(potenzial(viele) > potenzial(ohne));
+  assert.ok(
+    potenzial(viele) - potenzial(ohne) <= 20,
+    `Freitexte haben die Achse um ${potenzial(viele) - potenzial(ohne)} Punkte bewegt`
+  );
+  assert.equal(viele.stufe, ohne.stufe, "die Stufe darf daran nicht kippen");
+});
+
+test("der Wortlaut wird zum Beleg, nicht die Deutung", () => {
+  const r = bewerteRadar({
+    antworten: szenarioHandarbeit,
+    spotlightKey: "sp_rechnung",
+    freitexte: [
+      {
+        bezug: "frage:P1",
+        text: "Die Monteure schreiben alles auf Zettel.",
+        deutung: { ...deutung("potenzial", 2), felder: ["doppelerfassung"], einordnung: "Erfassung auf Papier" },
+      },
+    ],
+  });
+  const alleBelege = [...r.belege.potenzial, ...r.felder.flatMap((f) => f.belege)].join(" | ");
+  assert.ok(alleBelege.includes("Die Monteure schreiben alles auf Zettel."), "der Wortlaut fehlt");
+  assert.ok(!alleBelege.includes("Erfassung auf Papier"), "die Deutung darf nicht als Beleg gelten");
+  // Das genannte Potenzialfeld bekommt den Wortlaut ebenfalls als Beleg.
+  const doppel = r.felder.find((f) => f.key === "doppelerfassung");
+  assert.ok(
+    doppel?.belege.some((b) => b.includes("Zettel")),
+    "das Feld muss den Wortlaut als Beleg führen"
+  );
+});
+
+test("eine Ergänzung zählt für die Abdeckung wie eine Antwort", () => {
+  const halbe = szenarioHandarbeit.slice(0, 4);
+  const ohne = bewerteRadar({ antworten: halbe, spotlightKey: "sp_rechnung" });
+  const mit = bewerteRadar({
+    antworten: halbe,
+    spotlightKey: "sp_rechnung",
+    freitexte: szenarioHandarbeit.slice(4, 8).map((a) => ({
+      bezug: `frage:${a.frageKey}`,
+      text: "In unserem Fall läuft das anders.",
+      deutung: null,
+    })),
+  });
+  assert.ok(
+    mit.aussagekraft > ohne.aussagekraft,
+    `Abdeckung blieb bei ${mit.aussagekraft} statt zu steigen`
+  );
+});
+
+test("eine saubere Modellantwort wird übernommen", () => {
+  const d = pruefeAntwort(
+    '```json\n{"einordnung":"Der Betrieb erfasst Aufträge doppelt.","achse":"potenzial","wert":2,"felder":["doppelerfassung"],"sicher":true}\n```'
+  );
+  assert.ok(d, "die Antwort hätte durchgehen müssen");
+  assert.equal(d!.achse, "potenzial");
+  assert.equal(d!.wert, 2);
+  assert.deepEqual(d!.felder, ["doppelerfassung"]);
+});
+
+test("eine Modellantwort mit erfundenen Zahlen wird verworfen", () => {
+  const d = pruefeAntwort(
+    '{"einordnung":"Spart rund 30 % der Zeit.","achse":"potenzial","wert":2,"felder":[],"sicher":true}'
+  );
+  assert.equal(d, null);
+});
+
+test("unsicher heißt: kein Ausschlag, keine Felder", () => {
+  const d = pruefeAntwort(
+    '{"einordnung":"Die Angabe ist unklar.","achse":"potenzial","wert":2,"felder":["doppelerfassung"],"sicher":false}'
+  );
+  assert.ok(d);
+  assert.equal(d!.sicher, false);
+  assert.equal(d!.wert, 0);
+  assert.equal(d!.achse, null);
+  assert.deepEqual(d!.felder, []);
+});
+
+test("erfundene Potenzialfelder und Ausreißer fallen weg", () => {
+  const d = pruefeAntwort(
+    '{"einordnung":"Ein klarer Befund.","achse":"fit","wert":2,"felder":["gibtesnicht","doppelerfassung"],"sicher":true}'
+  );
+  assert.ok(d);
+  assert.deepEqual(d!.felder, ["doppelerfassung"]);
+  // Werte außerhalb der Kappung lässt schon die Form nicht durch.
+  assert.equal(
+    pruefeAntwort('{"einordnung":"X Y Z","achse":"fit","wert":9,"felder":[],"sicher":true}'),
+    null
+  );
+});
+
+test("Geschwätz statt JSON ergibt keine Deutung", () => {
+  assert.equal(pruefeAntwort("Das kann ich so nicht beantworten."), null);
+  assert.equal(pruefeAntwort(""), null);
+});
+
+test("keine Einordnung darf Zahlen erfinden", () => {
+  assert.equal(istSauber("Der Betrieb erfasst Aufträge auf Papier."), true);
+  assert.equal(istSauber("Das spart 30 % der Zeit."), false);
+  assert.equal(istSauber("Branchenüblich sind hier zwei Systeme."), false);
+  assert.equal(istSauber("Bis zu 5.000 EUR im Jahr."), false);
 });
 
 console.log(`\n${passed} Tests bestanden.\n`);

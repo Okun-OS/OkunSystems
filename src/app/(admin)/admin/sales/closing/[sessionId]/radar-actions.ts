@@ -12,6 +12,7 @@ import {
   setzeAntwort,
   setzeCloserEinschaetzung,
   setzeCursor,
+  setzeFreitext,
   setzeNotiz,
   setzePhase,
   setzeProfil,
@@ -20,7 +21,12 @@ import {
   werteAus,
   type RadarProfil,
 } from "@/lib/radar/service";
-import { closerAnsicht, naechsterSchritt, type RadarCloserAnsicht } from "@/lib/radar/views";
+import {
+  bezugLabel,
+  closerAnsicht,
+  naechsterSchritt,
+  type RadarCloserAnsicht,
+} from "@/lib/radar/views";
 
 /**
  * Das Steuerpult des Closers.
@@ -185,6 +191,36 @@ export async function radarSpotlightWaehlen(
       const naechste = naechsterSchritt(nach);
       await setzePhase(radarSessionId, naechste.phase, naechste.frageKey);
     }
+    return antwort(closingSessionId, radarSessionId);
+  });
+}
+
+/**
+ * Der Berater trägt eine freie Angabe ein oder korrigiert sie.
+ *
+ * Im Gespräch sagt der Interessent oft mehr, als er tippt. Was der Berater
+ * hört, gehört an dieselbe Stelle wie das, was der Kunde selbst schreibt —
+ * sonst steht die wichtigste Angabe des Gesprächs in einer Notiz, die nie
+ * jemand auswertet.
+ */
+export async function radarFreitextSetzen(
+  closingSessionId: string,
+  radarSessionId: string,
+  bezug: string,
+  text: string
+) {
+  return guarded(async () => {
+    const { datensatz } = await zugang(closingSessionId, radarSessionId);
+    await setzeFreitext({
+      radarSessionId,
+      bezug,
+      text,
+      quelle: "closer",
+      zusammenhang: bezugLabel(bezug),
+      betrieb: [datensatz.profil.branche, datensatz.profil.groesse]
+        .filter((x): x is string => typeof x === "string")
+        .join(" · "),
+    });
     return antwort(closingSessionId, radarSessionId);
   });
 }
