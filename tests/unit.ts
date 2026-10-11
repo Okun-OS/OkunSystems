@@ -31,6 +31,13 @@ import {
   type ResolvedRequirement,
 } from "../src/lib/closing/master-data";
 import { calculateInvoiceTotals } from "../src/lib/invoicing/calc";
+import {
+  berlinStundeVon,
+  berlinTagesgrenzen,
+  berlinWochentagVon,
+  berlinZeitpunkt,
+  formatiereBerlin,
+} from "../src/lib/zeit";
 import { canAccessAdminPath, homeFor } from "../src/lib/closing/role-access";
 import { sha256Canonical } from "../src/lib/documents/hash";
 import {
@@ -502,7 +509,16 @@ test("Lösungen außerhalb des gebuchten Pakets bleiben draußen", () => {
     "foundation",
     aggregateSolutionRefs(evaluated)
   );
-  assert.deepEqual(result, [], "SOL-C-004 gibt es erst ab operations");
+  /*
+    Seit „Paket an die Blueprint-Sitzung hängen" (b231052) filtert die
+    Auswertung nicht mehr, sondern markiert: Eine Lösung jenseits des
+    gebuchten Pakets verschwindet nicht, sie trägt `beyondPackage`. Der
+    Bericht setzt sie sichtbar ab. Dieser Test hing seitdem an der alten
+    Erwartung fest.
+  */
+  assert.equal(result.length, 1, "SOL-C-004 bleibt sichtbar");
+  assert.equal(result[0].externalId, "SOL-C-004");
+  assert.equal(result[0].beyondPackage, true, "aber als außerhalb des Pakets markiert");
 });
 
 test("unbeantwortete und inaktive Fragen lösen nichts aus", () => {
@@ -566,7 +582,8 @@ function task(
 
 test("Katalog ist in sich schlüssig", () => {
   assert.equal(TASK_CATALOG.length, 40);
-  assert.equal(PURPOSES.length, 11);
+  // Seit 96e9d7b gibt es „Sonstiges" als eigenen Zweck.
+  assert.equal(PURPOSES.length, 12);
   assert.equal(STATIONS.length, 9);
   assert.equal(MAX_TASKS, 10);
   // Jede Aufgabe zeigt auf einen Ablauf, den es gibt.
@@ -726,7 +743,7 @@ test("Gesamtbild trennt Reifegrad und Stunden", () => {
   assert.equal(result.flows.overallManualShare, 50);
   assert.equal(result.flowMaturity, 50);
   assert.equal(result.tasks.totalHoursPerMonth, 3.6);
-  assert.equal(result.systems.gaps.length, 10, "zehn Zwecke ohne Programm");
+  assert.equal(result.systems.gaps.length, 11, "elf Zwecke ohne Programm");
 });
 
 test("ohne Eingaben bleibt alles bei null statt zu raten", () => {
@@ -735,6 +752,52 @@ test("ohne Eingaben bleibt alles bei null statt zu raten", () => {
   assert.equal(result.tasks.totalHoursPerMonth, 0);
   assert.equal(result.flows.overallManualShare, 0);
   assert.equal(result.flowMaturity, 100);
+});
+
+// ─── Zeitzone ────────────────────────────────────────────────────────────────
+
+/*
+  Der Fehler, den diese Tests festhalten: Ein Terminfenster wurde mit
+  `setHours` gebaut, also in der Zone des Servers. Auf Railway ist das UTC —
+  aus 13 Uhr wurde 15 Uhr im Portal.
+*/
+
+test("13 Uhr im Sommer ist 11:00 UTC", () => {
+  const t = berlinZeitpunkt(2026, 7, 15, 13);
+  assert.equal(t.toISOString(), "2026-07-15T11:00:00.000Z");
+  assert.equal(berlinStundeVon(t), 13);
+});
+
+test("13 Uhr im Winter ist 12:00 UTC", () => {
+  const t = berlinZeitpunkt(2026, 1, 15, 13);
+  assert.equal(t.toISOString(), "2026-01-15T12:00:00.000Z");
+  assert.equal(berlinStundeVon(t), 13);
+});
+
+test("die Umstellungsnacht verschiebt den Termin nicht", () => {
+  // Am 29. März 2026 wird um 2 Uhr auf 3 Uhr vorgestellt.
+  const vorher = berlinZeitpunkt(2026, 3, 29, 1);
+  const nachher = berlinZeitpunkt(2026, 3, 29, 13);
+  assert.equal(vorher.toISOString(), "2026-03-29T00:00:00.000Z");
+  assert.equal(nachher.toISOString(), "2026-03-29T11:00:00.000Z");
+  assert.equal(berlinStundeVon(nachher), 13);
+});
+
+test("der Tag läuft von Mitternacht bis Mitternacht in Berlin", () => {
+  const { von, bis } = berlinTagesgrenzen(2026, 7, 15);
+  assert.equal(von.toISOString(), "2026-07-14T22:00:00.000Z");
+  assert.equal(bis.toISOString(), "2026-07-15T21:59:59.999Z");
+});
+
+test("der Wochentag kommt aus dem Kalender, nicht aus der Zone", () => {
+  assert.equal(berlinWochentagVon(2026, 10, 10), 6, "Samstag");
+  assert.equal(berlinWochentagVon(2026, 10, 12), 1, "Montag");
+});
+
+test("ein gebuchter Termin wird in Berliner Zeit angezeigt", () => {
+  // Was der Kunde ausgewählt hat, muss er im Portal wiederfinden.
+  const gebucht = berlinZeitpunkt(2026, 7, 15, 13);
+  assert.ok(formatiereBerlin(gebucht).includes("13:00"));
 });
 
 console.log(`\n${passed} Tests bestanden.\n`);

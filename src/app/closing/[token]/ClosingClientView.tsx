@@ -207,9 +207,18 @@ export function ClosingClientView({ initialState, token }: Props) {
     das jemand gebaut hat. Ein Bildschirm, der lautlos seinen Inhalt tauscht,
     fühlt sich an wie eine Webseite.
   */
+  /*
+    Radar oder Angebot — es gewinnt, was zuletzt aufgeschaltet wurde.
+
+    Beides sind Vollbilder. Lief die Analyse, lag das präsentierte Angebot
+    dahinter und der Interessent hat es schlicht nie gesehen. `radarVorrang`
+    kommt vom Server und vergleicht die beiden Zeitpunkte.
+  */
+  const radarAufDerBuehne = state.radarActive && state.radarVorrang;
+
   const modus: Modus = state.isActivated
     ? "angebot"
-    : state.radarActive
+    : radarAufDerBuehne
       ? "radar"
       : state.offerPresented
         ? "angebot"
@@ -228,7 +237,7 @@ export function ClosingClientView({ initialState, token }: Props) {
     zustande kommt — keine Kamera, kein WebRTC, Raum noch nicht eingerichtet —,
     läuft die Analyse trotzdem. Dann eben mit dem Telefon am Ohr.
   */
-  if (state.radarActive && !state.isActivated) {
+  if (radarAufDerBuehne && !state.isActivated) {
     return (
       /*
         Der Schnitt steht über dem Zweig, nicht darin.

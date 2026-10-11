@@ -34,6 +34,10 @@ import { Ergebnisbericht, Fragekarte } from "./pieces";
 
 const TAKT_MS = 2500;
 const TAKT_LANGSAM_MS = 10_000;
+/** Nach so langer Zeit gilt eine Anfrage als verloren, nicht als langsam. */
+const ZEITLIMIT_MS = 12_000;
+/** So lange nach dem letzten Tastendruck bleibt ein Feld vor Überschreiben sicher. */
+const TIPP_SCHONFRIST_MS = 8_000;
 
 type Props = {
   token: string;
@@ -64,6 +68,15 @@ export function RadarStage({
   const [sendet, setSendet] = useState<string | null>(null);
   const [bereich, setBereich] = useState("analyse");
   const [fehler, setFehler] = useState<string | null>(null);
+  /*
+    Die eben angetippte Antwort, bevor der Server sie bestätigt hat.
+
+    Vorher erschien die Auswahl erst mit der Serverantwort. Auf einer
+    langsamen Leitung sah ein Klick damit aus wie nichts — und wer glaubt, der
+    Klick sei nicht angekommen, klickt weiter oder gibt auf. Der Entwurf wird
+    verworfen, sobald ein Serverstand da ist; er überschreibt also nie etwas.
+  */
+  const [entwurf, setEntwurf] = useState<{ frageKey: string; optionKeys: string[] } | null>(null);
   // Die Laufzeit tickt im Sekundentakt — sie kommt nicht vom Server, sondern
   // wird aus dem Startzeitpunkt gerechnet. Ein Zähler, der im Abfragetakt
   // springt, sieht kaputt aus.
@@ -72,20 +85,56 @@ export function RadarStage({
     const id = setInterval(() => setJetzt(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
-  // Während getippt wird, darf ein Abfragetakt das Feld nicht überschreiben.
-  const tippt = useRef(false);
+  /*
+    Während getippt wird, darf ein Abfragetakt das Feld nicht überschreiben.
+
+    Als bloße Flagge war das gefährlich: Wechselt der Berater die Phase,
+    während ein Feld den Fokus hat, verschwindet das Formular ohne `blur` —
+    die Flagge blieb stehen und die Kundenseite nahm **nie wieder** einen
+    Serverstand an. Deshalb ein Zeitstempel: Nach ein paar Sekunden ohne
+    Tastendruck zählt er nicht mehr.
+  */
+  const tipptBis = useRef(0);
+  const tippt = () => Date.now() < tipptBis.current;
 
   const holen = useCallback(async () => {
     try {
       const res = await fetch(`/api/closing/radar?token=${encodeURIComponent(token)}`, {
         cache: "no-store",
+        signal: AbortSignal.timeout(ZEITLIMIT_MS),
       });
+      /*
+        Ein abgelaufener oder neu ausgestellter Zugang hat vorher nichts
+        gesagt: Der Abruf endete still, die Seite blieb auf dem letzten Stand
+        stehen, und jeder Klick lief ins Leere. Wer das erlebt, hält die
+        Oberfläche für kaputt — zu Recht.
+      */
+      if (res.status === 401) {
+        setVerbunden(false);
+        setFehler(
+          "Ihr Zugangslink ist nicht mehr gültig. Bitte fragen Sie Ihren Berater nach einem neuen Link."
+        );
+        return;
+      }
       if (!res.ok) return;
       const data = (await res.json()) as { radar: RadarKundenAnsicht | null };
       setVerbunden(true);
       setGeladen(true);
-      if (tippt.current) return;
+      if (tippt()) return;
       setAnsicht(data.radar);
+      /*
+        Der Entwurf fällt erst, wenn der Server ihn eingeholt hat.
+
+        Fiele er bei jedem Takt, könnte ein Abruf, der zwischen Klick und
+        Serverantwort zurückkommt, die eben angetippte Antwort wieder
+        abwählen — ein Flackern, das wie ein verlorener Klick aussieht.
+      */
+      setEntwurf((e) => {
+        if (!e) return null;
+        const beantwortet = (data.radar?.antworten[e.frageKey] ?? []).length > 0;
+        const andereFrage = data.radar?.frage?.key !== e.frageKey;
+        return beantwortet || andereFrage ? null : e;
+      });
     } catch {
       // Ein Aussetzer ist kein Datenverlust — der nächste Takt holt nach.
       setVerbunden(false);
@@ -119,18 +168,30 @@ export function RadarStage({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ token, ...body }),
+          /*
+            Ohne Zeitlimit kann eine hängende Anfrage die Oberfläche dauerhaft
+            sperren: `sendet` bliebe gesetzt, die Antwortkacheln blieben
+            inaktiv, und nichts erklärte, warum. Lieber nach zwölf Sekunden
+            ein sichtbarer Fehler als ein stummes Gerät.
+          */
+          signal: AbortSignal.timeout(ZEITLIMIT_MS),
         });
         const data = (await res.json()) as { radar?: RadarKundenAnsicht; error?: string };
         if (!res.ok) {
           setFehler(data.error ?? "Die Eingabe konnte nicht gespeichert werden.");
+          setEntwurf(null);
           await holen();
           return;
         }
         setVerbunden(true);
         if (data.radar) setAnsicht(data.radar);
+        setEntwurf(null);
         stupseGegenseite();
       } catch {
-        setFehler("Die Verbindung wurde unterbrochen. Ihre Eingabe wurde noch nicht gespeichert.");
+        setFehler(
+          "Die Verbindung hat zu lange gebraucht. Ihre Eingabe wurde noch nicht gespeichert — bitte noch einmal tippen."
+        );
+        setEntwurf(null);
         setVerbunden(false);
       } finally {
         setSendet(null);
@@ -239,7 +300,9 @@ export function RadarStage({
         <Profilteil
           ansicht={ansicht}
           sendet={sendet}
-          onFokus={(an) => (tippt.current = an)}
+          onFokus={(an) => {
+            tipptBis.current = an ? Date.now() + TIPP_SCHONFRIST_MS : 0;
+          }}
           onSpeichern={(profil) => void schreiben({ aktion: "profil", profil }, "profil")}
         />
       ) : ansicht.spotlightAuswahl ? (
@@ -257,20 +320,26 @@ export function RadarStage({
           <div className="w-full lg:my-auto">
           <Fragekarte
             frage={ansicht.frage}
-            gewaehlt={ansicht.antworten[ansicht.frage.key] ?? []}
-            disabled={sendet === ansicht.frage.key}
-            onWaehlen={(optionKeys) =>
+            gewaehlt={
+              entwurf?.frageKey === ansicht.frage.key
+                ? entwurf.optionKeys
+                : ansicht.antworten[ansicht.frage.key] ?? []
+            }
+            onWaehlen={(optionKeys) => {
+              // Erst zeigen, dann senden.
+              setEntwurf({ frageKey: ansicht.frage!.key, optionKeys });
               void schreiben(
                 { aktion: "antwort", frageKey: ansicht.frage!.key, optionKeys },
                 ansicht.frage!.key
-              )
-            }
+              );
+            }}
           />
           </div>
           </div>
           <Fussleiste
             ansicht={ansicht}
             sendet={sendet}
+            entwurfOffen={entwurf?.frageKey === ansicht.frage.key && entwurf.optionKeys.length > 0}
             onBlaettern={(richtung) => void schreiben({ aktion: richtung }, richtung)}
           />
         </div>
@@ -292,13 +361,17 @@ export function RadarStage({
 function Fussleiste({
   ansicht,
   sendet,
+  entwurfOffen,
   onBlaettern,
 }: {
   ansicht: RadarKundenAnsicht;
   sendet: string | null;
+  /** Eine eben angetippte Antwort, die der Server noch bestätigt. */
+  entwurfOffen?: boolean;
   onBlaettern: (richtung: "zurueck" | "weiter") => void;
 }) {
-  const beantwortet = Boolean(ansicht.frage && ansicht.antworten[ansicht.frage.key]?.length);
+  const beantwortet =
+    entwurfOffen || Boolean(ansicht.frage && ansicht.antworten[ansicht.frage.key]?.length);
   const laeuft = sendet === "weiter" || sendet === "zurueck";
 
   return (

@@ -166,7 +166,17 @@ export async function POST(request: NextRequest) {
       spotlightKey: radar.spotlightKey,
       bereiche,
     });
-    if (!aktiv.some((x) => x.key === frageKey)) {
+    /*
+      Die Frage muss gestellt worden sein — oder gerade auf dem Schirm stehen.
+
+      Der Cursor zählt mit, weil der Berater ihn setzt: Springt er auf eine
+      Frage, deren Bedingung durch eine spätere Korrektur weggefallen ist,
+      sieht der Interessent sie trotzdem. Lehnte der Server die Antwort dann
+      ab, könnte der Berater antworten und sein Gegenüber nicht — genau das
+      ist im Gespräch passiert. Alles andere bleibt abgelehnt.
+    */
+    const stehtZurAuswahl = aktiv.some((x) => x.key === frageKey) || radar.cursorKey === frageKey;
+    if (!stehtZurAuswahl) {
       return NextResponse.json({ error: "Diese Frage steht hier nicht zur Auswahl." }, { status: 409 });
     }
 

@@ -29,8 +29,23 @@ const TEXTE: Record<Modus, string> = {
   gespraech: "Zurück ins Gespräch",
   radar: "Interaktive Potenzialanalyse",
   ergebnis: "Ihre Auswertung",
-  angebot: "Ihr Angebot",
+  angebot: "Ihr persönliches Angebot",
 };
+
+/**
+ * Die große Zeile unter der Marke.
+ *
+ * Beim Eintritt in die Analyse der Firmenname — hier geht es um diesen
+ * Betrieb, nicht um einen Musterfall. Beim Angebot der Glückwunsch: Es ist
+ * der Moment, auf den das ganze Gespräch zuläuft, und er darf sich auch so
+ * anfühlen. Bei den übrigen Übergängen steht dort nichts; ein Schnitt, der
+ * jedes Mal feiert, feiert nichts.
+ */
+function groszeZeile(modus: Modus, firma?: string | null): string | null {
+  if (modus === "radar") return firma ?? null;
+  if (modus === "angebot") return "Herzlichen Glückwunsch";
+  return null;
+}
 
 const DAUER_MS = 1900;
 
@@ -47,6 +62,8 @@ export function ModusUebergang({ modus, firma }: { modus: Modus; firma?: string 
   }, [modus]);
 
   if (!laeuft) return null;
+
+  const grosz = groszeZeile(laeuft, firma);
 
   return (
     <div
@@ -120,12 +137,21 @@ export function ModusUebergang({ modus, firma }: { modus: Modus; firma?: string 
           einen Musterfall. Deshalb nur bei `radar` — bei „zurück ins
           Gespräch“ wäre es eine Wiederholung.
         */}
-        {laeuft === "radar" && firma ? (
+        {grosz ? (
           <p
             className="mt-3 max-w-[18ch] text-[#f4f8fd] text-[21px] sm:text-[30px] font-bold tracking-[-0.02em] leading-tight text-center"
             style={{ animation: "karte-ein .62s cubic-bezier(.22,1,.36,1) .88s both" }}
           >
-            {firma}
+            {grosz}
+          </p>
+        ) : null}
+
+        {laeuft === "angebot" && firma ? (
+          <p
+            className="mt-2 max-w-[30ch] text-[#5f88ae] text-[12.5px] sm:text-[14px] leading-snug text-center"
+            style={{ animation: "karte-ein .62s cubic-bezier(.22,1,.36,1) 1.02s both" }}
+          >
+            Wir haben ein Angebot für {firma} vorbereitet.
           </p>
         ) : null}
       </div>

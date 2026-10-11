@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { ZONE } from "@/lib/zeit";
 
 const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
@@ -30,10 +31,12 @@ export async function sendAppointmentConfirmation({
     day: "2-digit",
     month: "long",
     year: "numeric",
+    timeZone: ZONE,
   });
   const formattedTime = startTime.toLocaleTimeString("de-DE", {
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: ZONE,
   });
 
   const meetingLine = meetingUrl
@@ -129,10 +132,12 @@ export async function sendAppointmentNotificationToAdmin({
     day: "2-digit",
     month: "long",
     year: "numeric",
+    timeZone: ZONE,
   });
   const formattedTime = startTime.toLocaleTimeString("de-DE", {
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: ZONE,
   });
 
   await resend.emails.send({
@@ -298,10 +303,12 @@ export async function sendClosingInvitationEmail({
     day: "2-digit",
     month: "long",
     year: "numeric",
+    timeZone: ZONE,
   });
   const formattedTime = scheduledAt.toLocaleTimeString("de-DE", {
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: ZONE,
   });
 
   await resend.emails.send({
@@ -694,7 +701,7 @@ export async function sendInvoiceEmail({
   }
 
   const fmtDate = (d: Date) =>
-    d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+    d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: ZONE });
   const fmtEur = (cents: number) =>
     new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(cents / 100);
 

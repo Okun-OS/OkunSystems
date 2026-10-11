@@ -982,6 +982,15 @@ model ClosingSession {
   /// daraufhin — und nur dann.
   liveRadarSessionId String?
 
+  /// Seit wann das Radar auf der Bühne steht.
+  ///
+  /// Nötig für den Vorrang: Wird während einer laufenden Analyse ein Angebot
+  /// präsentiert, soll der Interessent das Angebot sehen — und wenn der
+  /// Berater danach das Radar wieder aufschaltet, wieder das Radar. Ohne
+  /// Zeitstempel müsste eines von beiden immer gewinnen, und genau daran ist
+  /// das Angebot im Gespräch hängengeblieben: Es lag hinter dem Cockpit.
+  liveRadarSince     DateTime?
+
   offers             Offer[]
   consentRecords     ConsentRecord[]
   contractSnapshot   ContractSnapshot?

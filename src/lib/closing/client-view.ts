@@ -60,6 +60,16 @@ export type ClientClosingState = {
    * sie währenddessen deutlich häufiger nachfragt als nach dem Rest.
    */
   radarActive: boolean;
+  /**
+   * Wer von beiden die Bühne bekommt.
+   *
+   * Radar und Angebot sind zwei Vollbilder. Stand das Radar, blieb das
+   * präsentierte Angebot dahinter unsichtbar — gemeldet aus einem echten
+   * Gespräch. Entscheidend ist jetzt, was zuletzt aufgeschaltet wurde: Wird
+   * während der Analyse ein Angebot präsentiert, tritt das Radar zurück; holt
+   * der Berater danach das Radar wieder hervor, tritt das Angebot zurück.
+   */
+  radarVorrang: boolean;
   snapshotReady: boolean;
   offer: {
     packageName: string | null;
@@ -138,6 +148,14 @@ export async function buildClientClosingState(
 
   const status = normalizeStatus(session.status);
   const data: ContractSnapshotData | null = await getSnapshotData(closingSessionId);
+
+  // Wann das Angebot vorgestellt wurde — die eine Hälfte des Vorrangs.
+  const praesentiert = await db.offer.findFirst({
+    where: { closingSessionId, presentedAt: { not: null } },
+    orderBy: { presentedAt: "desc" },
+    select: { presentedAt: true },
+  });
+  const praesentiertesAngebotAm = praesentiert?.presentedAt ?? null;
 
   let consents: ClientConsentItem[] = [];
   let allRequiredConfirmed = false;
@@ -274,6 +292,10 @@ export async function buildClientClosingState(
     advisorPresent,
     presentation,
     radarActive: Boolean(session.liveRadarSessionId),
+    radarVorrang:
+      Boolean(session.liveRadarSessionId) &&
+      (!praesentiertesAngebotAm ||
+        (session.liveRadarSince?.getTime() ?? 0) > praesentiertesAngebotAm.getTime()),
     snapshotReady: Boolean(data),
     offer,
     offerPdfAvailable,

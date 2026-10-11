@@ -5,12 +5,22 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/*
+  Datum und Uhrzeit immer in deutscher Ortszeit.
+
+  Ohne `timeZone` nimmt `toLocaleString` die Zone des Prozesses: im Browser
+  Berlin, auf dem Server UTC. Derselbe Termin sah dadurch je nach Ort zwei
+  Stunden anders aus — gemeldet und bestätigt.
+*/
+const ZONE = "Europe/Berlin";
+
 export function formatDate(date: Date | string): string {
   const d = typeof date === "string" ? new Date(date) : date;
   return d.toLocaleDateString("de-DE", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
+    timeZone: ZONE,
   });
 }
 
@@ -22,6 +32,7 @@ export function formatDateTime(date: Date | string): string {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: ZONE,
   });
 }
 

@@ -211,7 +211,7 @@ export async function starteRadar(input: {
     // Präsentation: Der Berater schaltet auf, der Kunde sieht mit.
     db.closingSession.update({
       where: { id: input.closingSessionId },
-      data: { liveRadarSessionId: id },
+      data: { liveRadarSessionId: id, liveRadarSince: new Date() },
     }),
   ]);
 
@@ -224,7 +224,7 @@ export async function starteRadar(input: {
 export async function blendeRadarAus(closingSessionId: string): Promise<void> {
   await db.closingSession.update({
     where: { id: closingSessionId },
-    data: { liveRadarSessionId: null },
+    data: { liveRadarSessionId: null, liveRadarSince: null },
   });
 }
 
