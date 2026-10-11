@@ -39,6 +39,11 @@ import {
   formatiereBerlin,
 } from "../src/lib/zeit";
 import { canAccessAdminPath, homeFor } from "../src/lib/closing/role-access";
+import {
+  angebotAufDerBuehne,
+  kannGezeigtWerden,
+  knopfBeschriftung,
+} from "../src/lib/closing/angebot-sicht";
 import { sha256Canonical } from "../src/lib/documents/hash";
 import {
   aggregateSignals,
@@ -798,6 +803,85 @@ test("ein gebuchter Termin wird in Berliner Zeit angezeigt", () => {
   // Was der Kunde ausgewählt hat, muss er im Portal wiederfinden.
   const gebucht = berlinZeitpunkt(2026, 7, 15, 13);
   assert.ok(formatiereBerlin(gebucht).includes("13:00"));
+});
+
+// ─── Angebot: wer sieht es wann ─────────────────────────────────────────────
+
+/*
+  Der teuerste Fehler bisher: Ein frisch angelegtes Angebot ist sofort das
+  aktive, und der Knopf zum Zeigen hing daran, dass es das *nicht* sei. Der
+  Berater konnte das erste Angebot also nie aufschalten.
+*/
+test("ein neu angelegtes, aktives Angebot lässt sich zeigen", () => {
+  const angebot = { id: "a1", presentedAt: null, status: "draft" };
+  assert.equal(kannGezeigtWerden(angebot, "a1"), true);
+  assert.equal(knopfBeschriftung(angebot), "Dem Kunden zeigen");
+});
+
+test("ein gezeigtes, aktives Angebot braucht keinen Knopf mehr", () => {
+  const angebot = { id: "a1", presentedAt: new Date(), status: "presented" };
+  assert.equal(kannGezeigtWerden(angebot, "a1"), false);
+});
+
+test("ein gezeigtes Angebot lässt sich erneut aufrufen, wenn ein anderes läuft", () => {
+  const angebot = { id: "a1", presentedAt: new Date(), status: "presented" };
+  assert.equal(kannGezeigtWerden(angebot, "a2"), true);
+  assert.equal(knopfBeschriftung(angebot), "Erneut zeigen");
+});
+
+test("ein angenommenes Angebot wird nicht noch einmal vorgestellt", () => {
+  assert.equal(
+    kannGezeigtWerden({ id: "a1", presentedAt: new Date(), status: "accepted" }, "a2"),
+    false
+  );
+});
+
+test("das vorgestellte Angebot bekommt die Bühne des Interessenten", () => {
+  assert.equal(
+    angebotAufDerBuehne({
+      isActivated: false,
+      radarActive: false,
+      radarVorrang: false,
+      offerPresented: true,
+    }),
+    true
+  );
+});
+
+test("ein laufendes Radar mit Vorrang behält die Bühne", () => {
+  assert.equal(
+    angebotAufDerBuehne({
+      isActivated: false,
+      radarActive: true,
+      radarVorrang: true,
+      offerPresented: true,
+    }),
+    false
+  );
+});
+
+test("nach dem Radar gewinnt das zuletzt aufgeschaltete Angebot", () => {
+  assert.equal(
+    angebotAufDerBuehne({
+      isActivated: false,
+      radarActive: true,
+      radarVorrang: false,
+      offerPresented: true,
+    }),
+    true
+  );
+});
+
+test("nach der Freischaltung steht der Zugang, nicht mehr das Angebot", () => {
+  assert.equal(
+    angebotAufDerBuehne({
+      isActivated: true,
+      radarActive: false,
+      radarVorrang: false,
+      offerPresented: true,
+    }),
+    false
+  );
 });
 
 console.log(`\n${passed} Tests bestanden.\n`);

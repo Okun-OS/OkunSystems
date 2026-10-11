@@ -2,6 +2,10 @@
 
 import { useState, useTransition, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import {
+  kannGezeigtWerden,
+  knopfBeschriftung,
+} from "@/lib/closing/angebot-sicht";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -1170,6 +1174,26 @@ export function ClosingWorkspaceClient({
       {/* ─── Tab: Angebote ──────────────────────────────────────────────────── */}
       {activeTab === "angebot" && (
         <div className="space-y-6">
+          {/*
+            Ein Angebot, das nur im Admin steht, ist kein Angebot.
+
+            Der Kundenbildschirm bleibt leer, bis „Dem Kunden zeigen"
+            geklickt ist — und das ist von hier aus nicht zu sehen. Also sagt
+            es die Oberfläche, solange es zutrifft.
+          */}
+          {closingSession.offers.some(
+            (o) => o.id === closingSession.activeOfferId && !o.presentedAt
+          ) && (
+            <div className="px-4 py-3 rounded-xl bg-[rgba(245,158,11,0.08)] border border-[#f59e0b]/25 flex items-start gap-2.5">
+              <Eye size={14} className="text-[#f59e0b] flex-shrink-0 mt-0.5" />
+              <p className="text-[#fbbf24] text-xs leading-relaxed">
+                <b>Der Kunde sieht dieses Angebot noch nicht.</b> Erst{" "}
+                <span className="font-semibold">Dem Kunden zeigen</span> schaltet es auf seinen
+                Bildschirm — mit Preis, Unterlagen und einem eigenen Übergang.
+              </p>
+            </div>
+          )}
+
           {closingSession.offers.length > 0 && (
             <div className="space-y-3">
               {closingSession.offers.map((offer) => (
@@ -1194,15 +1218,35 @@ export function ClosingWorkspaceClient({
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    {/* Auch ein bereits gezeigtes Angebot lässt sich wieder
-                        aufrufen — im Gespräch kommt oft eine zweite Variante
-                        auf den Tisch, und dann zurück zur ersten. */}
-                    {offer.id !== closingSession.activeOfferId && offer.status !== "accepted" && (
+                    {/*
+                      Gezeigt wird, was nicht gezeigt ist.
+
+                      Hier stand die Bedingung `offer.id !== activeOfferId` —
+                      und weil ein neu angelegtes Angebot sofort das aktive
+                      ist, war der Knopf beim ersten Angebot nie da. Das
+                      Angebot blieb damit für immer ein Entwurf, den der
+                      Interessent nicht sieht; sichtbar wurde es erst, wenn
+                      der Vertragsabschluss die Daten einfror. Genau das ist
+                      im Gespräch passiert.
+
+                      Die Bedingung ist jetzt der Zustand, um den es geht: Ist
+                      das Angebot noch nicht gezeigt, steht hier der Knopf, der
+                      es zeigt. Ein bereits gezeigtes lässt sich wieder
+                      aufrufen — im Gespräch kommt oft eine zweite Variante auf
+                      den Tisch, und dann zurück zur ersten.
+                    */}
+                    {kannGezeigtWerden(offer, closingSession.activeOfferId) && (
                       <button onClick={() => handlePresentOffer(offer.id)} disabled={offerPending}
                         className="flex items-center gap-2 px-3 py-2 bg-[#f59e0b] hover:bg-[#d97706] disabled:opacity-40 text-black font-semibold text-xs rounded-lg transition-colors">
                         <Eye size={13} />
-                        {offer.status === "draft" ? "Präsentieren" : "Erneut zeigen"}
+                        {knopfBeschriftung(offer)}
                       </button>
+                    )}
+                    {offer.id === closingSession.activeOfferId && offer.presentedAt && (
+                      <span className="flex items-center gap-1.5 text-[11px] font-semibold text-[#22c55e] whitespace-nowrap">
+                        <Eye size={12} />
+                        Auf dem Kundenbildschirm
+                      </span>
                     )}
                     {offer.id === closingSession.activeOfferId && (
                       <button onClick={handleEmailOffer} disabled={offerMailPending}

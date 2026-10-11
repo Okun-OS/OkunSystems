@@ -17,6 +17,8 @@ import { PdfPage } from "@/components/closing/pdf-page";
 import type { ClientClosingState } from "@/lib/closing/client-view";
 import { RadarStage } from "@/components/radar/radar-stage";
 import { ModusUebergang, type Modus } from "@/components/radar/modus-uebergang";
+import { AngebotsBuehne } from "@/components/closing/angebots-buehne";
+import { angebotAufDerBuehne as zeigtAngebot } from "@/lib/closing/angebot-sicht";
 
 /**
  * Kundenseite des Closings.
@@ -215,6 +217,207 @@ export function ClosingClientView({ initialState, token }: Props) {
     kommt vom Server und vergleicht die beiden Zeitpunkte.
   */
   const radarAufDerBuehne = state.radarActive && state.radarVorrang;
+  /*
+    Und wann das Angebot die Bühne bekommt: sobald es vorgestellt ist, das
+    Radar nicht gerade vorgeht und der Zugang noch nicht freigeschaltet ist.
+    Nach der Freischaltung ist das Gespräch vorbei — dort steht die
+    Willkommensseite mit Rechnung, nicht mehr das Angebot.
+  */
+  const angebotAufDerBuehne = zeigtAngebot(state);
+
+  /*
+    Unterlagen und Erklärungen — an zwei Stellen gebraucht, einmal geschrieben.
+
+    Auf der Angebots-Bühne stehen sie in der rechten Leiste unter dem Gespräch,
+    in der Gesprächsansicht in der Seitenspalte. Derselbe Zustand, dieselben
+    Knöpfe; nur der Platz unterscheidet sich.
+  */
+  const unterlagenKarte =
+    state.consents.length > 0 ? (
+      <Card>
+        <CardHead
+          title="Unterlagen & Erklärungen"
+          subtitle="Bitte öffnen Sie die Unterlagen und bestätigen Sie die erforderlichen Erklärungen."
+        />
+
+        <div className="divide-y divide-[#101b2c]">
+          {state.consents.map((consent) => {
+            const isChecked = consent.accepted || checked.has(consent.definitionId);
+            return (
+              <div key={consent.definitionId} className="px-5 py-4">
+                {consent.document && (
+                  <a
+                    href={
+                      consent.document.openable
+                        ? `/api/closing/document?token=${encodeURIComponent(token)}&versionId=${consent.document.versionId}`
+                        : undefined
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`inline-flex items-center gap-2 mb-2.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-colors ${
+                      consent.document.openable
+                        ? "border-[#00b8ff]/30 bg-[rgba(0,184,255,0.08)] text-[#00b8ff] hover:bg-[rgba(0,184,255,0.16)]"
+                        : "border-[#16283d] text-[#5b6b7f] cursor-not-allowed"
+                    }`}
+                  >
+                    <FileText size={12} />
+                    {consent.document.name} Version {consent.document.versionLabel}
+                  </a>
+                )}
+
+                <label
+                  className={`flex items-start gap-3 ${
+                    consent.accepted ? "cursor-default" : "cursor-pointer"
+                  }`}
+                >
+                  <span
+                    className={`mt-0.5 w-[18px] h-[18px] rounded flex-shrink-0 border flex items-center justify-center transition-colors ${
+                      isChecked
+                        ? "bg-[#00b8ff] border-[#00b8ff]"
+                        : "border-[#2a3a55] bg-[#070d15]"
+                    }`}
+                  >
+                    {isChecked && (
+                      <Check size={12} className="text-[#041018]" strokeWidth={3} />
+                    )}
+                    <input
+                      type="checkbox"
+                      className="sr-only"
+                      checked={isChecked}
+                      disabled={consent.accepted || submitting}
+                      onChange={(e) => {
+                        setChecked((prev) => {
+                          const next = new Set(prev);
+                          if (e.target.checked) next.add(consent.definitionId);
+                          else next.delete(consent.definitionId);
+                          return next;
+                        });
+                      }}
+                    />
+                  </span>
+                  <span className="flex-1">
+                    {/* Wortlaut exakt aus der Admin-Konfiguration */}
+                    <span className="text-[#c9d4e4] text-sm leading-relaxed">
+                      {consent.checkboxText}
+                    </span>
+                    {!consent.isRequired && (
+                      <span className="ml-2 text-[#5b6b7f] text-xs">(optional)</span>
+                    )}
+                    {consent.accepted && consent.acceptedAt && (
+                      <span className="block mt-1 text-[#22c55e] text-xs">
+                        Bestätigt am{" "}
+                        {new Date(consent.acceptedAt).toLocaleString("de-DE", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}{" "}
+                        Uhr
+                      </span>
+                    )}
+                  </span>
+                </label>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="px-5 py-4 border-t border-[#12203a] bg-[#070d15]">
+          {state.allRequiredConfirmed ? (
+            <p className="text-[#22c55e] text-sm font-semibold flex items-center gap-2">
+              <ShieldCheck size={16} />
+              Alle erforderlichen Erklärungen wurden protokolliert.
+            </p>
+          ) : (
+            <>
+              {error && (
+                <div className="mb-3 px-3 py-2.5 rounded-lg bg-[rgba(239,68,68,0.1)] border border-[#ef4444]/25">
+                  <p className="text-[#fca5a5] text-xs">{error}</p>
+                  {missing.length > 0 && (
+                    <ul className="mt-1.5 text-[#fca5a5] text-xs list-disc list-inside">
+                      {missing.map((m) => (
+                        <li key={m}>{m}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+              <button
+                onClick={handleConfirm}
+                disabled={!canSubmit || submitting}
+                className="w-full px-6 py-3 rounded-lg bg-[#00b8ff] text-[#041018] text-sm font-bold disabled:bg-[#16283d] disabled:text-[#4a5a70] disabled:cursor-not-allowed hover:bg-[#0099d6] transition-colors flex items-center justify-center gap-2"
+              >
+                {submitting && <Loader2 size={15} className="animate-spin" />}
+                Verbindlich bestätigen
+              </button>
+              <p className="mt-2.5 text-[#5b6b7f] text-xs">
+                Der Zeitpunkt Ihrer Bestätigung wird serverseitig protokolliert.
+              </p>
+            </>
+          )}
+        </div>
+      </Card>
+    ) : null;
+
+  /*
+    Was neben dem Angebot steht.
+
+    Auf der Bühne ist das die rechte Leiste unter dem Gespräch, in der
+    Gesprächsansicht die Seitenspalte. Es ist dieselbe Spalte — nur an zwei
+    verschiedenen Orten, und deshalb einmal geschrieben.
+  */
+  const hatNebenKarten =
+    state.consents.length > 0 ||
+    (state.allRequiredConfirmed && !state.isPaid) ||
+    Boolean(state.invoice);
+
+  const nebenKarten = hatNebenKarten ? (
+    <div className="space-y-5">
+      {unterlagenKarte}
+
+      {state.allRequiredConfirmed && !state.isPaid && (
+        <Card>
+          <div className="px-5 py-4">
+            <h2 className="text-[#eef2f7] text-sm font-bold mb-1.5">
+              Vertragsaufzeichnung
+            </h2>
+            <p className="text-[#8899b4] text-xs leading-relaxed">
+              {state.recordingActive
+                ? "Die Aufzeichnung läuft. Ihr Berater führt Sie durch die verbindliche Annahme."
+                : state.recordingArchived
+                  ? "Die Aufzeichnung wurde beendet und revisionssicher archiviert."
+                  : "Ihr Berater startet die Aufzeichnung, sobald Sie bereit sind."}
+            </p>
+          </div>
+        </Card>
+      )}
+
+      {state.invoice && (
+        <Card>
+          <CardHead title={`Rechnung ${state.invoice.number}`} />
+          <div className="px-5 py-4 space-y-2.5">
+            <Row label="Gesamtbetrag" value={state.invoice.grossTotal} strong />
+            {state.invoice.dueDate && (
+              <Row
+                label="Fällig bis"
+                value={new Date(state.invoice.dueDate).toLocaleDateString("de-DE")}
+              />
+            )}
+            <Row
+              label="Status"
+              value={state.invoice.status === "paid" ? "Bezahlt" : "Offen"}
+            />
+            <p className="text-[#5b6b7f] text-xs pt-1">
+              Die Rechnung finden Sie nach der Freischaltung jederzeit in Ihrem
+              Kundenportal unter &bdquo;Dokumente&ldquo;.
+            </p>
+          </div>
+        </Card>
+      )}
+    </div>
+  ) : null;
+
 
   const modus: Modus = state.isActivated
     ? "angebot"
@@ -304,6 +507,88 @@ export function ClosingClientView({ initialState, token }: Props) {
           )}
         </div>
         </div>
+      </>
+    );
+  }
+
+  /*
+    Das vorgestellte Angebot bekommt die Bühne.
+
+    Dasselbe Prinzip wie beim Radar: Was gerade zur Sprache steht, gehört in
+    die Mitte und nicht in eine Spalte daneben. Vorher stand das Angebot als
+    schmale Karte rechts unter dem Videobild — am Telefon unterhalb der Falz —
+    und der Interessent suchte, während der Berater erklärte.
+
+    Das Gespräch läuft dabei weiter: `OkunCall` reicht die Kacheln und die
+    Steuerung über `stageLayout` in die rechte Leiste. Kommt kein Videoraum
+    zustande, steht dort der Beitrittsknopf und das Angebot trotzdem.
+  */
+  if (angebotAufDerBuehne && state.offer) {
+    const buehne = (teile?: {
+      kacheln: React.ReactNode;
+      steuerung: React.ReactNode;
+      teilnehmer: number;
+    }) => (
+      <AngebotsBuehne
+        firma={state.companyName}
+        beraterName={state.closerName}
+        angebot={state.offer!}
+        pdfVerfuegbar={state.offerPdfAvailable}
+        pdfUrl={offerPdfUrl}
+        onPdfOeffnen={() => setOfferOpen(true)}
+        video={teile?.kacheln}
+        videoSteuerung={teile?.steuerung}
+        teilnehmer={teile?.teilnehmer ?? null}
+        videoHinweis={
+          teile ? undefined : showStage ? (
+            <button
+              onClick={() => void joinCall()}
+              disabled={joinPending}
+              className="w-full flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#00b8ff] text-[#041018] text-[11.5px] font-bold disabled:opacity-60 transition-opacity"
+            >
+              <Video size={13} />
+              {joinPending ? "Wird verbunden…" : "Mit Video beitreten"}
+            </button>
+          ) : (
+            <p className="text-[#44546b] text-[10.5px] leading-snug">
+              Ihr Berater richtet den Gesprächsraum ein.
+            </p>
+          )
+        }
+        unterlagen={nebenKarten}
+        schritte={<CompactSteps active={activeStep} />}
+      />
+    );
+
+    return (
+      <>
+        <ModusUebergang modus={modus} firma={state.companyName} feiern={!state.isActivated} />
+        <div key="angebot">
+          {state.recordingActive && <AufzeichnungsBand />}
+          {showStage && joined ? (
+            <OkunCall
+              roomUrl={callUrl ?? state.meetingUrl!}
+              userName={state.contactName ?? state.companyName}
+              role="client"
+              slide={null}
+              onLeave={() => setJoined(false)}
+              onRemoteChange={refresh}
+              stageLayout={({ kacheln, steuerung, teilnehmer }) =>
+                buehne({ kacheln, steuerung, teilnehmer })
+              }
+            />
+          ) : (
+            buehne()
+          )}
+        </div>
+        {offerOpen && (
+          <DocumentViewer
+            url={offerPdfUrl}
+            title="Angebot"
+            kind={state.offerDocumentKind ?? "pdf"}
+            onClose={() => setOfferOpen(false)}
+          />
+        )}
       </>
     );
   }
@@ -485,172 +770,7 @@ export function ClosingClientView({ initialState, token }: Props) {
                 </Card>
               )}
 
-              {state.consents.length > 0 && (
-                <Card>
-                  <CardHead
-                    title="Unterlagen & Erklärungen"
-                    subtitle="Bitte öffnen Sie die Unterlagen und bestätigen Sie die erforderlichen Erklärungen."
-                  />
-
-                  <div className="divide-y divide-[#101b2c]">
-                    {state.consents.map((consent) => {
-                      const isChecked = consent.accepted || checked.has(consent.definitionId);
-                      return (
-                        <div key={consent.definitionId} className="px-5 py-4">
-                          {consent.document && (
-                            <a
-                              href={
-                                consent.document.openable
-                                  ? `/api/closing/document?token=${encodeURIComponent(token)}&versionId=${consent.document.versionId}`
-                                  : undefined
-                              }
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className={`inline-flex items-center gap-2 mb-2.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-colors ${
-                                consent.document.openable
-                                  ? "border-[#00b8ff]/30 bg-[rgba(0,184,255,0.08)] text-[#00b8ff] hover:bg-[rgba(0,184,255,0.16)]"
-                                  : "border-[#16283d] text-[#5b6b7f] cursor-not-allowed"
-                              }`}
-                            >
-                              <FileText size={12} />
-                              {consent.document.name} Version {consent.document.versionLabel}
-                            </a>
-                          )}
-
-                          <label
-                            className={`flex items-start gap-3 ${
-                              consent.accepted ? "cursor-default" : "cursor-pointer"
-                            }`}
-                          >
-                            <span
-                              className={`mt-0.5 w-[18px] h-[18px] rounded flex-shrink-0 border flex items-center justify-center transition-colors ${
-                                isChecked
-                                  ? "bg-[#00b8ff] border-[#00b8ff]"
-                                  : "border-[#2a3a55] bg-[#070d15]"
-                              }`}
-                            >
-                              {isChecked && (
-                                <Check size={12} className="text-[#041018]" strokeWidth={3} />
-                              )}
-                              <input
-                                type="checkbox"
-                                className="sr-only"
-                                checked={isChecked}
-                                disabled={consent.accepted || submitting}
-                                onChange={(e) => {
-                                  setChecked((prev) => {
-                                    const next = new Set(prev);
-                                    if (e.target.checked) next.add(consent.definitionId);
-                                    else next.delete(consent.definitionId);
-                                    return next;
-                                  });
-                                }}
-                              />
-                            </span>
-                            <span className="flex-1">
-                              {/* Wortlaut exakt aus der Admin-Konfiguration */}
-                              <span className="text-[#c9d4e4] text-sm leading-relaxed">
-                                {consent.checkboxText}
-                              </span>
-                              {!consent.isRequired && (
-                                <span className="ml-2 text-[#5b6b7f] text-xs">(optional)</span>
-                              )}
-                              {consent.accepted && consent.acceptedAt && (
-                                <span className="block mt-1 text-[#22c55e] text-xs">
-                                  Bestätigt am{" "}
-                                  {new Date(consent.acceptedAt).toLocaleString("de-DE", {
-                                    day: "2-digit",
-                                    month: "2-digit",
-                                    year: "numeric",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  })}{" "}
-                                  Uhr
-                                </span>
-                              )}
-                            </span>
-                          </label>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <div className="px-5 py-4 border-t border-[#12203a] bg-[#070d15]">
-                    {state.allRequiredConfirmed ? (
-                      <p className="text-[#22c55e] text-sm font-semibold flex items-center gap-2">
-                        <ShieldCheck size={16} />
-                        Alle erforderlichen Erklärungen wurden protokolliert.
-                      </p>
-                    ) : (
-                      <>
-                        {error && (
-                          <div className="mb-3 px-3 py-2.5 rounded-lg bg-[rgba(239,68,68,0.1)] border border-[#ef4444]/25">
-                            <p className="text-[#fca5a5] text-xs">{error}</p>
-                            {missing.length > 0 && (
-                              <ul className="mt-1.5 text-[#fca5a5] text-xs list-disc list-inside">
-                                {missing.map((m) => (
-                                  <li key={m}>{m}</li>
-                                ))}
-                              </ul>
-                            )}
-                          </div>
-                        )}
-                        <button
-                          onClick={handleConfirm}
-                          disabled={!canSubmit || submitting}
-                          className="w-full px-6 py-3 rounded-lg bg-[#00b8ff] text-[#041018] text-sm font-bold disabled:bg-[#16283d] disabled:text-[#4a5a70] disabled:cursor-not-allowed hover:bg-[#0099d6] transition-colors flex items-center justify-center gap-2"
-                        >
-                          {submitting && <Loader2 size={15} className="animate-spin" />}
-                          Verbindlich bestätigen
-                        </button>
-                        <p className="mt-2.5 text-[#5b6b7f] text-xs">
-                          Der Zeitpunkt Ihrer Bestätigung wird serverseitig protokolliert.
-                        </p>
-                      </>
-                    )}
-                  </div>
-                </Card>
-              )}
-
-              {state.allRequiredConfirmed && !state.isPaid && (
-                <Card>
-                  <div className="px-5 py-4">
-                    <h2 className="text-[#eef2f7] text-sm font-bold mb-1.5">
-                      Vertragsaufzeichnung
-                    </h2>
-                    <p className="text-[#8899b4] text-xs leading-relaxed">
-                      {state.recordingActive
-                        ? "Die Aufzeichnung läuft. Ihr Berater führt Sie durch die verbindliche Annahme."
-                        : state.recordingArchived
-                          ? "Die Aufzeichnung wurde beendet und revisionssicher archiviert."
-                          : "Ihr Berater startet die Aufzeichnung, sobald Sie bereit sind."}
-                    </p>
-                  </div>
-                </Card>
-              )}
-
-              {state.invoice && (
-                <Card>
-                  <CardHead title={`Rechnung ${state.invoice.number}`} />
-                  <div className="px-5 py-4 space-y-2.5">
-                    <Row label="Gesamtbetrag" value={state.invoice.grossTotal} strong />
-                    {state.invoice.dueDate && (
-                      <Row
-                        label="Fällig bis"
-                        value={new Date(state.invoice.dueDate).toLocaleDateString("de-DE")}
-                      />
-                    )}
-                    <Row
-                      label="Status"
-                      value={state.invoice.status === "paid" ? "Bezahlt" : "Offen"}
-                    />
-                    <p className="text-[#5b6b7f] text-xs pt-1">
-                      Die Rechnung finden Sie nach der Freischaltung jederzeit in Ihrem
-                      Kundenportal unter &bdquo;Dokumente&ldquo;.
-                    </p>
-                  </div>
-                </Card>
-              )}
+              {nebenKarten}
             </aside>
           )}
         </div>
