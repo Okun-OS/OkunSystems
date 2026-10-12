@@ -13,6 +13,7 @@
     "seed:closing": "tsx prisma/seed-closing.ts",
     "test:unit": "tsx tests/unit.ts",
     "test:radar": "tsx tests/radar.ts",
+    "test:strategie": "tsx tests/strategie.ts",
     "test:radar-e2e": "tsx tests/radar-e2e.ts",
     "test:e2e": "tsx tests/e2e-closing.ts",
     "test:http": "tsx tests/http-closing.ts",

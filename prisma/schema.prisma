@@ -64,6 +64,8 @@ model User {
   createdPresentations  ClosingPresentation[]        @relation("PresentationCreatedBy")
   approvedPresentations ClosingPresentation[]        @relation("PresentationApprovedBy")
   radarSessions         RadarSession[]               @relation("RadarCloser")
+  strategieSitzungen    StrategieSitzung[]           @relation("StrategieBerater")
+  strategieFreigaben    StrategieSitzung[]           @relation("StrategieFreigabe")
 }
 
 model Company {
@@ -146,6 +148,7 @@ model Company {
   contextSessions     CompanyContextSession[]      @relation("CompanyContextSessions")
   strategyGuides      StrategyGuide[]
   radarSessions       RadarSession[]
+  strategieSitzungen  StrategieSitzung[]
 }
 
 model Project {
@@ -218,6 +221,7 @@ model Appointment {
   analysisSessionId String?
   analysisSession   AnalysisSession? @relation(fields: [analysisSessionId], references: [id])
   closingSession    ClosingSession?
+  strategieSitzung  StrategieSitzung?
 }
 
 model Document {
@@ -423,6 +427,7 @@ model AnalysisSession {
   appointments   Appointment[]
   sessionAnswers SessionAnswer[]
   strategyGuide  StrategyGuide?
+  strategieSitzungen StrategieSitzung[]
   anleitungen    UmsetzungsAnleitung[]
 }
 
@@ -1975,4 +1980,140 @@ model RadarAnswer {
 
   @@unique([radarSessionId, frageKey])
   @@index([radarSessionId])
+}
+
+// ─── OKUN Transformation Studio ──────────────────────────────────────────────
+// Das Strategiegespräch nach dem Blueprint — Schritt 3 des Projektablaufs, im
+// Angebot wörtlich zugesagt als „Ergebnispräsentation, Roadmap und Auswahl der
+// Lösungen". Bis hierher gab es dafür nur den internen Leitfaden und einen
+// fremden Videorahmen; was im Gespräch ausgewählt wurde, stand nirgends.
+//
+// Die Analyse selbst entsteht weiter im Blueprint und im Leitfaden. Diese
+// Modelle tragen allein das Gespräch: was beide Seiten sehen, was zur Wahl
+// steht, was gewählt wurde — und ab wann der Kunde überhaupt etwas davon
+// sieht.
+
+/// Ein Strategiegespräch.
+model StrategieSitzung {
+  id String @id @default(cuid())
+
+  /// vorbereitet | freigegeben | laeuft | abgeschlossen | abgebrochen
+  status String @default("vorbereitet")
+
+  /// Die Ansicht, die beide Seiten gerade sehen. Der Berater schaltet, der
+  /// Kunde sieht mit — dasselbe Muster wie Präsentation und Radar im Closing.
+  ansicht String @default("betrieb")
+
+  /// Das gebuchte Paket zum Zeitpunkt des Gesprächs. Eingefroren, weil es
+  /// darüber entscheidet, was „im Paket" heißt — und Pakete ändern sich.
+  paket String?
+
+  /// Welche Fassung des Leitfadens die Posten geliefert hat. Nur zur
+  /// Nachvollziehbarkeit: Die Posten selbst stehen als eigene Datensätze da
+  /// und ändern sich nicht mehr, wenn der Leitfaden nachgeschärft wird.
+  guideVersionId String?
+
+  /// Erst mit der Freigabe erreicht irgendetwas den Kundenbildschirm.
+  ///
+  /// Der Leitfaden entsteht maschinell und nennt Produkte beim Namen. Ein
+  /// Mensch muss das gelesen haben, bevor es ein Kunde sieht — und zwar vor
+  /// dem Termin, nicht während.
+  freigegebenAm   DateTime?
+  freigegebenById String?
+  freigegebenBy   User?     @relation("StrategieFreigabe", fields: [freigegebenById], references: [id])
+
+  /// Heartbeat, solange der Berater im Gesprächsraum ist.
+  beraterPresenceAt DateTime?
+
+  /// Zählt bei jeder Änderung hoch; beide Seiten erkennen daran, ob ihr Stand
+  /// veraltet ist.
+  rev Int @default(0)
+
+  /// Was am Ende gewählt wurde, eingefroren als JSON. Die Auswahl im Gespräch
+  /// ist endgültig und zugleich der Arbeitsauftrag für die Umsetzung — sie
+  /// muss später noch genau so lesbar sein.
+  ergebnis        String?
+  abgeschlossenAm DateTime?
+
+  interneNotiz String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  appointmentId String      @unique
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  companyId     String
+  company       Company     @relation(fields: [companyId], references: [id])
+  /// Der Blueprint, auf dem das Gespräch fußt.
+  sessionId     String
+  session       AnalysisSession @relation(fields: [sessionId], references: [id])
+  beraterId     String
+  berater       User        @relation("StrategieBerater", fields: [beraterId], references: [id])
+
+  posten StrategiePosten[]
+
+  @@index([companyId])
+  @@index([sessionId])
+  @@index([status])
+}
+
+/// Ein Posten, der zur Auswahl steht oder gewählt wurde.
+///
+/// Abgeschrieben aus der Leitfaden-Fassung, nicht verlinkt: Was im Gespräch
+/// auf dem Tisch lag, muss später unverändert nachlesbar sein, auch wenn der
+/// Leitfaden danach dreimal nachgeschärft wurde.
+model StrategiePosten {
+  id        String           @id @default(cuid())
+  sitzungId String
+  sitzung   StrategieSitzung @relation(fields: [sitzungId], references: [id], onDelete: Cascade)
+
+  /// Aus Block und Titel gebildet — derselbe Schlüssel wie bei der
+  /// Umsetzungsanleitung, damit beides zusammenfindet.
+  schluessel String
+
+  /// grundlage | automatisierung | workforce | custom
+  art String
+
+  /// Wörtlich aus dem Leitfaden.
+  block          String
+  titel          String
+  befund         String?
+  womit          String?
+  warum          String?
+  wieWirEsMachen String?
+  /// Ob das im gebuchten Paket liegt oder darüber.
+  einordnung     String?
+
+  /// kandidat | gewaehlt | spaeter | verworfen
+  zustand String @default("kandidat")
+
+  /// Ob der Posten dem Kunden überhaupt zur Wahl gestellt wird. Der Berater
+  /// filtert vor: Zur Auswahl steht nur, was wir zum Paketpreis liefern
+  /// können.
+  kundeSieht Boolean @default(true)
+
+  /// Aufgaben des Betriebs, die dieser Posten entlastet — Katalogschlüssel aus
+  /// `BlueprintTask`. Daraus entsteht die Zeitangabe; deshalb zählt nur, was
+  /// bei diesem Betrieb auch wirklich erhoben wurde.
+  aufgabenKeys String @default("[]")
+
+  /// Was diese Aufgaben den Betrieb heute im Monat kosten — gerechnet aus den
+  /// erhobenen Minuten, nicht geschätzt.
+  ///
+  /// Bewusst der heutige Aufwand und nicht eine Ersparnis: Wie viel von einer
+  /// Aufgabe nach der Umstellung übrig bleibt, wissen wir vorher nicht. Was
+  /// sie heute kostet, wissen wir — der Kunde hat es selbst angegeben.
+  aufwandHeuteMinuten Int @default(0)
+
+  /// Nur für den Berater: was uns die Umsetzung kostet. Erscheint nie auf dem
+  /// Kundenbildschirm.
+  internerAufwand String?
+
+  position Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([sitzungId, schluessel])
+  @@index([sitzungId])
 }

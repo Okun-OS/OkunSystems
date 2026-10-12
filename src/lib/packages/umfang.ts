@@ -13,6 +13,15 @@ import type { PackageKey } from "@/lib/packages";
  * im Gespräch mehr zusagt, als das Paket hergibt, verkauft eine Nachforderung.
  */
 
+/**
+ * Wie viele Automatisierungen das Paket hergibt.
+ *
+ * Steht als Zahl da und nicht nur als Satz, weil die Auswahl im
+ * Strategiegespräch sich daran halten muss — eine Grenze, die nur in einem
+ * Fließtext steht, hält niemanden auf.
+ */
+export const MAX_AUTOMATISIERUNGEN = 3;
+
 export interface Leistungsblock {
   titel: string;
   /** Der Satz aus dem Angebot, in einem Halbsatz. */
@@ -55,8 +64,7 @@ const AUTOMATISIERUNGEN: Leistungsblock = {
     "Einbindung in die vorhandene Systemlandschaft",
     "schnelle und messbare Ergebnisse",
   ],
-  grenze:
-    "Höchstens drei. Eine vierte ist nicht im Paket und wäre eine Nachforderung.",
+  grenze: `Höchstens ${MAX_AUTOMATISIERUNGEN}. Eine vierte ist nicht im Paket und wäre eine Nachforderung.`,
 };
 
 const FOKUS: Leistungsblock = {

@@ -9,6 +9,7 @@ const TABS = [
   { label: "Ergebnisse", href: "/ergebnisse" },
   { label: "Antworten", href: "/antworten" },
   { label: "Leitfaden", href: "/leitfaden" },
+  { label: "Strategiegespräch", href: "/strategie" },
   { label: "Analyse intern", href: "/analyse" },
   { label: "Dokumente", href: "/dokumente" },
   { label: "Termine", href: "/termine" },
