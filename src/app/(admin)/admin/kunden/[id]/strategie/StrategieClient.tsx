@@ -143,7 +143,7 @@ export default function StrategieClient({
   }
 
   return (
-    <Rahmen company={company}>
+    <Rahmen company={company} sitzungId={sitzung.id}>
       <Vorbereitung
         sitzung={sitzung}
         pending={pending}
@@ -156,9 +156,11 @@ export default function StrategieClient({
 
 function Rahmen({
   company,
+  sitzungId,
   children,
 }: {
   company: { id: string; name: string };
+  sitzungId?: string | null;
   children: React.ReactNode;
 }) {
   return (
@@ -173,12 +175,25 @@ function Rahmen({
             Ergebnispräsentation, Roadmap und Auswahl der Lösungen — so steht es im Angebot.
           </p>
         </div>
-        <Link
-          href={`/admin/kunden/${company.id}/leitfaden`}
-          className="text-[#00b8ff] text-xs hover:underline"
-        >
-          → Leitfaden
-        </Link>
+        <div className="flex items-center gap-4">
+          {sitzungId && (
+            <Link
+              href={`/admin/kunden/${company.id}/strategie/${sitzungId}/studio`}
+              target="_blank"
+              className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-[rgba(0,184,255,.1)]
+                border border-[rgba(0,184,255,.3)] text-[#00b8ff] text-xs font-semibold
+                hover:bg-[rgba(0,184,255,.18)] transition-colors"
+            >
+              ⬡ Haus ansehen
+            </Link>
+          )}
+          <Link
+            href={`/admin/kunden/${company.id}/leitfaden`}
+            className="text-[#00b8ff] text-xs hover:underline"
+          >
+            → Leitfaden
+          </Link>
+        </div>
       </div>
       {children}
     </div>

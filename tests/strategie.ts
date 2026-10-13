@@ -27,6 +27,17 @@ import {
 } from "../src/lib/strategie/katalog";
 import { entwurfAusLeitfaden, entwurfsHinweise } from "../src/lib/strategie/vorbereitung";
 import { MAX_AUTOMATISIERUNGEN } from "../src/lib/packages/umfang";
+import {
+  baueAblaufRaum,
+  baueRaeume,
+  baueRegal,
+  entfaellt,
+  fahrzeugFuer,
+  hallensatz,
+  schildName,
+  stockwerkeFuer,
+  wirdAutomatisch,
+} from "../src/lib/strategie/haus";
 import type { GuideDocument } from "../src/lib/strategy-guide/types";
 
 let passed = 0;
@@ -345,6 +356,119 @@ test("die Auswahl ist Teil des Gesprächs, nicht ein Anhang", () => {
   assert.ok(keys.includes("betrieb"));
   assert.ok(keys.includes("auswahl"));
   assert.ok(keys.includes("plan"));
+});
+
+// ─── Das Haus ────────────────────────────────────────────────────────────────
+
+test("das Schild trägt den Namen, nicht die Rechtsform", () => {
+  assert.equal(schildName("Nordlicht Gebäudetechnik GmbH"), "NORDLICHT GEBÄUDETECHNIK");
+  assert.equal(schildName("Meyer UG (haftungsbeschränkt)"), "MEYER");
+  assert.equal(schildName("Schulz & Partner GmbH & Co. KG"), "SCHULZ");
+});
+
+test("ein leerer Name bleibt lesbar statt leer", () => {
+  assert.equal(schildName("GmbH"), "GMBH");
+});
+
+test("das Fahrzeug kommt aus der Branche", () => {
+  assert.equal(fahrzeugFuer("M1.1-OPT-2"), "transporter"); // Handwerk
+  assert.equal(fahrzeugFuer("M1.1-OPT-1"), "kleinwagen"); // Pflege
+  assert.equal(fahrzeugFuer("M1.1-OPT-6"), "lkw"); // Logistik
+  assert.equal(fahrzeugFuer("M1.1-OPT-7"), "kein"); // Dienstleistung
+  assert.equal(fahrzeugFuer(null), "kein");
+});
+
+test("das Haus wächst mit dem Betrieb", () => {
+  assert.equal(stockwerkeFuer(8), 2);
+  assert.equal(stockwerkeFuer(48), 3);
+  assert.equal(stockwerkeFuer(120), 4);
+  assert.equal(stockwerkeFuer(null), 3);
+});
+
+test("der Hallensatz nennt nur, was erhoben wurde", () => {
+  assert.equal(hallensatz({ mitarbeitende: 48, fahrzeuge: 14 }), "48 Menschen, 14 Fahrzeuge, ein Haus");
+  assert.equal(hallensatz({ branche: "Gebäudetechnik", ort: "Hamburg" }), "Gebäudetechnik in Hamburg");
+  assert.equal(hallensatz({}), "Ihr Betrieb");
+});
+
+test("nur das Übertragen entfällt — der Rest läuft weiter, ohne Menschen", () => {
+  // Der Unterschied, an dem sich entscheidet, ob wir im Projekt einlösen
+  // können, was im Gespräch zu sehen war.
+  assert.equal(entfaellt("st_transfer", "manual"), true);
+  assert.equal(wirdAutomatisch("st_transfer", "manual"), false);
+  assert.equal(entfaellt("st_archive", "manual"), false);
+  assert.equal(wirdAutomatisch("st_archive", "manual"), true);
+});
+
+test("was schon automatisch läuft, wird nicht noch einmal übernommen", () => {
+  assert.equal(entfaellt("st_transfer", "automatic"), false);
+  assert.equal(wirdAutomatisch("st_archive", "automatic"), false);
+});
+
+test("die Entscheidung bleibt beim Menschen", () => {
+  // st_route und st_reply stehen bewusst nicht in STATIONS_OKUN_TAKES.
+  assert.equal(wirdAutomatisch("st_route", "manual"), false);
+  assert.equal(wirdAutomatisch("st_reply", "manual"), false);
+});
+
+test("der Ablaufraum rechnet die Bilanz aus den Stationen", () => {
+  const raum = baueAblaufRaum({
+    catalogKey: "flow_order",
+    title: "Ein Auftrag",
+    stations: [
+      { stationKey: "st_receive", position: 0, role: "Büro", systemLabel: "E-Mail", mode: "manual" },
+      { stationKey: "st_route", position: 1, role: "Büro", systemLabel: null, mode: "manual" },
+      { stationKey: "st_transfer", position: 2, role: "Büro", systemLabel: "Software", mode: "manual" },
+      { stationKey: "st_create", position: 3, role: "Büro", systemLabel: "Software", mode: "partial" },
+      { stationKey: "st_reply", position: 4, role: "Büro", systemLabel: null, mode: "none" },
+    ],
+  });
+  assert.equal(raum.stationen.length, 4, "„entfällt bei uns“ zählt nicht mit");
+  assert.equal(raum.handStationen, 3);
+  assert.equal(raum.entfallen, 1);
+  assert.equal(raum.uebernommen, 1);
+  assert.equal(raum.handDanach, 1, "das Einordnen bleibt");
+});
+
+test("das Regal hat immer zwölf Fächer, egal wie groß der Betrieb ist", () => {
+  const leer = baueRegal([]);
+  assert.equal(leer.length, 12);
+  assert.ok(leer.every((f) => f.luecke));
+
+  const voll = baueRegal([
+    { name: "Branchensoftware", purposes: ["pur_customers", "pur_offers"] },
+    { name: "DATEV", purposes: ["pur_invoices"] },
+    { name: "Outlook", purposes: ["pur_invoices"] },
+  ]);
+  assert.equal(voll.length, 12);
+  assert.equal(voll.find((f) => f.zweckKey === "pur_invoices")?.doppelt, true);
+  assert.equal(voll.find((f) => f.zweckKey === "pur_customers")?.luecke, false);
+  assert.equal(voll.find((f) => f.zweckKey === "pur_reports")?.luecke, true);
+});
+
+test("die Workforce-Tür ist bei Foundation sichtbar und verschlossen", () => {
+  const basis = {
+    ablaeufe: 2, stundenProMonat: 3700, luecken: 3, felder: 12,
+    plaetze: 3, vergeben: 2, workforceGewaehlt: false,
+  };
+  const foundation = baueRaeume({ ...basis, paket: "foundation" });
+  const wf = foundation.find((r) => r.key === "workforce")!;
+  assert.equal(wf.verschlossen, true);
+  assert.equal(foundation.length, 4, "sie verschwindet nicht, sie ist zu");
+
+  const operations = baueRaeume({ ...basis, paket: "operations" });
+  assert.equal(operations.find((r) => r.key === "workforce")!.verschlossen, false);
+});
+
+test("die Türschilder tragen echte Zahlen", () => {
+  const raeume = baueRaeume({
+    paket: "foundation", ablaeufe: 1, stundenProMonat: 3770, luecken: 4,
+    felder: 12, plaetze: 3, vergeben: 2, workforceGewaehlt: false,
+  });
+  assert.equal(raeume[0].marke, "1 ABLAUF");
+  assert.match(raeume[0].kennzahl, /62,8 h/);
+  assert.equal(raeume[1].kennzahl, "4 Lücken");
+  assert.equal(raeume[2].kennzahl, "2 vergeben");
 });
 
 console.log(`\n${passed} Tests bestanden.\n`);
