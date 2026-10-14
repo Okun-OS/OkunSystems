@@ -12,7 +12,13 @@ model User {
   email             String    @unique
   name              String?
   password          String
-  role              String    @default("CLIENT") // ADMIN | CLIENT | CLOSER
+  role              String    @default("CLIENT") // ADMIN | CLIENT | CLOSER | STRATEGIST
+  /// Darf Strategiegespräche führen und den Leitfaden dazu sehen.
+  ///
+  /// Getrennt von `role`, weil `role` die Schranke zum Vertriebsbereich ist:
+  /// Wer dort nicht CLOSER heißt, kommt nicht hinein. Ein zusätzliches Feld
+  /// kann daran nichts aufweichen, ein weiterer Rollenname schon.
+  canStrategy       Boolean   @default(false)
   portalRole        String?
   image             String?
   firstLogin        Boolean   @default(true)
@@ -23,6 +29,8 @@ model User {
   twoFactorExpiry   DateTime?
   twoFactorSentAt   DateTime?
   twoFactorAttempts Int       @default(0)
+  /// Gesetzt = Konto deaktiviert; eine Anmeldung wird abgelehnt.
+  deactivatedAt     DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
@@ -39,14 +47,25 @@ model User {
   lessonProgress        LessonProgress[]
   activityLogs          ActivityLog[]
   // Sales & Closing
-  assignedLeads         Company[]        @relation("CompanyCloser")
-  closerSessions        ClosingSession[] @relation("CloserUser")
+  assignedLeads         Company[]                    @relation("CompanyCloser")
+  closerSessions        ClosingSession[]             @relation("CloserUser")
   createdOfferTemplates OfferTemplate[]
-  createdOffers         Offer[]          @relation("OfferCreatedBy")
-  createdInvoices       Invoice[]        @relation("InvoiceCreatedBy")
-  confirmedInvoices     Invoice[]        @relation("InvoiceConfirmedBy")
+  createdOffers         Offer[]                      @relation("OfferCreatedBy")
+  createdInvoices       Invoice[]                    @relation("InvoiceCreatedBy")
+  confirmedInvoices     Invoice[]                    @relation("InvoiceConfirmedBy")
+  strategyGuideVersions StrategyGuideVersion[]
+  umsetzungsAnleitungen UmsetzungsAnleitung[]
+  createdContractDocs   ContractDocument[]           @relation("ContractDocumentCreatedBy")
+  createdConsentDefs    ConsentDefinition[]          @relation("ConsentDefinitionCreatedBy")
+  createdClosingScripts ClosingScript[]              @relation("ClosingScriptCreatedBy")
+  invoicePaymentEvents  InvoicePaymentEvent[]        @relation("InvoicePaymentActor")
   createdLegalDocs      LegalDocument[]
   closingEvents         ClosingEvent[]
+  createdPresentations  ClosingPresentation[]        @relation("PresentationCreatedBy")
+  approvedPresentations ClosingPresentation[]        @relation("PresentationApprovedBy")
+  radarSessions         RadarSession[]               @relation("RadarCloser")
+  strategieSitzungen    StrategieSitzung[]           @relation("StrategieBerater")
+  strategieFreigaben    StrategieSitzung[]           @relation("StrategieFreigabe")
 }
 
 model Company {
@@ -65,17 +84,43 @@ model Company {
   updatedAt     DateTime @updatedAt
 
   // Sales & Closing — Pre-Sale fields
-  leadStatus       String?   // prospect | closing_scheduled | in_progress | offer_presented | agreement_reached | consent_given | contract_closed | payment_pending | verloren | storniert | abgesagt
+  leadStatus       String? // prospect | closing_scheduled | in_progress | offer_presented | agreement_reached | consent_given | contract_closed | payment_pending | verloren | storniert | abgesagt
   leadSource       String?
   contractValue    Int?
   contractPackage  String?
-  paymentMethod    String?   // stripe | invoice
+  paymentMethod    String? // stripe | invoice
   convertedAt      DateTime?
   closingNotes     String?
   assignedCloserId String?
-  assignedCloser   User?    @relation("CompanyCloser", fields: [assignedCloserId], references: [id])
+  assignedCloser   User?     @relation("CompanyCloser", fields: [assignedCloserId], references: [id])
 
-  users               User[]                      @relation("CompanyUsers")
+  // ─── Stammdaten für Vertrag / AVV / Rechnung (Closing Portal) ───────────
+  legalForm          String? // GmbH | UG | AG | GmbH & Co. KG | e.K. | GbR | OHG | KG | Einzelunternehmen | Freiberufler | eG | eV | AöR | sonstige
+  street             String?
+  houseNumber        String?
+  postalCode         String?
+  city               String?
+  country            String?
+  registerCourt      String?
+  registerNumber     String?
+  vatId              String?
+  taxNumber          String?
+  contactFirstName   String?
+  contactLastName    String?
+  contactPosition    String?
+  contactEmail       String?
+  contactPhone       String?
+  billingDiffers     Boolean   @default(false)
+  billingName        String?
+  billingStreet      String?
+  billingHouseNumber String?
+  billingPostalCode  String?
+  billingCity        String?
+  billingCountry     String?
+  billingEmail       String?
+  activatedAt        DateTime?
+
+  users               User[]                       @relation("CompanyUsers")
   projects            Project[]
   appointments        Appointment[]
   documents           Document[]
@@ -98,19 +143,24 @@ model Company {
   consentRecords      ConsentRecord[]
   invoices            Invoice[]
   closingEvents       ClosingEvent[]
-  contextSessions     CompanyContextSession[] @relation("CompanyContextSessions")
+  consentAuditEvents  ConsentAuditEvent[]
+  presentations       ClosingPresentation[]
+  contextSessions     CompanyContextSession[]      @relation("CompanyContextSessions")
+  strategyGuides      StrategyGuide[]
+  radarSessions       RadarSession[]
+  strategieSitzungen  StrategieSitzung[]
 }
 
 model Project {
-  id          String    @id @default(cuid())
-  title       String
-  description String?
-  status      String    @default("PLANNING")
-  phase       String?
-  startDate   DateTime?
-  endDate     DateTime?
-  progress    Int       @default(0)
-  createdAt   DateTime  @default(now())
+  id                String    @id @default(cuid())
+  title             String
+  description       String?
+  status            String    @default("PLANNING")
+  phase             String?
+  startDate         DateTime?
+  endDate           DateTime?
+  progress          Int       @default(0)
+  createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
   isVisibleToClient Boolean   @default(false)
 
@@ -150,20 +200,20 @@ model Task {
 }
 
 model Appointment {
-  id          String   @id @default(cuid())
-  title       String
-  type        String   @default("STRATEGY")
-  description String?
-  startTime   DateTime
-  endTime     DateTime
-  location    String?
-  meetingUrl  String?
-  status      String   @default("SCHEDULED")
-  notes       String?
+  id            String   @id @default(cuid())
+  title         String
+  type          String   @default("STRATEGY")
+  description   String?
+  startTime     DateTime
+  endTime       DateTime
+  location      String?
+  meetingUrl    String?
+  status        String   @default("SCHEDULED")
+  notes         String?
   bookedByName  String?
   bookedByEmail String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   companyId         String
   company           Company          @relation(fields: [companyId], references: [id])
@@ -171,6 +221,7 @@ model Appointment {
   analysisSessionId String?
   analysisSession   AnalysisSession? @relation(fields: [analysisSessionId], references: [id])
   closingSession    ClosingSession?
+  strategieSitzung  StrategieSitzung?
 }
 
 model Document {
@@ -185,7 +236,7 @@ model Document {
   isPublished Boolean  @default(false)
   isInternal  Boolean  @default(false)
   version     String?
-  r2Key       String?  // R2 object key for signed-URL generation
+  r2Key       String? // R2 object key for signed-URL generation
   visibility  String   @default("internal") // internal | customer
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -309,235 +360,251 @@ model CompanyContextSession {
   status            String    @default("ACTIVE") // ACTIVE | COMPLETED
   startedAt         DateTime  @default(now())
   completedAt       DateTime?
-  summary           String?   // AI-generated condensed summary for report generation
+  summary           String? // AI-generated condensed summary for report generation
   analysisSessionId String?   @unique
 
   entries CompanyContextEntry[]
 }
 
 model CompanyContextEntry {
-  id        String               @id @default(cuid())
+  id        String                @id @default(cuid())
   sessionId String
   session   CompanyContextSession @relation(fields: [sessionId], references: [id])
-  role      String               // "assistant" | "user"
+  role      String // "assistant" | "user"
   content   String
   order     Int
-  createdAt DateTime             @default(now())
+  createdAt DateTime              @default(now())
 }
 
 // ─── OKUN Blueprint™ Engine Models ───────────────────────────────────────────
 
 model AnalysisSession {
-  id            String    @id @default(cuid())
-  status        String    @default("ACTIVE") // ACTIVE | PAUSED | COMPLETED | ARCHIVED
-  phase         String    @default("INTRO")  // INTRO | PROFIL | PROZESSE | TIEFE | SYSTEME | GESCHAEFTSFUEHRUNG | ABSCHLUSS
-  currentArea   String?
-  completedAreas String   @default("[]")
-  hypotheses    String    @default("[]")
-  memorySnapshot String   @default("{}")
-  totalMessages Int       @default(0)
-  language      String    @default("de")
-  questionsAsked Int      @default(0)
-  lastActiveAt  DateTime?
-  startedAt     DateTime  @default(now())
-  resumedAt     DateTime?
-  completedAt   DateTime?
-  updatedAt     DateTime  @updatedAt
+  id             String    @id @default(cuid())
+  status         String    @default("ACTIVE") // ACTIVE | PAUSED | COMPLETED | ARCHIVED
+  phase          String    @default("INTRO") // INTRO | PROFIL | PROZESSE | TIEFE | SYSTEME | GESCHAEFTSFUEHRUNG | ABSCHLUSS
+  currentArea    String?
+  completedAreas String    @default("[]")
+  hypotheses     String    @default("[]")
+  memorySnapshot String    @default("{}")
+  totalMessages  Int       @default(0)
+  language       String    @default("de")
+  questionsAsked Int       @default(0)
+  lastActiveAt   DateTime?
+  startedAt      DateTime  @default(now())
+  resumedAt      DateTime?
+  completedAt    DateTime?
+  updatedAt      DateTime  @updatedAt
 
   // Blueprint 2.0 fields
-  blueprintVersion   String  @default("1.0")
+  blueprintVersion   String    @default("1.0")
+  /// Abschluss der dritten Säule (Systeme, Aufgaben, Abläufe).
+  pillar3CompletedAt DateTime?
   packageType        String?
-  activeGroupWeights String  @default("{}")
-  pendingReviewCount Int     @default(0)
+  activeGroupWeights String    @default("{}")
+  pendingReviewCount Int       @default(0)
   reportUrl          String?
+  /// Die erzeugten Berichtstexte als JSON.
+  ///
+  /// Bisher wurde nur die Adresse der PDF-Datei aufgehoben und die Texte nach
+  /// dem Rendern verworfen. Der Leitfaden für das Strategiegespräch soll aber
+  /// auf dem aufbauen, was der Kunde schwarz auf weiß bekommen hat — und aus
+  /// einer PDF-Datei liest sich das schlecht zurück.
+  reportTexts        String?
+  reportTextsAt      DateTime?
 
-  companyId String
-  company   Company               @relation(fields: [companyId], references: [id])
-  messages  ConversationMessage[]
-  processes ProcessProfile[]
-  problems  DetectedProblem[]
-  opportunities Opportunity[]
-  score     OkunScore?
-  progress  SessionProgress[]
-  evidence      ScoringEvidence[]
-  appointments  Appointment[]
+  companyId      String
+  company        Company               @relation(fields: [companyId], references: [id])
+  messages       ConversationMessage[]
+  processes      ProcessProfile[]
+  problems       DetectedProblem[]
+  opportunities  Opportunity[]
+  score          OkunScore?
+  pillar3Systems BlueprintSystem[]
+  pillar3Tasks   BlueprintTask[]
+  pillar3Flows   BlueprintFlow[]
+  progress       SessionProgress[]
+  evidence       ScoringEvidence[]
+  appointments   Appointment[]
   sessionAnswers SessionAnswer[]
+  strategyGuide  StrategyGuide?
+  strategieSitzungen StrategieSitzung[]
+  anleitungen    UmsetzungsAnleitung[]
 }
 
 model ConversationMessage {
-  id             String   @id @default(cuid())
-  role           String   // "user" | "assistant"
-  content        String
-  internalNotes  String?  // JSON: internal advisor reasoning, hypotheses formed, signals detected
-  memoryUpdates  String?  // JSON: what was stored to memory engine
-  createdAt      DateTime @default(now())
+  id            String   @id @default(cuid())
+  role          String // "user" | "assistant"
+  content       String
+  internalNotes String? // JSON: internal advisor reasoning, hypotheses formed, signals detected
+  memoryUpdates String? // JSON: what was stored to memory engine
+  createdAt     DateTime @default(now())
 
   sessionId String
   session   AnalysisSession @relation(fields: [sessionId], references: [id])
 }
 
 model ProcessProfile {
-  id            String   @id @default(cuid())
-  name          String
-  category      String   // from Process Library categories
-  libraryRef    String?  // reference to ProcessLibraryItem id if matched
-  isNew         Boolean  @default(false) // true if not in library → creates LearningProposal
-  trigger       String?  // what starts this process
-  goal          String?  // when is it successfully completed
-  roles         String   @default("[]")  // JSON array of involved roles
-  steps         String   @default("[]")  // JSON array of ProcessStep-like objects
-  systems       String   @default("[]")  // JSON array of tools/files/channels used
-  inputs        String   @default("[]")  // JSON: information sources
-  handoffs      String   @default("[]")  // JSON: handoff points
-  decisions     String   @default("[]")  // JSON: decision points
-  documentation String?  // how is this documented
-  frequency     String?  // how often does it occur
-  problems      String   @default("[]")  // JSON: observed problems in this process
-  maturityScore Int?     // 0-100 process maturity
+  id               String   @id @default(cuid())
+  name             String
+  category         String // from Process Library categories
+  libraryRef       String? // reference to ProcessLibraryItem id if matched
+  isNew            Boolean  @default(false) // true if not in library → creates LearningProposal
+  trigger          String? // what starts this process
+  goal             String? // when is it successfully completed
+  roles            String   @default("[]") // JSON array of involved roles
+  steps            String   @default("[]") // JSON array of ProcessStep-like objects
+  systems          String   @default("[]") // JSON array of tools/files/channels used
+  inputs           String   @default("[]") // JSON: information sources
+  handoffs         String   @default("[]") // JSON: handoff points
+  decisions        String   @default("[]") // JSON: decision points
+  documentation    String? // how is this documented
+  frequency        String? // how often does it occur
+  problems         String   @default("[]") // JSON: observed problems in this process
+  maturityScore    Int? // 0-100 process maturity
   officialVsActual String? // discrepancy between official and actual process
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   sessionId String
   session   AnalysisSession @relation(fields: [sessionId], references: [id])
   companyId String
-  company   Company  @relation(fields: [companyId], references: [id])
+  company   Company         @relation(fields: [companyId], references: [id])
 }
 
 model DetectedProblem {
-  id             String   @id @default(cuid())
-  symptom        String   // what the customer described
+  id               String   @id @default(cuid())
+  symptom          String // what the customer described
   operativeProblem String // what the actual operative problem is
-  rootCause      String?  // underlying root cause
-  category       String   // process | structure | leadership | automation | communication | sales | hr
-  severity       String   @default("MEDIUM") // LOW | MEDIUM | HIGH | CRITICAL
-  confidence     Int      @default(50)       // 0-100 confidence score
-  evidence       String   @default("[]")     // JSON array of evidence strings
-  libraryRef     String?  // reference to ProblemLibraryItem if matched
-  isNew          Boolean  @default(false)    // true if not in library → creates LearningProposal
-  isInternal     Boolean  @default(true)     // internal only, not shown to customer
-  processRef     String?  // reference to ProcessProfile id if applicable
-  createdAt      DateTime @default(now())
+  rootCause        String? // underlying root cause
+  category         String // process | structure | leadership | automation | communication | sales | hr
+  severity         String   @default("MEDIUM") // LOW | MEDIUM | HIGH | CRITICAL
+  confidence       Int      @default(50) // 0-100 confidence score
+  evidence         String   @default("[]") // JSON array of evidence strings
+  libraryRef       String? // reference to ProblemLibraryItem if matched
+  isNew            Boolean  @default(false) // true if not in library → creates LearningProposal
+  isInternal       Boolean  @default(true) // internal only, not shown to customer
+  processRef       String? // reference to ProcessProfile id if applicable
+  createdAt        DateTime @default(now())
 
-  sessionId String
-  session   AnalysisSession @relation(fields: [sessionId], references: [id])
-  companyId String
-  company   Company @relation(fields: [companyId], references: [id])
+  sessionId     String
+  session       AnalysisSession @relation(fields: [sessionId], references: [id])
+  companyId     String
+  company       Company         @relation(fields: [companyId], references: [id])
   opportunities Opportunity[]
 }
 
 model Opportunity {
   id           String   @id @default(cuid())
   title        String
-  type         String   // AUTOMATION | DELEGATION | STANDARDIZATION | TRANSPARENCY | SCALING
+  type         String // AUTOMATION | DELEGATION | STANDARDIZATION | TRANSPARENCY | SCALING
   description  String
-  impact       String   @default("MEDIUM")  // LOW | MEDIUM | HIGH | VERY_HIGH
-  effort       String   @default("MEDIUM")  // LOW | MEDIUM | HIGH
-  priority     Int      @default(2)          // 1=high, 2=medium, 3=low
+  impact       String   @default("MEDIUM") // LOW | MEDIUM | HIGH | VERY_HIGH
+  effort       String   @default("MEDIUM") // LOW | MEDIUM | HIGH
+  priority     Int      @default(2) // 1=high, 2=medium, 3=low
   timeSaving   String?
   okunSystem   String?
-  solutionType String?  // existing_okun_solution | configurable_solution | custom_automation | consulting_recommendation
+  solutionType String? // existing_okun_solution | configurable_solution | custom_automation | consulting_recommendation
   status       String   @default("identified") // identified | needs_review | recommended | accepted | rejected | converted_to_project
   evidence     String   @default("[]")
   isInternal   Boolean  @default(true)
   createdAt    DateTime @default(now())
 
-  sessionId   String
-  session     AnalysisSession  @relation(fields: [sessionId], references: [id])
-  companyId   String
-  company     Company @relation(fields: [companyId], references: [id])
-  problemId   String?
-  problem     DetectedProblem? @relation(fields: [problemId], references: [id])
+  sessionId String
+  session   AnalysisSession  @relation(fields: [sessionId], references: [id])
+  companyId String
+  company   Company          @relation(fields: [companyId], references: [id])
+  problemId String?
+  problem   DetectedProblem? @relation(fields: [problemId], references: [id])
 }
 
 model OkunScore {
-  id              String   @id @default(cuid())
-  totalScore      Int      // 0-100
-  maturityLevel   String   // INITIAL | DEVELOPING | DEFINED | MANAGED | OPTIMIZED
-  maturityLabel   String   // German label for customer
-  scoreProcesses  Int?     // 25% weight
-  scoreSales      Int?     // 20% weight
-  scoreLeadership Int?     // 15% weight
-  scoreAutomation Int?     // 15% weight
-  scoreStructure  Int?     // 10% weight
-  scoreCommunication Int?  // 10% weight
-  scoreHr         Int?     // 5% weight
-  strengths       String   @default("[]")   // JSON: 3-5 strengths (shown to customer)
-  potentials      String   @default("[]")   // JSON: 3-5 potential areas (shown to customer)
-  internalSummary String?  // full internal analysis summary
-  customerSummary String?  // short customer-facing summary
-  evidence        String   @default("{}")   // JSON: evidence per area
-  isPublished     Boolean  @default(false)
-  calculatedAt    DateTime @default(now())
-  publishedAt     DateTime?
+  id                 String    @id @default(cuid())
+  totalScore         Int // 0-100
+  maturityLevel      String // INITIAL | DEVELOPING | DEFINED | MANAGED | OPTIMIZED
+  maturityLabel      String // German label for customer
+  scoreProcesses     Int? // 25% weight
+  scoreSales         Int? // 20% weight
+  scoreLeadership    Int? // 15% weight
+  scoreAutomation    Int? // 15% weight
+  scoreStructure     Int? // 10% weight
+  scoreCommunication Int? // 10% weight
+  scoreHr            Int? // 5% weight
+  strengths          String    @default("[]") // JSON: 3-5 strengths (shown to customer)
+  potentials         String    @default("[]") // JSON: 3-5 potential areas (shown to customer)
+  internalSummary    String? // full internal analysis summary
+  customerSummary    String? // short customer-facing summary
+  evidence           String    @default("{}") // JSON: evidence per area
+  isPublished        Boolean   @default(false)
+  calculatedAt       DateTime  @default(now())
+  publishedAt        DateTime?
 
-  sessionId String @unique
+  sessionId String          @unique
   session   AnalysisSession @relation(fields: [sessionId], references: [id])
   companyId String
-  company   Company @relation(fields: [companyId], references: [id])
+  company   Company         @relation(fields: [companyId], references: [id])
 }
 
 model ProcessLibraryItem {
-  id          String   @id @default(cuid())
-  name        String
-  category    String   // Vertrieb | Kommunikation | Verwaltung | Personal | etc.
-  description String
-  typicalRoles String  @default("[]") // JSON
-  typicalSystems String @default("[]") // JSON
-  typicalProblems String @default("[]") // JSON
-  frequency   String?
-  isActive    Boolean  @default(true)
-  isCustom    Boolean  @default(false) // true = added via learning proposal
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-model ProblemLibraryItem {
   id              String   @id @default(cuid())
   name            String
-  symptomPatterns String   @default("[]") // JSON: keyword/phrase patterns that trigger detection
-  operativeProblem String
-  rootCause       String
-  category        String
-  severity        String   @default("MEDIUM")
-  opportunities   String   @default("[]") // JSON: typical opportunities this creates
-  okunSystems     String   @default("[]") // JSON: internal OKUN system references
+  category        String // Vertrieb | Kommunikation | Verwaltung | Personal | etc.
+  description     String
+  typicalRoles    String   @default("[]") // JSON
+  typicalSystems  String   @default("[]") // JSON
+  typicalProblems String   @default("[]") // JSON
+  frequency       String?
   isActive        Boolean  @default(true)
-  isCustom        Boolean  @default(false)
+  isCustom        Boolean  @default(false) // true = added via learning proposal
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
 
+model ProblemLibraryItem {
+  id               String   @id @default(cuid())
+  name             String
+  symptomPatterns  String   @default("[]") // JSON: keyword/phrase patterns that trigger detection
+  operativeProblem String
+  rootCause        String
+  category         String
+  severity         String   @default("MEDIUM")
+  opportunities    String   @default("[]") // JSON: typical opportunities this creates
+  okunSystems      String   @default("[]") // JSON: internal OKUN system references
+  isActive         Boolean  @default(true)
+  isCustom         Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
 model LearningProposal {
-  id          String   @id @default(cuid())
-  type        String   // NEW_PROCESS | NEW_PROBLEM | NEW_OPPORTUNITY
-  title       String
-  description String
-  proposedData String  // JSON: full proposed entity data
+  id              String    @id @default(cuid())
+  type            String // NEW_PROCESS | NEW_PROBLEM | NEW_OPPORTUNITY
+  title           String
+  description     String
+  proposedData    String // JSON: full proposed entity data
   sourceSessionId String?
   sourceCompanyId String?
-  evidence    String   @default("[]") // JSON
-  status      String   @default("PENDING") // PENDING | APPROVED | REJECTED
-  reviewNote  String?
-  reviewedAt  DateTime?
-  reviewedById String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  evidence        String    @default("[]") // JSON
+  status          String    @default("PENDING") // PENDING | APPROVED | REJECTED
+  reviewNote      String?
+  reviewedAt      DateTime?
+  reviewedById    String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   reviewedBy User? @relation(fields: [reviewedById], references: [id])
 }
 
 model CompanyMemory {
-  id          String   @id @default(cuid())
-  companyId   String   @unique
-  company     Company  @relation(fields: [companyId], references: [id])
-  profile     String   @default("{}")
-  roles       String   @default("[]")
-  systems     String   @default("[]")
-  challenges  String   @default("[]")
-  goals       String   @default("[]")
-  knowledgeDependencies String @default("[]")
-  updatedAt   DateTime @updatedAt
+  id                    String   @id @default(cuid())
+  companyId             String   @unique
+  company               Company  @relation(fields: [companyId], references: [id])
+  profile               String   @default("{}")
+  roles                 String   @default("[]")
+  systems               String   @default("[]")
+  challenges            String   @default("[]")
+  goals                 String   @default("[]")
+  knowledgeDependencies String   @default("[]")
+  updatedAt             DateTime @updatedAt
 }
 
 model QuestionTemplate {
@@ -560,61 +627,65 @@ model QuestionTemplate {
   // Blueprint 2.0 fields
   moduleNumber     Int?
   groupCode        String?
-  questionType     String   @default("B")
-  isGating         Boolean  @default(false)
-  isFollowUp       Boolean  @default(false)
+  questionType     String  @default("B")
+  isGating         Boolean @default(false)
+  isFollowUp       Boolean @default(false)
   parentExternalId String?
   internalWeight   Float?
-  activationConds  String   @default("[]")
+  activationConds  String  @default("[]")
 
-  progress         SessionProgress[]
-  answerOptions    AnswerOption[]
-  sessionAnswers   SessionAnswer[]
-  branchingFrom    BranchingRule[]  @relation("BranchingSource")
-  branchingTo      BranchingRule[]  @relation("BranchingTarget")
+  progress       SessionProgress[]
+  answerOptions  AnswerOption[]
+  sessionAnswers SessionAnswer[]
+  branchingFrom  BranchingRule[]   @relation("BranchingSource")
+  branchingTo    BranchingRule[]   @relation("BranchingTarget")
 }
 
 model AnswerOption {
-  id             String          @id @default(cuid())
-  externalId     String          @unique
+  id             String           @id @default(cuid())
+  externalId     String           @unique
   questionId     String
   question       QuestionTemplate @relation(fields: [questionId], references: [id])
   textDe         String
-  points         Int             @default(0)
-  isExclusive    Boolean         @default(false)
+  points         Int              @default(0)
+  isExclusive    Boolean          @default(false)
   signalCategory String?
-  signalValue    Int             @default(0)
-  order          Int             @default(0)
-  isActive       Boolean         @default(true)
+  signalValue    Int              @default(0)
+  /// JSON-Liste konkreter Lösungen (externalId aus SolutionLibrary), die genau
+  /// diese Antwort auslöst. Ohne Einträge greift die gröbere Zuordnung über
+  /// signalCategory.
+  solutionRefs   String           @default("[]")
+  order          Int              @default(0)
+  isActive       Boolean          @default(true)
 }
 
 model BranchingRule {
-  id               String          @id @default(cuid())
+  id               String           @id @default(cuid())
   sourceQuestionId String
   sourceQuestion   QuestionTemplate @relation("BranchingSource", fields: [sourceQuestionId], references: [id])
   targetQuestionId String
   targetQuestion   QuestionTemplate @relation("BranchingTarget", fields: [targetQuestionId], references: [id])
   conditionType    String
-  conditionValue   String          @default("{}")
+  conditionValue   String           @default("{}")
   action           String
-  priority         Int             @default(0)
+  priority         Int              @default(0)
   description      String?
-  createdAt        DateTime        @default(now())
+  createdAt        DateTime         @default(now())
 }
 
 model SessionAnswer {
-  id                String          @id @default(cuid())
+  id                String           @id @default(cuid())
   sessionId         String
-  session           AnalysisSession @relation(fields: [sessionId], references: [id])
+  session           AnalysisSession  @relation(fields: [sessionId], references: [id])
   questionId        String
   question          QuestionTemplate @relation(fields: [questionId], references: [id])
-  selectedOptionIds String          @default("[]")
+  selectedOptionIds String           @default("[]")
   freeText          String?
   computedScore     Int?
-  computedSignals   String          @default("{}")
-  status            String          @default("ANSWERED")
-  pendingReview     Boolean         @default(false)
-  answeredAt        DateTime        @default(now())
+  computedSignals   String           @default("{}")
+  status            String           @default("ANSWERED")
+  pendingReview     Boolean          @default(false)
+  answeredAt        DateTime         @default(now())
 
   @@unique([sessionId, questionId])
 }
@@ -633,23 +704,23 @@ model SolutionLibrary {
 }
 
 model SessionProgress {
-  id            String   @id @default(cuid())
+  id            String           @id @default(cuid())
   sessionId     String
-  session       AnalysisSession   @relation(fields: [sessionId], references: [id])
+  session       AnalysisSession  @relation(fields: [sessionId], references: [id])
   questionId    String
-  question      QuestionTemplate  @relation(fields: [questionId], references: [id])
+  question      QuestionTemplate @relation(fields: [questionId], references: [id])
   askedAt       DateTime?
   answeredAt    DateTime?
   answerSummary String?
-  skipped       Boolean  @default(false)
-  followUpsUsed Int      @default(0)
-  createdAt     DateTime @default(now())
+  skipped       Boolean          @default(false)
+  followUpsUsed Int              @default(0)
+  createdAt     DateTime         @default(now())
 
   @@unique([sessionId, questionId])
 }
 
 model ScoringEvidence {
-  id          String   @id @default(cuid())
+  id          String          @id @default(cuid())
   sessionId   String
   session     AnalysisSession @relation(fields: [sessionId], references: [id])
   category    String
@@ -657,73 +728,84 @@ model ScoringEvidence {
   weight      Int
   description String
   messageId   String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime        @default(now())
 }
 
 // ─── OKUN Client Platform Models ─────────────────────────────────────────────
 
 model Invitation {
-  id          String    @id @default(cuid())
-  token       String    @unique @default(uuid())
-  email       String
-  role        String    @default("CLIENT")
-  expiresAt   DateTime
-  usedAt      DateTime?
-  createdAt   DateTime  @default(now())
+  id        String    @id @default(cuid())
+  token     String    @unique @default(uuid())
+  email     String
+  role      String    @default("CLIENT")
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 
   companyId   String
-  company     Company   @relation(fields: [companyId], references: [id])
+  company     Company @relation(fields: [companyId], references: [id])
   createdById String
-  createdBy   User      @relation(fields: [createdById], references: [id])
+  createdBy   User    @relation(fields: [createdById], references: [id])
 }
 
 model LearningCategory {
-  id          String            @id @default(cuid())
+  id          String   @id @default(cuid())
   title       String
   description String?
-  order       Int               @default(0)
-  isActive    Boolean           @default(true)
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  chapters    LearningChapter[]
+  chapters LearningChapter[]
 }
 
 model LearningChapter {
-  id               String                       @id @default(cuid())
+  id               String   @id @default(cuid())
   title            String
   description      String?
-  contentType      String                       @default("mixed") // video | text | pdf | mixed
+  contentType      String   @default("mixed") // video | text | pdf | mixed
   thumbnailR2Key   String?
-  order            Int                          @default(0)
+  order            Int      @default(0)
   estimatedMinutes Int?
-  status           String                       @default("DRAFT") // DRAFT | PUBLISHED | ARCHIVED
-  availability     String                       @default("strategy_session") // immediate | strategy_session
-  isActive         Boolean                      @default(true)
-  createdAt        DateTime                     @default(now())
-  updatedAt        DateTime                     @updatedAt
+  status           String   @default("DRAFT") // DRAFT | PUBLISHED | ARCHIVED
+  availability     String   @default("strategy_session") // immediate | strategy_session
+  /// Ab welchem Paket es dieses Kapitel gibt: foundation | operations | custom.
+  ///
+  /// Leer heisst: fuer alle. Ein Kapitel oberhalb des gebuchten Pakets wird
+  /// dem Kunden nicht versteckt, sondern ausgegraut gezeigt -- wer nicht
+  /// sieht, was es gaebe, fragt auch nicht danach.
+  ///
+  /// Bewusst ein Feld am Kapitel und nicht die Tabelle
+  /// PackageDefaultLearningAssignment: dort braeuchte "ab Operations" je eine
+  /// Zeile fuer operations und custom, und eine vergessene Zeile faellt
+  /// niemandem auf. Die Tabelle wird von keiner Zeile Code benutzt.
+  minPackage       String?
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  categoryId  String
-  category    LearningCategory             @relation(fields: [categoryId], references: [id])
-  lessons     LearningLesson[]
-  tags        LearningChapterTag[]
-  assignments CustomerLearningAssignment[]
+  categoryId         String
+  category           LearningCategory                   @relation(fields: [categoryId], references: [id])
+  lessons            LearningLesson[]
+  tags               LearningChapterTag[]
+  assignments        CustomerLearningAssignment[]
   packageAssignments PackageDefaultLearningAssignment[]
 }
 
 model LearningLesson {
-  id               String           @id @default(cuid())
+  id               String   @id @default(cuid())
   title            String
   description      String?
-  contentType      String           @default("video") // video | text | pdf
+  contentType      String   @default("video") // video | text | pdf
   r2Key            String?
   externalUrl      String?
-  order            Int              @default(0)
+  order            Int      @default(0)
   estimatedMinutes Int?
-  status           String           @default("DRAFT") // DRAFT | PUBLISHED | ARCHIVED
-  isActive         Boolean          @default(true)
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  status           String   @default("DRAFT") // DRAFT | PUBLISHED | ARCHIVED
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   chapterId String
   chapter   LearningChapter  @relation(fields: [chapterId], references: [id])
@@ -731,8 +813,8 @@ model LearningLesson {
 }
 
 model LearningTag {
-  id             String               @id @default(cuid())
-  name           String               @unique
+  id             String  @id @default(cuid())
+  name           String  @unique
   signalCategory String?
 
   chapters LearningChapterTag[]
@@ -754,7 +836,7 @@ model CustomerLearningAssignment {
   activatedAt   DateTime?
   rejectedAt    DateTime?
   rejectionNote String?
-  sessionId     String?   // Blueprint session that triggered the suggestion
+  sessionId     String? // Blueprint session that triggered the suggestion
 
   companyId    String
   company      Company         @relation(fields: [companyId], references: [id])
@@ -822,12 +904,12 @@ model CareSubscription {
 
 model LegalDocument {
   id            String   @id @default(cuid())
-  type          String   // AGB | DATENSCHUTZ | WIDERRUFSRECHT | AUFTRAGSVERARBEITUNG | recording_consent | sonstiges
+  type          String // AGB | DATENSCHUTZ | WIDERRUFSRECHT | AUFTRAGSVERARBEITUNG | recording_consent | sonstiges
   title         String
   version       String
   description   String?
-  content       String?  // inline text / HTML for the document body
-  r2Key         String?  // optional: key to a PDF file in R2
+  content       String? // inline text / HTML for the document body
+  r2Key         String? // optional: key to a PDF file in R2
   mimeType      String   @default("application/pdf")
   isActive      Boolean  @default(false)
   isRequired    Boolean  @default(true)
@@ -836,26 +918,43 @@ model LegalDocument {
   linkText      String?
   createdAt     DateTime @default(now())
 
+  // ─── Closing Portal: unveränderliche Versionierung + Integritätsnachweis ──
+  // Eine LegalDocument-Zeile ist EINE Version. Eine neue Version erzeugt eine
+  // neue Zeile und überschreibt niemals eine bestehende Datei.
+  sha256       String? // SHA-256 über die exakt ausgelieferten Bytes
+  fileName     String?
+  fileSize     Int?
+  validFrom    DateTime?
+  validUntil   DateTime?
+  supersedesId String?
+  packageScope Json? // string[] – null/[] = für alle Pakete gültig
+
+  contractDocumentId String?
+  contractDocument   ContractDocument? @relation(fields: [contractDocumentId], references: [id])
+
+  consentDefinitions ConsentDefinition[]
+  consentAuditEvents ConsentAuditEvent[]
+
   createdById    String
   createdBy      User            @relation(fields: [createdById], references: [id])
   consentRecords ConsentRecord[]
 }
 
 model ClosingSession {
-  id               String    @id @default(cuid())
-  status           String    @default("closing_scheduled")
-  activeOfferId    String?
-  currentStep      String?
-  recordingStatus      String    @default("idle")
-  dailyRecordingId     String?
-  recordingR2Key       String?
-  clientPendingAction  String?
-  clientTokenHash      String    @unique
-  tokenExpiresAt   DateTime
-  startedAt        DateTime?
-  closedAt         DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id                  String    @id @default(cuid())
+  status              String    @default("closing_scheduled")
+  activeOfferId       String?
+  currentStep         String?
+  recordingStatus     String    @default("idle")
+  dailyRecordingId    String?
+  recordingR2Key      String?
+  clientPendingAction String?
+  clientTokenHash     String    @unique
+  tokenExpiresAt      DateTime
+  startedAt           DateTime?
+  closedAt            DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   appointmentId String?      @unique
   appointment   Appointment? @relation(fields: [appointmentId], references: [id])
@@ -864,11 +963,49 @@ model ClosingSession {
   closerId      String
   closer        User         @relation("CloserUser", fields: [closerId], references: [id])
 
-  offers           Offer[]
-  consentRecords   ConsentRecord[]
-  contractSnapshot ContractSnapshot?
-  invoices         Invoice[]
-  events           ClosingEvent[]
+  tokenRevokedAt      DateTime?
+  tokenIssuedAt       DateTime?
+  consentsConfirmedAt DateTime?
+  recordingReleasedAt DateTime?
+  contractClosedAt    DateTime?
+  activatedAt         DateTime?
+  paymentMethod       String?
+  statusReason        String?
+
+  // Heartbeat: gesetzt, solange der Berater im Videoraum ist. Der Kunde sieht
+  // daran, ob er noch wartet oder beitreten kann.
+  advisorPresenceAt DateTime?
+
+  // Laufende Präsentation: der Berater steuert, der Kunde sieht mit.
+  livePresentationId String?
+  liveSlidePosition  Int?
+  /// Seite innerhalb einer PDF-Folie, 1-basiert.
+  liveSlidePage      Int?
+
+  /// Läuft gerade eine Radar-Analyse? Nach demselben Muster wie die
+  /// Präsentation: Der Berater schaltet sie auf, die Kundenseite sieht sie
+  /// daraufhin — und nur dann.
+  liveRadarSessionId String?
+
+  /// Seit wann das Radar auf der Bühne steht.
+  ///
+  /// Nötig für den Vorrang: Wird während einer laufenden Analyse ein Angebot
+  /// präsentiert, soll der Interessent das Angebot sehen — und wenn der
+  /// Berater danach das Radar wieder aufschaltet, wieder das Radar. Ohne
+  /// Zeitstempel müsste eines von beiden immer gewinnen, und genau daran ist
+  /// das Angebot im Gespräch hängengeblieben: Es lag hinter dem Cockpit.
+  liveRadarSince     DateTime?
+
+  offers             Offer[]
+  consentRecords     ConsentRecord[]
+  contractSnapshot   ContractSnapshot?
+  recordings         ClosingRecording[]
+  certificates       ClosingCertificate[]
+  consentAuditEvents ConsentAuditEvent[]
+  invoices           Invoice[]
+  events             ClosingEvent[]
+  presentations      ClosingPresentation[]
+  radarSessions      RadarSession[]
 }
 
 model OfferTemplate {
@@ -886,32 +1023,53 @@ model OfferTemplate {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // ─── Closing Portal: strukturierte Paketkonditionen ──────────────────────
+  recurringNetCents Int?
+  recurringInterval String? // monthly | quarterly | yearly
+  minimumTermMonths Int?
+  paymentTerms      String?
+  vatRateBp         Int?
+  workforceIncluded Boolean @default(false)
+  careIncluded      Boolean @default(false)
+
   createdById String
   createdBy   User    @relation(fields: [createdById], references: [id])
   offers      Offer[]
 }
 
 model Offer {
-  id               String    @id @default(cuid())
-  status           String    @default("draft")
-  currency         String    @default("EUR")
-  priceNet         Int
-  validUntil       DateTime
-  presentedAt      DateTime?
-  acceptedAt       DateTime?
-  pdfR2Key         String?
-  notes            String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id          String    @id @default(cuid())
+  status      String    @default("draft")
+  currency    String    @default("EUR")
+  priceNet    Int
+  validUntil  DateTime
+  presentedAt DateTime?
+  acceptedAt  DateTime?
+  pdfR2Key    String?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   companyId        String
-  company          Company        @relation(fields: [companyId], references: [id])
+  company          Company         @relation(fields: [companyId], references: [id])
   templateId       String?
-  template         OfferTemplate? @relation(fields: [templateId], references: [id])
+  template         OfferTemplate?  @relation(fields: [templateId], references: [id])
   closingSessionId String?
   closingSession   ClosingSession? @relation(fields: [closingSessionId], references: [id])
   createdById      String
-  createdBy        User           @relation("OfferCreatedBy", fields: [createdById], references: [id])
+  createdBy        User            @relation("OfferCreatedBy", fields: [createdById], references: [id])
+
+  // ─── Closing Portal: eingefrorene Angebotskonditionen ────────────────────
+  offerNumber       String? @unique
+  version           Int     @default(1)
+  packageType       String?
+  recurringNetCents Int?
+  recurringInterval String?
+  minimumTermMonths Int?
+  paymentTerms      String?
+  vatRateBp         Int?
+  workforceIncluded Boolean @default(false)
+  careIncluded      Boolean @default(false)
 
   lineItems      OfferLineItem[]
   consentRecords ConsentRecord[]
@@ -927,6 +1085,10 @@ model OfferLineItem {
   totalCents     Int
   isExtra        Boolean @default(false)
   note           String?
+  kind           String  @default("one_time") // one_time | recurring | addon
+  unit           String?
+  quantityMilli  Int?
+  vatRateBp      Int?
 
   offerId String
   offer   Offer  @relation(fields: [offerId], references: [id])
@@ -987,6 +1149,32 @@ model Invoice {
   confirmedById    String?
   confirmedBy      User?           @relation("InvoiceConfirmedBy", fields: [confirmedById], references: [id])
 
+  // ─── Closing Portal: strukturierte Rechnung + eingefrorene Beträge ───────
+  invoiceDate        DateTime?
+  serviceDateFrom    DateTime?
+  serviceDateTo      DateTime?
+  servicePeriodText  String?
+  paymentTerms       String?
+  vatMode            String    @default("standard") // standard | reverse_charge | exempt | small_business
+  vatRateBp          Int?
+  netTotalCents      Int?
+  vatTotalCents      Int?
+  grossTotalCents    Int?
+  notes              String?
+  footerNote         String?
+  billingSnapshot    Json?
+  customPlaceholders Json?
+  templateId         String?
+  templateVersion    Int?
+  pdfSha256          String?
+  finalizedAt        DateTime?
+  finalizedById      String?
+  idempotencyKey     String?   @unique
+  contractSnapshotId String?
+  documentId         String? // verknüpftes Document in der Kundenablage
+
+  paymentEvents InvoicePaymentEvent[]
+
   items InvoiceItem[]
 }
 
@@ -997,6 +1185,16 @@ model InvoiceItem {
   quantity    Float  @default(1)
   unitPrice   Int
   totalPrice  Int
+
+  // ─── Closing Portal: exakte Beträge in Minor Units ───────────────────────
+  unit             String?
+  quantityMilli    Int? // Menge × 1000 → exakte Ganzzahl-Arithmetik
+  vatRateBp        Int?
+  discountBp       Int     @default(0)
+  netAmountCents   Int?
+  vatAmountCents   Int?
+  grossAmountCents Int?
+  sourceRef        String?
 
   invoiceId String
   invoice   Invoice @relation(fields: [invoiceId], references: [id])
@@ -1020,6 +1218,32 @@ model ContractSnapshot {
   fullSnapshot     String   @default("{}")
   createdAt        DateTime @default(now())
 
+  // ─── Closing Portal: vollständig eingefrorener Vertragsstand ─────────────
+  data                  Json? // kompletter Snapshot (Organisation, Person, Angebot, Positionen, Dokumente …)
+  masterData            Json? // Stammdaten zum Abschlusszeitpunkt
+  documentVersions      Json? // [{ documentId, versionId, name, version, sha256 }]
+  renderedScript        Json? // gerenderte Script-Abschnitte inkl. Platzhalterwerten
+  snapshotHash          String? // SHA-256 über die kanonisierte Snapshot-Json
+  offerNumber           String?
+  contractDate          DateTime?
+  oneTimeNetCents       Int?
+  recurringNetCents     Int?
+  recurringInterval     String? // monthly | quarterly | yearly
+  minimumTermMonths     Int?
+  vatRateBp             Int? // Basispunkte, z. B. 1900 = 19,00 %
+  currency              String    @default("EUR")
+  paymentMethod         String? // stripe | invoice
+  paymentTerms          String?
+  workforceIncluded     Boolean   @default(false)
+  careIncluded          Boolean   @default(false)
+  contactPersonName     String?
+  contactPersonPosition String?
+  scriptRenderedAt      DateTime?
+  frozenAt              DateTime  @default(now())
+  idempotencyKey        String?   @unique
+
+  consentAuditEvents ConsentAuditEvent[]
+
   closingSessionId String         @unique
   closingSession   ClosingSession @relation(fields: [closingSessionId], references: [id])
   offerId          String
@@ -1041,7 +1265,7 @@ model PackageDefaultLearningAssignment {
 
 model SalesContent {
   id                String   @id @default(cuid())
-  type              String   // closing_script | objection | faq | package_info | guide | email_template
+  type              String // closing_script | objection | faq | package_info | guide | email_template
   category          String?
   title             String
   content           String
@@ -1072,10 +1296,831 @@ model ClosingEvent {
   reason     String?
   occurredAt DateTime @default(now())
 
+  idempotencyKey String? @unique
+
   closingSessionId String
   closingSession   ClosingSession @relation(fields: [closingSessionId], references: [id])
   companyId        String
   company          Company        @relation(fields: [companyId], references: [id])
   actorId          String?
   actor            User?          @relation(fields: [actorId], references: [id])
+}
+
+// ─── OKUN Closing Portal ─────────────────────────────────────────────────────
+// Vertragsdokumente, Consent-Konfiguration, Audit-Trail, Closing-Scripts,
+// Recording-Archivierung, Abschlussprotokoll, Rechnungs-/Template-Engine.
+
+/// Logisches Vertragsdokument (z. B. „AGB"). Die einzelnen unveränderlichen
+/// Versionen liegen als LegalDocument-Zeilen darunter.
+model ContractDocument {
+  id           String   @id @default(cuid())
+  type         String // agb | avv | datenschutz | widerruf_b2b | anlage | sonstiges
+  name         String
+  description  String?
+  isActive     Boolean  @default(true)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  createdById String?
+  createdBy   User?   @relation("ContractDocumentCreatedBy", fields: [createdById], references: [id])
+
+  versions           LegalDocument[]
+  consentDefinitions ConsentDefinition[]
+  consentAuditEvents ConsentAuditEvent[]
+}
+
+/// Administrierbare Checkbox/Erklärung im Closing. Der Wortlaut ist frei
+/// bearbeitbar — auch der Text der Aufzeichnungs-Einwilligung.
+model ConsentDefinition {
+  id           String   @id @default(cuid())
+  key          String   @unique
+  title        String
+  checkboxText String
+  consentType  String // ACCEPTANCE | ACKNOWLEDGEMENT | RECORDING_CONSENT | OTHER
+  isRequired   Boolean  @default(true)
+  isActive     Boolean  @default(true)
+  displayOrder Int      @default(0)
+  appliesTo    Json? // string[] Paket-Keys; null/[] = alle Pakete
+  version      Int      @default(1)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  contractDocumentId String?
+  contractDocument   ContractDocument? @relation(fields: [contractDocumentId], references: [id])
+  documentVersionId  String? // optional an eine feste Version binden
+  documentVersion    LegalDocument?    @relation(fields: [documentVersionId], references: [id])
+  createdById        String?
+  createdBy          User?             @relation("ConsentDefinitionCreatedBy", fields: [createdById], references: [id])
+
+  revisions          ConsentDefinitionRevision[]
+  consentAuditEvents ConsentAuditEvent[]
+}
+
+/// Append-only Historie der Checkbox-Wortlaute.
+model ConsentDefinitionRevision {
+  id           String            @id @default(cuid())
+  definitionId String
+  definition   ConsentDefinition @relation(fields: [definitionId], references: [id])
+  version      Int
+  title        String
+  checkboxText String
+  consentType  String
+  isRequired   Boolean
+  appliesTo    Json?
+  createdById  String?
+  createdAt    DateTime          @default(now())
+
+  @@unique([definitionId, version])
+}
+
+/// Append-only Beweiskette der elektronischen Erklärungen.
+/// Wird nie über das Admin-UI verändert oder gelöscht — Korrekturen entstehen
+/// ausschließlich als Folgeevent mit supersedesEventId.
+model ConsentAuditEvent {
+  id                       String   @id @default(cuid())
+  closingSessionId         String
+  contractSnapshotId       String?
+  companyId                String
+  consentDefinitionId      String?
+  consentDefinitionVersion Int      @default(1)
+  consentType              String
+  checkboxText             String // exakter Wortlaut zum Zeitpunkt der Erklärung
+  accepted                 Boolean
+  serverTimestamp          DateTime @default(now())
+  timezone                 String
+
+  documentId           String?
+  documentVersionId    String?
+  documentName         String?
+  documentVersionLabel String?
+  documentSha256       String?
+
+  organizationName  String?
+  actingPersonName  String?
+  actingPersonEmail String?
+  sessionTokenHash  String?
+  ipAddress         String?
+  userAgent         String?
+
+  supersedesEventId String?
+  correctionReason  String?
+  idempotencyKey    String   @unique
+  createdAt         DateTime @default(now())
+
+  closingSession    ClosingSession     @relation(fields: [closingSessionId], references: [id])
+  contractSnapshot  ContractSnapshot?  @relation(fields: [contractSnapshotId], references: [id])
+  company           Company            @relation(fields: [companyId], references: [id])
+  consentDefinition ConsentDefinition? @relation(fields: [consentDefinitionId], references: [id])
+  document          ContractDocument?  @relation(fields: [documentId], references: [id])
+  documentVersion   LegalDocument?     @relation(fields: [documentVersionId], references: [id])
+
+  @@index([closingSessionId])
+  @@index([companyId])
+}
+
+/// Vom Admin verwalteter Text für die Vertragsaufzeichnung.
+model ClosingScript {
+  id           String   @id @default(cuid())
+  key          String   @unique
+  kind         String // GENERAL_INTRO | PACKAGE | ADDON | FINAL_ACCEPTANCE
+  title        String
+  body         String
+  packageType  String? // für kind = PACKAGE
+  addonKey     String? // für kind = ADDON
+  displayOrder Int      @default(0)
+  isActive     Boolean  @default(true)
+  version      Int      @default(1)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  createdById String?
+  createdBy   User?   @relation("ClosingScriptCreatedBy", fields: [createdById], references: [id])
+
+  revisions ClosingScriptRevision[]
+}
+
+model ClosingScriptRevision {
+  id          String        @id @default(cuid())
+  scriptId    String
+  script      ClosingScript @relation(fields: [scriptId], references: [id])
+  version     Int
+  title       String
+  body        String
+  createdById String?
+  createdAt   DateTime      @default(now())
+
+  @@unique([scriptId, version])
+}
+
+/// Vertragsaufzeichnung inkl. Migration Daily.co → privater R2-Bucket.
+model ClosingRecording {
+  id                 String    @id @default(cuid())
+  closingSessionId   String
+  contractSnapshotId String?
+  status             String    @default("pending") // pending | recording | stopped | migrating | archived | migration_failed
+  dailyRecordingId   String?   @unique
+  dailyRoomName      String?
+  startedAt          DateTime?
+  endedAt            DateTime?
+  durationSeconds    Int?
+  r2Key              String?
+  fileSize           Int?
+  sha256             String?
+  mimeType           String?
+  migrationAttempts  Int       @default(0)
+  lastError          String?
+  verifiedAt         DateTime?
+  dailyDeleteAfter   DateTime? // Schutzfrist – vorher darf die Daily-Kopie nicht gelöscht werden
+  dailyDeletedAt     DateTime?
+  retentionUntil     DateTime? // Vorbereitung für spätere Retention Policies
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  closingSession ClosingSession @relation(fields: [closingSessionId], references: [id])
+
+  @@index([closingSessionId])
+  @@index([status])
+}
+
+/// Elektronisches Abschlussprotokoll. Unveränderlich — eine Korrektur erzeugt
+/// eine neue Version, niemals ein Überschreiben.
+model ClosingCertificate {
+  id                 String   @id @default(cuid())
+  closingSessionId   String
+  contractSnapshotId String?
+  companyId          String
+  certificateNumber  String   @unique
+  version            Int      @default(1)
+  r2Key              String
+  sha256             String
+  fileSize           Int?
+  data               Json
+  templateId         String?
+  templateVersion    Int?
+  supersedesId       String?
+  documentId         String? // verknüpftes Document in der Kundenablage
+  generatedById      String?
+  generatedAt        DateTime @default(now())
+
+  closingSession ClosingSession @relation(fields: [closingSessionId], references: [id])
+
+  @@unique([closingSessionId, version])
+  @@index([companyId])
+}
+
+/// Zentrale Dokumentvorlage (Rechnung, Abschlussprotokoll, Auftragsbestätigung …).
+model DocumentTemplate {
+  id             String   @id @default(cuid())
+  type           String // invoice | closing_certificate | order_confirmation | payment_reminder | dunning | acceptance_protocol | strategy_protocol
+  name           String
+  description    String?
+  isActive       Boolean  @default(true)
+  isDefault      Boolean  @default(false)
+  currentVersion Int      @default(1)
+  createdById    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  versions           DocumentTemplateVersion[]
+  customPlaceholders CustomPlaceholder[]
+}
+
+model DocumentTemplateVersion {
+  id          String   @id @default(cuid())
+  templateId  String
+  version     Int
+  html        String
+  css         String   @default("")
+  settings    Json?
+  note        String?
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  template DocumentTemplate @relation(fields: [templateId], references: [id])
+
+  @@unique([templateId, version])
+}
+
+/// Vom Admin definierte Zusatzfelder ({{custom.<key>}}).
+model CustomPlaceholder {
+  id           String   @id @default(cuid())
+  templateId   String
+  key          String
+  label        String
+  type         String   @default("text") // text | multiline | number | date | currency | boolean
+  defaultValue String?
+  isRequired   Boolean  @default(false)
+  displayOrder Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  template DocumentTemplate @relation(fields: [templateId], references: [id])
+
+  @@unique([templateId, key])
+}
+
+/// Concurrency-sicherer Nummernkreis.
+model InvoiceNumberSequence {
+  id         String   @id // z. B. "invoice:2026"
+  scope      String   @default("invoice")
+  prefix     String
+  year       Int
+  lastNumber Int      @default(0)
+  padding    Int      @default(4)
+  updatedAt  DateTime @updatedAt
+}
+
+/// Append-only Audit für Zahlungsstatusänderungen.
+model InvoicePaymentEvent {
+  id             String   @id @default(cuid())
+  invoiceId      String
+  previousStatus String
+  newStatus      String
+  source         String // admin | stripe_webhook | system
+  actorId        String?
+  note           String?
+  externalRef    String?
+  amountCents    Int?
+  idempotencyKey String   @unique
+  occurredAt     DateTime @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
+  actor   User?   @relation("InvoicePaymentActor", fields: [actorId], references: [id])
+
+  @@index([invoiceId])
+}
+
+/// Idempotenz-Register für Stripe-Webhooks.
+model StripeWebhookEvent {
+  id          String   @id // Stripe event id
+  type        String
+  processedAt DateTime @default(now())
+}
+
+/// Administrierbarer Katalog der für den Vertragsabschluss nötigen Stammdaten.
+model MasterDataRequirement {
+  id           String   @id @default(cuid())
+  fieldKey     String   @unique
+  label        String
+  group        String   @default("company") // company | address | contact | billing | registry
+  helpText     String?
+  isRequired   Boolean  @default(true)
+  legalForms   Json? // string[]; null/[] = gilt für alle Rechtsformen
+  displayOrder Int      @default(0)
+  isActive     Boolean  @default(true)
+  updatedAt    DateTime @updatedAt
+}
+
+/// Präsentation, die der Berater vor dem Gespräch vorbereitet und im Gespräch
+/// zeigt. Die Dateien liegen privat in R2; der Kunde sieht sie ausschließlich
+/// über kurzlebige Signed URLs und nur, solange der Berater die Präsentation
+/// gestartet hat.
+model ClosingPresentation {
+  id          String  @id @default(cuid())
+  title       String
+  description String?
+
+  /// draft | submitted | approved | archived
+  /// Nur freigegebene Präsentationen lassen sich im Gespräch starten.
+  status String @default("draft")
+
+  slideCount Int @default(0)
+
+  companyId        String?
+  company          Company?        @relation(fields: [companyId], references: [id])
+  closingSessionId String?
+  closingSession   ClosingSession? @relation(fields: [closingSessionId], references: [id])
+
+  createdById String
+  createdBy   User   @relation("PresentationCreatedBy", fields: [createdById], references: [id])
+
+  approvedAt   DateTime?
+  approvedById String?
+  approvedBy   User?     @relation("PresentationApprovedBy", fields: [approvedById], references: [id])
+  reviewNote   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  slides ClosingPresentationSlide[]
+
+  @@index([closingSessionId])
+  @@index([companyId])
+  @@index([status])
+}
+
+/// Eine Folie. Bilder werden als Folie angezeigt, eine PDF als scrollbares
+/// Dokument. Der SHA-256-Hash weist nach, dass die gezeigte Datei die
+/// freigegebene ist.
+model ClosingPresentationSlide {
+  id             String              @id @default(cuid())
+  presentationId String
+  presentation   ClosingPresentation @relation(fields: [presentationId], references: [id], onDelete: Cascade)
+
+  position Int
+  title    String?
+
+  r2Key    String
+  fileName String
+  mimeType String
+  fileSize Int
+  sha256   String
+
+  createdAt DateTime @default(now())
+
+  @@unique([presentationId, position])
+  @@index([presentationId])
+}
+
+// ─── Blueprint, dritte Säule ─────────────────────────────────────────────────
+// Systeme, wiederkehrende Aufgaben und Abläufe. Bewusst eigene Modelle statt
+// weiterer Fragen im Katalog: Die drei Blöcke sind keine Einzelfragen, sondern
+// Listen, deren Einträge sich gegenseitig als Auswahl dienen — Programme aus
+// Block 1 sind die Auswahl in Block 2 und 3. Der bewertete Fragebogen der
+// Module bleibt davon unberührt, und die Reifezahl verschiebt sich nicht.
+
+/// Ein Programm, das der Betrieb nutzt — samt Zwecken, für die es genutzt wird.
+model BlueprintSystem {
+  id        String          @id @default(cuid())
+  sessionId String
+  session   AnalysisSession @relation(fields: [sessionId], references: [id])
+
+  /// Schlüssel aus dem Katalog, oder null bei einem selbst eingetragenen Programm.
+  catalogKey    String?
+  name          String
+  category      String
+  /// JSON-Liste der Zweck-Schlüssel.
+  purposes      String  @default("[]")
+  /// Selbst eingetragen — geht nicht in die Auswertung, sondern zur Prüfung.
+  isCustom      Boolean @default(false)
+  /// Eigener Zweck, wenn „Sonstiges" gewählt wurde. Reine Bezeichnung.
+  customPurpose String?
+
+  createdAt DateTime @default(now())
+
+  @@index([sessionId])
+}
+
+/// Eine wiederkehrende Aufgabe mit Häufigkeit, Dauer und beteiligten Programmen.
+model BlueprintTask {
+  id        String          @id @default(cuid())
+  sessionId String
+  session   AnalysisSession @relation(fields: [sessionId], references: [id])
+
+  catalogKey String
+  label      String
+  area       String
+
+  frequencyBand String
+  durationBand  String
+  /// JSON-Liste von BlueprintSystem-IDs.
+  systemIds     String @default("[]")
+
+  /// Vom Kunden selbst ergänzte Aufgabe — die Bezeichnung stammt von ihm.
+  isCustom         Boolean @default(false)
+  /// Eigene Häufigkeit in Vorgängen pro Woche, wenn kein Band gepasst hat.
+  frequencyPerWeek Float?
+  /// Eigene Dauer je Vorgang in Minuten, wenn kein Band gepasst hat.
+  durationMinutes  Int?
+
+  /// Aus Häufigkeit und Dauer gerechnet — gespeichert, damit der Bericht nicht
+  /// von der Bänder-Tabelle abhängt, die später einmal anders aussehen könnte.
+  minutesPerMonth Int @default(0)
+  position        Int @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@unique([sessionId, catalogKey])
+  @@index([sessionId])
+}
+
+/// Ein durchgegangener Ablauf.
+model BlueprintFlow {
+  id        String          @id @default(cuid())
+  sessionId String
+  session   AnalysisSession @relation(fields: [sessionId], references: [id])
+
+  catalogKey String
+  title      String
+  position   Int    @default(0)
+
+  createdAt DateTime @default(now())
+
+  stations BlueprintFlowStation[]
+
+  @@unique([sessionId, catalogKey])
+  @@index([sessionId])
+}
+
+/// Eine Station innerhalb eines Ablaufs: wer, womit, und wie weit von Hand.
+model BlueprintFlowStation {
+  id     String        @id @default(cuid())
+  flowId String
+  flow   BlueprintFlow @relation(fields: [flowId], references: [id], onDelete: Cascade)
+
+  stationKey String
+  position   Int
+
+  role        String?
+  /// BlueprintSystem-ID, sofern ein Programm gewählt wurde.
+  systemId    String?
+  /// Bezeichnung für Papier, „gar nichts" oder ein entferntes Programm.
+  systemLabel String?
+  /// manual | partial | automatic | none
+  mode        String  @default("manual")
+
+  @@unique([flowId, stationKey])
+  @@index([flowId])
+}
+
+/// Der Leitfaden für das Strategiegespräch.
+///
+/// Anders als der Kundenbericht ist er intern: Er sagt dem Kollegen, der das
+/// Gespräch führt, was wir festgestellt haben, wie er es vorträgt und welche
+/// Custom-Projekte sich anbieten. Der Kunde bekommt ihn nie zu sehen.
+///
+/// Je Blueprint-Sitzung einer, mit beliebig vielen Fassungen — der Kollege
+/// schärft nach, und jede Fassung bleibt nachvollziehbar erhalten.
+model StrategyGuide {
+  id        String          @id @default(cuid())
+  sessionId String          @unique
+  session   AnalysisSession @relation(fields: [sessionId], references: [id])
+  companyId String
+  company   Company         @relation(fields: [companyId], references: [id])
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  versions StrategyGuideVersion[]
+}
+
+/// Die Anleitung, wie ein einzelner Posten der Umsetzung tatsächlich gebaut
+/// wird — für die Abteilung, die es macht, nicht für das Kundengespräch.
+///
+/// Hängt an der Sitzung und nicht an einer Fassung des Leitfadens: Derselbe
+/// Posten überlebt eine Nachschärfung des Gesprächsleitfadens, und die
+/// Anleitung dazu soll das auch.
+model UmsetzungsAnleitung {
+  id        String          @id @default(cuid())
+  sessionId String
+  session   AnalysisSession @relation(fields: [sessionId], references: [id])
+
+  /// Aus Block und Titel gebildet, damit derselbe Posten wiedergefunden wird.
+  schluessel String
+  block      String
+  titel      String
+
+  /// Die Anleitung als JSON.
+  content String
+
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([sessionId, schluessel])
+  @@index([sessionId])
+}
+
+model StrategyGuideVersion {
+  id      String        @id @default(cuid())
+  guideId String
+  guide   StrategyGuide @relation(fields: [guideId], references: [id], onDelete: Cascade)
+  version Int
+
+  /// Was diese Fassung ausgelöst hat: leer bei der ersten, sonst die Anweisung
+  /// des Kollegen im Wortlaut.
+  instruction String?
+
+  /// Das Dokument als JSON.
+  content String
+
+  /// Protokoll der unabhängigen Prüfung: welcher Vorschlag in welcher Runde
+  /// bestätigt oder verworfen wurde, und warum.
+  reviewLog String @default("[]")
+
+  /// Wie viele Runden es gebraucht hat.
+  rounds Int @default(1)
+
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@unique([guideId, version])
+}
+
+// ─── OKUN Radar ──────────────────────────────────────────────────────────────
+// Die kostenlose Kurzdiagnose im laufenden Potenzialgespräch. Eigene Modelle
+// statt weiterer Einträge im Blueprint-Katalog: Das Radar ist eine andere
+// Zusage als der Blueprint — kürzer, unverbindlich, vorläufig. Beides in
+// dieselben Tabellen zu legen, hieße, eine Viertelstunde Gespräch später nicht
+// mehr von einer bezahlten Vollerhebung unterscheiden zu können.
+
+/// Eine Radar-Analyse. Gehört zu genau einem Closing-Gespräch.
+model RadarSession {
+  id String @id @default(cuid())
+
+  /// vorbereitet | laeuft | ausgewertet | abgeschlossen | abgebrochen
+  status String @default("vorbereitet")
+  /// profil | potenzial | spotlight | ergebnis
+  phase  String @default("profil")
+
+  /// Fingerabdruck des Fragenkatalogs zum Zeitpunkt der Analyse. Ein später
+  /// geänderter Katalog macht ein altes Ergebnis nicht falsch — aber nicht
+  /// mehr vergleichbar, und das muss man sehen können.
+  katalogVersion String
+
+  /// Die Frage, die beide Seiten gerade sehen.
+  cursorKey    String?
+  /// Der im Spotlight betrachtete Prozess.
+  spotlightKey String?
+
+  /// Das Unternehmensprofil aus Phase 1 als JSON.
+  profil String @default("{}")
+
+  /// Interne Gesprächsnotizen des Closers. Verlassen den Server nie in
+  /// Richtung Kundenseite — die Kundensicht wird in `client-view.ts` eigens
+  /// zusammengestellt und kennt dieses Feld nicht.
+  internalNotes String?
+
+  /// Das berechnete Ergebnis als JSON, eingefroren zum Zeitpunkt der
+  /// Auswertung. Es wird nicht bei jedem Aufruf neu gerechnet: Was dem Kunden
+  /// gezeigt wurde, muss später noch dasselbe sein.
+  ergebnis   String?
+  ergebnisAm DateTime?
+
+  /// Die abweichende Einschätzung des Closers. Überschreibt das Systemurteil
+  /// nicht, sondern tritt daneben — beide bleiben lesbar.
+  closerStufe   String?
+  closerNotiz   String?
+  closerStufeAm DateTime?
+
+  /// Zählt bei jeder Änderung hoch. Beide Seiten erkennen daran, ob ihr Stand
+  /// veraltet ist, ohne das ganze Dokument zu vergleichen.
+  rev Int @default(0)
+
+  /// Gesetzt beim Abschluss. Ein zweiter Abschluss ändert nichts mehr.
+  abgeschlossenAm DateTime?
+  freigegebenAm   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  closingSessionId String
+  closingSession   ClosingSession @relation(fields: [closingSessionId], references: [id], onDelete: Cascade)
+  companyId        String
+  company          Company        @relation(fields: [companyId], references: [id])
+  closerId         String
+  closer           User           @relation("RadarCloser", fields: [closerId], references: [id])
+
+  antworten RadarAnswer[]
+  freitexte RadarFreitext[]
+
+  @@index([closingSessionId])
+  @@index([companyId])
+  @@index([status])
+}
+
+/// Eine Antwort im Radar. `quelle` hält fest, wer sie gesetzt hat — der
+/// Interessent selbst oder der Closer für ihn. Das ist kein Beiwerk: Eine vom
+/// Closer eingetragene Antwort ist eine Fremdaussage und im Protokoll als
+/// solche erkennbar.
+/**
+ * Eine Freitextangabe des Interessenten.
+ *
+ * „Sonstiges" bei einer Frage, ein Geschäftsmodell, das in keiner Schublade
+ * liegt, oder der Zweck eines Programms, das unser Katalog nicht kennt. Drei
+ * Dinge, die vorher gar nicht erfasst werden konnten — und genau die Stellen,
+ * an denen ein Betrieb von allen anderen abweicht.
+ *
+ * Der Text wird eingeordnet (siehe `src/lib/radar/deutung.ts`) und fließt
+ * gedeckelt in die Bewertung ein. Gespeichert wird beides: der Wortlaut und
+ * die Einordnung samt Modellnamen — damit nachvollziehbar bleibt, worauf ein
+ * Ergebnis beruht.
+ */
+model RadarFreitext {
+  id             String       @id @default(cuid())
+  radarSessionId String
+  radarSession   RadarSession @relation(fields: [radarSessionId], references: [id], onDelete: Cascade)
+
+  /// Worauf sich der Text bezieht: frage:<key> | profil:<key> | software:<name>
+  bezug String
+  /// Was der Interessent geschrieben hat, unverändert.
+  text  String
+
+  /// Die Einordnung als JSON. Leer, solange sie noch nicht gelaufen ist.
+  deutung    String?
+  gedeutetAm DateTime?
+  /// Welches Modell geantwortet hat — für die Nachvollziehbarkeit.
+  modell     String?
+
+  /// closer | client
+  quelle         String
+  erstelltAm     DateTime @default(now())
+  aktualisiertAm DateTime @updatedAt
+
+  @@unique([radarSessionId, bezug])
+  @@index([radarSessionId])
+}
+
+model RadarAnswer {
+  id             String       @id @default(cuid())
+  radarSessionId String
+  radarSession   RadarSession @relation(fields: [radarSessionId], references: [id], onDelete: Cascade)
+
+  frageKey      String
+  /// JSON-Liste der gewählten Optionsschlüssel.
+  optionKeys    String  @default("[]")
+  /// Bewusst übersprungen — unterscheidbar von „noch nicht gefragt“.
+  uebersprungen Boolean @default(false)
+
+  /// closer | client
+  quelle     String
+  answeredAt DateTime @default(now())
+
+  @@unique([radarSessionId, frageKey])
+  @@index([radarSessionId])
+}
+
+// ─── OKUN Transformation Studio ──────────────────────────────────────────────
+// Das Strategiegespräch nach dem Blueprint — Schritt 3 des Projektablaufs, im
+// Angebot wörtlich zugesagt als „Ergebnispräsentation, Roadmap und Auswahl der
+// Lösungen". Bis hierher gab es dafür nur den internen Leitfaden und einen
+// fremden Videorahmen; was im Gespräch ausgewählt wurde, stand nirgends.
+//
+// Die Analyse selbst entsteht weiter im Blueprint und im Leitfaden. Diese
+// Modelle tragen allein das Gespräch: was beide Seiten sehen, was zur Wahl
+// steht, was gewählt wurde — und ab wann der Kunde überhaupt etwas davon
+// sieht.
+
+/// Ein Strategiegespräch.
+model StrategieSitzung {
+  id String @id @default(cuid())
+
+  /// vorbereitet | freigegeben | laeuft | abgeschlossen | abgebrochen
+  status String @default("vorbereitet")
+
+  /// Der Ort im Haus, an dem beide Seiten gerade stehen. Der Berater geht,
+  /// der Kunde sieht mit — dasselbe Muster wie Präsentation und Radar im
+  /// Closing. Die Schlüssel stehen in `lib/strategie/katalog.ts`.
+  ansicht String @default("aussen")
+
+  /// Der Takt innerhalb eines Raums: 0 ist „wie es heute ist", 1 „wie es
+  /// danach ist". Ohne ihn drückt der Berater den Knopf und der Kunde sieht
+  /// weiter den alten Zustand — und damit fehlt genau der Moment, für den
+  /// der ganze Raum gebaut ist.
+  ansichtStufe Int @default(0)
+
+  /// Das gebuchte Paket zum Zeitpunkt des Gesprächs. Eingefroren, weil es
+  /// darüber entscheidet, was „im Paket" heißt — und Pakete ändern sich.
+  paket String?
+
+  /// Welche Fassung des Leitfadens die Posten geliefert hat. Nur zur
+  /// Nachvollziehbarkeit: Die Posten selbst stehen als eigene Datensätze da
+  /// und ändern sich nicht mehr, wenn der Leitfaden nachgeschärft wird.
+  guideVersionId String?
+
+  /// Erst mit der Freigabe erreicht irgendetwas den Kundenbildschirm.
+  ///
+  /// Der Leitfaden entsteht maschinell und nennt Produkte beim Namen. Ein
+  /// Mensch muss das gelesen haben, bevor es ein Kunde sieht — und zwar vor
+  /// dem Termin, nicht während.
+  freigegebenAm   DateTime?
+  freigegebenById String?
+  freigegebenBy   User?     @relation("StrategieFreigabe", fields: [freigegebenById], references: [id])
+
+  /// Heartbeat, solange der Berater im Gesprächsraum ist.
+  beraterPresenceAt DateTime?
+
+  /// Zählt bei jeder Änderung hoch; beide Seiten erkennen daran, ob ihr Stand
+  /// veraltet ist.
+  rev Int @default(0)
+
+  /// Was am Ende gewählt wurde, eingefroren als JSON. Die Auswahl im Gespräch
+  /// ist endgültig und zugleich der Arbeitsauftrag für die Umsetzung — sie
+  /// muss später noch genau so lesbar sein.
+  ergebnis        String?
+  abgeschlossenAm DateTime?
+
+  interneNotiz String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  appointmentId String      @unique
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  companyId     String
+  company       Company     @relation(fields: [companyId], references: [id])
+  /// Der Blueprint, auf dem das Gespräch fußt.
+  sessionId     String
+  session       AnalysisSession @relation(fields: [sessionId], references: [id])
+  beraterId     String
+  berater       User        @relation("StrategieBerater", fields: [beraterId], references: [id])
+
+  posten StrategiePosten[]
+
+  @@index([companyId])
+  @@index([sessionId])
+  @@index([status])
+}
+
+/// Ein Posten, der zur Auswahl steht oder gewählt wurde.
+///
+/// Abgeschrieben aus der Leitfaden-Fassung, nicht verlinkt: Was im Gespräch
+/// auf dem Tisch lag, muss später unverändert nachlesbar sein, auch wenn der
+/// Leitfaden danach dreimal nachgeschärft wurde.
+model StrategiePosten {
+  id        String           @id @default(cuid())
+  sitzungId String
+  sitzung   StrategieSitzung @relation(fields: [sitzungId], references: [id], onDelete: Cascade)
+
+  /// Aus Block und Titel gebildet — derselbe Schlüssel wie bei der
+  /// Umsetzungsanleitung, damit beides zusammenfindet.
+  schluessel String
+
+  /// grundlage | automatisierung | workforce | custom
+  art String
+
+  /// Wörtlich aus dem Leitfaden.
+  block          String
+  titel          String
+  befund         String?
+  womit          String?
+  warum          String?
+  wieWirEsMachen String?
+  /// Ob das im gebuchten Paket liegt oder darüber.
+  einordnung     String?
+
+  /// kandidat | gewaehlt | spaeter | verworfen
+  zustand String @default("kandidat")
+
+  /// Ob der Posten dem Kunden überhaupt zur Wahl gestellt wird. Der Berater
+  /// filtert vor: Zur Auswahl steht nur, was wir zum Paketpreis liefern
+  /// können.
+  kundeSieht Boolean @default(true)
+
+  /// Aufgaben des Betriebs, die dieser Posten entlastet — Katalogschlüssel aus
+  /// `BlueprintTask`. Daraus entsteht die Zeitangabe; deshalb zählt nur, was
+  /// bei diesem Betrieb auch wirklich erhoben wurde.
+  aufgabenKeys String @default("[]")
+
+  /// Was diese Aufgaben den Betrieb heute im Monat kosten — gerechnet aus den
+  /// erhobenen Minuten, nicht geschätzt.
+  ///
+  /// Bewusst der heutige Aufwand und nicht eine Ersparnis: Wie viel von einer
+  /// Aufgabe nach der Umstellung übrig bleibt, wissen wir vorher nicht. Was
+  /// sie heute kostet, wissen wir — der Kunde hat es selbst angegeben.
+  aufwandHeuteMinuten Int @default(0)
+
+  /// Nur für den Berater: was uns die Umsetzung kostet. Erscheint nie auf dem
+  /// Kundenbildschirm.
+  internerAufwand String?
+
+  position Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([sitzungId, schluessel])
+  @@index([sitzungId])
 }

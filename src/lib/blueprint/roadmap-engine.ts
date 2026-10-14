@@ -13,42 +13,43 @@ const TIER_LABELS: Record<PackageTier, string> = {
 };
 
 /**
- * buildRoadmap assigns each recommended solution to its earliest applicable
- * package tier, then returns phases ordered foundation → operations → custom.
+ * Ordnet jede empfohlene Lösung der frühesten Stufe zu, auf der es sie gibt,
+ * und gibt die Phasen in der Reihenfolge foundation → operations → custom
+ * zurück. Leere Phasen fallen weg.
  *
- * If packageType is set on the session, only tiers up to and including that
- * tier are included (a "foundation" session does not show "custom" solutions).
- *
- * Empty phases are omitted from the result.
+ * Ist ein Paket gebucht, werden die Stufen darüber **nicht** mehr
+ * weggelassen, sondern als eigene Phase geführt und mit `beyondPackage`
+ * gekennzeichnet. Vorher endete die Roadmap am gebuchten Paket, und ein
+ * Betrieb mit erkanntem Bedarf an Individualentwicklung sah davon nichts —
+ * weder er noch der Kollege, der das Strategiegespräch führt. Was davon im
+ * Kundenbericht erscheint, entscheidet der Bericht.
  */
 export function buildRoadmap(
   recommendations: SolutionRecommendation[],
   packageType: string | null
 ): RoadmapPhase[] {
-  const maxTierIndex =
-    packageType !== null
-      ? TIER_ORDER.indexOf(packageType as PackageTier)
-      : TIER_ORDER.length - 1;
-
-  const activeTiers =
-    maxTierIndex >= 0 ? TIER_ORDER.slice(0, maxTierIndex + 1) : TIER_ORDER;
+  const bookedIndex = packageType !== null ? TIER_ORDER.indexOf(packageType as PackageTier) : -1;
 
   const phases = new Map<PackageTier, SolutionRecommendation[]>(
-    activeTiers.map((t) => [t, []])
+    TIER_ORDER.map((t) => [t, []])
   );
 
   for (const rec of recommendations) {
-    const firstTier = activeTiers.find((t) => rec.packageTypes.includes(t));
+    // Die früheste Stufe, auf der es die Lösung gibt — unabhängig davon, was
+    // gebucht ist. Sonst rutschte eine Custom-Lösung in eine frühere Phase.
+    const firstTier = TIER_ORDER.find((t) => rec.packageTypes.includes(t));
     if (firstTier) {
       phases.get(firstTier)!.push(rec);
     }
   }
 
-  return activeTiers
-    .map((tier): RoadmapPhase => ({
-      phaseLabel: TIER_LABELS[tier],
+  return TIER_ORDER.map((tier, index): RoadmapPhase => {
+    const beyond = bookedIndex >= 0 && index > bookedIndex;
+    return {
+      phaseLabel: beyond ? `Über Ihr Paket hinaus – ${TIER_LABELS[tier].split("– ")[1]}` : TIER_LABELS[tier],
       packageTier: tier,
       solutions: phases.get(tier)!,
-    }))
-    .filter((p) => p.solutions.length > 0);
+      beyondPackage: beyond,
+    };
+  }).filter((p) => p.solutions.length > 0);
 }

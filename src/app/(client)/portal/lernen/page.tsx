@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { BookOpen, CheckCircle, Clock, Lock, ChevronRight } from "lucide-react";
 import { LessonPlayer } from "./LessonPlayer";
+import { isAbovePackage, packageLabel } from "@/lib/packages";
 
 export default async function PortalLearningPage() {
   const session = await auth();
@@ -31,6 +32,42 @@ export default async function PortalLearningPage() {
     orderBy: { activatedAt: "desc" },
   });
 
+  const company = user.companyId
+    ? await db.company.findUnique({
+        where: { id: user.companyId },
+        select: { plan: true },
+      })
+    : null;
+  const plan = company?.plan ?? null;
+
+  // Kapitel oberhalb des gebuchten Pakets.
+  //
+  // Sie werden gezeigt, nicht versteckt: Wer nicht sieht, was es gäbe, fragt
+  // auch nicht danach. Freigeschaltete Kapitel fallen hier heraus — wenn
+  // jemand eins von Hand freigegeben hat, gilt das.
+  const freigeschaltet = new Set(assignments.map((a) => a.chapterId));
+  const gesperrt = plan
+    ? (
+        await db.learningChapter.findMany({
+          where: {
+            status: "PUBLISHED",
+            isActive: true,
+            minPackage: { not: null },
+            id: { notIn: assignments.length > 0 ? [...freigeschaltet] : undefined },
+          },
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            minPackage: true,
+            category: { select: { title: true } },
+            _count: { select: { lessons: true } },
+          },
+          orderBy: { order: "asc" },
+        })
+      ).filter((c) => isAbovePackage(c.minPackage, plan))
+    : [];
+
   // Group by category
   const byCategory = new Map<string, typeof assignments>();
   for (const a of assignments) {
@@ -45,10 +82,11 @@ export default async function PortalLearningPage() {
         <h1 className="text-2xl font-bold text-[#f0f0f0]">Lernbereich</h1>
         <p className="text-[#888] text-sm mt-1">
           {assignments.length} Kapitel freigeschaltet
+          {gesperrt.length > 0 && ` · ${gesperrt.length} weitere in größeren Paketen`}
         </p>
       </div>
 
-      {assignments.length === 0 ? (
+      {assignments.length === 0 && gesperrt.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 text-center">
           <Lock size={40} className="text-[#333] mb-4" />
           <p className="text-[#888] text-sm">Noch keine Lerninhalte freigeschaltet.</p>
@@ -168,6 +206,50 @@ export default async function PortalLearningPage() {
               </div>
             </div>
           ))}
+
+          {/*
+            Kapitel über dem gebuchten Paket. Sichtbar, aber nicht anklickbar —
+            der Kunde soll wissen, was es gibt, ohne dass es nach einem Fehler
+            aussieht.
+          */}
+          {gesperrt.length > 0 && (
+            <div>
+              <h2 className="text-[#5b6b7f] text-xs font-semibold uppercase tracking-wider mb-4">
+                In größeren Paketen enthalten
+              </h2>
+              <div className="space-y-3">
+                {gesperrt.map((kapitel) => (
+                  <div
+                    key={kapitel.id}
+                    className="bg-[#0a1119] border border-[#15203180] rounded-xl p-5"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Lock size={13} className="text-[#5b6b7f] flex-shrink-0" />
+                          <h3 className="text-[#8899b4] font-semibold text-sm truncate">
+                            {kapitel.title}
+                          </h3>
+                        </div>
+                        {kapitel.description && (
+                          <p className="text-[#5b6b7f] text-xs ml-5 leading-relaxed">
+                            {kapitel.description}
+                          </p>
+                        )}
+                        <p className="text-[#44546b] text-xs ml-5 mt-2">
+                          {kapitel.category.title} · {kapitel._count.lessons}{" "}
+                          {kapitel._count.lessons === 1 ? "Lektion" : "Lektionen"}
+                        </p>
+                      </div>
+                      <span className="flex-shrink-0 text-xs px-2.5 py-1 rounded-full border border-[#1a2840] text-[#8899b4]">
+                        Ab {packageLabel(kapitel.minPackage)?.replace("OKUN ", "")}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

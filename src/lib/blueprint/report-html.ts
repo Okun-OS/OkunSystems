@@ -1,5 +1,9 @@
 import type { BlueprintReportData, ModuleScoreEntry } from "./report-assembler";
+import type { SolutionRecommendation } from "./types";
+import { bandLabel, formatHours, stationLabel } from "./pillar3-engine";
+import { STATIONS_OKUN_TAKES } from "./pillar3-catalog";
 import type { ReportTexts } from "./report-text-engine";
+import { packageLabel } from "@/lib/packages";
 
 function scoreColor(score: number): string {
   if (score >= 80) return "#00b8ff";
@@ -76,13 +80,297 @@ function moduleBlock(m: ModuleScoreEntry, detailed: string): string {
 </div>`;
 }
 
-function modulePairPage(modules: ModuleScoreEntry[], detailed: Record<number, string>, pairIndex: number, totalPairs: number): string {
+function modulePairPage(modules: ModuleScoreEntry[], detailed: Record<number, string>): string {
   const label = `Modulanalyse · ${modules.map(m => `M${m.moduleNumber}`).join(" & ")}`;
+  // Überschrift sind die Modulnamen — eine Seitenzählung als Titel sagt dem
+  // Leser nichts darüber, was auf der Seite steht.
+  const title = modules.map((m) => m.label).join(" & ");
   return `
 <div class="npage">
-  ${ph(label, `Seite ${pairIndex + 1} von ${totalPairs}`)}
+  ${ph(label, title)}
   ${modules.map(m => moduleBlock(m, detailed[m.moduleNumber] ?? "")).join('\n<div class="mod-sep"></div>\n')}
 </div>`;
+}
+
+
+function formatPercent(share: number): string {
+  return `${(share * 100).toLocaleString("de-DE", { maximumFractionDigits: 0 })} %`;
+}
+
+function formatDecimal(value: number): string {
+  return value.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
+
+const SOLUTION_CATEGORY_LABELS: Record<string, string> = {
+  WORKFORCE: "OKUN Workforce",
+  BEWAEHRTE_LOESUNG: "Bewährte Lösung",
+  CUSTOM_DEVELOPMENT: "Individuelle Entwicklung",
+};
+
+const SOLUTION_CATEGORY_COLORS: Record<string, string> = {
+  WORKFORCE: "#00b8ff",
+  BEWAEHRTE_LOESUNG: "#22c55e",
+  CUSTOM_DEVELOPMENT: "#f59e0b",
+};
+
+function solutionCard(solution: SolutionRecommendation): string {
+  const color = SOLUTION_CATEGORY_COLORS[solution.category] ?? "#00b8ff";
+  const label = SOLUTION_CATEGORY_LABELS[solution.category] ?? solution.category;
+  return `<div class="sol-card" style="border-left:3px solid ${color}">
+    <div class="sol-head">
+      <span class="sol-name">${solution.name}</span>
+      <span class="sol-cat" style="color:${color}">${label}</span>
+    </div>
+    <div class="sol-desc">${solution.description}</div>
+  </div>`;
+}
+
+/**
+ * Empfehlungen und Roadmap.
+ *
+ * Die Zuordnung entsteht aus den Antworten des Fragebogens und wird hier nur
+ * dargestellt — der Bericht endete bisher mit der Diagnose und ließ den Kunden
+ * ohne einen einzigen Vorschlag zurück.
+ */
+function recommendationPage(data: BlueprintReportData): string {
+  const phases = data.roadmap.filter((phase) => phase.solutions.length > 0);
+
+  if (phases.length === 0 && data.recommendations.length === 0) {
+    return `
+<div class="npage">
+  ${ph("Was wir daraus ableiten", "Empfehlungen")}
+  <p class="sol-empty">Aus den Antworten lässt sich noch keine belastbare Empfehlung ableiten.
+  Die Einordnung erfolgt im Strategiegespräch.</p>
+</div>`;
+  }
+
+  const body =
+    phases.length > 0
+      ? phases
+          .map(
+            (phase) => `<div class="sol-phase${phase.beyondPackage ? " sol-phase-beyond" : ""}">
+      <div class="sol-phase-label">${phase.phaseLabel}</div>
+      ${
+        phase.beyondPackage
+          ? `<p class="sol-beyond-note">Diese Ansätze liegen außerhalb Ihres gebuchten Pakets.
+             Wir führen sie auf, weil Ihre Antworten darauf hindeuten — nicht, weil Sie sie
+             brauchen, um loszulegen.</p>`
+          : ""
+      }
+      ${phase.solutions.map(solutionCard).join("\n")}
+    </div>`
+          )
+          .join("\n")
+      : data.recommendations.map(solutionCard).join("\n");
+
+  return `
+<div class="npage">
+  ${ph("Was wir daraus ableiten", "Empfehlungen")}
+  <p class="sol-intro">Die folgenden Ansätze ergeben sich unmittelbar aus Ihren Antworten.
+  Die Reihenfolge ist eine Empfehlung, keine Verpflichtung — welche Schritte in welcher
+  Reihenfolge sinnvoll sind, klären wir gemeinsam im Strategiegespräch.</p>
+  ${body}
+</div>`;
+}
+
+/**
+ * Die dritte Säule im Bericht: Ist-Ablauf, Stundentabelle, Systemmatrix.
+ *
+ * Alle Zahlen kommen fertig gerechnet aus der Auswertung — hier wird nur
+ * dargestellt. Damit kann die Textgenerierung den Zahlen nicht widersprechen.
+ */
+function pillar3Pages(data: BlueprintReportData, texts: ReportTexts): string {
+  const p3 = data.pillar3;
+  if (!p3 || !p3.hasData) return "";
+
+  const flowPages = p3.flows.findings
+    .map((finding) => {
+      const stations = finding.flow.stations
+        .map((station) => {
+          const label = stationLabel(station.stationKey);
+          if (station.mode === "none") {
+            return `<span class="flow-station flow-station--none">${label}</span>`;
+          }
+          const isTakeover =
+            station.mode === "manual" && STATIONS_OKUN_TAKES.includes(station.stationKey);
+          const cls = isTakeover
+            ? "flow-station flow-station--takeover"
+            : station.mode === "manual"
+              ? "flow-station flow-station--manual"
+              : "flow-station";
+          return `<span class="${cls}">${label}</span>`;
+        })
+        .join("");
+
+      const carrier = finding.carrier
+        ? `${finding.carrier.role} — an ${finding.carrier.stations} von ${finding.relevantStations} Stationen beteiligt`
+        : "keine Rolle benannt";
+
+      return `<div class="flow">
+        <div class="flow-title">${finding.flow.title}</div>
+        <div class="flow-meta">
+          ${finding.manualStations} von ${finding.relevantStations} Stationen von Hand
+          · ${finding.systemSwitches} Programmwechsel
+          · ${carrier}
+        </div>
+        <div class="flow-stations">${stations}</div>
+      </div>`;
+    })
+    .join("\n");
+
+  const taskRows = p3.tasks.entries
+    .map(
+      (entry) => `<tr>
+        <td>${entry.task.label}${entry.isHandoffCandidate ? '<span class="p3-badge">Übergabe</span>' : ""}</td>
+        <td>${bandLabel("frequency", entry.task.frequencyBand)}</td>
+        <td>${bandLabel("duration", entry.task.durationBand)}</td>
+        <td class="comp-val">${formatHours(entry.hoursPerMonth)}</td>
+      </tr>`
+    )
+    .join("\n");
+
+  const matrixRows = p3.systems.rows
+    .map((row) => {
+      const flag = row.isMediaBreak
+        ? '<span class="matrix-flag matrix-flag--break">Medienbruch</span>'
+        : row.isGap
+          ? '<span class="matrix-flag matrix-flag--gap">Lücke</span>'
+          : "";
+      return `<tr>
+        <td>${row.purposeLabel}</td>
+        <td class="matrix-sys">${row.systemNames.join(", ") || "—"}</td>
+        <td>${flag}</td>
+      </tr>`;
+    })
+    .join("\n");
+
+  const overloaded = p3.systems.overloaded
+    .map((entry) => `${entry.name} (${entry.purposeCount} Zwecke)`)
+    .join(", ");
+
+  return `
+<div class="npage">
+  ${ph("Wie bei Ihnen gearbeitet wird", "Abläufe und Handarbeit")}
+
+  <div class="p3-hero">
+    <div class="p3-figure">
+      <div><span class="p3-figure-num">${formatHours(p3.tasks.totalHoursPerMonth)}</span><span class="p3-figure-unit">Stunden / Monat</span></div>
+      <div class="p3-figure-lbl">gehen für wiederkehrende Handarbeit drauf</div>
+    </div>
+    <div class="p3-figure">
+      <div><span class="p3-figure-num">${p3.flows.overallManualShare}</span><span class="p3-figure-unit">%</span></div>
+      <div class="p3-figure-lbl">der Stationen laufen von Hand</div>
+    </div>
+    <div class="p3-figure">
+      <div><span class="p3-figure-num">${p3.systems.mediaBreaks.length}</span><span class="p3-figure-unit">Medienbrüche</span></div>
+      <div class="p3-figure-lbl">bei ${p3.systems.systemCount} eingesetzten Programmen</div>
+    </div>
+  </div>
+
+  <div class="section-lbl">Ihre Abläufe, Station für Station</div>
+  ${flowPages}
+  <div class="flow-legend">
+    <span class="lg-takeover">von Hand — hier setzt Automatisierung an</span>
+    <span class="lg-manual">von Hand — bleibt bewusst beim Menschen</span>
+    <span class="lg-auto">läuft bereits ohne Handarbeit</span>
+  </div>
+  <p class="p3-note">Durchgestrichene Stationen gibt es in Ihrem Betrieb nicht und zählen
+  nirgends mit. Welche Abläufe hier stehen, ergibt sich aus den Aufgaben mit dem größten
+  Zeitaufwand — nicht aus einer Auswahl.</p>
+</div>
+
+<div class="npage">
+  ${ph("Woher die Stunden kommen", "Wiederkehrende Aufgaben")}
+  <div class="table-scroll">
+    <table class="p3-table">
+      <thead>
+        <tr>
+          <th class="col-wide">Aufgabe</th>
+          <th class="col-band">Wie oft</th>
+          <th class="col-band">Wie lange</th>
+          <th class="col-num comp-right">Std. / Monat</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${taskRows}
+        <tr class="comp-total">
+          <td>Summe</td>
+          <td></td>
+          <td></td>
+          <td class="comp-val">${formatHours(p3.tasks.totalHoursPerMonth)}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="comp-note">Gerechnet mit der Mitte des angegebenen Bandes und 4,33 Wochen je Monat.
+  ${p3.tasks.handoffCandidates > 0
+    ? `${p3.tasks.handoffCandidates} dieser Aufgaben berühren mehr als ein Programm — das sind
+       die Stellen, an denen jemand Daten transportiert statt zu entscheiden.`
+    : ""}</p>
+
+  <div class="section-lbl" style="margin-top:22px">Welches Programm wofür</div>
+  <div class="table-scroll">
+    <table class="p3-table p3-matrix">
+      <thead>
+        <tr>
+          <th class="col-purpose">Wofür</th>
+          <th class="col-systems">Womit</th>
+          <th class="col-finding">Befund</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${matrixRows}
+      </tbody>
+    </table>
+  </div>
+  <p class="comp-note">
+    <strong>Medienbruch</strong> heißt: derselbe Zweck wird von mehreren Programmen bedient,
+    jemand hält sie im Gleichstand. <strong>Lücke</strong> heißt: dafür gibt es kein Programm —
+    der Vorgang läuft auf Papier oder im Kopf.
+    ${overloaded ? ` Auffällig: ${overloaded} trägt mehr, als ein einzelnes Werkzeug tragen sollte.` : ""}
+  </p>
+
+</div>
+
+${
+  texts.grundlagenAnalyse
+    ? `<div class="npage">
+         ${ph("Was Sie heute haben und was es trägt", "Ihre digitale Grundausstattung")}
+         <div class="score-prose">${texts.grundlagenAnalyse}</div>
+       </div>`
+    : ""
+}`;
+}
+
+/** Bezeichnungen der Modul-5-Gruppen für den Hinweis im Bericht. */
+const M5_GROUP_LABELS: Record<string, string> = {
+  "5.1": "Einsatz- und Dienstplanung",
+  "5.2": "Arbeitszeit und Lohnvorbereitung",
+  "5.3": "Abwesenheiten und Urlaub",
+  "5.4": "Information und Wissen",
+  "5.5": "Formulare und Freigaben",
+  "5.6": "Vertrieb und Kundenprozesse",
+  "5.7": "Backoffice und wiederkehrende Aufgaben",
+  "5.8": "Systemlandschaft und Schnittstellen",
+};
+
+/**
+ * Was nicht gefragt wurde, weil es den Betrieb nicht betrifft.
+ *
+ * Der Blueprint überspringt Gruppen, die nicht zutreffen, und normiert die
+ * Bewertung auf den Rest. Das steht dem Leser zu — es erklärt, warum eine
+ * Auswertung kürzer ausfällt, und belegt, dass nicht an Fremdem gemessen wurde.
+ */
+function skippedGroupsNote(data: BlueprintReportData): string {
+  if (data.skippedGroups.length === 0) return "";
+  const names = data.skippedGroups
+    .map((code) => M5_GROUP_LABELS[code] ?? `Gruppe ${code}`)
+    .join(", ");
+  return `<div class="skipped-note">
+    <strong>Nicht bewertet, weil nicht zutreffend:</strong> ${names}.
+    Diese Bereiche wurden anhand Ihrer Angaben übersprungen und fließen nicht in die Bewertung
+    ein — Sie werden nicht an Anforderungen gemessen, die Ihr Betrieb nicht hat.
+  </div>`;
 }
 
 export function renderReportHtml(data: BlueprintReportData, texts: ReportTexts, logoDataUri?: string): string {
@@ -90,12 +378,31 @@ export function renderReportHtml(data: BlueprintReportData, texts: ReportTexts, 
     ? new Date(data.completedAt).toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric" })
     : new Date().toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric" });
 
-  const avgScore = data.moduleScores.length > 0
-    ? Math.round(data.moduleScores.reduce((s, m) => s + m.score, 0) / data.moduleScores.length)
-    : 0;
-
+  // Gewichteter Gesamtwert. Er wird im Assembler gerechnet, damit Umschlag,
+  // Tabelle und Fließtext dieselbe Zahl nennen.
+  const avgScore = data.totalScore;
   const avgColor = scoreColor(avgScore);
   const avgLabel = scoreLabel(avgScore);
+
+  const compositionRows = data.moduleScores
+    .map((m) => {
+      const c = scoreColor(m.score);
+      return `<tr>
+        <td class="comp-mod"><span class="comp-num" style="color:${c}">M${m.moduleNumber}</span> ${m.label}</td>
+        <td class="comp-val" style="color:${c}">${m.score}</td>
+        <td class="comp-val comp-weight">${formatPercent(m.weight)}</td>
+        <td class="comp-val comp-contrib">${formatDecimal(m.contribution)}</td>
+      </tr>`;
+    })
+    .join("\n");
+
+  // Aus den *angezeigten* Beiträgen summieren, damit die Spalte für den Leser
+  // aufgeht. Der gerundete Gesamtwert auf dem Umschlag kann dadurch um ein
+  // Zehntel abweichen — darauf weist die Fußnote hin.
+  const compositionSum = data.moduleScores.reduce(
+    (sum, m) => sum + Math.round(m.contribution * 10) / 10,
+    0
+  );
 
   // ── All 8 compact bars for overview page ────────────────────────────────
   const allCompactBars = data.moduleScores
@@ -107,9 +414,9 @@ export function renderReportHtml(data: BlueprintReportData, texts: ReportTexts, 
   for (let i = 0; i < data.moduleScores.length; i += 2) {
     modulePairs.push(data.moduleScores.slice(i, i + 2));
   }
-  const moduleDetailPages = modulePairs.map((pair, i) =>
-    modulePairPage(pair, texts.moduleDetailedAnalysis, i, modulePairs.length)
-  ).join("\n");
+  const moduleDetailPages = modulePairs
+    .map((pair) => modulePairPage(pair, texts.moduleDetailedAnalysis))
+    .join("\n");
 
   // ── Logo markup ──────────────────────────────────────────────────────────
   const logoHtml = logoDataUri
@@ -140,6 +447,13 @@ body {
   background: #fff;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
+  /*
+   * Keine Ligaturen: Auf dem Server greift der Renderer zu einer Schrift,
+   * deren ff- und fi-Glyphen keine Rückabbildung auf die Buchstaben
+   * mitbringen. Im Druck sieht "Prüffristen" richtig aus, beim Kopieren und
+   * beim Suchen im PDF zerfällt es zu "Prü ff risten".
+   */
+  font-variant-ligatures: none;
 }
 
 /* ── Page break utility ─────────────────────────────────────────────────── */
@@ -352,6 +666,100 @@ body {
 .fazit-prose p { margin-bottom: 13px; }
 .fazit-prose p:last-child { margin-bottom: 0; }
 
+/* ── Zusammensetzung des Gesamtwerts ──────────────────────────────────────*/
+.comp-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 8.5pt; }
+.comp-table th {
+  text-align: left; font-size: 7pt; font-weight: 700; letter-spacing: 1px;
+  text-transform: uppercase; color: #64748b; padding: 0 0 5px; border-bottom: 1px solid #e2e8f0;
+}
+.comp-table th.comp-right, .comp-table td.comp-val { text-align: right; }
+.comp-table td { padding: 4.5px 0; border-bottom: 1px solid #f1f5f9; }
+.comp-mod { color: #0d1117; }
+.comp-num { font-weight: 800; margin-right: 4px; }
+.comp-val { font-weight: 700; font-variant-numeric: tabular-nums; }
+.comp-weight { color: #64748b; font-weight: 600; }
+.comp-contrib { color: #0d1117; }
+.comp-total td { border-bottom: 0; border-top: 1.5px solid #0d1117; padding-top: 7px; font-weight: 800; }
+.comp-note { font-size: 7.5pt; color: #64748b; margin-top: 7px; line-height: 1.5; }
+
+/* ── Empfehlungen ─────────────────────────────────────────────────────────*/
+.sol-intro { font-size: 9pt; color: #334155; line-height: 1.6; margin-bottom: 16px; }
+.sol-empty { font-size: 9pt; color: #64748b; line-height: 1.6; }
+.sol-phase { margin-bottom: 18px; }
+.sol-phase-label {
+  font-size: 7.5pt; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase;
+  color: #00b8ff; margin-bottom: 8px;
+}
+/* Außerhalb des gebuchten Pakets: abgesetzt, damit niemand es für
+   Vereinbartes hält — aber sichtbar, weil es der eigentliche Hinweis ist. */
+.sol-phase-beyond { border-left: 2px solid #cbd5e1; padding-left: 12px; }
+.sol-phase-beyond .sol-phase-label { color: #64748b; }
+.sol-beyond-note { font-size: 8pt; color: #64748b; line-height: 1.55; margin: 0 0 8px; }
+.sol-card { background: #f8fafc; border-radius: 4px; padding: 9px 12px; margin-bottom: 7px; }
+.sol-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.sol-name { font-size: 9.5pt; font-weight: 700; color: #0d1117; }
+.sol-cat { font-size: 7pt; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; white-space: nowrap; }
+.sol-desc { font-size: 8.5pt; color: #475569; line-height: 1.55; margin-top: 3px; }
+
+/* ── Dritte Säule ─────────────────────────────────────────────────────────*/
+.p3-hero { display: flex; gap: 28px; align-items: stretch; margin-bottom: 18px; }
+.p3-figure {
+  flex: 1; background: #f8fafc; border-radius: 5px; padding: 14px 18px;
+  border-left: 3px solid #00b8ff;
+}
+.p3-figure-num { font-size: 26pt; font-weight: 800; color: #0d1117; line-height: 1; }
+.p3-figure-unit { font-size: 9pt; color: #64748b; margin-left: 3px; font-weight: 600; }
+.p3-figure-lbl {
+  font-size: 7.5pt; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+  color: #64748b; margin-top: 6px;
+}
+.p3-note { font-size: 8pt; color: #64748b; line-height: 1.5; margin-top: 10px; }
+
+.flow { margin-bottom: 14px; break-inside: avoid; }
+.flow-title { font-size: 10pt; font-weight: 700; color: #0d1117; margin-bottom: 2px; }
+.flow-meta { font-size: 8pt; color: #64748b; margin-bottom: 7px; }
+.flow-stations { display: flex; flex-wrap: wrap; gap: 4px; }
+.flow-station {
+  font-size: 8pt; padding: 3.5px 8px; border-radius: 3px;
+  border: .6pt solid #e2e8f0; background: #f8fafc; color: #475569;
+}
+.flow-station--manual { border-color: #fbbf24; background: #fffbeb; color: #92400e; font-weight: 600; }
+.flow-station--takeover { border-color: #00b8ff; background: #e6f6fe; color: #075985; font-weight: 600; }
+.flow-station--none { opacity: .45; text-decoration: line-through; }
+.flow-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 7.5pt; color: #64748b; margin-top: 10px; }
+.flow-legend span::before {
+  content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 2px;
+  margin-right: 5px; vertical-align: -1px;
+}
+.flow-legend .lg-manual::before { background: #fbbf24; }
+.flow-legend .lg-takeover::before { background: #00b8ff; }
+.flow-legend .lg-auto::before { background: #e2e8f0; }
+
+.matrix-sys { color: #0d1117; }
+.matrix-flag { font-size: 7.5pt; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; }
+.matrix-flag--break { color: #92400e; }
+.matrix-flag--gap { color: #b91c1c; }
+
+.p3-table { table-layout: fixed; }
+.p3-table td:first-child, .p3-table th:first-child { padding-right: 14px; }
+.p3-table .col-wide { width: 44%; }
+.p3-table .col-band { width: 19%; white-space: nowrap; }
+.p3-table .col-num { width: 18%; }
+.p3-matrix .col-purpose { width: 30%; }
+.p3-matrix .col-systems { width: 48%; }
+.p3-matrix .col-finding { width: 22%; }
+.p3-badge {
+  display: inline-block; font-size: 7pt; font-weight: 700; letter-spacing: .6px;
+  text-transform: uppercase; color: #92400e; background: #fffbeb;
+  border: .5pt solid #fbbf24; border-radius: 2px; padding: 0 4px; margin-left: 6px;
+  vertical-align: 1px;
+}
+
+.skipped-note {
+  background: #f8fafc; border-left: 3px solid #cbd5e1; padding: 12px 16px;
+  font-size: 8.5pt; color: #475569; line-height: 1.55; margin-top: 16px; border-radius: 0 3px 3px 0;
+}
+
 .orientation-box {
   margin-top: 22px; padding: 16px 20px; background: #f5f9ff;
   border: 1px solid #dbeafe; border-left: 4px solid #00b8ff; border-radius: 8px;
@@ -380,7 +788,7 @@ body {
       ${logoHtml}
       <div class="cover-logo-sub">OKUN Systems · Digitalisierungsberatung</div>
     </div>
-    <div class="cover-confidential">Vertraulich · Nur für intern</div>
+    <div class="cover-confidential">Vertraulich · Nur für den Adressaten</div>
   </div>
 
   <div class="cover-body">
@@ -392,7 +800,7 @@ body {
       ${data.company.industry ? `<div class="cover-meta-item"><div class="cover-meta-label">Branche</div><div class="cover-meta-val">${data.company.industry}</div></div>` : ""}
       <div class="cover-meta-item"><div class="cover-meta-label">Analysedatum</div><div class="cover-meta-val">${dateStr}</div></div>
       <div class="cover-meta-item"><div class="cover-meta-label">Abdeckung</div><div class="cover-meta-val">${data.totalAnswered} / ${data.totalActive} Fragen</div></div>
-      <div class="cover-meta-item"><div class="cover-meta-label">Paket</div><div class="cover-meta-val">${data.packageType ?? "Standard"}</div></div>
+      <div class="cover-meta-item"><div class="cover-meta-label">Paket</div><div class="cover-meta-val">${packageLabel(data.packageType) ?? "—"}</div></div>
     </div>
 
     <div class="cover-score-section">
@@ -402,7 +810,7 @@ body {
       </div>
       <div>
         <div class="cover-score-lbl" style="color:${avgColor}">${avgLabel}</div>
-        <div class="cover-score-desc">Ø Digitalisierungsgrad über alle ${data.moduleScores.length} Blueprint-Module.</div>
+        <div class="cover-score-desc">Gewichteter Digitalisierungsgrad über ${data.moduleScores.length} bewertete Blueprint-Module.</div>
       </div>
     </div>
 
@@ -414,7 +822,7 @@ body {
 
   <div class="cover-footer">
     <span>OKUN Blueprint™ 2.0 · ${dateStr}</span>
-    <span>okun-systems.de</span>
+    <span>okun-systems.com</span>
   </div>
 </div>
 
@@ -476,15 +884,41 @@ ${texts.contextPageText ? `
     ${allCompactBars}
   </div>
 
+  <div class="section-lbl">So setzt sich Ihr Wert zusammen</div>
+  <table class="comp-table">
+    <thead>
+      <tr>
+        <th>Modul</th>
+        <th class="comp-right">Wert</th>
+        <th class="comp-right">Gewicht</th>
+        <th class="comp-right">Beitrag</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${compositionRows}
+      <tr class="comp-total">
+        <td>Gesamtwert</td>
+        <td class="comp-val"></td>
+        <td class="comp-val">100 %</td>
+        <td class="comp-val" style="color:${avgColor}">${formatDecimal(compositionSum)}</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="comp-note">Nicht jedes Modul wiegt gleich schwer — Prozessqualität bestimmt den
+  Alltag eines Betriebs stärker als Personalmanagement. Auf dem Umschlag steht der gerundete
+  Gesamtwert ${avgScore}.</p>
+
+  ${skippedGroupsNote(data)}
+
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════════════
-     SEITE 6: SCORE-ANALYSE (PROSA)
+     SCORE-ANALYSE — fließt weiter, statt eine halbe Seite frei zu lassen
      ══════════════════════════════════════════════════════════════════════ -->
-<div class="npage">
+<div class="flow-page">
   ${ph("Analyse des aktuellen Digitalisierungsstandes", "Score-Analyse")}
   <div class="score-prose">
-    ${texts.scoreAnalysis || `<p>${data.company.name} hat den OKUN Blueprint™ 2.0 erfolgreich abgeschlossen und einen Gesamtdigitalisierungsgrad von ${avgScore}/100 erreicht. Die Auswertung zeigt ein differenziertes Bild des aktuellen Stands mit klaren Unterschieden zwischen den acht bewerteten Modulen.</p>`}
+    ${texts.scoreAnalysis || `<p>${data.company.name} hat den OKUN Blueprint™ 2.0 erfolgreich abgeschlossen und einen Gesamtdigitalisierungsgrad von ${avgScore}/100 erreicht. Die Auswertung zeigt ein differenziertes Bild des aktuellen Stands mit klaren Unterschieden zwischen den bewerteten Modulen.</p>`}
   </div>
 </div>
 
@@ -494,15 +928,33 @@ ${texts.contextPageText ? `
 ${moduleDetailPages}
 
 <!-- ══════════════════════════════════════════════════════════════════════
-     SEITE 15: FAZIT
+     DRITTE SÄULE: ABLÄUFE, AUFGABEN, SYSTEME
      ══════════════════════════════════════════════════════════════════════ -->
-<div class="npage">
+${pillar3Pages(data, texts)}
+${
+  texts.automatisierungAnalyse
+    ? `<div class="npage">
+         ${ph("Was sich abnehmen ließe", "Automatisierung")}
+         <div class="score-prose">${texts.automatisierungAnalyse}</div>
+       </div>`
+    : ""
+}
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     EMPFEHLUNGEN UND ROADMAP
+     ══════════════════════════════════════════════════════════════════════ -->
+${recommendationPage(data)}
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     FAZIT
+     ══════════════════════════════════════════════════════════════════════ -->
+<div class="flow-page">
   ${ph("Zusammenfassung der Analyseergebnisse", "Fazit")}
   <div class="fazit-prose">
-    ${texts.conclusionText || `<p>Die Analyse von ${data.company.name} zeigt ein klares Bild des aktuellen Digitalisierungsstandes. Der OKUN Blueprint™ 2.0 hat die wichtigsten Stärken und Nachholbereiche in allen acht Modulen identifiziert und strukturiert dargestellt.</p>`}
+    ${texts.conclusionText || `<p>Die Analyse von ${data.company.name} zeigt ein klares Bild des aktuellen Digitalisierungsstandes. Der OKUN Blueprint™ 2.0 hat die wichtigsten Stärken und Nachholbereiche in den bewerteten Modulen identifiziert und strukturiert dargestellt.</p>`}
   </div>
 
-  <div class="orientation-box" style="margin-top:auto">
+  <div class="orientation-box" style="margin-top:18px">
     <div class="orientation-label">Ausblick &amp; Orientierung</div>
     ${texts.orientationText || "Im Strategiegespräch mit OKUN Systems werden die Analyseergebnisse vertieft und konkrete nächste Schritte gemeinsam erarbeitet."}
   </div>

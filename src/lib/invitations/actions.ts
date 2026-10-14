@@ -30,7 +30,7 @@ export async function createInvitation(params: {
     include: { company: true },
   });
 
-  const baseUrl = process.env.NEXTAUTH_URL ?? process.env.APP_URL ?? "https://okun-systems.de";
+  const baseUrl = process.env.NEXTAUTH_URL ?? process.env.APP_URL ?? "https://okun-systems.com";
   const inviteUrl = `${baseUrl}/einladung/${invitation.token}`;
 
   await sendInvitationEmail({

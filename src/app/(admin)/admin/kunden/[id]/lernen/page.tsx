@@ -5,7 +5,9 @@ import {
   suggestAssignment,
   activateAssignment,
   rejectAssignment,
+  releasePackageChapters,
 } from "@/lib/learning/actions";
+import { packageLabel } from "@/lib/packages";
 import { BookOpen, CheckCircle, XCircle, Clock, Plus, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
@@ -21,7 +23,7 @@ export default async function CustomerLearningPage({
   const adminId = (session.user as any).id as string;
 
   const [company, assignments, allPublishedChapters] = await Promise.all([
-    db.company.findUnique({ where: { id }, select: { id: true, name: true } }),
+    db.company.findUnique({ where: { id }, select: { id: true, name: true, plan: true } }),
     db.customerLearningAssignment.findMany({
       where: { companyId: id },
       include: {
@@ -79,6 +81,12 @@ export default async function CustomerLearningPage({
     "use server";
     const chapterId = formData.get("chapterId") as string;
     await suggestAssignment({ companyId: id, chapterId, assignedById: adminId });
+    redirect(`/admin/kunden/${id}/lernen`);
+  }
+
+  async function handleReleasePackage() {
+    "use server";
+    await releasePackageChapters({ companyId: id, assignedById: adminId });
     redirect(`/admin/kunden/${id}/lernen`);
   }
 
@@ -206,6 +214,35 @@ export default async function CustomerLearningPage({
           </div>
         )}
       </div>
+
+      {/*
+        Sammelfreigabe nach Paket. Vorher musste jedes Kapitel für jeden
+        Kunden einzeln angeklickt werden, obwohl die Zuordnung am Kapitel
+        hinterlegt ist. Bereits vergebene und abgelehnte bleiben unberührt.
+      */}
+      {company.plan && (
+        <form
+          action={handleReleasePackage}
+          className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5 flex flex-wrap items-center justify-between gap-4"
+        >
+          <div>
+            <p className="text-[#f0f0f0] font-semibold text-sm">
+              Standardkapitel für {packageLabel(company.plan)} freigeben
+            </p>
+            <p className="text-[#888] text-xs mt-1">
+              Gibt alle Kapitel frei, die zu diesem Paket gehören. Was bereits vergeben oder
+              abgelehnt wurde, bleibt unverändert.
+            </p>
+          </div>
+          <button
+            type="submit"
+            className="flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg bg-[#00b8ff]/10 border border-[#00b8ff]/25 text-[#00b8ff] text-sm hover:bg-[#00b8ff]/15 transition-colors"
+          >
+            <Plus size={14} />
+            Freigeben
+          </button>
+        </form>
+      )}
 
       {/* Add more */}
       {availableChapters.length > 0 && (

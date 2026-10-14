@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1254" height="1254" viewBox="0 0 1254 1254">
+  <defs>
+    <!-- Blue-to-cyan gradient used by the circular mark -->
+    <linearGradient id="ringGradient" gradientUnits="userSpaceOnUse" x1="415" y1="612" x2="875" y2="612">
+      <stop offset="0%" stop-color="#0B67FF"/>
+      <stop offset="38%" stop-color="#4AAEFF"/>
+      <stop offset="70%" stop-color="#A9F2FF"/>
+      <stop offset="100%" stop-color="#C8FCFF"/>
+    </linearGradient>
+
+    <!-- Left side intentionally fades out, matching the source artwork -->
+    <linearGradient id="lineGradient" gradientUnits="userSpaceOnUse" x1="275" y1="612" x2="665" y2="612">
+      <stop offset="0%" stop-color="#061833" stop-opacity="0"/>
+      <stop offset="14%" stop-color="#096CFF" stop-opacity="0.92"/>
+      <stop offset="38%" stop-color="#20A0FF"/>
+      <stop offset="68%" stop-color="#A7F2FF"/>
+      <stop offset="100%" stop-color="#C8FCFF"/>
+    </linearGradient>
+
+    <radialGradient id="nodeGradient" cx="35%" cy="35%" r="75%">
+      <stop offset="0%" stop-color="#D7FFFF"/>
+      <stop offset="100%" stop-color="#A9F4FF"/>
+    </radialGradient>
+
+    <!-- Soft neon glow; remains transparent outside the mark -->
+    <filter id="glow" x="-35%" y="-35%" width="170%" height="170%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="9" result="blur"/>
+    </filter>
+  </defs>
+
+  <!-- Glow layer -->
+  <g opacity="0.38" filter="url(#glow)" fill="none" stroke-linecap="butt">
+    <path d="M 425.34 650.20
+             A 220 220 0 0 0 642 832
+             A 220 220 0 0 0 862 612
+             A 220 220 0 0 0 642 392
+             A 220 220 0 0 0 425.34 573.80"
+          stroke="url(#ringGradient)" stroke-width="24"/>
+    <path d="M 275 612 L 652 612" stroke="url(#lineGradient)" stroke-width="25"/>
+    <circle cx="652" cy="612" r="31" fill="#B8F8FF" stroke="none"/>
+  </g>
+
+  <!-- Crisp vector artwork -->
+  <g fill="none" stroke-linecap="butt">
+    <path d="M 425.34 650.20
+             A 220 220 0 0 0 642 832
+             A 220 220 0 0 0 862 612
+             A 220 220 0 0 0 642 392
+             A 220 220 0 0 0 425.34 573.80"
+          stroke="url(#ringGradient)" stroke-width="22.5"/>
+    <path d="M 275 612 L 652 612" stroke="url(#lineGradient)" stroke-width="23"/>
+    <circle cx="652" cy="612" r="30.5" fill="url(#nodeGradient)"/>
+  </g>
+</svg>

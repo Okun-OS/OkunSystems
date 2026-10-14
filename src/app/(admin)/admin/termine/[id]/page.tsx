@@ -263,7 +263,7 @@ export default async function TerminDetailPage({
 
               {reportData.packageType && (
                 <div className="p-3 bg-[#060a10] border border-[#101c2e] rounded-lg">
-                  <p className="text-[#888] text-xs mb-1">Empfohlenes Paket</p>
+                  <p className="text-[#888] text-xs mb-1">Gebuchtes Paket</p>
                   <p className="text-sm font-semibold" style={{ color: TIER_COLORS[reportData.packageType] ?? "#f0f0f0" }}>
                     {TIER_LABELS[reportData.packageType] ?? reportData.packageType}
                   </p>
