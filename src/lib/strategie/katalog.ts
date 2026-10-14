@@ -16,19 +16,29 @@ export const GRENZE_AUTOMATISIERUNGEN = MAX_AUTOMATISIERUNGEN;
 
 // ─── Ansichten ───────────────────────────────────────────────────────────────
 
+/**
+ * Die Orte des Rundgangs.
+ *
+ * Eine Ansicht ist kein Kapitel in einer Präsentation, sondern ein Ort im
+ * Haus — deshalb heißen die Schlüssel wie die Räume. Beide Seiten stehen
+ * immer am selben Ort: Der Berater geht, der Kunde sieht mit. Darum liegt
+ * diese Liste hier und nicht in einer Komponente; die Datenbank speichert
+ * genau diese Schlüssel.
+ */
 export type AnsichtKey =
-  | "betrieb"
+  | "aussen"
+  | "halle"
+  | "ablaeufe"
   | "grundlagen"
-  | "auswahl"
-  | "wandel"
+  | "automationen"
   | "workforce"
   | "plan"
-  | "abschluss";
+  | "abschied";
 
 export type Ansicht = {
   key: AnsichtKey;
   label: string;
-  /** Was auf dieser Ansicht beantwortet wird. */
+  /** Was an diesem Ort beantwortet wird. */
   frage: string;
   /** Nur bei gebuchter Workforce. */
   nurMitWorkforce?: boolean;
@@ -36,9 +46,19 @@ export type Ansicht = {
 
 export const ANSICHTEN: Ansicht[] = [
   {
-    key: "betrieb",
-    label: "Ihr Betrieb heute",
+    key: "aussen",
+    label: "Vor dem Haus",
+    frage: "Worum geht es heute?",
+  },
+  {
+    key: "halle",
+    label: "Eingangshalle",
     frage: "Wie läuft die Arbeit heute wirklich — und wo bricht sie?",
+  },
+  {
+    key: "ablaeufe",
+    label: "Ihre Abläufe",
+    frage: "Was passiert Station für Station, und was davon bleibt?",
   },
   {
     key: "grundlagen",
@@ -46,14 +66,9 @@ export const ANSICHTEN: Ansicht[] = [
     frage: "Welche Werkzeuge fehlen, und welche richten wir ein?",
   },
   {
-    key: "auswahl",
+    key: "automationen",
     label: "Die Auswahl",
     frage: "Welche Lösungen setzen wir um?",
-  },
-  {
-    key: "wandel",
-    label: "Heute und danach",
-    frage: "Was ändert sich an den Abläufen?",
   },
   {
     key: "workforce",
@@ -63,14 +78,27 @@ export const ANSICHTEN: Ansicht[] = [
   },
   { key: "plan", label: "Ihr Plan", frage: "Was passiert wann, und wer macht was?" },
   {
-    key: "abschluss",
+    key: "abschied",
     label: "Festgehalten",
     frage: "Worauf haben wir uns geeinigt?",
   },
 ];
 
+export const ERSTE_ANSICHT: AnsichtKey = "aussen";
+
 export function ansichtByKey(key: string): Ansicht | undefined {
   return ANSICHTEN.find((a) => a.key === key);
+}
+
+/**
+ * Einen gespeicherten Schlüssel zu einem Ort machen.
+ *
+ * Unbekanntes landet vor dem Haus statt in einem leeren Raum. Das betrifft
+ * alte Sitzungen aus der Zeit vor dem Rundgang und alles, was jemals an
+ * Fremdem in der Spalte steht — ein Gespräch darf daran nicht scheitern.
+ */
+export function alsAnsicht(key: string | null | undefined): AnsichtKey {
+  return ansichtByKey(key ?? "")?.key ?? ERSTE_ANSICHT;
 }
 
 /**

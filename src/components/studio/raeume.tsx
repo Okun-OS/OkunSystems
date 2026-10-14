@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { Gebaeude } from "./gebaeude";
 import { Boden, Himmel, Mondglanz, Sterne, Stadt } from "./kulisse";
 import type { HausDaten, PlanSchritt, WorkforceModul } from "@/lib/strategie/haus";
 import type { StudioPosten } from "@/lib/strategie/studio";
+import { useTakt } from "./takt";
 
 /**
  * Die letzten drei Räume des Rundgangs.
@@ -25,7 +25,8 @@ export function WorkforceSzene({
   gebucht: boolean;
   onZurueck: () => void;
 }) {
-  const [an, setzeAn] = useState(false);
+  const { stufe, setzeStufe } = useTakt();
+  const an = stufe > 0;
   const ohne = module.filter((m) => m.heute.length === 0).length;
   const links = module.slice(0, 3);
   const rechts = module.slice(3);
@@ -61,7 +62,7 @@ export function WorkforceSzene({
         an={an}
         aus="Workforce einschalten"
         ein="Zurück zu heute"
-        onKlick={() => setzeAn((v) => !v)}
+        onKlick={() => setzeStufe(an ? 0 : 1)}
         gesperrt={!gebucht}
         fussnote={
           gebucht
@@ -201,6 +202,7 @@ export function PlanSzene({
   onZurueck: () => void;
   onHinaus: () => void;
 }) {
+  const { gefuehrt: hinausVerborgen } = useTakt();
   return (
     <RaumRahmen
       marke="Ihr Plan"
@@ -280,6 +282,7 @@ export function PlanSzene({
       <div className="mt-10 text-center">
         <button
           onClick={onHinaus}
+          hidden={hinausVerborgen}
           className="flex items-center gap-3 px-7 py-3.5 rounded-full text-[#041018] text-[13.5px] font-bold
             mx-auto bg-[linear-gradient(135deg,#8af2dd,#2ee6c5)]
             shadow-[0_16px_42px_-14px_rgba(46,230,197,.9)] hover:-translate-y-0.5 transition-transform duration-300"
@@ -311,6 +314,7 @@ export function Abschied({
   gewaehlt: number;
   onZurueck: () => void;
 }) {
+  const { gefuehrt } = useTakt();
   return (
     <div className="fixed inset-0 overflow-hidden">
       <div className="absolute inset-0">
@@ -348,6 +352,7 @@ export function Abschied({
 
       <button
         onClick={onZurueck}
+        hidden={gefuehrt}
         className="absolute left-6 top-6 z-20 flex items-center gap-2 px-4 py-2.5 rounded-full
           bg-[rgba(10,22,38,.8)] border border-[rgba(0,184,255,.2)] text-[#90a6c0] text-xs
           backdrop-blur hover:text-[#eef3f9] hover:border-[rgba(0,184,255,.5)] transition-colors"
@@ -392,6 +397,7 @@ function RaumRahmen({
   onZurueck: () => void;
   children: React.ReactNode;
 }) {
+  const { gefuehrt } = useTakt();
   return (
     <div
       className="fixed inset-0 overflow-auto"
@@ -399,6 +405,7 @@ function RaumRahmen({
     >
       <button
         onClick={onZurueck}
+        hidden={gefuehrt}
         className="fixed left-6 top-6 z-20 flex items-center gap-2 px-4 py-2.5 rounded-full
           bg-[rgba(10,22,38,.8)] border border-[rgba(0,184,255,.2)] text-[#90a6c0] text-xs
           backdrop-blur hover:text-[#eef3f9] hover:border-[rgba(0,184,255,.5)] transition-colors"
@@ -438,11 +445,13 @@ function Umschalter({
   gesperrt?: boolean;
   fussnote?: string;
 }) {
+  const { gefuehrt } = useTakt();
   return (
     <div className="mt-10 text-center">
       <button
         onClick={onKlick}
         disabled={gesperrt}
+        hidden={gefuehrt}
         className={`flex items-center gap-3 px-7 py-3.5 rounded-full text-[#041018] text-[13.5px] font-bold
           mx-auto transition-transform duration-300 hover:-translate-y-0.5 disabled:opacity-40
           disabled:cursor-not-allowed ${

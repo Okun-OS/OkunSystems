@@ -247,3 +247,37 @@ export function freigabeHindernisse(
 
   return hindernisse;
 }
+
+// ─── Wer führt ───────────────────────────────────────────────────────────────
+
+export type Fuehrung = "folgt" | "frei";
+
+/**
+ * Wie lange ein Lebenszeichen des Beraters zählt.
+ *
+ * Großzügig gewählt: Lieber zeigt die Kundenseite einen Moment zu lange
+ * „Ihr Berater führt", als dass sie mitten im Satz die Führung abgibt und
+ * der Kunde plötzlich woanders steht.
+ */
+export const PRESENCE_MS = 90_000;
+
+export function istBeraterDa(beraterPresenceAt: Date | null, jetzt = new Date()): boolean {
+  if (!beraterPresenceAt) return false;
+  const her = jetzt.getTime() - beraterPresenceAt.getTime();
+  // Eine Uhr, die vorgeht, darf die Führung nicht abschalten.
+  return her < PRESENCE_MS;
+}
+
+/**
+ * Folgt der Kunde gerade, oder geht er allein?
+ *
+ * Nach dem Gespräch gehört das Haus ihm — da führt niemand mehr, auch wenn
+ * der Berater zufällig noch die Seite offen hat.
+ */
+export function fuehrungFuer(
+  sitzung: { abgeschlossenAm: Date | null; beraterPresenceAt: Date | null },
+  jetzt = new Date()
+): Fuehrung {
+  if (sitzung.abgeschlossenAm) return "frei";
+  return istBeraterDa(sitzung.beraterPresenceAt, jetzt) ? "folgt" : "frei";
+}

@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { StudioDaten } from "@/lib/strategie/studio";
+import type { AnsichtKey } from "@/lib/strategie/katalog";
 import { Abschied, PlanSzene, WorkforceSzene } from "./raeume";
+import { TaktGeber } from "./takt";
 import { AblaufSzene, Aussen, Halle, RegalSzene, Schnitt, StudioMarke } from "./szenen";
 
 /**
@@ -18,32 +20,126 @@ import { AblaufSzene, Aussen, Halle, RegalSzene, Schnitt, StudioMarke } from "./
  * ohne dass der Rundgang sich ändert.
  */
 
-type Ort =
-  | "aussen"
-  | "schnitt"
-  | "halle"
-  | "ablaeufe"
-  | "grundlagen"
-  | "automationen"
-  | "workforce"
-  | "plan"
-  | "abschied";
+/**
+ * Wo man gerade steht.
+ *
+ * Bis auf `schnitt` sind das die Ansichten aus dem Katalog — denn genau die
+ * stehen in der Datenbank, wenn beide Seiten am selben Ort stehen sollen.
+ * Der Schnitt ist kein Ort, sondern der Weg hinein; er wird nicht
+ * übertragen, sondern auf beiden Seiten gespielt.
+ */
+type Ort = AnsichtKey | "schnitt";
 
 export function Rundgang({
   daten,
   untertitel,
   fussnote,
+  ziel,
+  gefuehrt = false,
+  onOrt,
+  stufe,
+  onStufe,
 }: {
   daten: StudioDaten;
   /** Die Branche, fürs Schild über dem Namen. */
   untertitel: string | null;
   /** Was im Schnitt unter dem Firmennamen steht. */
   fussnote: string;
+  /**
+   * Der Ort, an dem die Führung gerade steht.
+   *
+   * Ohne Angabe geht man allein durchs Haus. Mit Angabe folgt der Rundgang
+   * ihr — aber nur, wenn `gefuehrt` gesetzt ist; sonst ist es bloß der
+   * Startpunkt, etwa beim Wiedereinstieg nach einem Neuladen.
+   */
+  ziel?: AnsichtKey;
+  /** Mitsehen statt gehen: Türen führen nirgendwohin. */
+  gefuehrt?: boolean;
+  /** Jeder eigene Schritt — die Führung gibt ihn weiter. */
+  onOrt?: (ort: AnsichtKey) => void;
+  /** Der Takt im Raum: 0 heute, 1 danach. Beim Mitsehen von außen gesetzt. */
+  stufe?: number;
+  /** Der eigene Knopfdruck — die Führung gibt ihn weiter. */
+  onStufe?: (stufe: number) => void;
 }) {
-  const [ort, setzeOrt] = useState<Ort>("aussen");
+  const [ort, setzeOrt] = useState<Ort>(ziel ?? "aussen");
+  const [eigeneStufe, setzeEigeneStufe] = useState(0);
 
-  const zurHalle = useCallback(() => setzeOrt("halle"), []);
-  const inDenRaum = useCallback((key: string) => setzeOrt(key as Ort), []);
+  /*
+    Wer mitsieht, folgt — aber nicht ruckartig.
+
+    Vom Vorplatz in die Halle führt der Weg durch den Schnitt. Käme der
+    Kunde ohne ihn an, stünde er plötzlich in einem anderen Raum; mit ihm
+    sieht er dasselbe wie der Berater. Alles andere ist ein Türwechsel und
+    braucht keine Zwischenszene.
+
+    Das steht hier im Rendern und nicht in einem Effekt: Der neue Ort kommt
+    aus einer Eigenschaft, und React rechnet ihn so in demselben Durchgang
+    fertig, statt den alten Raum erst zu zeigen und sofort zu ersetzen.
+  */
+  const [zuletzt, merke] = useState<AnsichtKey | undefined>(ziel);
+  if (gefuehrt && ziel && ziel !== zuletzt) {
+    merke(ziel);
+    if (ort !== ziel && ort !== "schnitt") {
+      setzeOrt(ort === "aussen" && ziel === "halle" ? "schnitt" : ziel);
+    }
+  }
+
+  /*
+    Zwei Werte, die ein Timer braucht, ohne ihn neu zu starten.
+
+    Der Schnitt läuft 2,6 Sekunden und beendet sich selbst. Käme sein
+    Rückruf bei jedem Mitlesen frisch, würde die Uhr jedes Mal von vorn
+    laufen und der Kunde käme nie in der Halle an.
+  */
+  const zielRef = useRef<AnsichtKey>(ziel ?? "aussen");
+  const gefuehrtRef = useRef(gefuehrt);
+  useEffect(() => {
+    if (ziel) zielRef.current = ziel;
+    gefuehrtRef.current = gefuehrt;
+  }, [gefuehrt, ziel]);
+
+  const schnittFertig = useCallback(
+    () => setzeOrt(gefuehrtRef.current ? zielRef.current : "halle"),
+    []
+  );
+
+  /*
+    Ein Schritt, den man selbst tut.
+
+    Er wirkt sofort auf dem eigenen Bildschirm und wird weitergegeben. Wer
+    mitsieht, tut gar keinen — dort führen die Türen bewusst nirgendwohin,
+    damit nicht zwei Leute gleichzeitig durchs Haus laufen.
+  */
+  const gehe = useCallback(
+    (wohin: AnsichtKey) => {
+      if (gefuehrt) return;
+      setzeOrt(wohin);
+      setzeEigeneStufe(0);
+      onOrt?.(wohin);
+    },
+    [gefuehrt, onOrt]
+  );
+
+  /*
+    Der Takt im Raum.
+
+    Wer mitsieht, bekommt ihn von außen; wer geht, setzt ihn selbst und gibt
+    ihn weiter. Ein Ortswechsel stellt ihn zurück — jeder Raum fängt bei
+    „heute" an, auch beim zweiten Besuch.
+  */
+  const takt = gefuehrt ? (stufe ?? 0) : eigeneStufe;
+  const setzeTakt = useCallback(
+    (wert: number) => {
+      if (gefuehrt) return;
+      setzeEigeneStufe(wert);
+      onStufe?.(wert);
+    },
+    [gefuehrt, onStufe]
+  );
+
+  const zurHalle = useCallback(() => gehe("halle"), [gehe]);
+  const inDenRaum = useCallback((key: string) => gehe(key as AnsichtKey), [gehe]);
 
   const ablauf = daten.ablaeufe[0] ?? null;
   const workforceRaum = daten.haus.raeume.find((r) => r.key === "workforce");
@@ -58,18 +154,36 @@ export function Rundgang({
       die Schicht blitzt in der Vorschau der Admin-Rahmen durch und jeder
       Klick in der Halle landet womöglich in der Navigation dahinter.
     */
+    <TaktGeber value={{ stufe: takt, setzeStufe: setzeTakt, gefuehrt }}>
     <div className="fixed inset-0 z-[200] bg-[#02040a] text-[#eef3f9] overflow-hidden">
       {ort === "aussen" && (
         <Aussen
           haus={daten.haus}
           untertitel={untertitel}
-          vorsatz="Vier Wochen Blueprint. Jetzt gehen wir gemeinsam hinein."
-          onEintreten={() => setzeOrt("schnitt")}
+          vorsatz={
+            gefuehrt
+              ? "Vier Wochen Blueprint. Gleich gehen Sie mit Ihrem Berater hinein."
+              : "Vier Wochen Blueprint. Jetzt gehen wir gemeinsam hinein."
+          }
+          onEintreten={() => {
+            if (gefuehrt) return;
+            setzeOrt("schnitt");
+            onOrt?.("halle");
+          }}
         />
       )}
 
       {ort === "schnitt" && (
-        <Schnitt firma={daten.haus.firma} fussnote={fussnote} onFertig={zurHalle} />
+        <Schnitt
+          firma={daten.haus.firma}
+          fussnote={fussnote}
+          /*
+            Der Schnitt landet dort, wo die Führung inzwischen steht. Zwei
+            Sekunden Cutscene sind lang genug, dass der Berater in dieser
+            Zeit schon eine Tür weiter sein kann.
+          */
+          onFertig={schnittFertig}
+        />
       )}
 
       {ort === "halle" && (
@@ -77,7 +191,7 @@ export function Rundgang({
           haus={daten.haus}
           zeitfresser={daten.zeitfresser}
           onRaum={inDenRaum}
-          onPlan={() => setzeOrt("plan")}
+          onPlan={() => gehe("plan")}
         />
       )}
 
@@ -123,7 +237,7 @@ export function Rundgang({
             plan={daten.plan}
             gewaehlt={gewaehlt}
             onZurueck={zurHalle}
-            onHinaus={() => setzeOrt("abschied")}
+            onHinaus={() => gehe("abschied")}
           />
         ) : (
           <LeererRaum
@@ -144,6 +258,7 @@ export function Rundgang({
 
       {ort !== "aussen" && ort !== "schnitt" && ort !== "abschied" && <StudioMarke />}
     </div>
+    </TaktGeber>
   );
 }
 

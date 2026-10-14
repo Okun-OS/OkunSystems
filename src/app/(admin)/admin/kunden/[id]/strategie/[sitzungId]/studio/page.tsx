@@ -3,16 +3,20 @@ import { getActor } from "@/lib/auth-guards";
 import { mayDoStrategy } from "@/lib/team/roles";
 import { ladeStudio } from "@/lib/strategie/studio";
 import { db } from "@/lib/db";
-import { Rundgang } from "@/components/studio/rundgang";
+import { StudioFuehrung } from "@/components/studio/fuehrung-client";
+import { alsAnsicht } from "@/lib/strategie/katalog";
 import { formatiereBerlin } from "@/lib/zeit";
 
 /**
- * Die Vorschau des Rundgangs für den Berater.
+ * Der Rundgang aus Sicht des Beraters.
  *
- * Dieselbe Oberfläche, die der Kunde im Gespräch sieht — nur ohne Freigabe,
- * damit sich das Haus vor dem Termin ansehen lässt. Was der Kunde sieht,
- * hängt weiter an der Freigabe; diese Seite hier erreicht niemand außer
- * jemandem, der Strategiegespräche führen darf.
+ * Dieselbe Oberfläche, die der Kunde sieht — hier steuert sie. Jeder Schritt
+ * wird gemeldet, und die Kundenseite folgt ihm. Vor dem Termin ist das die
+ * Vorschau: Das Haus lässt sich ansehen, auch ohne Freigabe. Beim Kunden
+ * erscheint trotzdem nichts, denn dort hängt alles an der Freigabe.
+ *
+ * Diese Seite erreicht niemand außer jemandem, der Strategiegespräche führen
+ * darf.
  */
 export default async function StudioVorschau({
   params,
@@ -29,17 +33,28 @@ export default async function StudioVorschau({
 
   const sitzung = await db.strategieSitzung.findUnique({
     where: { id: sitzungId },
-    select: { companyId: true, company: { select: { industry: true } }, session: { select: { completedAt: true } } },
+    select: {
+      companyId: true,
+      ansicht: true,
+      company: { select: { industry: true } },
+      session: { select: { completedAt: true } },
+    },
   });
   if (!sitzung || sitzung.companyId !== id) notFound();
 
   const fertig = sitzung.session?.completedAt;
 
   return (
-    <Rundgang
+    <StudioFuehrung
+      sitzungId={sitzungId}
       daten={daten}
       untertitel={sitzung.company.industry ?? null}
       fussnote={fertig ? `Blueprint vom ${formatiereBerlin(fertig).split(",")[0]}` : "Blueprint"}
+      /*
+        Wer die Seite neu lädt, steht wieder da, wo er stehen geblieben ist —
+        sonst fängt der Rundgang mitten im Gespräch von vorne an.
+      */
+      startOrt={alsAnsicht(sitzung.ansicht)}
     />
   );
 }

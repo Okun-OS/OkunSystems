@@ -15,11 +15,15 @@ import {
   fasseZusammen,
   freigabeHindernisse,
   pruefeAuswahl,
+  fuehrungFuer,
+  istBeraterDa,
+  PRESENCE_MS,
   type ErhobeneAufgabe,
   type PostenStand,
 } from "../src/lib/strategie/engine";
 import {
   ANSICHTEN,
+  alsAnsicht,
   GRENZE_AUTOMATISIERUNGEN,
   ansichtenFuer,
   artAusBlock,
@@ -343,7 +347,7 @@ test("ein Leitfaden ohne Automatisierung wird gemeldet", () => {
 test("Foundation bekommt keine Workforce-Ansicht", () => {
   const keys = ansichtenFuer("foundation").map((a) => a.key);
   assert.ok(!keys.includes("workforce"));
-  assert.ok(keys.includes("auswahl"));
+  assert.ok(keys.includes("automationen"));
 });
 
 test("Operations und Custom bekommen sie", () => {
@@ -355,9 +359,28 @@ test("die Auswahl ist Teil des Gesprächs, nicht ein Anhang", () => {
   // Im Angebot steht wörtlich „Ergebnispräsentation, Roadmap und Auswahl der
   // Lösungen". Alle drei müssen vorkommen.
   const keys = ANSICHTEN.map((a) => a.key);
-  assert.ok(keys.includes("betrieb"));
-  assert.ok(keys.includes("auswahl"));
-  assert.ok(keys.includes("plan"));
+  assert.ok(keys.includes("ablaeufe"), "Ergebnispräsentation");
+  assert.ok(keys.includes("automationen"), "Auswahl");
+  assert.ok(keys.includes("plan"), "Roadmap");
+});
+
+test("die Ansichten heißen wie die Räume des Hauses", () => {
+  // Beide Seiten stehen am selben Ort. Gäbe es zwei Vokabulare, müsste
+  // irgendwo eine Übersetzungstabelle stehen — und die wäre eines Tages falsch.
+  const raeume = baueRaeume({
+    paket: "operations", ablaeufe: 1, stundenProMonat: 600, luecken: 2,
+    felder: 12, plaetze: 3, vergeben: 1, workforceGewaehlt: false,
+  });
+  const ansichten = new Set(ANSICHTEN.map((a) => a.key as string));
+  for (const r of raeume) {
+    assert.ok(ansichten.has(r.key), `${r.key} fehlt in den Ansichten`);
+  }
+});
+
+test("ein unbekannter Ort führt vor das Haus, nicht ins Leere", () => {
+  assert.equal(alsAnsicht("betrieb"), "aussen", "alte Sitzungen vor dem Rundgang");
+  assert.equal(alsAnsicht(null), "aussen");
+  assert.equal(alsAnsicht("halle"), "halle");
 });
 
 // ─── Das Haus ────────────────────────────────────────────────────────────────
@@ -530,6 +553,40 @@ test("ein Plan ohne Blueprint-Phase bricht nicht", () => {
   assert.equal(plan.length, 3);
   assert.equal(plan.filter((p) => p.jetzt).length, 1);
   assert.equal(bauePlan([]).length, 1);
+});
+
+// ─── Wer führt ───────────────────────────────────────────────────────────────
+
+test("ohne Lebenszeichen führt niemand", () => {
+  assert.equal(istBeraterDa(null), false);
+  assert.equal(fuehrungFuer({ abgeschlossenAm: null, beraterPresenceAt: null }), "frei");
+});
+
+test("ein frisches Lebenszeichen führt, ein altes nicht mehr", () => {
+  const jetzt = new Date("2026-03-02T10:00:00Z");
+  const frisch = new Date(jetzt.getTime() - 10_000);
+  const alt = new Date(jetzt.getTime() - PRESENCE_MS - 1_000);
+
+  assert.equal(istBeraterDa(frisch, jetzt), true);
+  assert.equal(istBeraterDa(alt, jetzt), false);
+  assert.equal(
+    fuehrungFuer({ abgeschlossenAm: null, beraterPresenceAt: frisch }, jetzt),
+    "folgt"
+  );
+  assert.equal(
+    fuehrungFuer({ abgeschlossenAm: null, beraterPresenceAt: alt }, jetzt),
+    "frei"
+  );
+});
+
+test("nach dem Gespräch gehört das Haus dem Kunden", () => {
+  const jetzt = new Date("2026-03-02T10:00:00Z");
+  const frisch = new Date(jetzt.getTime() - 5_000);
+  // Auch wenn der Berater die Seite noch offen hat: Geführt wird nicht mehr.
+  assert.equal(
+    fuehrungFuer({ abgeschlossenAm: new Date("2026-03-02T09:00:00Z"), beraterPresenceAt: frisch }, jetzt),
+    "frei"
+  );
 });
 
 console.log(`\n${passed} Tests bestanden.\n`);

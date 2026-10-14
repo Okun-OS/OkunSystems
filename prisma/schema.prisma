@@ -2000,9 +2000,16 @@ model StrategieSitzung {
   /// vorbereitet | freigegeben | laeuft | abgeschlossen | abgebrochen
   status String @default("vorbereitet")
 
-  /// Die Ansicht, die beide Seiten gerade sehen. Der Berater schaltet, der
-  /// Kunde sieht mit — dasselbe Muster wie Präsentation und Radar im Closing.
-  ansicht String @default("betrieb")
+  /// Der Ort im Haus, an dem beide Seiten gerade stehen. Der Berater geht,
+  /// der Kunde sieht mit — dasselbe Muster wie Präsentation und Radar im
+  /// Closing. Die Schlüssel stehen in `lib/strategie/katalog.ts`.
+  ansicht String @default("aussen")
+
+  /// Der Takt innerhalb eines Raums: 0 ist „wie es heute ist", 1 „wie es
+  /// danach ist". Ohne ihn drückt der Berater den Knopf und der Kunde sieht
+  /// weiter den alten Zustand — und damit fehlt genau der Moment, für den
+  /// der ganze Raum gebaut ist.
+  ansichtStufe Int @default(0)
 
   /// Das gebuchte Paket zum Zeitpunkt des Gesprächs. Eingefroren, weil es
   /// darüber entscheidet, was „im Paket" heißt — und Pakete ändern sich.

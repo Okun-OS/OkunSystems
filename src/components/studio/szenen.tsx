@@ -5,6 +5,7 @@ import { OkunLogo } from "@/components/layout/okun-logo";
 import { Gebaeude } from "./gebaeude";
 import { Boden, Himmel, Mondglanz, Regen, Sterne, Stadt } from "./kulisse";
 import type { AblaufRaum, HausDaten, Regalfach } from "@/lib/strategie/haus";
+import { useTakt } from "./takt";
 
 /**
  * Die Szenen des Rundgangs.
@@ -28,6 +29,7 @@ export function Aussen({
   vorsatz: string;
   onEintreten: () => void;
 }) {
+  const { gefuehrt } = useTakt();
   const [geht, setzeGeht] = useState(false);
   const welt = useRef<HTMLDivElement>(null);
 
@@ -54,7 +56,9 @@ export function Aussen({
   }, [geht]);
 
   function eintreten() {
-    if (geht) return;
+    // Wer mitsieht, öffnet die Tür nicht — sonst führe gleich die Kamerafahrt
+    // ins Leere und der Kunde stünde vor einer Wand.
+    if (gefuehrt || geht) return;
     setzeGeht(true);
     // Die Kamerafahrt läuft 2,2 Sekunden; danach übernimmt der Schnitt.
     setTimeout(onEintreten, 1700);
@@ -105,15 +109,32 @@ export function Aussen({
         }`}
         style={{ animation: "studio-schrift-ein 1.3s cubic-bezier(.16,1,.3,1) 1.2s both" }}
       >
-        <button
-          onClick={eintreten}
-          className="flex items-center gap-3 px-8 py-4 rounded-full text-[#041018] text-sm font-bold
-            bg-[linear-gradient(135deg,#7adcff,#00b8ff)] shadow-[0_18px_48px_-14px_rgba(0,184,255,.95)]
-            hover:-translate-y-0.5 hover:scale-[1.03] transition-transform duration-300"
-        >
-          Studio betreten <span className="text-base">→</span>
-        </button>
-        <p className="text-[#52687f] text-[11px]">oder auf die Tür klicken</p>
+        {gefuehrt ? (
+          /*
+            Der Wartezustand.
+
+            Der Kunde steht vor seinem eigenen Haus, bis der Berater die Tür
+            öffnet. Das ist kein Ladebalken, sondern der Anfang der
+            Geschichte — und er hält, solange er halten muss.
+          */
+          <p className="flex items-center gap-2.5 px-5 py-3 rounded-full border border-[rgba(0,184,255,.22)]
+            bg-[rgba(10,22,38,.7)] backdrop-blur text-[#90a6c0] text-[12.5px]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#00b8ff] studio-atmen" />
+            Gleich geht es los
+          </p>
+        ) : (
+          <>
+            <button
+              onClick={eintreten}
+              className="flex items-center gap-3 px-8 py-4 rounded-full text-[#041018] text-sm font-bold
+                bg-[linear-gradient(135deg,#7adcff,#00b8ff)] shadow-[0_18px_48px_-14px_rgba(0,184,255,.95)]
+                hover:-translate-y-0.5 hover:scale-[1.03] transition-transform duration-300"
+            >
+              Studio betreten <span className="text-base">→</span>
+            </button>
+            <p className="text-[#52687f] text-[11px]">oder auf die Tür klicken</p>
+          </>
+        )}
       </div>
     </div>
   );
@@ -207,6 +228,7 @@ export function Halle({
   /** Der Weg zum Schluss — nicht hinter einer Tür, sondern am Ausgang. */
   onPlan: () => void;
 }) {
+  const { gefuehrt } = useTakt();
   return (
     <div
       className="fixed inset-0 overflow-hidden"
@@ -254,8 +276,10 @@ export function Halle({
           <button
             key={r.key}
             onClick={() => !r.verschlossen && onRaum(r.key)}
-            disabled={r.verschlossen}
-            className="w-[196px] text-center group disabled:cursor-not-allowed"
+            disabled={r.verschlossen || gefuehrt}
+            className={`w-[196px] text-center group disabled:cursor-not-allowed ${
+              gefuehrt ? "" : "cursor-pointer"
+            }`}
             style={{ animation: `studio-pop .9s cubic-bezier(.2,1.05,.3,1) ${0.25 + i * 0.13}s both` }}
           >
             <div
@@ -308,6 +332,7 @@ export function Halle({
       */}
       <button
         onClick={onPlan}
+        hidden={gefuehrt}
         className="absolute left-1/2 bottom-[7%] -translate-x-1/2 flex items-center gap-2.5 px-5 py-2.5
           rounded-full border border-[rgba(46,230,197,.3)] bg-[rgba(8,26,30,.7)] backdrop-blur
           text-[#8fd8cb] text-xs hover:text-[#eef3f9] hover:border-[rgba(46,230,197,.65)]
@@ -343,7 +368,8 @@ export function AblaufSzene({
   aufwandMinuten: number;
   onZurueck: () => void;
 }) {
-  const [umgebaut, setzeUmgebaut] = useState(false);
+  const { stufe, setzeStufe, gefuehrt } = useTakt();
+  const umgebaut = stufe > 0;
   const stunden = (aufwandMinuten / 60).toLocaleString("de-DE", { maximumFractionDigits: 1 });
 
   return (
@@ -365,7 +391,12 @@ export function AblaufSzene({
         </h2>
         <p className="mt-2.5 mx-auto max-w-[60ch] text-[#90a6c0] text-[12.5px]">
           {raum.stationen.length} Stationen, {raum.handStationen} davon laufen heute von Hand.
-          Drücken Sie den Knopf — dann sehen Sie, welche davon künftig ohne Sie laufen.
+          {/* Wer mitsieht, hat keinen Knopf — und soll nicht nach einem suchen. */}
+          {gefuehrt
+            ? umgebaut
+              ? " So sieht derselbe Ablauf aus, wenn wir fertig sind."
+              : " Gleich sehen Sie, welche davon künftig ohne Sie laufen."
+            : " Drücken Sie den Knopf — dann sehen Sie, welche davon künftig ohne Sie laufen."}
         </p>
       </div>
 
@@ -466,7 +497,8 @@ export function AblaufSzene({
           />
         </div>
         <button
-          onClick={() => setzeUmgebaut((v) => !v)}
+          onClick={() => setzeStufe(umgebaut ? 0 : 1)}
+          hidden={gefuehrt}
           className={`flex items-center gap-3 px-7 py-3.5 rounded-full text-[#041018] text-[13.5px] font-bold
             mx-auto transition-transform duration-300 hover:-translate-y-0.5 hover:scale-[1.03] ${
               umgebaut
@@ -498,7 +530,8 @@ export function RegalSzene({
   regal: Regalfach[];
   onZurueck: () => void;
 }) {
-  const [gefuellt, setzeGefuellt] = useState(false);
+  const { stufe, setzeStufe, gefuehrt } = useTakt();
+  const gefuellt = stufe > 0;
   const luecken = regal.filter((r) => r.luecke).length;
 
   return (
@@ -563,8 +596,9 @@ export function RegalSzene({
 
       <div className="absolute left-1/2 bottom-[11%] -translate-x-1/2 text-center">
         <button
-          onClick={() => setzeGefuellt((v) => !v)}
+          onClick={() => setzeStufe(gefuellt ? 0 : 1)}
           disabled={luecken === 0}
+          hidden={gefuehrt}
           className={`flex items-center gap-3 px-7 py-3.5 rounded-full text-[#041018] text-[13.5px] font-bold
             mx-auto transition-transform duration-300 hover:-translate-y-0.5 disabled:opacity-40 ${
               gefuellt
@@ -582,7 +616,16 @@ export function RegalSzene({
 
 // ─── Gemeinsame Kleinteile ───────────────────────────────────────────────────
 
+/*
+  Der Weg zurück — nur für den, der geht.
+
+  Wer mitsieht, bekommt ihn nicht zu sehen: Ein Knopf, der nichts tut, ist
+  schlimmer als keiner, und zwei Leute, die gleichzeitig durchs Haus laufen,
+  sind das Ende des Gesprächs.
+*/
 function ZurueckKnopf({ onClick }: { onClick: () => void }) {
+  const { gefuehrt } = useTakt();
+  if (gefuehrt) return null;
   return (
     <button
       onClick={onClick}
