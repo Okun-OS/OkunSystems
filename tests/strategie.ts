@@ -26,11 +26,13 @@ import {
   kundeDarfSehen,
 } from "../src/lib/strategie/katalog";
 import { entwurfAusLeitfaden, entwurfsHinweise } from "../src/lib/strategie/vorbereitung";
-import { MAX_AUTOMATISIERUNGEN } from "../src/lib/packages/umfang";
+import { MAX_AUTOMATISIERUNGEN, umfangFuer } from "../src/lib/packages/umfang";
 import {
   baueAblaufRaum,
+  bauePlan,
   baueRaeume,
   baueRegal,
+  baueWorkforce,
   entfaellt,
   fahrzeugFuer,
   hallensatz,
@@ -469,6 +471,65 @@ test("die Türschilder tragen echte Zahlen", () => {
   assert.match(raeume[0].kennzahl, /62,8 h/);
   assert.equal(raeume[1].kennzahl, "4 Lücken");
   assert.equal(raeume[2].kennzahl, "2 vergeben");
+});
+
+// ─── Workforce-Raum und Plan ─────────────────────────────────────────────────
+
+test("die Workforce-Module stehen gegen das, was den Zweck heute trägt", () => {
+  const regal = baueRegal([
+    { name: "Excel", purposes: ["pur_time"] },
+    { name: "Papier", purposes: ["pur_time"] },
+  ]);
+  const umfang = umfangFuer("operations")!;
+  const block = umfang.bloecke.find((b) => b.titel.includes("Workforce"))!;
+  const module = baueWorkforce(block.beispiele, regal);
+
+  assert.equal(module.length, 6);
+  // Die Beschreibung kommt aus dem Angebot, nicht aus einer Produktseite.
+  const zeit = module.find((m) => m.key === "zeiterfassung")!;
+  assert.match(zeit.beschreibung, /stempeln/);
+  assert.ok(!zeit.beschreibung.includes("—"), "der Titel steht nicht zweimal da");
+  assert.deepEqual(zeit.heute, ["Excel", "Papier"]);
+  // Was niemand trägt, bleibt leer — das ist das Argument.
+  assert.deepEqual(module.find((m) => m.key === "dienstplanung")!.heute, []);
+});
+
+test("ohne hinterlegte Beispiele bleiben die Module ohne Behauptung", () => {
+  const module = baueWorkforce([], baueRegal([]));
+  assert.equal(module.length, 6);
+  assert.ok(module.every((m) => m.beschreibung === ""));
+  assert.ok(module.every((m) => m.heute.length === 0));
+});
+
+test("der Plan enthält dieses Gespräch und markiert es als Standort", () => {
+  const umfang = umfangFuer("foundation")!;
+  const plan = bauePlan(umfang.phasen);
+
+  assert.equal(plan.length, umfang.phasen.length + 1, "das Gespräch kommt dazu");
+  const jetzt = plan.filter((p) => p.jetzt);
+  assert.equal(jetzt.length, 1, "genau ein Schritt ist der aktuelle");
+  assert.match(jetzt[0].titel, /Strategiegespräch/);
+
+  // Direkt nach dem Blueprint, denn dafür ist es das Gespräch.
+  const blueprint = plan.find((p) => p.titel.includes("Blueprint"))!;
+  assert.equal(jetzt[0].nummer, blueprint.nummer + 1);
+  assert.equal(blueprint.erledigt, true);
+
+  // Davor erledigt, danach offen — und die Nummern laufen durch.
+  assert.ok(plan.filter((p) => p.erledigt).every((p) => p.nummer < jetzt[0].nummer));
+  assert.ok(plan.slice(jetzt[0].nummer).every((p) => !p.erledigt && !p.jetzt));
+  assert.deepEqual(plan.map((p) => p.nummer), plan.map((_, i) => i + 1));
+
+  // Titel und Erklärung werden am Gedankenstrich getrennt.
+  assert.equal(plan[0].titel, "Buchung und Kickoff");
+  assert.match(plan[0].was, /Vertrag abschließen/);
+});
+
+test("ein Plan ohne Blueprint-Phase bricht nicht", () => {
+  const plan = bauePlan(["Buchung", "Umsetzung"]);
+  assert.equal(plan.length, 3);
+  assert.equal(plan.filter((p) => p.jetzt).length, 1);
+  assert.equal(bauePlan([]).length, 1);
 });
 
 console.log(`\n${passed} Tests bestanden.\n`);

@@ -367,8 +367,25 @@ body {
   100% { left: 97%; opacity: 0; }
 }
 
+/* Am Schluss gehen die letzten dunklen Fenster an. */
+@keyframes studio-fenster-an {
+  from { opacity: 0; }
+}
+
+/*
+  Das erleuchtete Haus.
+
+  Kein zweites Bild, sondern dasselbe mit mehr Licht: Die Fenster bekommen
+  einen Schein, der Lichtkegel vor der Tür wird breiter. Der Unterschied
+  muss aus dem Haus kommen, das am Anfang dastand — sonst sieht man zwei
+  Häuser und nicht eine Veränderung.
+*/
+.studio-erleuchtet .studio-fenster { filter: drop-shadow(0 0 8px rgba(140, 215, 255, .55)); }
+.studio-erleuchtet .studio-kegel { opacity: .95; }
+
 @media (prefers-reduced-motion: reduce) {
   .studio-fenster, .studio-atmen, .studio-kegel, .studio-regen,
   .studio-welt.studio-eintritt { animation: none !important; }
   .studio-welt.studio-eintritt { opacity: 0; }
+  .studio-fenster rect { animation: none !important; }
 }

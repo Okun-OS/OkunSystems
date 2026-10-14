@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import type { StudioDaten } from "@/lib/strategie/studio";
+import { Abschied, PlanSzene, WorkforceSzene } from "./raeume";
 import { AblaufSzene, Aussen, Halle, RegalSzene, Schnitt, StudioMarke } from "./szenen";
 
 /**
@@ -17,7 +18,16 @@ import { AblaufSzene, Aussen, Halle, RegalSzene, Schnitt, StudioMarke } from "./
  * ohne dass der Rundgang sich ändert.
  */
 
-type Ort = "aussen" | "schnitt" | "halle" | "ablaeufe" | "grundlagen" | "automationen" | "workforce";
+type Ort =
+  | "aussen"
+  | "schnitt"
+  | "halle"
+  | "ablaeufe"
+  | "grundlagen"
+  | "automationen"
+  | "workforce"
+  | "plan"
+  | "abschied";
 
 export function Rundgang({
   daten,
@@ -36,6 +46,8 @@ export function Rundgang({
   const inDenRaum = useCallback((key: string) => setzeOrt(key as Ort), []);
 
   const ablauf = daten.ablaeufe[0] ?? null;
+  const workforceRaum = daten.haus.raeume.find((r) => r.key === "workforce");
+  const gewaehlt = daten.posten.filter((p) => p.zustand === "gewaehlt");
 
   return (
     /*
@@ -61,7 +73,12 @@ export function Rundgang({
       )}
 
       {ort === "halle" && (
-        <Halle haus={daten.haus} zeitfresser={daten.zeitfresser} onRaum={inDenRaum} />
+        <Halle
+          haus={daten.haus}
+          zeitfresser={daten.zeitfresser}
+          onRaum={inDenRaum}
+          onPlan={() => setzeOrt("plan")}
+        />
       )}
 
       {ort === "ablaeufe" &&
@@ -85,15 +102,47 @@ export function Rundgang({
         <SockelSzene posten={daten.posten} onZurueck={zurHalle} />
       )}
 
-      {ort === "workforce" && (
-        <LeererRaum
-          titel="OKUN Workforce"
-          text="Dieser Raum gehört zum Paket Operations."
+      {ort === "workforce" &&
+        (daten.workforce.length > 0 ? (
+          <WorkforceSzene
+            module={daten.workforce}
+            gebucht={!workforceRaum?.verschlossen}
+            onZurueck={zurHalle}
+          />
+        ) : (
+          <LeererRaum
+            titel="OKUN Workforce"
+            text="Zum gebuchten Paket ist kein Leistungsumfang hinterlegt."
+            onZurueck={zurHalle}
+          />
+        ))}
+
+      {ort === "plan" &&
+        (daten.plan.length > 0 ? (
+          <PlanSzene
+            plan={daten.plan}
+            gewaehlt={gewaehlt}
+            onZurueck={zurHalle}
+            onHinaus={() => setzeOrt("abschied")}
+          />
+        ) : (
+          <LeererRaum
+            titel="Ihr Plan"
+            text="Zum gebuchten Paket ist kein Projektablauf hinterlegt."
+            onZurueck={zurHalle}
+          />
+        ))}
+
+      {ort === "abschied" && (
+        <Abschied
+          haus={daten.haus}
+          untertitel={untertitel}
+          gewaehlt={gewaehlt.length}
           onZurueck={zurHalle}
         />
       )}
 
-      {ort !== "aussen" && ort !== "schnitt" && <StudioMarke />}
+      {ort !== "aussen" && ort !== "schnitt" && ort !== "abschied" && <StudioMarke />}
     </div>
   );
 }

@@ -354,6 +354,104 @@ export function hallensatz(input: {
   return teile.join(", ");
 }
 
+// ─── Der Workforce-Raum ──────────────────────────────────────────────────────
+
+export type WorkforceModul = {
+  key: string;
+  titel: string;
+  beschreibung: string;
+  /** Welchen Zweck aus dem Regal dieses Modul übernimmt. */
+  zweckKey: string | null;
+  /** Was diesen Zweck heute trägt — leer heißt: niemand. */
+  heute: string[];
+};
+
+/**
+ * Die sechs Module aus dem Angebot, gegen den Betrieb gehalten.
+ *
+ * Die Beschreibungen stammen aus dem Leistungsumfang und nicht aus einer
+ * Produktseite — was im Angebot steht, steht hier. Wogegen sie gehalten
+ * werden, kommt aus dem Regal: Für jeden Zweck, den ein Modul übernimmt,
+ * steht daneben, was ihn heute trägt. Ein leeres „heute" ist das stärkste
+ * Argument, das es gibt, und es ist eins aus den eigenen Angaben.
+ */
+const WORKFORCE_MODULE: Array<{ key: string; titel: string; zweckKey: string | null }> = [
+  { key: "dienstplanung", titel: "Dienstplanung", zweckKey: "pur_scheduling" },
+  { key: "zeiterfassung", titel: "Zeiterfassung", zweckKey: "pur_time" },
+  { key: "urlaub", titel: "Urlaubsmanagement", zweckKey: "pur_time" },
+  { key: "lohn", titel: "Lohnabrechnung", zweckKey: "pur_hr" },
+  { key: "akte", titel: "Digitale Mitarbeiterakte", zweckKey: "pur_hr" },
+  { key: "auswertungen", titel: "Auswertungen und Reports", zweckKey: "pur_reports" },
+];
+
+export function baueWorkforce(
+  beispiele: string[],
+  regal: Regalfach[]
+): WorkforceModul[] {
+  return WORKFORCE_MODULE.map((m, i) => {
+    // Im Angebot steht „Titel — Beschreibung"; der Teil nach dem Strich ist
+    // das, was wir versprochen haben, also genau das, was hier stehen muss.
+    const roh = beispiele[i] ?? "";
+    const strich = roh.indexOf("—");
+    const beschreibung = strich >= 0 ? roh.slice(strich + 1).trim() : roh.trim();
+    const fach = m.zweckKey ? regal.find((f) => f.zweckKey === m.zweckKey) : undefined;
+    return {
+      key: m.key,
+      titel: m.titel,
+      beschreibung,
+      zweckKey: m.zweckKey,
+      heute: fach?.programme ?? [],
+    };
+  });
+}
+
+// ─── Der Plan ────────────────────────────────────────────────────────────────
+
+export type PlanSchritt = {
+  nummer: number;
+  titel: string;
+  was: string;
+  /** Der Schritt, in dem das Gespräch selbst steht. */
+  jetzt: boolean;
+  /** Schon hinter uns. */
+  erledigt: boolean;
+};
+
+/** Das Gespräch, in dem der Kunde gerade sitzt. */
+const DIESES_GESPRAECH =
+  "Strategiegespräch — Ergebnisse aus dem Blueprint, Roadmap und Auswahl der Lösungen";
+
+/**
+ * Der Weg von hier bis zum Go-Live.
+ *
+ * Die Schritte sind nicht erfunden, sondern der Projektablauf aus dem
+ * Angebot. Nur einer kommt dazu: dieses Gespräch. Im Vertrag steckt es in
+ * „Auswahl und Umsetzung", aber es findet vor den Grundlagen statt — und wer
+ * vor der Strecke steht, muss sehen, wo er steht, sonst ist es eine
+ * Produktgrafik und kein Plan.
+ *
+ * Alles vor diesem Schritt ist erledigt, alles danach ist das, wofür die
+ * Auswahl von eben der Arbeitsauftrag ist.
+ */
+export function bauePlan(phasen: string[]): PlanSchritt[] {
+  // Nach dem Blueprint, denn dafür ist es das Gespräch. Findet sich keine
+  // Blueprint-Phase, steht es an dritter Stelle — so steht es im Angebot.
+  const nachBlueprint = phasen.findIndex((p) => p.includes("Blueprint"));
+  const jetzt = nachBlueprint >= 0 ? nachBlueprint + 1 : Math.min(2, phasen.length);
+  const alle = [...phasen.slice(0, jetzt), DIESES_GESPRAECH, ...phasen.slice(jetzt)];
+
+  return alle.map((p, i) => {
+    const strich = p.indexOf("—");
+    return {
+      nummer: i + 1,
+      titel: strich >= 0 ? p.slice(0, strich).trim() : p,
+      was: strich >= 0 ? p.slice(strich + 1).trim() : "",
+      jetzt: i === jetzt,
+      erledigt: i < jetzt,
+    };
+  });
+}
+
 /** Welcher Art ein Posten im Automationsraum auf welchem Sockel steht. */
 export function sockelFuerArt(art: PostenArt): "automation" | "grundlage" | "workforce" | "extra" {
   if (art === "automatisierung") return "automation";

@@ -199,10 +199,13 @@ export function Halle({
   haus,
   zeitfresser,
   onRaum,
+  onPlan,
 }: {
   haus: HausDaten;
   zeitfresser: Array<{ label: string; stunden: string }>;
   onRaum: (key: string) => void;
+  /** Der Weg zum Schluss — nicht hinter einer Tür, sondern am Ausgang. */
+  onPlan: () => void;
 }) {
   return (
     <div
@@ -294,6 +297,25 @@ export function Halle({
           </button>
         ))}
       </div>
+
+      {/*
+        Der Gang zum Schluss.
+
+        Keine fünfte Tür: Der Plan ist kein Raum über den Betrieb, sondern
+        der Weg hinaus. Er steht deshalb am Boden der Halle und nicht in
+        der Reihe — und er ist jederzeit erreichbar, auch wenn der Berater
+        im Gespräch nur zwei der vier Räume zeigt.
+      */}
+      <button
+        onClick={onPlan}
+        className="absolute left-1/2 bottom-[7%] -translate-x-1/2 flex items-center gap-2.5 px-5 py-2.5
+          rounded-full border border-[rgba(46,230,197,.3)] bg-[rgba(8,26,30,.7)] backdrop-blur
+          text-[#8fd8cb] text-xs hover:text-[#eef3f9] hover:border-[rgba(46,230,197,.65)]
+          transition-colors"
+        style={{ animation: "studio-schrift-ein 1.1s cubic-bezier(.16,1,.3,1) 1s both" }}
+      >
+        Ihr Plan <span className="text-sm">→</span>
+      </button>
     </div>
   );
 }

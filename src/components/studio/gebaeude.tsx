@@ -24,6 +24,7 @@ export function Gebaeude({
   stockwerke,
   fahrzeug,
   onTuer,
+  erleuchtet = false,
 }: {
   /** Der kurze Name auf dem Leuchtschild. */
   schild: string;
@@ -32,6 +33,14 @@ export function Gebaeude({
   stockwerke: number;
   fahrzeug: Fahrzeug;
   onTuer: () => void;
+  /**
+   * Am Ende des Rundgangs brennt im ganzen Haus Licht.
+   *
+   * Dasselbe Haus, dieselben Fenster an denselben Stellen — nur sind die
+   * dunklen jetzt auch an. Dass es derselbe Baukörper ist, macht den
+   * Unterschied sichtbar; ein zweites Haus würde ihn verstecken.
+   */
+  erleuchtet?: boolean;
 }) {
   // Die Fenster werden einmal gewürfelt und bleiben dann stehen. Ein Haus,
   // dessen Fenster bei jedem Zeichnen woanders brennen, flackert.
@@ -91,18 +100,31 @@ export function Gebaeude({
 
       {/* Fensterraster */}
       <g className="studio-fenster">
-        {fenster.liste.map(({ r, c, warm, an }) => (
-          <rect
-            key={`${r}-${c}`}
-            x={288 + c * 47}
-            y={dach + 32 + r * 62}
-            width="33"
-            height="44"
-            rx="2"
-            fill={an ? (warm ? "#d9a44e" : "#6fc4ef") : "#0d1c2d"}
-            opacity={an ? (warm ? 0.5 : 0.38) : 0.85}
-          />
-        ))}
+        {fenster.liste.map(({ r, c, warm, an: nachts }) => {
+          const an = erleuchtet || nachts;
+          return (
+            <rect
+              key={`${r}-${c}`}
+              x={288 + c * 47}
+              y={dach + 32 + r * 62}
+              width="33"
+              height="44"
+              rx="2"
+              fill={an ? (warm ? "#d9a44e" : "#6fc4ef") : "#0d1c2d"}
+              opacity={
+                an
+                  ? (warm ? 0.5 : 0.38) + (erleuchtet ? 0.16 : 0)
+                  : 0.85
+              }
+              style={
+                // Die zuletzt angegangenen Fenster kommen gestaffelt dazu.
+                erleuchtet && !nachts
+                  ? { animation: `studio-fenster-an .9s ease-out ${0.5 + (r * 9 + c) * 0.045}s both` }
+                  : undefined
+              }
+            />
+          );
+        })}
       </g>
 
       {/* Seitenflügel */}

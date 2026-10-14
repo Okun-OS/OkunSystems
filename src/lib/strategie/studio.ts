@@ -2,16 +2,21 @@ import { db } from "@/lib/db";
 import { PURPOSES } from "@/lib/blueprint/pillar3-catalog";
 import {
   baueAblaufRaum,
+  bauePlan,
   baueRaeume,
   baueRegal,
+  baueWorkforce,
   fahrzeugFuer,
   hallensatz,
   schildName,
   stockwerkeFuer,
   type AblaufRaum,
   type HausDaten,
+  type PlanSchritt,
   type Regalfach,
+  type WorkforceModul,
 } from "./haus";
+import { umfangFuer } from "@/lib/packages/umfang";
 import { GRENZE_AUTOMATISIERUNGEN, type PostenArt } from "./katalog";
 import { alsStunden } from "./engine";
 
@@ -39,6 +44,8 @@ export type StudioDaten = {
   haus: HausDaten;
   ablaeufe: AblaufRaum[];
   regal: Regalfach[];
+  workforce: WorkforceModul[];
+  plan: PlanSchritt[];
   posten: StudioPosten[];
   /** Gesamter heutiger Aufwand aller erhobenen Aufgaben, in Minuten. */
   aufwandGesamtMinuten: number;
@@ -157,11 +164,24 @@ export async function ladeStudio(sitzungId: string): Promise<StudioDaten | null>
     }),
   };
 
+  /*
+    Workforce und Plan stehen im Leistungsumfang, nicht im Blueprint.
+
+    Beides kommt wörtlich aus dem Paket, das der Kunde gebucht hat — die
+    sechs Module aus dem Angebot und der Projektablauf aus dem Vertrag. Ist
+    kein Umfang hinterlegt, bleiben beide Räume leer, statt etwas zu
+    behaupten.
+  */
+  const umfang = umfangFuer(sitzung.paket);
+  const workforceBlock = umfang?.bloecke.find((b) => b.titel.includes("Workforce"));
+
   return {
     sitzungId: sitzung.id,
     haus,
     ablaeufe,
     regal,
+    workforce: workforceBlock ? baueWorkforce(workforceBlock.beispiele, regal) : [],
+    plan: umfang ? bauePlan(umfang.phasen) : [],
     posten: sitzung.posten
       // Was der Berater ausgeblendet oder verworfen hat, betritt das Haus nicht.
       .filter((p) => p.kundeSieht && p.zustand !== "verworfen")
