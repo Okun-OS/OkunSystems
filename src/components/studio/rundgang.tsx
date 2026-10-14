@@ -5,7 +5,9 @@ import type { StudioDaten } from "@/lib/strategie/studio";
 import type { AnsichtKey } from "@/lib/strategie/katalog";
 import { Abschied, PlanSzene, WorkforceSzene } from "./raeume";
 import { TaktGeber } from "./takt";
-import { AblaufSzene, Aussen, Halle, RegalSzene, Schnitt, StudioMarke } from "./szenen";
+import { Aussen, RegalSzene, Schnitt, StudioMarke } from "./szenen";
+import { WerkstattSzene } from "./werkstatt";
+import { Flur, Foyer } from "./innenszenen";
 
 /**
  * Der Rundgang durchs eigene Haus.
@@ -81,7 +83,7 @@ export function Rundgang({
   if (gefuehrt && ziel && ziel !== zuletzt) {
     merke(ziel);
     if (ort !== ziel && ort !== "schnitt") {
-      setzeOrt(ort === "aussen" && ziel === "halle" ? "schnitt" : ziel);
+      setzeOrt(ort === "aussen" && ziel === "foyer" ? "schnitt" : ziel);
     }
   }
 
@@ -100,7 +102,7 @@ export function Rundgang({
   }, [gefuehrt, ziel]);
 
   const schnittFertig = useCallback(
-    () => setzeOrt(gefuehrtRef.current ? zielRef.current : "halle"),
+    () => setzeOrt(gefuehrtRef.current ? zielRef.current : "foyer"),
     []
   );
 
@@ -168,7 +170,7 @@ export function Rundgang({
           onEintreten={() => {
             if (gefuehrt) return;
             setzeOrt("schnitt");
-            onOrt?.("halle");
+            onOrt?.("foyer");
           }}
         />
       )}
@@ -186,18 +188,26 @@ export function Rundgang({
         />
       )}
 
-      {ort === "halle" && (
-        <Halle
+      {ort === "foyer" && (
+        <Foyer
           haus={daten.haus}
           zeitfresser={daten.zeitfresser}
+          onWeiter={() => gehe("halle")}
+        />
+      )}
+
+      {ort === "halle" && (
+        <Flur
+          raeume={daten.haus.raeume}
           onRaum={inDenRaum}
           onPlan={() => gehe("plan")}
+          onZurueck={() => gehe("foyer")}
         />
       )}
 
       {ort === "ablaeufe" &&
         (ablauf ? (
-          <AblaufSzene
+          <WerkstattSzene
             raum={ablauf}
             aufwandMinuten={daten.aufwandGesamtMinuten}
             onZurueck={zurHalle}

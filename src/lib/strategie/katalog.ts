@@ -27,6 +27,7 @@ export const GRENZE_AUTOMATISIERUNGEN = MAX_AUTOMATISIERUNGEN;
  */
 export type AnsichtKey =
   | "aussen"
+  | "foyer"
   | "halle"
   | "ablaeufe"
   | "grundlagen"
@@ -51,9 +52,14 @@ export const ANSICHTEN: Ansicht[] = [
     frage: "Worum geht es heute?",
   },
   {
+    key: "foyer",
+    label: "Empfang",
+    frage: "Wer ist dieser Betrieb, und wo geht heute die Zeit hin?",
+  },
+  {
     key: "halle",
-    label: "Eingangshalle",
-    frage: "Wie läuft die Arbeit heute wirklich — und wo bricht sie?",
+    label: "Der Gang",
+    frage: "Welche Teile des Betriebs sehen wir uns an?",
   },
   {
     key: "ablaeufe",

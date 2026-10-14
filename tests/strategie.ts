@@ -45,6 +45,18 @@ import {
   wirdAutomatisch,
 } from "../src/lib/strategie/haus";
 import type { GuideDocument } from "../src/lib/strategy-guide/types";
+import {
+  boden,
+  decke,
+  massstab,
+  plaetze,
+  raum,
+  rueckwand,
+  tiefe,
+  wand,
+  RAUM,
+} from "../src/lib/studio/perspektive";
+import { umbrechen, kuerzen } from "../src/lib/studio/text";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -505,23 +517,23 @@ test("die Workforce-Module stehen gegen das, was den Zweck heute trägt", () => 
   ]);
   const umfang = umfangFuer("operations")!;
   const block = umfang.bloecke.find((b) => b.titel.includes("Workforce"))!;
-  const module = baueWorkforce(block.beispiele, regal);
+  const sechs = baueWorkforce(block.beispiele, regal);
 
-  assert.equal(module.length, 6);
+  assert.equal(sechs.length, 6);
   // Die Beschreibung kommt aus dem Angebot, nicht aus einer Produktseite.
-  const zeit = module.find((m) => m.key === "zeiterfassung")!;
+  const zeit = sechs.find((m) => m.key === "zeiterfassung")!;
   assert.match(zeit.beschreibung, /stempeln/);
   assert.ok(!zeit.beschreibung.includes("—"), "der Titel steht nicht zweimal da");
   assert.deepEqual(zeit.heute, ["Excel", "Papier"]);
   // Was niemand trägt, bleibt leer — das ist das Argument.
-  assert.deepEqual(module.find((m) => m.key === "dienstplanung")!.heute, []);
+  assert.deepEqual(sechs.find((m) => m.key === "dienstplanung")!.heute, []);
 });
 
 test("ohne hinterlegte Beispiele bleiben die Module ohne Behauptung", () => {
-  const module = baueWorkforce([], baueRegal([]));
-  assert.equal(module.length, 6);
-  assert.ok(module.every((m) => m.beschreibung === ""));
-  assert.ok(module.every((m) => m.heute.length === 0));
+  const sechs = baueWorkforce([], baueRegal([]));
+  assert.equal(sechs.length, 6);
+  assert.ok(sechs.every((m) => m.beschreibung === ""));
+  assert.ok(sechs.every((m) => m.heute.length === 0));
 });
 
 test("der Plan enthält dieses Gespräch und markiert es als Standort", () => {
@@ -587,6 +599,65 @@ test("nach dem Gespräch gehört das Haus dem Kunden", () => {
     fuehrungFuer({ abgeschlossenAm: new Date("2026-03-02T09:00:00Z"), beraterPresenceAt: frisch }, jetzt),
     "frei"
   );
+});
+
+// ─── Die Geometrie der Räume ─────────────────────────────────────────────────
+
+test("die Schachtel schließt: Wände, Boden und Decke treffen sich", () => {
+  // Der linke Rand des Bodens und der linke Rand der Decke stehen senkrecht
+  // übereinander — sonst klafft der Raum an der Kante auf.
+  for (const t of [0, 0.3, 0.7, 1]) {
+    assert.equal(boden(t, 0).x, decke(t, 0).x, `links bei t=${t}`);
+    assert.equal(boden(t, 1).x, decke(t, 1).x, `rechts bei t=${t}`);
+    assert.equal(wand("links", t, 1).y, boden(t, 0).y, `Wandfuß links bei t=${t}`);
+    assert.equal(wand("rechts", t, 0).y, decke(t, 1).y, `Wandkopf rechts bei t=${t}`);
+  }
+  // Ganz hinten ist der Boden der Fuß der Rückwand.
+  assert.equal(boden(1, 0).x, RAUM.links);
+  assert.equal(boden(1, 0).y, RAUM.unten);
+  assert.equal(decke(1, 1).y, RAUM.oben);
+  assert.deepEqual(rueckwand(0, 0), { x: RAUM.links, y: RAUM.oben });
+});
+
+test("was hinten steht, ist kleiner als was vorn steht", () => {
+  assert.ok(massstab(0) > massstab(0.5));
+  assert.ok(massstab(0.5) > massstab(1));
+  assert.equal(massstab(0), 1, "vorn ist der Maßstab 1:1");
+
+  // Gleiche Weltabstände rücken nach hinten zusammen.
+  const a = tiefe(0.25);
+  const b = tiefe(0.5);
+  const c = tiefe(0.75);
+  assert.ok(b - a > c - b, "hinten ist der Abstand kleiner");
+  assert.equal(tiefe(0), 0);
+  assert.equal(tiefe(1), 1);
+});
+
+test("etwas auf dem Boden steht auf dem Boden", () => {
+  assert.equal(raum(0.4, 0.3, 0).y, boden(0.4, 0.3).y);
+  assert.equal(raum(0.4, 0.3, 1).y, decke(0.4, 0.3).y);
+  assert.ok(raum(0.4, 0.3, 0.5).y < boden(0.4, 0.3).y, "auf halber Höhe ist höher");
+});
+
+test("Plätze in einer Reihe halten Abstand zum Rand", () => {
+  const acht = plaetze(8, 0.07);
+  assert.equal(acht.length, 8);
+  assert.ok(acht[0] >= 0.07 && acht[7] <= 0.93);
+  assert.deepEqual(plaetze(1), [0.5]);
+  assert.deepEqual(plaetze(0), []);
+  // Gleichmäßig: alle Abstände sind gleich.
+  const schritte = acht.slice(1).map((u, i) => Math.round((u - acht[i]) * 1e6));
+  assert.equal(new Set(schritte).size, 1);
+});
+
+test("Beschriftungen brechen an Wortgrenzen um", () => {
+  assert.deepEqual(umbrechen("Eingang bemerken und lesen", 15), ["Eingang", "bemerken und", "lesen"]);
+  assert.deepEqual(umbrechen("Kurz", 15), ["Kurz"]);
+  assert.deepEqual(umbrechen("   ", 10), []);
+  // Ein einzelnes zu langes Wort wird nicht zerhackt, sondern steht allein.
+  assert.deepEqual(umbrechen("Zuständigkeitsbereich", 10), ["Zuständigkeitsbereich"]);
+  assert.equal(kuerzen("Zuständigkeitsbereich", 10), "Zuständig…");
+  assert.equal(kuerzen("Kurz", 10), "Kurz");
 });
 
 console.log(`\n${passed} Tests bestanden.\n`);

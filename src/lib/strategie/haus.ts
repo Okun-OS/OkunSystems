@@ -118,8 +118,45 @@ export type HausDaten = {
   fahrzeug: Fahrzeug;
   /** Ein Satz über den Betrieb, aus seinen eigenen Angaben. */
   hallensatz: string;
+  /** Dieselben Angaben einzeln, für die Tafeln im Foyer. */
+  profil: Profil;
   raeume: Raum[];
 };
+
+export type Profil = {
+  mitarbeitende: number | null;
+  standorte: number | null;
+  ort: string | null;
+  branche: string | null;
+};
+
+export type Tafel = { wert: string; label: string };
+
+/**
+ * Die Tafeln an der Foyerwand.
+ *
+ * Nur, was der Betrieb selbst angegeben hat. Eine leere Tafel „Mitarbeitende:
+ * unbekannt" wäre schlimmer als keine — sie würde im ersten Raum des
+ * Rundgangs zeigen, dass wir nicht zugehört haben.
+ */
+export function profilTafeln(profil: Profil): Tafel[] {
+  const tafeln: Tafel[] = [];
+  if (profil.mitarbeitende !== null) {
+    tafeln.push({
+      wert: `${profil.mitarbeitende}`,
+      label: profil.mitarbeitende === 1 ? "Mitarbeiter" : "Mitarbeitende",
+    });
+  }
+  if (profil.standorte !== null) {
+    tafeln.push({
+      wert: `${profil.standorte}`,
+      label: profil.standorte === 1 ? "Standort" : "Standorte",
+    });
+  }
+  if (profil.ort) tafeln.push({ wert: profil.ort, label: "Sitz" });
+  if (profil.branche) tafeln.push({ wert: profil.branche, label: "Gewerk" });
+  return tafeln;
+}
 
 export type AblaufStation = {
   stationKey: string;

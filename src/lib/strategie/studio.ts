@@ -150,6 +150,12 @@ export async function ladeStudio(sitzungId: string): Promise<StudioDaten | null>
       ort: sitzung.company.city,
       branche: sitzung.company.industry,
     }),
+    profil: {
+      mitarbeitende,
+      standorte,
+      ort: sitzung.company.city,
+      branche: sitzung.company.industry,
+    },
     raeume: baueRaeume({
       paket: sitzung.paket,
       ablaeufe: ablaeufe.length,
