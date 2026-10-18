@@ -57,6 +57,7 @@ import {
   RAUM,
 } from "../src/lib/studio/perspektive";
 import { umbrechen, kuerzen } from "../src/lib/studio/text";
+import { baueDrehbuch } from "../src/lib/studio/drehbuch";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -658,6 +659,89 @@ test("Beschriftungen brechen an Wortgrenzen um", () => {
   assert.deepEqual(umbrechen("Zuständigkeitsbereich", 10), ["Zuständigkeitsbereich"]);
   assert.equal(kuerzen("Zuständigkeitsbereich", 10), "Zuständig…");
   assert.equal(kuerzen("Kurz", 10), "Kurz");
+});
+
+// ─── Das Drehbuch des Ablaufraums ────────────────────────────────────────────
+
+const ABLAUF = baueAblaufRaum({
+  catalogKey: "flow_order",
+  title: "Ein Auftrag wird angelegt und abgewickelt",
+  stations: [
+    { stationKey: "st_receive", position: 1, role: "Büro", systemLabel: "E-Mail", mode: "manual" },
+    { stationKey: "st_route", position: 2, role: "Büro", systemLabel: null, mode: "manual" },
+    { stationKey: "st_transfer", position: 3, role: "Büro", systemLabel: "Branchensoftware", mode: "manual" },
+    { stationKey: "st_document", position: 4, role: "Monteur", systemLabel: "Papier", mode: "manual" },
+    { stationKey: "st_archive", position: 5, role: "Büro", systemLabel: "Ordner", mode: "automatic" },
+  ],
+});
+
+test("das Drehbuch erklärt jede Station aus dem Katalog", () => {
+  const d = baueDrehbuch(ABLAUF, []);
+  assert.equal(d.tour.length, 5);
+  assert.equal(d.tour[0].nummer, 1);
+  assert.equal(d.tour[0].titel, "Eingang bemerken und lesen");
+  // Der Satz, was dort passiert, ist der Katalogtext — nicht erfunden.
+  assert.equal(d.tour[0].was, "Wer sieht es zuerst, und wo?");
+  assert.equal(d.tour[0].wer, "Büro");
+  assert.equal(d.tour[0].womit, "E-Mail");
+});
+
+test("Befunde sind abgelesen, nicht gedeutet", () => {
+  const d = baueDrehbuch(ABLAUF, []);
+  const texte = (i: number) => d.tour[i].befunde.map((b) => b.text);
+
+  assert.ok(texte(0).some((t) => /von Hand/.test(t)));
+  // Papier ist kein Programm und wird als Lücke benannt.
+  assert.ok(texte(3).some((t) => /Ohne Programm.*Papier/.test(t)));
+  // Der Medienbruch kommt aus dem Vergleich zweier Stationen.
+  assert.ok(
+    texte(2).some((t) => t === "Wechsel von E-Mail nach Branchensoftware."),
+    "Wechsel E-Mail → Branchensoftware"
+  );
+  // Ohne Programm davor gibt es keinen Wechsel zu melden.
+  assert.ok(!texte(1).some((t) => /Wechsel/.test(t)));
+  // Was schon automatisch läuft, wird als gut markiert und nicht gemahnt.
+  assert.ok(d.tour[4].befunde.some((b) => b.ton === "gut"));
+});
+
+test("was danach passiert, folgt der Katalogregel", () => {
+  const d = baueDrehbuch(ABLAUF, []);
+  // st_transfer ist der einzige Schritt, der ganz entfällt.
+  assert.equal(d.tour[2].aenderung, "entfaellt");
+  // st_receive steht in STATIONS_OKUN_TAKES und läuft von Hand.
+  assert.equal(d.tour[0].aenderung, "uebernommen");
+  // st_route ist eine Entscheidung und bleibt bei den Menschen.
+  assert.equal(d.tour[1].aenderung, "bleibt");
+  assert.match(d.tour[1].danach, /bleibt bei Ihren Leuten/i);
+});
+
+test("der Raum verspricht nur, was ein Mensch freigegeben hat", () => {
+  const ohne = baueDrehbuch(ABLAUF, []);
+  assert.equal(ohne.fazit.ohneDeckung, true);
+  assert.deepEqual(ohne.fazit.massnahmen, []);
+
+  const mit = baueDrehbuch(ABLAUF, [
+    { titel: "Serviceberichte ohne Abtippen", womit: "Digitales Formular", art: "automatisierung", zustand: "gewaehlt" },
+    { titel: "Nur ein Kandidat", womit: null, art: "automatisierung", zustand: "kandidat" },
+    { titel: "Workforce", womit: null, art: "workforce", zustand: "gewaehlt" },
+  ]);
+  // Nur Gewähltes zählt, und nur das, was diesen Ablauf betrifft.
+  assert.equal(mit.fazit.ohneDeckung, false);
+  assert.equal(mit.fazit.massnahmen.length, 1);
+  assert.equal(mit.fazit.massnahmen[0].titel, "Serviceberichte ohne Abtippen");
+});
+
+test("die Einführung nennt Anfang, Ende und die Zahlen", () => {
+  const d = baueDrehbuch(ABLAUF, []);
+  assert.equal(d.briefing.titel, "Ein Auftrag wird angelegt und abgewickelt");
+  assert.match(d.briefing.einleitung[0], /Eingang bemerken und lesen/);
+  assert.match(d.briefing.einleitung[0], /Ablegen und dokumentieren/);
+  assert.match(d.briefing.einleitung[1], /nichts davon ist geschätzt/i);
+
+  const werte = d.briefing.punkte.map((p) => `${p.wert} ${p.label}`);
+  assert.ok(werte.some((w) => w.startsWith("5 Stationen")));
+  assert.ok(werte.some((w) => /davon von Hand/.test(w)));
+  assert.ok(werte.some((w) => /ohne Programm/i.test(w)));
 });
 
 console.log(`\n${passed} Tests bestanden.\n`);

@@ -383,6 +383,29 @@ body {
 .studio-erleuchtet .studio-fenster { filter: drop-shadow(0 0 8px rgba(140, 215, 255, .55)); }
 .studio-erleuchtet .studio-kegel { opacity: .95; }
 
+/*
+  Die Verwandlung im Ablaufraum.
+
+  Bewusst als CSS-Animation und nicht als SMIL: Eine SVG-Animation mit
+  `begin="0s"` rechnet gegen die Dokumentzeit des SVG. Wird das Element erst
+  Minuten später eingefügt, ist sie längst abgelaufen und springt sofort auf
+  ihren Endwert — die Welle wäre unsichtbar. CSS-Animationen starten, wenn
+  das Element entsteht.
+*/
+@keyframes studio-welle {
+  from { transform: translateX(-380px); }
+  to { transform: translateX(1980px); }
+}
+@keyframes studio-welle-schlag {
+  0% { opacity: 0; }
+  45% { opacity: .22; }
+  100% { opacity: 0; }
+}
+@keyframes studio-laden {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .studio-fenster, .studio-atmen, .studio-kegel, .studio-regen,
   .studio-welt.studio-eintritt { animation: none !important; }

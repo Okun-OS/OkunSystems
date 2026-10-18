@@ -210,6 +210,7 @@ export function Rundgang({
           <WerkstattSzene
             raum={ablauf}
             aufwandMinuten={daten.aufwandGesamtMinuten}
+            posten={daten.posten}
             onZurueck={zurHalle}
           />
         ) : (

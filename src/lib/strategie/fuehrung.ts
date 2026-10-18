@@ -102,17 +102,21 @@ export async function setzeAnsicht(
 }
 
 /**
- * Den Takt im Raum umschalten.
+ * Den Takt im Raum weiterschalten.
  *
- * Der Knopf, nach dem sich der Raum verwandelt. Er ist ein eigener Aufruf
- * und nicht Teil des Ortswechsels, weil er im Gespräch den Moment setzt:
- * erst reden, dann drücken.
+ * Ein Raum erzählt sich in Schritten: erst die Einführung, dann Station für
+ * Station, dann der Umbau. Welcher Schritt das ist, weiß nur der Raum — hier
+ * steht nur die Zahl, damit beide Seiten beim selben Schritt stehen. Deshalb
+ * ist das auch ein eigener Aufruf und nicht Teil des Ortswechsels: Im
+ * Gespräch setzt er den Moment, erst reden, dann weiterschalten.
  */
+export const MAX_STUFE = 99;
+
 export async function setzeStufe(
   sitzungId: string,
   stufe: number
 ): Promise<{ ok: true; stufe: number; rev: number } | { error: string }> {
-  const sauber = stufe > 0 ? 1 : 0;
+  const sauber = Math.min(Math.max(Math.round(stufe) || 0, 0), MAX_STUFE);
   const sitzung = await db.strategieSitzung.findUnique({
     where: { id: sitzungId },
     select: { abgeschlossenAm: true },
