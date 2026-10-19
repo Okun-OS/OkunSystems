@@ -284,6 +284,30 @@ export function ContractClosurePanel({ data }: { data: ContractClosureData }) {
                   <li key={r}>{r}</li>
                 ))}
               </ul>
+              {/*
+                Die Liste sagte, was fehlt — aber nicht, wo man es anlegt.
+                Im Gespräch hilft das wenig: Dort fehlt die Zeit, das Haus zu
+                durchsuchen. Und wichtiger noch: Der Abschluss hängt nicht
+                daran, was aus der gelben Box sonst ein Alarm wird.
+              */}
+              <p className="text-[#fbbf24]/80 text-[11px] leading-relaxed mt-2 pt-2 border-t border-[#f59e0b]/20">
+                Der Vertragsabschluss ist davon <b>nicht</b> blockiert — Schritt 4 funktioniert
+                auch ohne Aufzeichnung. Wer sie nutzen will, legt einmalig an:{" "}
+                <Link
+                  href="/admin/einstellungen/vertragsdokumente"
+                  className="underline hover:text-[#fbbf24]"
+                >
+                  Einwilligung Vertragsaufzeichnung
+                </Link>{" "}
+                und{" "}
+                <Link
+                  href="/admin/einstellungen/closing-scripts"
+                  className="underline hover:text-[#fbbf24]"
+                >
+                  ein aktives Gesprächsskript
+                </Link>{" "}
+                für das gebuchte Paket.
+              </p>
             </div>
           )}
 

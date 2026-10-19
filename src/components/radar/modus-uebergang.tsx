@@ -77,6 +77,20 @@ export function ModusUebergang({
   const vorher = useRef(modus);
   /** Gratuliert wird einmal je Gespräch, nicht bei jedem Zurückwechseln. */
   const schonGefeiert = useRef(false);
+  const uhr = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /*
+    Ob gefeiert werden darf, steht im Ref und nicht in den Abhängigkeiten.
+
+    Als Abhängigkeit hätte ein Wechsel dieses Wertes den Effekt erneut
+    angestoßen; sein Aufräumen hätte das Ausblenden abbestellt, und der neue
+    Durchlauf wäre beim gleichen Modus sofort zurückgesprungen — der Vorhang
+    bliebe stehen. Genau so ist es im Phasenschnitt passiert, und einmal
+    reicht.
+  */
+  const feiernRef = useRef(feiern);
+  useEffect(() => {
+    feiernRef.current = feiern;
+  }, [feiern]);
 
   useEffect(() => {
     if (vorher.current === modus) return;
@@ -86,12 +100,16 @@ export function ModusUebergang({
       Zeichnen. Ein Merker, der während des Renderns gesetzt wird, läuft bei
       einem zweiten Durchlauf doppelt und verschluckt den Glückwunsch.
     */
-    const darfFeiern = modus === "angebot" && feiern && !schonGefeiert.current;
+    const darfFeiern = modus === "angebot" && feiernRef.current && !schonGefeiert.current;
     if (darfFeiern) schonGefeiert.current = true;
     setLaeuft({ modus, feiern: darfFeiern });
-    const id = setTimeout(() => setLaeuft(null), DAUER_MS);
-    return () => clearTimeout(id);
-  }, [modus, feiern]);
+    if (uhr.current) clearTimeout(uhr.current);
+    uhr.current = setTimeout(() => setLaeuft(null), DAUER_MS);
+  }, [modus]);
+
+  useEffect(() => () => {
+    if (uhr.current) clearTimeout(uhr.current);
+  }, []);
 
   if (!laeuft) return null;
 
@@ -100,7 +118,8 @@ export function ModusUebergang({
   return (
     <div
       aria-hidden
-      className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-[#03060c]"
+      // Zierde nimmt keine Klicks an — siehe `phasen-schnitt.tsx`.
+      className="pointer-events-none fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-[#03060c]"
       style={{
         animation: `ueber-vorhang-auf .18s ease-out both, ueber-vorhang-zu .46s cubic-bezier(.4,0,1,1) ${DAUER_MS - 460}ms both`,
       }}

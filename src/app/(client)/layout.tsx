@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { Sidebar } from "@/components/layout/sidebar";
+import { sitzungFuerKunde } from "@/lib/strategie/fuehrung";
 
 export default async function ClientLayout({
   children,
@@ -20,6 +21,10 @@ export default async function ClientLayout({
   if (!userRecord) redirect("/login");
   if (userRecord.role === "ADMIN") redirect("/admin/dashboard");
 
+  const studioOffen = userRecord.companyId
+    ? Boolean(await sitzungFuerKunde(userRecord.companyId))
+    : false;
+
   return (
     <div className="min-h-screen bg-[#080c14]">
       <Sidebar
@@ -29,6 +34,7 @@ export default async function ClientLayout({
           companyName: userRecord.company?.name,
           plan: userRecord.company?.plan,
         }}
+        studioOffen={studioOffen}
       />
       <main className="ml-[240px] min-h-screen flex flex-col">
         <div className="flex-1 p-6 md:p-8">{children}</div>

@@ -531,7 +531,14 @@ function Phasenschiene({
  * nebeneinander über die volle Panelbreite; ohne laufendes Gespräch stehen
  * dort zwei beschriftete, reservierte Plätze.
  */
-function Gespraechsraum({
+/**
+ * Die Videoleiste der Bühne.
+ *
+ * Exportiert, weil die Angebots-Bühne dieselbe braucht: Wer vom Radar ins
+ * Angebot wechselt, soll nicht das Gefühl haben, in einem anderen Haus zu
+ * sein — gleiche Überschrift, gleiche Kachelform, gleicher Platzhalter.
+ */
+export function Gespraechsraum({
   video,
   steuerung,
   hinweis,

@@ -375,6 +375,19 @@ function DimensionsZeile({
           />
         )}
       </div>
+      {/*
+        Woher eine einzelne Zahl kommt.
+
+        Eine 0,0 heißt „so niedrig, wie die Skala geht" — nicht „nicht
+        geladen". Steht die Dimension aber auf einer einzigen Antwort, ist der
+        Unterschied zwischen 0,0 und 5,0 ein Klick, und das gehört dazugesagt.
+        Bei zwei und mehr Antworten spart sich die Zeile den Platz.
+      */}
+      {d.wert !== null && d.beantwortet === 1 && (
+        <p className="font-mono text-[#33495f] text-[8.5px] uppercase tracking-[0.1em] mt-1 whitespace-nowrap">
+          aus 1 Antwort
+        </p>
+      )}
     </li>
   );
 }

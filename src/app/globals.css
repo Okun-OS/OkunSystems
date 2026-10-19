@@ -289,3 +289,126 @@ body {
   .einschlag-zeile { animation: none; }
   .diagramm-sweep  { animation: none; opacity: 0; }
 }
+
+/* ─── OKUN Transformation Studio ─────────────────────────────────────────────
+   Der Rundgang durchs eigene Haus. Die Bewegungen stehen hier und nicht in
+   den Komponenten, weil sie zwischen Szenen geteilt werden — und weil eine
+   Animation, die an einer Stelle definiert ist, sich an einer Stelle
+   abschalten lässt, wenn jemand reduzierte Bewegung eingestellt hat. */
+
+@keyframes studio-flimmer {
+  0%, 100% { opacity: .92; }
+  47% { opacity: .62; }
+}
+.studio-fenster { animation: studio-flimmer 7s ease-in-out infinite; }
+
+@keyframes studio-atmen {
+  0%, 100% { opacity: .55; }
+  50% { opacity: .95; }
+}
+.studio-atmen { animation: studio-atmen 7s ease-in-out infinite; }
+.studio-kegel { mix-blend-mode: screen; animation: studio-atmen 6s ease-in-out infinite; }
+
+@keyframes studio-regen { to { background-position: -120px 420px; } }
+.studio-regen { animation: studio-regen 1.1s linear infinite; }
+
+/* Die Tür lädt ein, bevor sie angeklickt wird. */
+.studio-tuer .studio-tuerlicht { transition: opacity .7s ease; }
+.studio-tuer:hover .studio-tuerlicht,
+.studio-tuer:focus-visible .studio-tuerlicht { opacity: .45; }
+.studio-schild { filter: drop-shadow(0 0 22px rgba(0, 184, 255, .85)); }
+
+/* Die Kamerafahrt in die Tür hinein. */
+@keyframes studio-eintritt {
+  to { transform: translateZ(1750px) translateY(90px); filter: brightness(1.6); }
+}
+.studio-welt { transform-style: preserve-3d; }
+.studio-welt.studio-eintritt {
+  animation: studio-eintritt 2.2s cubic-bezier(.55, .06, .3, 1) both;
+}
+
+/* Der Schnitt mit der Marke. */
+@keyframes studio-blitz {
+  0% { opacity: 0; transform: scale(.4); }
+  22% { opacity: 1; transform: scale(1.3); }
+  100% { opacity: 0; transform: scale(2.6); }
+}
+@keyframes studio-ring-ein {
+  from { opacity: 0; transform: scale(.3) rotate(-120deg); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes studio-schrift-ein {
+  from { opacity: 0; transform: translateY(16px); filter: blur(10px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+@keyframes studio-linie-ein { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* Eintreten in einen Raum, Schritt für Schritt. */
+@keyframes studio-auf {
+  from { opacity: 0; transform: translateY(26px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes studio-pop {
+  from { opacity: 0; transform: translateY(30px) scale(.9); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Die Welle, die beim Umbauen durch den Raum läuft. */
+@keyframes studio-welle {
+  from { opacity: .85; width: 10px; height: 10px; }
+  to { opacity: 0; width: 2600px; height: 2600px; }
+}
+
+/* Der Funke, der nach dem Umbau die Strecke entlangläuft. */
+@keyframes studio-funke {
+  0% { left: 3%; opacity: 0; }
+  8% { opacity: 1; }
+  92% { opacity: 1; }
+  100% { left: 97%; opacity: 0; }
+}
+
+/* Am Schluss gehen die letzten dunklen Fenster an. */
+@keyframes studio-fenster-an {
+  from { opacity: 0; }
+}
+
+/*
+  Das erleuchtete Haus.
+
+  Kein zweites Bild, sondern dasselbe mit mehr Licht: Die Fenster bekommen
+  einen Schein, der Lichtkegel vor der Tür wird breiter. Der Unterschied
+  muss aus dem Haus kommen, das am Anfang dastand — sonst sieht man zwei
+  Häuser und nicht eine Veränderung.
+*/
+.studio-erleuchtet .studio-fenster { filter: drop-shadow(0 0 8px rgba(140, 215, 255, .55)); }
+.studio-erleuchtet .studio-kegel { opacity: .95; }
+
+/*
+  Die Verwandlung im Ablaufraum.
+
+  Bewusst als CSS-Animation und nicht als SMIL: Eine SVG-Animation mit
+  `begin="0s"` rechnet gegen die Dokumentzeit des SVG. Wird das Element erst
+  Minuten später eingefügt, ist sie längst abgelaufen und springt sofort auf
+  ihren Endwert — die Welle wäre unsichtbar. CSS-Animationen starten, wenn
+  das Element entsteht.
+*/
+@keyframes studio-welle {
+  from { transform: translateX(-380px); }
+  to { transform: translateX(1980px); }
+}
+@keyframes studio-welle-schlag {
+  0% { opacity: 0; }
+  45% { opacity: .22; }
+  100% { opacity: 0; }
+}
+@keyframes studio-laden {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studio-fenster, .studio-atmen, .studio-kegel, .studio-regen,
+  .studio-welt.studio-eintritt { animation: none !important; }
+  .studio-welt.studio-eintritt { opacity: 0; }
+  .studio-fenster rect { animation: none !important; }
+}

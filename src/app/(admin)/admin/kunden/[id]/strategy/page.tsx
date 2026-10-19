@@ -35,6 +35,21 @@ export default async function StrategySessionPage({ params }: { params: Promise<
   const score = analysis?.score;
   const strategyAppt = company.appointments[0];
 
+  /*
+    Diese Seite ist die Vorbereitung aus der Zeit vor dem Blueprint 2.0.
+
+    Sie hängt am `OkunScore`, den nur die alte Advisor-Analyse schreibt. Ein
+    Betrieb, der den Blueprint 2.0 durchlaufen hat, hat keinen — dann meldet
+    sie „No score available" und ist eine Sackgasse. Entfernt wird sie
+    trotzdem nicht: Für alte Analysen tut sie weiter ihren Dienst. Stattdessen
+    steht hier ein Wegweiser auf die Vorbereitung, die es inzwischen gibt.
+  */
+  const blueprint = await db.analysisSession.findFirst({
+    where: { companyId: id, blueprintVersion: "2.0", status: "COMPLETED" },
+    orderBy: { completedAt: "desc" },
+    select: { id: true },
+  });
+
   const SCORE_RANGES = [
     { min: 81, max: 100, label: "Skalierungsbereit", color: "text-[#00b8ff]", bg: "bg-[#00b8ff]/10 border-[#00b8ff]/20" },
     { min: 61, max: 80, label: "Fortgeschritten", color: "text-blue-400", bg: "bg-blue-500/10 border-blue-500/20" },
@@ -76,6 +91,26 @@ export default async function StrategySessionPage({ params }: { params: Promise<
           </div>
         </div>
       </div>
+
+      {blueprint && (
+        <Link
+          href={`/admin/kunden/${id}/strategie`}
+          className="flex items-center justify-between gap-4 mb-6 px-5 py-4 rounded-xl
+            border border-[#00b8ff]/25 bg-[#00b8ff]/[0.06] hover:border-[#00b8ff]/50 transition-colors"
+        >
+          <div>
+            <p className="text-[#f0f0f0] text-sm font-semibold">
+              Für diesen Betrieb gibt es die neue Vorbereitung zum Strategiegespräch
+            </p>
+            <p className="text-[#888] text-xs mt-1">
+              Mit Auswahl der Lösungen, Freigabe und dem Transformation Studio. Diese Seite hier
+              stammt aus der Zeit vor dem Blueprint™ 2.0 und braucht einen OKUN Score, den der
+              Blueprint nicht mehr erzeugt.
+            </p>
+          </div>
+          <span className="text-[#00b8ff] text-sm font-medium whitespace-nowrap">Öffnen →</span>
+        </Link>
+      )}
 
       {!analysis ? (
         <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-12 text-center">

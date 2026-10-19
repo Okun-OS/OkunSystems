@@ -13,6 +13,7 @@ import {
   LogOut,
   ChevronDown,
   HeartHandshake,
+  Building2,
 } from "lucide-react";
 import { OkunLogo } from "./okun-logo";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,13 @@ import { packageLabel } from "@/lib/packages";
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", exact: true },
   { href: "/blueprint", icon: Brain, label: "OKUN Blueprint™" },
+  /*
+    Das Studio steht erst in der Leiste, wenn es etwas zu sehen gibt.
+
+    Ein Punkt, der auf „noch nichts freigegeben" führt, ist kein Hinweis,
+    sondern ein Versprechen, das die Seite nicht hält.
+  */
+  { href: "/portal/studio", icon: Building2, label: "Transformation Studio", nurMitStudio: true },
   { href: "/portal/lernen", icon: BookOpen, label: "Lernen" },
   { href: "/termine", icon: Calendar, label: "Termine" },
   { href: "/portal/dokumente", icon: FileText, label: "Dokumente" },
@@ -36,9 +44,11 @@ interface SidebarProps {
     /** Das gebuchte Paket. Null, solange keines hinterlegt ist. */
     plan?: string | null;
   };
+  /** Gibt es ein freigegebenes Haus? Sonst fehlt der Punkt. */
+  studioOffen?: boolean;
 }
 
-export function Sidebar({ user }: SidebarProps) {
+export function Sidebar({ user, studioOffen = false }: SidebarProps) {
   const pathname = usePathname();
   const paket = packageLabel(user.plan);
 
@@ -49,7 +59,9 @@ export function Sidebar({ user }: SidebarProps) {
       </div>
 
       <nav className="flex-1 overflow-y-auto py-4 px-3">
-        {navItems.map((item) => {
+        {navItems
+          .filter((item) => !item.nurMitStudio || studioOffen)
+          .map((item) => {
           const isActive = item.exact
             ? pathname === item.href
             : pathname === item.href || pathname.startsWith(item.href + "/");

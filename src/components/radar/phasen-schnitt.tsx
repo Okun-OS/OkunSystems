@@ -27,26 +27,59 @@ const DAUER_MS = 1150;
 export function PhasenSchnitt({ phase }: { phase: PhasenAnsage | null }) {
   const [laeuft, setLaeuft] = useState<PhasenAnsage | null>(null);
   const vorher = useRef(phase?.key ?? null);
+  const uhr = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /*
+    Der Schlüssel ist die Abhängigkeit, nicht das Objekt.
+
+    Hier steckte ein Fehler, der im Gespräch teuer war: `phase` ist ein
+    Objekt, das die Kundenseite bei **jedem** Abruf neu baut. Als Abhängigkeit
+    lief der Effekt dadurch im Takt der Abfrage erneut — und weil sein
+    Aufräumen das Ausblenden abbestellte, der neue Durchlauf aber beim
+    gleichen Schlüssel sofort zurücksprang, blieb der Vorhang stehen. Sichtbar
+    war er nicht (die Animation endet bei Deckkraft null), aber er lag über
+    der Bühne und schluckte jeden Klick: Der Interessent sah die Frage und
+    konnte sie nicht beantworten, während der Berater es konnte.
+
+    Zwei Lehren, beide hier umgesetzt: Abhängigkeiten sind Werte, keine
+    Objekte — und ein Vorhang, der nur Zierde ist, darf keine Klicks
+    annehmen (`pointer-events-none`, siehe unten).
+  */
+  const schluessel = phase?.key ?? null;
+  const nummer = phase?.nummer;
+  const label = phase?.label;
+  const unterzeile = phase?.unterzeile;
+  const zielzeit = phase?.zielzeit;
 
   useEffect(() => {
-    const key = phase?.key ?? null;
-    if (vorher.current === key) return;
+    if (vorher.current === schluessel) return;
     const erster = vorher.current === null;
-    vorher.current = key;
+    vorher.current = schluessel;
     // Der erste Aufbau ist kein Wechsel. Wer die Seite neu lädt, soll nicht
     // jedes Mal die Kapitelansage sehen.
-    if (erster || !phase) return;
-    setLaeuft(phase);
-    const id = setTimeout(() => setLaeuft(null), DAUER_MS);
-    return () => clearTimeout(id);
-  }, [phase]);
+    if (erster || !schluessel) return;
+    setLaeuft({
+      key: schluessel,
+      nummer: nummer ?? 1,
+      label: label ?? "",
+      unterzeile: unterzeile ?? "",
+      zielzeit: zielzeit ?? "",
+    });
+    if (uhr.current) clearTimeout(uhr.current);
+    uhr.current = setTimeout(() => setLaeuft(null), DAUER_MS);
+  }, [schluessel, nummer, label, unterzeile, zielzeit]);
+
+  // Beim Abbau bleibt keine Uhr stehen.
+  useEffect(() => () => {
+    if (uhr.current) clearTimeout(uhr.current);
+  }, []);
 
   if (!laeuft) return null;
 
   return (
     <div
       aria-hidden
-      className="absolute inset-0 z-50 flex items-center justify-center bg-[#04070d]/92 backdrop-blur-[3px]"
+      className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center bg-[#04070d]/92 backdrop-blur-[3px]"
       style={{
         animation: `ueber-vorhang-auf .16s ease-out both, ueber-vorhang-zu .34s cubic-bezier(.4,0,1,1) ${DAUER_MS - 340}ms both`,
       }}
