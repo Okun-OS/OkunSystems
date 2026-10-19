@@ -325,6 +325,44 @@ test("GmbH benötigt Registerangaben", () => {
     ["registerCourt", "registerNumber"]
   );
 });
+test("eine Rechtsform als Etikett statt als Schlüssel fällt auf", () => {
+  /*
+    Im Katalog steht `gmbh`, angezeigt wird „GmbH". Landet das Etikett im
+    Feld, greift keine rechtsformabhängige Regel mehr: Registergericht und
+    -nummer werden stillschweigend nicht verlangt, und der Vertrag entsteht
+    ohne sie. Dieser Test hält fest, dass das kein Zufall sein darf.
+  */
+  const basis = {
+    name: "Muster GmbH",
+    street: "Hauptstr.",
+    houseNumber: "1",
+    postalCode: "10115",
+    city: "Berlin",
+    country: "Deutschland",
+    contactFirstName: "Max",
+    contactLastName: "Muster",
+    contactPosition: "Geschäftsführer",
+    contactEmail: "max@muster.de",
+  };
+
+  const mitSchluessel = validateMasterData({ ...basis, legalForm: "gmbh" }, requirements);
+  assert.deepEqual(mitSchluessel.missing.map((m) => m.key).sort(), [
+    "registerCourt",
+    "registerNumber",
+  ]);
+
+  const mitEtikett = validateMasterData({ ...basis, legalForm: "GmbH" }, requirements);
+  assert.equal(
+    mitEtikett.missing.length,
+    0,
+    "ein Etikett im Feld lässt die Registerangaben durchrutschen"
+  );
+  assert.ok(
+    !REGISTERED_LEGAL_FORMS.includes("GmbH"),
+    "der Katalog kennt nur Schlüssel in Kleinschreibung"
+  );
+});
+
 test("Einzelunternehmen benötigt keine Registerangaben", () => {
   const result = validateMasterData(
     {

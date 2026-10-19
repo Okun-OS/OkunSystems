@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Save, Plus, ChevronRight, FileText, Video, CalendarPlus } from "lucide-react";
 import { updateLeadDetails, updateLeadStatus, addLeadNote, createClosingSession } from "../actions";
-import { StammdatenPanel, type MasterDataValues, type RequirementView } from "./StammdatenPanel";
+import { StammdatenPanel, type MasterDataValues, type RequirementView } from "@/components/closing/stammdaten-panel";
 
 const LEAD_STATUS_LABELS: Record<string, string> = {
   prospect: "Interessent",

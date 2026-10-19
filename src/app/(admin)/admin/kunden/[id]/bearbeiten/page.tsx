@@ -3,6 +3,12 @@ import { db } from "@/lib/db";
 import { redirect, notFound } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { Save } from "lucide-react";
+import {
+  getMasterDataRequirements,
+  validateMasterData,
+  MASTER_DATA_FIELDS,
+} from "@/lib/closing/master-data";
+import { StammdatenPanel } from "@/components/closing/stammdaten-panel";
 
 const PROJECT_PHASES = [
   { value: "onboarding",       label: "Onboarding" },
@@ -42,6 +48,27 @@ export default async function KundeBearbeitenPage({
   });
 
   if (!company) notFound();
+
+  /*
+    Die Vertragsstammdaten gehören hierher.
+
+    Dieses Formular kennt nur die alten Felder — Name, Telefon, eine
+    Adresszeile. Rechtsform, Handelsregister, USt-IdNr. und die genaue
+    Anschrift fragt aber der Vertragsabschluss ab, und die gab es bisher nur
+    beim Lead. Wer einen Betrieb als Kunden vor sich hatte, konnte sie
+    nirgends nachtragen — der Abschluss blieb stehen.
+  */
+  const vertragsDaten = await db.company.findUnique({ where: { id } });
+  const requirements = await getMasterDataRequirements();
+  const validation = validateMasterData(vertragsDaten!, requirements);
+  const stammwerte = Object.fromEntries(
+    [
+      ...MASTER_DATA_FIELDS.map((f) => f.key),
+      "billingDiffers",
+      "billingHouseNumber",
+      "billingCountry",
+    ].map((key) => [key, (vertragsDaten as unknown as Record<string, unknown>)[key] ?? null])
+  ) as Record<string, string | boolean | null>;
 
   async function handleSave(formData: FormData) {
     "use server";
@@ -185,6 +212,23 @@ export default async function KundeBearbeitenPage({
             </button>
           </div>
         </form>
+      </div>
+
+      <div className="mt-6">
+        <StammdatenPanel
+          companyId={id}
+          values={stammwerte}
+          requirements={requirements
+            .filter((req) => req.isActive)
+            .map((req) => ({
+              key: req.key,
+              label: req.label,
+              group: req.group,
+              isRequired: req.isRequired,
+              helpText: req.helpText,
+            }))}
+          missing={validation.missing.map((m) => ({ key: m.key, label: m.label }))}
+        />
       </div>
     </div>
   );

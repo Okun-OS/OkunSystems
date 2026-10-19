@@ -11,14 +11,19 @@ import {
   PrimaryButton,
   inputClass,
 } from "@/components/ui/admin-form";
-import { saveCompanyMasterData } from "../../closing/portal-actions";
+import { saveCompanyMasterData } from "@/app/(admin)/admin/sales/closing/portal-actions";
 
 /**
- * Stammdaten eines Leads.
+ * Die Vertragsstammdaten eines Betriebs — überall dort, wo sie fehlen können.
  *
- * Vor „Closing Meeting erstellen" prüft der Server, ob alle für den
- * Vertragsabschluss nötigen Angaben vorliegen — abhängig von Rechtsform und
+ * Vor „Closing Meeting erstellen" und vor dem Vertragsabschluss prüft der
+ * Server, ob alle nötigen Angaben vorliegen — abhängig von Rechtsform und
  * davon, ob eine abweichende Rechnungsanschrift gepflegt wird.
+ *
+ * Deshalb steht das Formular hier und nicht bei den Leads: Im Gespräch fällt
+ * erst beim Abschluss auf, dass die Handelsregisternummer fehlt. Wer dann auf
+ * eine andere Seite geschickt wird, verliert den Faden und der Kunde sitzt
+ * daneben. Dasselbe Formular lässt sich an beiden Stellen einblenden.
  */
 
 export type MasterDataValues = Record<string, string | boolean | null>;
@@ -36,14 +41,20 @@ export function StammdatenPanel({
   values,
   requirements,
   missing,
+  kompakt = false,
+  onGespeichert,
 }: {
   companyId: string;
   values: MasterDataValues;
   requirements: RequirementView[];
   missing: Array<{ key: string; label: string }>;
+  /** Im Gespräch: ohne eigene Überschrift, direkt offen. */
+  kompakt?: boolean;
+  /** Nach dem Speichern — damit die umgebende Seite ihren Stand neu holt. */
+  onGespeichert?: () => void;
 }) {
   const [pending, startTransition] = useTransition();
-  const [open, setOpen] = useState(missing.length > 0);
+  const [open, setOpen] = useState(kompakt || missing.length > 0);
   const [message, setMessage] = useState<{ kind: "error" | "success"; text: string } | null>(null);
   const [legalForm, setLegalForm] = useState((values.legalForm as string) ?? "");
   const [billingDiffers, setBillingDiffers] = useState(Boolean(values.billingDiffers));
@@ -75,14 +86,23 @@ export function StammdatenPanel({
       setMessage({
         kind: complete ? "success" : "error",
         text: complete
-          ? "Stammdaten vollständig — das Closing Meeting kann erstellt werden."
+          ? "Stammdaten vollständig — der Vertragsabschluss kann weitergehen."
           : "Gespeichert. Für den Vertragsabschluss fehlen noch Angaben.",
       });
+      onGespeichert?.();
     });
   }
 
   return (
-    <section id="stammdaten" className="rounded-xl border border-[#1a2840] bg-[#0c1520] overflow-hidden">
+    <section
+      id="stammdaten"
+      className={
+        kompakt
+          ? ""
+          : "rounded-xl border border-[#1a2840] bg-[#0c1520] overflow-hidden"
+      }
+    >
+      {!kompakt && (
       <div className="px-5 py-4 border-b border-[#1a2840] flex items-start justify-between gap-4">
         <div>
           <h2 className="text-[#eef2f7] text-sm font-bold flex items-center gap-2">
@@ -106,9 +126,14 @@ export function StammdatenPanel({
           {open ? "Schließen" : "Bearbeiten"}
         </GhostButton>
       </div>
+      )}
 
-      <div className="px-5 py-5">
-        {missing.length > 0 && (
+      <div className={kompakt ? "" : "px-5 py-5"}>
+        {/*
+          Im Gespräch steht die Liste der fehlenden Angaben schon darüber im
+          Abschlussfeld — hier wäre sie dieselbe Meldung zweimal.
+        */}
+        {!kompakt && missing.length > 0 && (
           <div className="mb-4">
             <Banner kind="error">
               <p className="font-semibold mb-1">
@@ -199,9 +224,11 @@ export function StammdatenPanel({
               <PrimaryButton type="submit" disabled={pending} className="flex items-center gap-2">
                 <Save size={14} /> {pending ? "Speichert…" : "Stammdaten speichern"}
               </PrimaryButton>
-              <GhostButton type="button" onClick={() => setOpen(false)}>
-                Abbrechen
-              </GhostButton>
+              {!kompakt && (
+                <GhostButton type="button" onClick={() => setOpen(false)}>
+                  Abbrechen
+                </GhostButton>
+              )}
             </div>
           </form>
         )}

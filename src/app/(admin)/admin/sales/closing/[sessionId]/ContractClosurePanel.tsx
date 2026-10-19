@@ -17,6 +17,11 @@ import {
   Square,
 } from "lucide-react";
 import {
+  StammdatenPanel,
+  type MasterDataValues,
+  type RequirementView,
+} from "@/components/closing/stammdaten-panel";
+import {
   finishContract,
   refreshRenderedScript,
   retryRecordingMigration,
@@ -66,6 +71,10 @@ export type ContractClosureData = {
   statusLabel: string;
   masterDataComplete: boolean;
   masterDataMissing: Array<{ key: string; label: string }>;
+  masterData: {
+    values: MasterDataValues;
+    requirements: RequirementView[];
+  };
   snapshotId: string | null;
   snapshotHash: string | null;
   offerSelected: boolean;
@@ -86,6 +95,7 @@ export function ContractClosurePanel({ data }: { data: ContractClosureData }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [stammdatenOffen, setStammdatenOffen] = useState(false);
 
   function run(fn: () => Promise<{ error?: string } | Record<string, unknown>>, success?: string) {
     setError(null);
@@ -160,11 +170,37 @@ export function ContractClosurePanel({ data }: { data: ContractClosureData }) {
                 <li key={m.key}>{m.label}</li>
               ))}
             </ul>
-            <Link
-              href={`/admin/sales/leads/${data.companyId}#stammdaten`}
+            <button
+              onClick={() => setStammdatenOffen((v) => !v)}
               className="inline-block mt-2.5 text-xs font-semibold text-[#00b8ff] hover:underline"
             >
-              Stammdaten jetzt ergänzen →
+              {stammdatenOffen ? "Nachtragen schließen" : "Hier nachtragen →"}
+            </button>
+          </div>
+        )}
+
+        {/*
+          Nachtragen, ohne das Gespräch zu verlassen.
+
+          Dasselbe Formular wie beim Lead, nur eingeblendet. Nach dem Speichern
+          holt die Seite ihren Stand neu — dann steht entweder, was noch fehlt,
+          oder der Knopf für den Snapshot ist frei.
+        */}
+        {!data.masterDataComplete && stammdatenOffen && (
+          <div className="mb-4 rounded-lg border border-[#1a2840] bg-[#0a121d] px-4 py-4">
+            <StammdatenPanel
+              companyId={data.companyId}
+              values={data.masterData.values}
+              requirements={data.masterData.requirements}
+              missing={data.masterDataMissing}
+              kompakt
+              onGespeichert={() => router.refresh()}
+            />
+            <Link
+              href={`/admin/sales/leads/${data.companyId}#stammdaten`}
+              className="inline-block mt-3 text-[11px] text-[#5b6b7f] hover:text-[#8899b4]"
+            >
+              Alle Stammdaten im Lead öffnen →
             </Link>
           </div>
         )}
