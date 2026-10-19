@@ -76,6 +76,8 @@ export async function saveCompanyMasterData(companyId: string, formData: FormDat
 
     revalidatePath(`/admin/sales/leads/${companyId}`);
     revalidatePath(`/admin/kunden/${companyId}`);
+    // Der Reiter „Stammdaten" beim Kunden zeigt dasselbe Formular.
+    revalidatePath(`/admin/kunden/${companyId}/bearbeiten`);
     return { ok: true, complete: validation.complete, missing: validation.missing };
   });
 }

@@ -5,6 +5,7 @@ import { getFrozenScript } from "@/lib/closing/script-service";
 import {
   getMasterDataRequirements,
   validateMasterData,
+  MASTER_DATA_FIELDS,
 } from "@/lib/closing/master-data";
 import { normalizeStatus, STATUS_LABELS } from "@/lib/closing/state-machine";
 import { formatCents } from "@/lib/money";
@@ -50,6 +51,33 @@ export async function loadContractClosureData(
     statusLabel: STATUS_LABELS[status],
     masterDataComplete: validation.complete,
     masterDataMissing: validation.missing.map((m) => ({ key: m.key, label: m.label })),
+    /*
+      Das Formular zum Nachtragen wird gleich mitgeliefert.
+
+      Was beim Abschluss fehlt, fällt im Gespräch auf — dann ist es zu spät,
+      den Closer auf eine andere Seite zu schicken. Alle aktiven Felder gehen
+      mit, nicht nur die fehlenden: Die Rechtsform entscheidet, welche
+      überhaupt verlangt werden, und sie muss sich auswählen lassen.
+    */
+    masterData: {
+      values: Object.fromEntries(
+        [
+          ...MASTER_DATA_FIELDS.map((f) => f.key),
+          "billingDiffers",
+          "billingHouseNumber",
+          "billingCountry",
+        ].map((key) => [key, (session.company as unknown as Record<string, unknown>)[key] ?? null])
+      ) as Record<string, string | boolean | null>,
+      requirements: requirements
+        .filter((req) => req.isActive)
+        .map((req) => ({
+          key: req.key,
+          label: req.label,
+          group: req.group,
+          isRequired: req.isRequired,
+          helpText: req.helpText,
+        })),
+    },
     snapshotId: session.contractSnapshot?.id ?? null,
     snapshotHash: session.contractSnapshot?.snapshotHash ?? null,
     offerSelected: Boolean(session.activeOfferId),

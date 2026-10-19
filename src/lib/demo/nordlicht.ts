@@ -114,7 +114,9 @@ export async function seedNordlicht(): Promise<DemoErgebnis> {
     data: {
       name: DEMO_FIRMA,
       industry: "Handwerk / Gebäudetechnik",
-      legalForm: "GmbH",
+      // Der Schlüssel aus dem Katalog, nicht das Etikett: Von ihm hängt ab,
+      // ob der Vertragsabschluss Registergericht und -nummer verlangt.
+      legalForm: "gmbh",
       street: "Billstraße", houseNumber: "112",
       postalCode: "20539", city: "Hamburg", country: "Deutschland",
       website: "https://nordlicht-gebaeudetechnik.example",
