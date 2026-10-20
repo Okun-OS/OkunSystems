@@ -85,7 +85,7 @@ export function Aussen({
   }
 
   return (
-    <div className="fixed inset-0 overflow-hidden" style={{ perspective: "1400px" }}>
+    <div className="absolute inset-0 overflow-hidden" style={{ perspective: "1400px" }}>
       <div
         ref={welt}
         className={`absolute inset-0 studio-welt ${geht ? "studio-eintritt" : ""}`}
@@ -192,7 +192,7 @@ export function Schnitt({
   }, [onFertig]);
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-[#02040a]" aria-hidden>
+    <div className="absolute inset-0 z-50 grid place-items-center bg-[#02040a]" aria-hidden>
       <div
         className="absolute inset-0"
         style={{
@@ -274,7 +274,7 @@ export function RegalSzene({
 
   return (
     <div
-      className="fixed inset-0 overflow-hidden"
+      className="absolute inset-0 overflow-hidden"
       style={{ background: "radial-gradient(90% 80% at 50% 8%,#0a1f36,#040c18 58%,#02060e 100%)" }}
     >
       <ZurueckKnopf onClick={onZurueck} />
@@ -379,7 +379,7 @@ function ZurueckKnopf({ onClick }: { onClick: () => void }) {
 /** Die Marke unten rechts — damit klar bleibt, in wessen Haus man steht. */
 export function StudioMarke() {
   return (
-    <div className="fixed left-6 bottom-6 z-20 w-[96px] opacity-45 pointer-events-none">
+    <div className="absolute left-6 bottom-6 z-20 w-[96px] opacity-45 pointer-events-none">
       <OkunLogo size="sm" />
     </div>
   );

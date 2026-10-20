@@ -50,7 +50,7 @@ export function Foyer({
   const d4 = rueckwand(0.37, 1, FOYER);
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-[#04080f]">
+    <div className="absolute inset-0 overflow-hidden bg-[#04080f]">
       <Innenraum
         kasten={FOYER}
         akzent="#00b8ff"
@@ -270,7 +270,7 @@ export function Flur({
   const [ueber, setzeUeber] = useState<string | null>(null);
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-[#04080f]">
+    <div className="absolute inset-0 overflow-hidden bg-[#04080f]">
       <Innenraum kasten={FLUR} akzent="#00b8ff" lichter={3} fenster="links">
         <g>
           <defs>

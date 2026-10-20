@@ -41,6 +41,7 @@ export function Rundgang({
   onOrt,
   stufe,
   onStufe,
+  eingebettet = false,
 }: {
   daten: StudioDaten;
   /** Die Branche, fürs Schild über dem Namen. */
@@ -63,6 +64,14 @@ export function Rundgang({
   stufe?: number;
   /** Der eigene Knopfdruck — die Führung gibt ihn weiter. */
   onStufe?: (stufe: number) => void;
+  /**
+   * Im Gespräch steht der Rundgang in einer Fläche, nicht über allem.
+   *
+   * Als Vollbild deckt er Videobild und Gesprächsmaske zu — und genau die
+   * braucht man daneben. Eingebettet füllt er seinen Platz und überlässt
+   * dem Aufrufer die Anordnung.
+   */
+  eingebettet?: boolean;
 }) {
   const [ort, setzeOrt] = useState<Ort>(ziel ?? "aussen");
   const [eigeneStufe, setzeEigeneStufe] = useState(0);
@@ -157,7 +166,13 @@ export function Rundgang({
       Klick in der Halle landet womöglich in der Navigation dahinter.
     */
     <TaktGeber value={{ stufe: takt, setzeStufe: setzeTakt, gefuehrt }}>
-    <div className="fixed inset-0 z-[200] bg-[#02040a] text-[#eef3f9] overflow-hidden">
+    <div
+      className={
+        eingebettet
+          ? "absolute inset-0 bg-[#02040a] text-[#eef3f9] overflow-hidden"
+          : "fixed inset-0 z-[200] bg-[#02040a] text-[#eef3f9] overflow-hidden"
+      }
+    >
       {ort === "aussen" && (
         <Aussen
           haus={daten.haus}
@@ -296,7 +311,7 @@ function SockelSzene({
 
   return (
     <div
-      className="fixed inset-0 overflow-hidden"
+      className="absolute inset-0 overflow-hidden"
       style={{ background: "radial-gradient(90% 80% at 50% 8%,#0a1f36,#040c18 58%,#02060e 100%)" }}
     >
       <button
@@ -391,7 +406,7 @@ function LeererRaum({
   onZurueck: () => void;
 }) {
   return (
-    <div className="fixed inset-0 grid place-items-center bg-[#040c18] px-6 text-center">
+    <div className="absolute inset-0 grid place-items-center bg-[#040c18] px-6 text-center">
       <div>
         <h2 className="text-2xl font-bold">{titel}</h2>
         <p className="mt-3 text-[#90a6c0] text-sm max-w-[44ch]">{text}</p>

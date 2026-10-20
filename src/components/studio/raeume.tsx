@@ -316,7 +316,7 @@ export function Abschied({
 }) {
   const { gefuehrt } = useTakt();
   return (
-    <div className="fixed inset-0 overflow-hidden">
+    <div className="absolute inset-0 overflow-hidden">
       <div className="absolute inset-0">
         <Himmel />
         <Sterne />
@@ -400,13 +400,13 @@ function RaumRahmen({
   const { gefuehrt } = useTakt();
   return (
     <div
-      className="fixed inset-0 overflow-auto"
+      className="absolute inset-0 overflow-auto"
       style={{ background: "radial-gradient(90% 80% at 50% 8%,#0a1f36,#040c18 58%,#02060e 100%)" }}
     >
       <button
         onClick={onZurueck}
         hidden={gefuehrt}
-        className="fixed left-6 top-6 z-20 flex items-center gap-2 px-4 py-2.5 rounded-full
+        className="absolute left-6 top-6 z-20 flex items-center gap-2 px-4 py-2.5 rounded-full
           bg-[rgba(10,22,38,.8)] border border-[rgba(0,184,255,.2)] text-[#90a6c0] text-xs
           backdrop-blur hover:text-[#eef3f9] hover:border-[rgba(0,184,255,.5)] transition-colors"
       >
