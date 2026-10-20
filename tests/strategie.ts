@@ -40,6 +40,7 @@ import {
   entfaellt,
   fahrzeugFuer,
   hallensatz,
+  schildGroesse,
   schildName,
   stockwerkeFuer,
   wirdAutomatisch,
@@ -398,14 +399,28 @@ test("ein unbekannter Ort führt vor das Haus, nicht ins Leere", () => {
 
 // ─── Das Haus ────────────────────────────────────────────────────────────────
 
-test("das Schild trägt den Namen, nicht die Rechtsform", () => {
-  assert.equal(schildName("Nordlicht Gebäudetechnik GmbH"), "NORDLICHT GEBÄUDETECHNIK");
-  assert.equal(schildName("Meyer UG (haftungsbeschränkt)"), "MEYER");
-  assert.equal(schildName("Schulz & Partner GmbH & Co. KG"), "SCHULZ");
+test("das Schild trägt den Firmennamen, vollständig", () => {
+  assert.equal(schildName("Nordlicht Gebäudetechnik GmbH"), "NORDLICHT GEBÄUDETECHNIK GMBH");
+  assert.equal(schildName("Schulz & Partner GmbH & Co. KG"), "SCHULZ & PARTNER GMBH & CO. KG");
+  /*
+    Der Fall, der das ausgelöst hat: Ein Betrieb, der nach seinem Inhaber
+    heißt. Ohne Rechtsform steht dort ein Personenname — und der Kunde
+    liest seinen Ansprechpartner statt seiner Firma.
+  */
+  assert.equal(schildName("Arwed Spanehl GmbH"), "ARWED SPANEHL GMBH");
 });
 
-test("ein leerer Name bleibt lesbar statt leer", () => {
+test("nur der Klammerzusatz fliegt vom Schild", () => {
+  assert.equal(schildName("Meyer UG (haftungsbeschränkt)"), "MEYER UG");
   assert.equal(schildName("GmbH"), "GMBH");
+});
+
+test("die Schrift schrumpft, statt den Namen zu kürzen", () => {
+  const breit = schildGroesse("MEYER UG", 760);
+  const lang = schildGroesse("NORDLICHT GEBÄUDETECHNIK UND ANLAGENBAU GMBH & CO. KG", 760);
+  assert.ok(lang < breit, "der längere Name steht kleiner da");
+  assert.ok(lang >= 13, "aber nie so klein, dass man ihn nicht mehr liest");
+  assert.ok(breit <= 40, "und nie größer als das Schild erlaubt");
 });
 
 test("das Fahrzeug kommt aus der Branche", () => {

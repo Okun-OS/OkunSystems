@@ -367,6 +367,18 @@ body {
   100% { left: 97%; opacity: 0; }
 }
 
+/*
+  Eine Ebene der Außenszene.
+
+  Die Parallaxe schreibt nur `--px`/`--py`; die Grundstellung bleibt der
+  Ebene überlassen. Der weiche Übergang nimmt dem Mausruck die Härte.
+*/
+.studio-lage {
+  transform: translate3d(var(--px, 0px), var(--py, 0px), 0);
+  transition: transform .4s cubic-bezier(.2, .8, .3, 1);
+  will-change: transform;
+}
+
 /* Am Schluss gehen die letzten dunklen Fenster an. */
 @keyframes studio-fenster-an {
   from { opacity: 0; }

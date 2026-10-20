@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { OkunLogo } from "@/components/layout/okun-logo";
 import { Gebaeude } from "./gebaeude";
 import { Boden, Himmel, Mondglanz, Regen, Sterne, Stadt } from "./kulisse";
@@ -39,20 +40,39 @@ export function Aussen({
     Der eine Effekt, der aus einer Zeichnung einen Ort macht. Er läuft nur,
     solange niemand eintritt — während der Kamerafahrt würde er sie stören.
   */
+  /*
+    Die Parallaxe schreibt Variablen, nicht `transform`.
+
+    Vorher setzte sie `style.transform` direkt — und überschrieb damit das
+    `translateX(-50%)`, mit dem das Haus in der Mitte stand. Beim ersten
+    Mausruck sprang es um seine halbe Breite nach rechts. Das sah nicht nach
+    Parallaxe aus, sondern nach einem Fehler, und es war auch einer.
+
+    Über `--px`/`--py` kann jede Ebene ihre eigene Grundstellung behalten.
+  */
   useEffect(() => {
     if (geht) return;
     const el = welt.current;
     if (!el) return;
+    let laeuft = 0;
     const bewegen = (e: MouseEvent) => {
-      const dx = e.clientX / window.innerWidth - 0.5;
-      const dy = e.clientY / window.innerHeight - 0.5;
-      el.querySelectorAll<HTMLElement>("[data-tiefe]").forEach((lage) => {
-        const t = Number(lage.dataset.tiefe) || 1;
-        lage.style.transform = `translate3d(${-dx * t * 5}px, ${-dy * t * 2.5}px, 0)`;
+      if (laeuft) return;
+      laeuft = requestAnimationFrame(() => {
+        laeuft = 0;
+        const dx = e.clientX / window.innerWidth - 0.5;
+        const dy = e.clientY / window.innerHeight - 0.5;
+        el.querySelectorAll<HTMLElement>("[data-tiefe]").forEach((lage) => {
+          const t = Number(lage.dataset.tiefe) || 1;
+          lage.style.setProperty("--px", `${(-dx * t * 3.2).toFixed(1)}px`);
+          lage.style.setProperty("--py", `${(-dy * t * 1.6).toFixed(1)}px`);
+        });
       });
     };
     window.addEventListener("mousemove", bewegen);
-    return () => window.removeEventListener("mousemove", bewegen);
+    return () => {
+      window.removeEventListener("mousemove", bewegen);
+      if (laeuft) cancelAnimationFrame(laeuft);
+    };
   }, [geht]);
 
   function eintreten() {
@@ -70,25 +90,33 @@ export function Aussen({
         ref={welt}
         className={`absolute inset-0 studio-welt ${geht ? "studio-eintritt" : ""}`}
       >
-        <div data-tiefe="1"><Himmel /></div>
-        <div data-tiefe="1.5"><Sterne /></div>
-        <div data-tiefe="2"><Mondglanz /></div>
-        <div data-tiefe="3"><Stadt /></div>
-        <div data-tiefe="4"><Boden /></div>
+        <div data-tiefe="1" className="studio-lage"><Himmel /></div>
+        <div data-tiefe="1.5" className="studio-lage"><Sterne /></div>
+        <div data-tiefe="2" className="studio-lage"><Mondglanz /></div>
+        <div data-tiefe="3" className="studio-lage"><Stadt /></div>
+        <div data-tiefe="4" className="studio-lage"><Boden /></div>
+        {/*
+          Das Haus steht in der Mitte, und zwar ohne `transform`.
+
+          Zentrieren über `translateX(-50%)` und Parallaxe über `transform`
+          sind dieselbe Eigenschaft — eins überschreibt das andere. Mit einer
+          Flex-Zeile kommen sie sich nicht mehr in die Quere.
+        */}
         <div
           data-tiefe="6"
-          className="absolute left-1/2 bottom-[11%] w-[min(78vw,1220px)]"
-          style={{ transform: "translateX(-50%)" }}
+          className="studio-lage absolute inset-x-0 bottom-[11%] flex justify-center"
         >
-          <Gebaeude
-            schild={haus.schild}
-            untertitel={untertitel}
-            stockwerke={haus.stockwerke}
-            fahrzeug={haus.fahrzeug}
-            onTuer={eintreten}
-          />
+          <div className="w-[min(78vw,1220px)]">
+            <Gebaeude
+              schild={haus.schild}
+              untertitel={untertitel}
+              stockwerke={haus.stockwerke}
+              fahrzeug={haus.fahrzeug}
+              onTuer={eintreten}
+            />
+          </div>
         </div>
-        <div data-tiefe="8"><Regen /></div>
+        <div data-tiefe="8" className="studio-lage"><Regen /></div>
       </div>
 
       <div
@@ -172,22 +200,38 @@ export function Schnitt({
           animation: "studio-blitz 1.5s cubic-bezier(.2,.9,.3,1) both",
         }}
       />
-      <div className="relative text-center z-10">
+      <div className="relative text-center z-10 px-6">
+        {/*
+          Die echte Marke, nicht eine nachgebaute.
+
+          Hier stand ein gezeichneter Ring mit dem Wort „OKUN" darunter —
+          das ist nicht unser Logo. In einer Sequenz, die genau dafür da
+          ist, die Marke zu setzen, gehört die Marke hin.
+        */}
         <div
-          className="w-[92px] h-[92px] mx-auto rounded-full border-[3px] border-[#00b8ff] relative
-            shadow-[0_0_60px_rgba(0,184,255,.85)]"
-          style={{ animation: "studio-ring-ein 1.1s cubic-bezier(.2,1.4,.3,1) .35s both" }}
+          className="w-[min(62vw,420px)] mx-auto overflow-hidden"
+          /*
+            Das Seitenverhältnis schneidet die Zeile unter dem Trennstrich
+            ab — und zwar in Anteilen, nicht in Pixeln. Die feste Höhe im
+            Logo der Seitenleiste ist auf 200 Pixel Breite gerechnet; hier
+            ist das Zeichen doppelt so groß, und „SYSTEMS" wäre weggefallen.
+          */
+          style={{
+            aspectRatio: "1039 / 271",
+            animation: "studio-ring-ein 1.1s cubic-bezier(.2,1.4,.3,1) .35s both",
+          }}
         >
-          <span className="absolute inset-5 rounded-full bg-[#00b8ff] shadow-[0_0_40px_#00b8ff]" />
+          <Image
+            src="/okun-logo.png"
+            alt="OKUN Systems"
+            width={1039}
+            height={356}
+            priority
+            style={{ width: "100%", height: "auto", display: "block" }}
+          />
         </div>
-        <p
-          className="mt-6 text-[clamp(22px,2.6vw,36px)] font-bold tracking-[0.3em] text-[#eef3f9]"
-          style={{ animation: "studio-schrift-ein 1s cubic-bezier(.2,.9,.3,1) .7s both" }}
-        >
-          OKUN
-        </p>
         <div
-          className="mt-3 h-px bg-[linear-gradient(90deg,transparent,#00b8ff,transparent)]"
+          className="mt-5 h-px bg-[linear-gradient(90deg,transparent,#00b8ff,transparent)]"
           style={{ animation: "studio-linie-ein .9s cubic-bezier(.2,.9,.3,1) .95s both" }}
         />
         <p

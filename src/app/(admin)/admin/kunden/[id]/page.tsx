@@ -57,20 +57,20 @@ export default async function KundeDetailPage({ params }: { params: Promise<{ id
     <div>
       {/* Action bar */}
       <div className="flex items-center gap-2 mb-6">
-        <Link href={`/admin/kunden/${id}/strategy`}
+        {/*
+          Der Knopf führte auf die alte Strategy-Session-Seite — neben dem
+          Reiter „Strategiegespräch" lagen damit zwei Wege zu derselben
+          Sache, von denen einer ins Leere lief.
+        */}
+        <Link href={`/admin/kunden/${id}/strategie`}
           className="bg-[#00b8ff] hover:bg-[#0099d6] text-white text-sm font-semibold rounded-lg px-4 py-2.5 transition-colors flex items-center gap-2">
           <Target size={14} />
-          Strategy Session
+          Strategiegespräch
         </Link>
-        <Link href={`/admin/kunden/${id}/analyse`}
-          className="bg-[#00b8ff]/10 hover:bg-[#00b8ff]/20 border border-[#00b8ff]/20 text-[#00b8ff] text-sm font-medium rounded-lg px-4 py-2.5 transition-colors flex items-center gap-2">
-          <Brain size={14} />
-          Analyse
-        </Link>
-        <Link href={`/admin/kunden/${id}/bearbeiten`}
-          className="bg-[#101c2e] hover:bg-[#222] border border-[#1a2840] text-[#f0f0f0] text-sm font-medium rounded-lg px-4 py-2.5 transition-colors">
-          Bearbeiten
-        </Link>
+        {/*
+          „Analyse" und „Bearbeiten" standen hier doppelt: Beide stehen in
+          der Navigation darüber, unter Blueprint und unter Verwaltung.
+        */}
       </div>
 
       {activeSession?.blueprintVersion === "2.0" && activeSession.status === "COMPLETED" && !activeSession.reportUrl && (

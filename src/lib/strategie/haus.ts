@@ -65,26 +65,37 @@ export function stockwerkeFuer(mitarbeitende: number | null | undefined): number
  */
 export function schildName(firma: string): string {
   /*
-    Die Klammer zuerst.
+    Der Firmenname, nicht der Name eines Menschen.
 
-    `\b` nach einer schließenden Klammer greift nicht — zwischen „)" und dem
-    Zeilenende liegt keine Wortgrenze. Ohne diesen eigenen Schritt blieb aus
-    „Meyer UG (haftungsbeschränkt)" ein „Meyer (haftungsbeschränkt)" übrig,
-    und das stand dann in Leuchtschrift an der Fassade.
+    Früher flog die Rechtsform vom Schild, weil „GMBH" in Leuchtschrift
+    nach Formular aussieht. Bei einem Betrieb, der nach seinem Inhaber
+    heißt, wurde daraus ein Personenname: Aus „Arwed Spanehl GmbH" stand
+    „ARWED SPANEHL" an der Fassade — und wer davorsteht, liest den
+    Ansprechpartner und nicht seine Firma.
+
+    Deshalb bleibt die Rechtsform stehen. Nur der Klammerzusatz
+    „(haftungsbeschränkt)" fliegt: Er steht auf keinem Schild dieser Welt,
+    und er allein wäre länger als der Name.
   */
-  const ohneForm = firma
+  const sauber = firma
     .replace(/\s*\((haftungsbeschränkt|haftungsbeschraenkt)\)/gi, "")
-    .replace(/\b(GmbH\s*&\s*Co\.?\s*KG|GmbH|UG|AG|KG|OHG|e\.?\s?K\.?|GbR|mbH|SE)\b\.?/gi, "")
     .replace(/\s{2,}/g, " ")
-    .trim()
-    // Ein Name, der auf „&" oder einem Komma endet, ist abgeschnitten, nicht kurz.
-    .replace(/[,&\-–+]\s*$/, "")
     .trim();
-  const sauber = ohneForm || firma;
-  // Zwei Wörter passen auf ein Schild, fünf nicht.
-  const woerter = sauber.split(/\s+/);
-  const kurz = woerter.length > 2 ? woerter.slice(0, 2).join(" ") : sauber;
-  return kurz.replace(/[,&\-–+]\s*$/, "").trim().toUpperCase();
+  return (sauber || firma).toUpperCase();
+}
+
+/**
+ * Wie groß der Name auf dem Schild stehen darf.
+ *
+ * Ein Schild hat eine feste Breite, ein Firmenname nicht. Statt zu kürzen
+ * — und damit wieder etwas anderes dastehen zu lassen als den Namen —
+ * schrumpft die Schrift, bis der ganze Name hineinpasst.
+ */
+export function schildGroesse(schild: string, breite: number, maximum = 40): number {
+  const zeichen = Math.max(schild.length, 1);
+  // Mono-Schrift mit Sperrung: rund 0,78 em je Zeichen.
+  const passt = (breite * 0.92) / (zeichen * 0.78);
+  return Math.max(13, Math.min(maximum, passt));
 }
 
 // ─── Die Räume ───────────────────────────────────────────────────────────────
