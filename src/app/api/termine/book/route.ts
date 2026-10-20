@@ -5,6 +5,7 @@ import {
   sendAppointmentConfirmation,
   sendAppointmentNotificationToAdmin,
 } from "@/lib/email";
+import { berlinTeile, berlinWochentag, berlinZeitpunkt } from "@/lib/zeit";
 
 const MIN_DAYS_AHEAD = 3;
 
@@ -30,20 +31,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid startTime" }, { status: 400 });
   }
 
-  // Enforce minimum 3 days ahead
-  const minDate = new Date();
-  minDate.setDate(minDate.getDate() + MIN_DAYS_AHEAD);
-  minDate.setHours(0, 0, 0, 0);
-  if (startTime < minDate) {
+  /*
+    Vorlauf und Wochenende in deutscher Ortszeit.
+
+    `getDay()` und `setHours()` rechnen in der Zone des Prozesses; auf dem
+    Server ist das UTC. Ein Freitagabendtermin wäre dort schon Samstag, und
+    die Frist verschöbe sich um zwei Stunden.
+  */
+  const heute = berlinTeile(new Date());
+  const frueheste = berlinZeitpunkt(heute.jahr, heute.monat, heute.tag + MIN_DAYS_AHEAD, 0);
+  if (startTime < frueheste) {
     return NextResponse.json(
       { error: `Bitte wählen Sie einen Termin mindestens ${MIN_DAYS_AHEAD} Tage im Voraus` },
       { status: 400 }
     );
   }
 
-  // Reject weekends
-  const day = startTime.getDay();
-  if (day === 0 || day === 6) {
+  const wochentag = berlinWochentag(startTime);
+  if (wochentag === 0 || wochentag === 6) {
     return NextResponse.json({ error: "Wochenenden sind nicht verfügbar" }, { status: 400 });
   }
 

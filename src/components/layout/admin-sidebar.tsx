@@ -17,37 +17,63 @@ import {
   Package,
   Library,
   Receipt,
+  Monitor,
 } from "lucide-react";
 import { OkunLogo } from "./okun-logo";
 import { cn } from "@/lib/utils";
+import { teamRoleLabel } from "@/lib/team/roles";
 
+/**
+ * `closing` = sichtbar für wer Closing-Gespräche führt.
+ * `strategie` = sichtbar für wer Strategiegespräche führt.
+ * Ein Administrator sieht alles.
+ */
 const navItems = [
-  { href: "/admin/dashboard", icon: LayoutDashboard, label: "Übersicht" },
-  { href: "/admin/sales", icon: TrendingUp, label: "Sales & Closing" },
-  { href: "/admin/kunden", icon: Users, label: "Kunden" },
-  { href: "/admin/lernen", icon: BookOpen, label: "Learning Library" },
-  { href: "/admin/termine", icon: Calendar, label: "Termine" },
-  { href: "/admin/dokumente", icon: FileText, label: "Dokumente" },
-  { href: "/admin/einstellungen", icon: Settings, label: "Einstellungen" },
+  { href: "/admin/dashboard", icon: LayoutDashboard, label: "Übersicht", closing: false, strategie: false },
+  { href: "/admin/sales", icon: TrendingUp, label: "Sales & Closing", closing: true, strategie: false },
+  { href: "/admin/kunden", icon: Users, label: "Kunden", closing: false, strategie: true },
+  { href: "/admin/lernen", icon: BookOpen, label: "Learning Library", closing: false, strategie: false },
+  { href: "/admin/termine", icon: Calendar, label: "Termine", closing: false, strategie: false },
+  { href: "/admin/dokumente", icon: FileText, label: "Dokumente", closing: false, strategie: false },
+  { href: "/admin/einstellungen", icon: Settings, label: "Einstellungen", closing: false, strategie: false },
 ];
 
 const salesSubItems = [
-  { href: "/admin/sales", label: "Dashboard", icon: TrendingUp, exact: true },
-  { href: "/admin/sales/leads", label: "Leads", icon: UserCircle },
-  { href: "/admin/sales/angebote", label: "Angebote", icon: Package },
-  { href: "/admin/sales/bibliothek", label: "Bibliothek", icon: Library },
-  { href: "/admin/sales/rechnungen", label: "Rechnungen", icon: Receipt },
+  { href: "/admin/sales", label: "Dashboard", icon: TrendingUp, exact: true, closing: true },
+  { href: "/admin/sales/leads", label: "Leads", icon: UserCircle, closing: true },
+  { href: "/admin/sales/angebote", label: "Angebote", icon: Package, closing: false },
+  { href: "/admin/sales/bibliothek", label: "Bibliothek", icon: Library, closing: false },
+  { href: "/admin/sales/rechnungen", label: "Rechnungen", icon: Receipt, closing: false },
+  {
+    href: "/admin/sales/praesentationen",
+    label: "Präsentationen",
+    icon: Monitor,
+    closing: false,
+  },
 ];
 
 interface AdminSidebarProps {
   user: {
     name?: string | null;
     email?: string | null;
+    role?: string | null;
+    canStrategy?: boolean | null;
   };
 }
 
 export function AdminSidebar({ user }: AdminSidebarProps) {
   const pathname = usePathname();
+  // Jeder sieht nur seine Bereiche. Die Anzeige folgt damit derselben Regel,
+  // die serverseitig ohnehin durchgesetzt wird — sie ersetzt sie nicht.
+  const istAdmin = user.role === "ADMIN";
+  const darfClosing = user.role === "CLOSER";
+  const darfStrategie = user.canStrategy === true;
+
+  const sichtbar = (item: { closing: boolean; strategie: boolean }) =>
+    istAdmin || (darfClosing && item.closing) || (darfStrategie && item.strategie);
+
+  const visibleNav = navItems.filter(sichtbar);
+  const visibleSubItems = salesSubItems.filter((item) => istAdmin || (darfClosing && item.closing));
 
   return (
     <aside className="fixed left-0 top-0 h-full w-[240px] bg-[#060a10] border-r border-[#111e30] flex flex-col z-40">
@@ -56,7 +82,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
       </div>
 
       <nav className="flex-1 overflow-y-auto py-4 px-3">
-        {navItems.map((item) => {
+        {visibleNav.map((item) => {
           const isSales = item.href === "/admin/sales";
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
           return (
@@ -77,7 +103,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
               {/* Sales sub-navigation */}
               {isSales && isActive && (
                 <div className="ml-4 pl-3 border-l border-[#1a2840] mb-1">
-                  {salesSubItems.map((sub) => {
+                  {visibleSubItems.map((sub) => {
                     const subActive = sub.exact
                       ? pathname === sub.href
                       : pathname === sub.href || pathname.startsWith(sub.href + "/");
@@ -113,7 +139,9 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[#eef2f7] text-xs font-medium truncate">{user.name}</p>
-            <p className="text-[#00b8ff] text-xs font-medium">Administrator</p>
+            <p className="text-[#00b8ff] text-xs font-medium">
+              {teamRoleLabel(user)}
+            </p>
           </div>
           <ChevronDown size={14} className="text-[#8899b4] flex-shrink-0" />
         </div>

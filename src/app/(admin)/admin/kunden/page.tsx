@@ -1,18 +1,16 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { db } from "@/lib/db";
 import {
   Search,
   Plus,
   Building2,
-  MoreHorizontal,
-  ExternalLink,
   ChevronRight,
   Users,
   FolderKanban,
   FileText,
   MessageSquare,
-  Pencil,
 } from "lucide-react";
 import { formatDate, getStatusColor } from "@/lib/utils";
 import { LinearProgress } from "@/components/ui/progress";
@@ -80,13 +78,13 @@ export default async function KundenPage({
             {companies.length} Unternehmen verwalten
           </p>
         </div>
-        <a
+        <Link
           href="/admin/kunden/neu"
           className="flex items-center gap-2 px-4 py-2.5 bg-[#00b8ff] hover:bg-[#0099d6] text-white text-sm font-semibold rounded-lg transition-colors"
         >
           <Plus size={15} />
           Kunde hinzufügen
-        </a>
+        </Link>
       </div>
 
       {/* Search + Filters */}
@@ -144,16 +142,25 @@ export default async function KundenPage({
           <table className="w-full">
             <thead>
               <tr className="border-b border-[#1a2840]">
+                {/*
+                  Sechs Spalten statt neun.
+
+                  „Score" stand bei jedem Betrieb auf „—": Die Zahl schreibt
+                  nur die alte Advisor-Analyse, der Blueprint 2.0 rechnet mit
+                  einer eigenen Engine und legt keinen OkunScore an.
+                  „Projekte" zählte dasselbe für alle, und die Aktionsspalte
+                  enthielt zwei Verweise auf Seiten, die jetzt ein Klick auf
+                  die Zeile öffnet, sowie einen Knopf ohne Funktion. Alles
+                  zusammen zwang die Tabelle ins seitliche Scrollen — und der
+                  Weg zum Kunden lag ganz rechts.
+                */}
                 {[
                   "Kunde",
                   "Branche",
                   "Ansprechpartner",
                   "Status",
                   "Analyse",
-                  "Score",
-                  "Projekte",
                   "Nächster Schritt",
-                  "",
                 ].map((header) => (
                   <th
                     key={header}
@@ -168,7 +175,7 @@ export default async function KundenPage({
               {companies.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={9}
+                    colSpan={6}
                     className="px-4 py-12 text-center text-[#555] text-sm"
                   >
                     Keine Kunden gefunden.
@@ -188,7 +195,7 @@ export default async function KundenPage({
                   return (
                     <tr
                       key={company.id}
-                      className="hover:bg-[#101c2e] transition-colors group"
+                      className="relative hover:bg-[#101c2e] transition-colors group"
                     >
                       {/* Kunde */}
                       <td className="px-4 py-3.5">
@@ -199,9 +206,22 @@ export default async function KundenPage({
                             </span>
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-[#f0f0f0] whitespace-nowrap">
+                            {/*
+                              Der Name ist der Weg hinein.
+
+                              Das `after:inset-0` legt eine unsichtbare Fläche
+                              über die ganze Zeile: Ein Klick irgendwo darauf
+                              öffnet den Betrieb, ohne dass man den Knopf am
+                              rechten Rand suchen muss.
+                            */}
+                            <Link
+                              href={`/admin/kunden/${company.id}`}
+                              className="text-sm font-medium text-[#f0f0f0] whitespace-nowrap
+                                hover:text-[#00b8ff] transition-colors
+                                after:absolute after:inset-0 after:content-['']"
+                            >
                               {company.name}
-                            </p>
+                            </Link>
                             {company.plan ? (
                               <span className="text-xs px-1.5 py-0.5 rounded bg-[#00b8ff]/10 border border-[#00b8ff]/20 text-[#00b8ff] capitalize">
                                 {company.plan}
@@ -250,30 +270,6 @@ export default async function KundenPage({
                         )}
                       </td>
 
-                      {/* Score */}
-                      <td className="px-4 py-3.5">
-                        {score !== null ? (
-                          <span
-                            className={`text-sm font-semibold ${
-                              score >= 75
-                                ? "text-[#00b8ff]"
-                                : score >= 50
-                                ? "text-yellow-400"
-                                : "text-red-400"
-                            }`}
-                          >
-                            {score}
-                          </span>
-                        ) : (
-                          <span className="text-sm text-[#555]">—</span>
-                        )}
-                      </td>
-
-                      {/* Projekte count */}
-                      <td className="px-4 py-3.5 text-sm text-[#888] text-center">
-                        {company._count.projects}
-                      </td>
-
                       {/* Nächster Schritt */}
                       <td className="px-4 py-3.5 text-sm text-[#888] whitespace-nowrap">
                         {projectPhase === "onboarding"
@@ -299,26 +295,6 @@ export default async function KundenPage({
                           : "Strategiegespräch"}
                       </td>
 
-                      {/* Actions */}
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <a
-                            href={`/admin/kunden/${company.id}`}
-                            className="w-7 h-7 rounded-md flex items-center justify-center text-[#888] hover:text-[#f0f0f0] hover:bg-[#222] transition-colors"
-                          >
-                            <ExternalLink size={13} />
-                          </a>
-                          <a
-                            href={`/admin/kunden/${company.id}/bearbeiten`}
-                            className="w-7 h-7 rounded-md flex items-center justify-center text-[#888] hover:text-[#f0f0f0] hover:bg-[#222] transition-colors"
-                          >
-                            <Pencil size={13} />
-                          </a>
-                          <button className="w-7 h-7 rounded-md flex items-center justify-center text-[#888] hover:text-[#f0f0f0] hover:bg-[#222] transition-colors">
-                            <MoreHorizontal size={13} />
-                          </button>
-                        </div>
-                      </td>
                     </tr>
                   );
                 })

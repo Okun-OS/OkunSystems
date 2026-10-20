@@ -13,13 +13,22 @@ import {
   LogOut,
   ChevronDown,
   HeartHandshake,
+  Building2,
 } from "lucide-react";
 import { OkunLogo } from "./okun-logo";
 import { cn } from "@/lib/utils";
+import { packageLabel } from "@/lib/packages";
 
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", exact: true },
   { href: "/blueprint", icon: Brain, label: "OKUN Blueprint™" },
+  /*
+    Das Studio steht erst in der Leiste, wenn es etwas zu sehen gibt.
+
+    Ein Punkt, der auf „noch nichts freigegeben" führt, ist kein Hinweis,
+    sondern ein Versprechen, das die Seite nicht hält.
+  */
+  { href: "/portal/studio", icon: Building2, label: "Transformation Studio", nurMitStudio: true },
   { href: "/portal/lernen", icon: BookOpen, label: "Lernen" },
   { href: "/termine", icon: Calendar, label: "Termine" },
   { href: "/portal/dokumente", icon: FileText, label: "Dokumente" },
@@ -32,11 +41,16 @@ interface SidebarProps {
     name?: string | null;
     email?: string | null;
     companyName?: string | null;
+    /** Das gebuchte Paket. Null, solange keines hinterlegt ist. */
+    plan?: string | null;
   };
+  /** Gibt es ein freigegebenes Haus? Sonst fehlt der Punkt. */
+  studioOffen?: boolean;
 }
 
-export function Sidebar({ user }: SidebarProps) {
+export function Sidebar({ user, studioOffen = false }: SidebarProps) {
   const pathname = usePathname();
+  const paket = packageLabel(user.plan);
 
   return (
     <aside className="fixed left-0 top-0 h-full w-[240px] bg-[#060a10] border-r border-[#111e30] flex flex-col z-40">
@@ -45,7 +59,9 @@ export function Sidebar({ user }: SidebarProps) {
       </div>
 
       <nav className="flex-1 overflow-y-auto py-4 px-3">
-        {navItems.map((item) => {
+        {navItems
+          .filter((item) => !item.nurMitStudio || studioOffen)
+          .map((item) => {
           const isActive = item.exact
             ? pathname === item.href
             : pathname === item.href || pathname.startsWith(item.href + "/");
@@ -80,6 +96,16 @@ export function Sidebar({ user }: SidebarProps) {
           </div>
           <ChevronDown size={14} className="text-[#8899b4] flex-shrink-0" />
         </div>
+        {/*
+          Das gebuchte Paket war im ganzen Portal nirgends zu sehen. Wer nicht
+          weiß, was er hat, versteht auch nicht, was ihm fehlt.
+        */}
+        {paket && (
+          <p className="px-3 pt-2 text-[10px] uppercase tracking-[0.18em] text-[#5b6b7f]">
+            {paket}
+          </p>
+        )}
+
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg mt-1 text-[#8899b4] hover:text-red-400 hover:bg-[#101c2e] text-sm w-full transition-colors"

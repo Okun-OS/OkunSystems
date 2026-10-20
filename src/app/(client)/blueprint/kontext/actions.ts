@@ -179,6 +179,11 @@ async function _createBlueprintSession(companyId: string, contextSessionId: stri
     redirect(`/blueprint/${existing.id}`);
   }
 
+  const { plan } = (await db.company.findUnique({
+    where: { id: companyId },
+    select: { plan: true },
+  })) ?? { plan: null };
+
   const created = await db.analysisSession.create({
     data: {
       companyId,
@@ -186,6 +191,10 @@ async function _createBlueprintSession(companyId: string, contextSessionId: stri
       phase: "BLUEPRINT_M1",
       blueprintVersion: "2.0",
       currentArea: "unternehmensprofil",
+      // Das gebuchte Paket wird hier festgehalten, nicht erst bei der
+      // Auswertung nachgeschlagen: Wechselt ein Kunde später das Paket,
+      // bleibt der Bericht bei dem, was zum Zeitpunkt der Erhebung galt.
+      packageType: plan,
     },
     select: { id: true },
   });

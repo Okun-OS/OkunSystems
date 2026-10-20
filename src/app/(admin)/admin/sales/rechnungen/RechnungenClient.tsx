@@ -1,11 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Plus, Check, Send, Banknote, X, ChevronDown, ChevronUp } from "lucide-react";
 import {
-  createManualInvoice,
-  markInvoiceSent,
   markInvoicePaid,
   cancelInvoice,
   sendInvoice,
@@ -70,22 +69,21 @@ export function RechnungenClient({ invoices, companies }: Props) {
     paid: invoices.filter((i) => i.status === "paid").reduce((s, i) => s + i.grossAmount, 0),
   };
 
+  /**
+   * Rechnungen entstehen ausschließlich im Editor — dort werden Positionen
+   * erfasst, Beträge serverseitig berechnet und die Nummer erst bei der
+   * Finalisierung vergeben.
+   */
   function handleCreate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setActionError(null);
     const fd = new FormData(e.currentTarget);
-    startTransition(async () => {
-      const result = await createManualInvoice(fd);
-      if (result?.error) setActionError(result.error);
-      else { setShowCreate(false); router.refresh(); }
-    });
-  }
-
-  function handleSent(id: string) {
-    startTransition(async () => {
-      await markInvoiceSent(id);
-      router.refresh();
-    });
+    const companyId = (fd.get("companyId") as string)?.trim();
+    if (!companyId) {
+      setActionError("Bitte ein Unternehmen auswählen.");
+      return;
+    }
+    router.push(`/admin/sales/rechnungen/neu?companyId=${companyId}`);
   }
 
   async function handleSendEmail(id: string) {
@@ -93,7 +91,7 @@ export function RechnungenClient({ invoices, companies }: Props) {
     setActionError(null);
     try {
       const result = await sendInvoice(id);
-      if (result?.error) setActionError(result.error);
+      if (result && "error" in result && result.error) setActionError(result.error);
       else router.refresh();
     } finally {
       setSendingId(null);
@@ -101,16 +99,22 @@ export function RechnungenClient({ invoices, companies }: Props) {
   }
 
   function handlePaid(id: string) {
+    setActionError(null);
     startTransition(async () => {
-      await markInvoicePaid(id, paidByMap[id]);
-      router.refresh();
+      const result = await markInvoicePaid(id, paidByMap[id]);
+      if (result && "error" in result && result.error) setActionError(result.error);
+      else router.refresh();
     });
   }
 
   function handleCancel(id: string) {
+    const reason = window.prompt("Begründung für die Stornierung:");
+    if (!reason?.trim()) return;
+    setActionError(null);
     startTransition(async () => {
-      await cancelInvoice(id);
-      router.refresh();
+      const result = await cancelInvoice(id, reason.trim());
+      if (result && "error" in result && result.error) setActionError(result.error);
+      else router.refresh();
     });
   }
 
@@ -327,27 +331,24 @@ export function RechnungenClient({ invoices, companies }: Props) {
 
                   {/* Actions */}
                   <div className="flex items-center gap-3 pt-3 border-t border-[#111e30]">
-                    {inv.status === "draft" && (
-                      <>
-                        <button
-                          onClick={() => handleSendEmail(inv.id)}
-                          disabled={pending || sendingId === inv.id}
-                          className="flex items-center gap-2 px-3 py-2 bg-[#00b8ff] hover:bg-[#0099dd] disabled:opacity-40 text-black font-semibold text-xs rounded-lg"
-                        >
-                          <Send size={13} />
-                          {sendingId === inv.id ? "Wird gesendet…" : "Per E-Mail senden"}
-                        </button>
-                        <button
-                          onClick={() => handleSent(inv.id)}
-                          disabled={pending}
-                          className="flex items-center gap-2 px-3 py-2 bg-[#1a2840] hover:bg-[#243550] disabled:opacity-40 text-[#888] text-xs rounded-lg"
-                        >
-                          <Check size={13} />
-                          Nur als versendet markieren
-                        </button>
-                      </>
+                    <Link
+                      href={`/admin/sales/rechnungen/${inv.id}`}
+                      className="flex items-center gap-2 px-3 py-2 bg-[#1a2840] hover:bg-[#243550] text-[#c9d4e4] text-xs rounded-lg"
+                    >
+                      <Check size={13} />
+                      {inv.status === "draft" ? "Entwurf bearbeiten" : "Rechnung öffnen"}
+                    </Link>
+                    {inv.status !== "draft" && inv.status !== "cancelled" && (
+                      <button
+                        onClick={() => handleSendEmail(inv.id)}
+                        disabled={pending || sendingId === inv.id}
+                        className="flex items-center gap-2 px-3 py-2 bg-[#00b8ff] hover:bg-[#0099dd] disabled:opacity-40 text-black font-semibold text-xs rounded-lg"
+                      >
+                        <Send size={13} />
+                        {sendingId === inv.id ? "Wird gesendet…" : "Per E-Mail senden"}
+                      </button>
                     )}
-                    {(inv.status === "sent" || inv.status === "draft") && (
+                    {inv.status === "sent" && (
                       <div className="flex items-center gap-2">
                         <input
                           value={paidByMap[inv.id] ?? ""}

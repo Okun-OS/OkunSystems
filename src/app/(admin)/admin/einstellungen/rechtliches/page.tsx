@@ -1,34 +1,16 @@
-import { auth } from "@/auth";
-import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
-import { RechtlichesClient } from "./RechtlichesClient";
 
-export default async function RechtlichesPage() {
-  const session = await auth();
-  if (!session?.user || (session.user as { role?: string }).role !== "ADMIN") {
-    redirect("/login");
-  }
-
-  const documents = await db.legalDocument.findMany({
-    select: {
-      id: true,
-      title: true,
-      type: true,
-      version: true,
-      content: true,
-      r2Key: true,
-      checkboxLabel: true,
-      isRequired: true,
-      isActive: true,
-      displayOrder: true,
-      _count: { select: { consentRecords: true } },
-    },
-    orderBy: [{ isActive: "desc" }, { displayOrder: "asc" }, { title: "asc" }],
-  });
-
-  return (
-    <div className="p-6 lg:p-10">
-      <RechtlichesClient documents={documents} />
-    </div>
-  );
+/**
+ * Die frühere Verwaltung „Rechtliche Dokumente" ist in die Vertragsdokumente
+ * aufgegangen: Datei, Versionen und der zugehörige Checkbox-Text stehen dort
+ * gemeinsam auf einer Seite. Der alte Pfad bleibt als Weiterleitung bestehen,
+ * damit gespeicherte Links weiter funktionieren.
+ *
+ * Das direkte Bearbeiten einer bereits veröffentlichten Version ist bewusst
+ * entfallen: Sobald ein Kunde einer Fassung zugestimmt hat, muss sie
+ * unverändert bleiben, sonst stimmt die hinterlegte Prüfsumme nicht mehr.
+ * Änderungen entstehen als neue Version.
+ */
+export default function RechtlichesPage() {
+  redirect("/admin/einstellungen/vertragsdokumente");
 }

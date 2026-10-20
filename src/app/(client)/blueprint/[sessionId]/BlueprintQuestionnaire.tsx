@@ -80,6 +80,24 @@ export default function BlueprintQuestionnaire({
   const [helpInput, setHelpInput] = useState("");
   const helpScrollRef = useRef<HTMLDivElement>(null);
 
+  // Wer eine Weile nichts anklickt, weiß vielleicht nicht, wie die Frage
+  // gemeint ist. Einmal je Frage ein Hinweis auf das Fragezeichen — geraten
+  // wird sonst, und eine geratene Antwort verfälscht die Auswertung.
+  // Der Hinweis merkt sich, zu welcher Frage er gehört — so verschwindet er
+  // beim Blättern von selbst, ohne dass ihn ein Effekt zurücksetzen muss.
+  const [hintForQuestion, setHintForQuestion] = useState<string | null>(null);
+  const showHelpHint =
+    hintForQuestion === question.id &&
+    !showHelp &&
+    selected.size === 0 &&
+    freeText.trim().length === 0;
+
+  useEffect(() => {
+    if (showHelp || selected.size > 0 || freeText.trim().length > 0) return;
+    const timer = setTimeout(() => setHintForQuestion(question.id), 30_000);
+    return () => clearTimeout(timer);
+  }, [question.id, showHelp, selected.size, freeText]);
+
   const isFreeTextOnly = question.options.length === 0;
 
   async function fetchHelpExplanation(
@@ -294,13 +312,42 @@ export default function BlueprintQuestionnaire({
                   : "Mehrfachauswahl möglich"}
               </span>
             )}
-            <button
-              onClick={handleOpenHelp}
-              className="w-7 h-7 rounded-full flex items-center justify-center text-[#555] hover:text-[#888] hover:bg-[#101c2e] transition-colors"
-              title="Hilfe zu dieser Frage"
-            >
-              <HelpCircle size={16} />
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => {
+                  setHintForQuestion(null);
+                  handleOpenHelp();
+                }}
+                className={cn(
+                  "w-7 h-7 rounded-full flex items-center justify-center transition-colors",
+                  showHelpHint
+                    ? "text-[#00b8ff] bg-[#00b8ff]/10"
+                    : "text-[#555] hover:text-[#888] hover:bg-[#101c2e]"
+                )}
+                title="Hilfe zu dieser Frage"
+              >
+                <HelpCircle size={16} />
+              </button>
+
+              {showHelpHint && (
+                <div className="absolute right-0 top-9 z-30 w-64 rounded-xl border border-[#00b8ff]/30 bg-[#0c1520] p-3 shadow-xl">
+                  <div className="flex items-start gap-2">
+                    <HelpCircle size={14} className="text-[#00b8ff] mt-0.5 flex-shrink-0" />
+                    <p className="text-[#c9d4e4] text-xs leading-relaxed">
+                      Unklar, wie die Frage gemeint ist? Klicken Sie auf das Fragezeichen —
+                      lieber einmal nachfragen als raten.
+                    </p>
+                    <button
+                      onClick={() => setHintForQuestion(null)}
+                      aria-label="Hinweis schließen"
+                      className="text-[#555] hover:text-[#888]"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

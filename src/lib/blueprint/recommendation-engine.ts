@@ -30,34 +30,68 @@ export function aggregateSignals(evaluated: EvaluatedQuestion[]): SignalTotals {
 }
 
 /**
- * matchSolutions filters the solution library by:
- *   1. packageType — solution must include the session's package tier (if set)
- *   2. signal presence — category must have a non-zero signal total
+ * Sammelt je konkreter Lösung, wie stark sie durch die gegebenen Antworten
+ * ausgelöst wurde.
  *
- * Returns recommendations sorted by signal score (descending).
+ * Eine Antwort wie „Kundenanfragen bearbeiten und intern weiterleiten" verweist
+ * unmittelbar auf die Lösungen, die genau das abnehmen. Ohne diese Verweise
+ * blieb nur die Kategorie — und dann wurde alles empfohlen, was in derselben
+ * Schublade lag, vom Wiki bis zum Chat-Werkzeug.
+ */
+export function aggregateSolutionRefs(
+  evaluated: EvaluatedQuestion[]
+): Map<string, number> {
+  const totals = new Map<string, number>();
+
+  for (const q of evaluated) {
+    if (!q.isActive || q.status !== "ANSWERED") continue;
+    for (const signal of q.signals) {
+      for (const ref of signal.solutionRefs) {
+        totals.set(ref, (totals.get(ref) ?? 0) + signal.value);
+      }
+    }
+  }
+
+  return totals;
+}
+
+function packageTypesOf(solution: SolutionInput): string[] {
+  try {
+    const parsed: unknown = JSON.parse(solution.packageTypes || "[]");
+    return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Empfiehlt Lösungen zu den gegebenen Antworten.
+ *
+ * Vorrang haben die Lösungen, auf die einzelne Antworten unmittelbar verweisen.
+ * Erst wenn keine einzige Antwort einen solchen Verweis trägt — etwa bei
+ * Sitzungen aus der Zeit vor dieser Zuordnung — greift die gröbere Auswahl über
+ * die Kategorie, damit alte Auswertungen nicht leer ausgehen.
+ *
+ * Lösungen oberhalb des gebuchten Pakets werden **nicht** mehr entfernt,
+ * sondern mit `beyondPackage` versehen. Vorher fielen sie aus der Auswertung
+ * heraus — und mit ihnen genau die Vorschläge, die dem Kunden über sein Paket
+ * hinaus etwas bringen. Ob und wie sie erscheinen, entscheidet der Bericht.
  */
 export function matchSolutions(
   signals: SignalTotals,
   solutions: SolutionInput[],
-  packageType: string | null
+  packageType: string | null,
+  solutionRefs?: Map<string, number>
 ): SolutionRecommendation[] {
-  const recommendations: SolutionRecommendation[] = [];
+  const active = solutions.filter((sol) => sol.isActive);
 
-  for (const sol of solutions) {
-    if (!sol.isActive) continue;
-
-    const packageTypes: string[] = (() => {
-      try { return JSON.parse(sol.packageTypes || "[]"); }
-      catch { return []; }
-    })();
-
-    // Only include solutions available for the session's package tier
-    if (packageType && !packageTypes.includes(packageType)) continue;
-
-    const signalScore = signals[sol.category as keyof SignalTotals] ?? 0;
-    if (signalScore === 0) continue;
-
-    recommendations.push({
+  const build = (
+    sol: SolutionInput,
+    signalScore: number,
+    fromAnswers: boolean
+  ): SolutionRecommendation => {
+    const packageTypes = packageTypesOf(sol);
+    return {
       solutionId: sol.id,
       externalId: sol.externalId,
       name: sol.name,
@@ -65,8 +99,29 @@ export function matchSolutions(
       description: sol.description,
       packageTypes,
       signalScore,
-    });
+      fromAnswers,
+      // Ohne gebuchtes Paket gibt es kein "darüber hinaus".
+      beyondPackage: packageType !== null && !packageTypes.includes(packageType),
+    };
+  };
+
+  // Im Paket zuerst, darüber danach — sonst steht der Aufpreis oben.
+  const byRank = (a: SolutionRecommendation, b: SolutionRecommendation) =>
+    Number(a.beyondPackage) - Number(b.beyondPackage) ||
+    b.signalScore - a.signalScore ||
+    a.name.localeCompare(b.name, "de");
+
+  if (solutionRefs && solutionRefs.size > 0) {
+    return active
+      .map((sol) => ({ sol, score: solutionRefs.get(sol.externalId) ?? 0 }))
+      .filter((entry) => entry.score > 0)
+      .map((entry) => build(entry.sol, entry.score, true))
+      .sort(byRank);
   }
 
-  return recommendations.sort((a, b) => b.signalScore - a.signalScore);
+  return active
+    .map((sol) => ({ sol, score: signals[sol.category as keyof SignalTotals] ?? 0 }))
+    .filter((entry) => entry.score > 0)
+    .map((entry) => build(entry.sol, entry.score, false))
+    .sort(byRank);
 }

@@ -32,6 +32,12 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
             return null;
           }
 
+          // Deaktivierte Konten dürfen sich nicht anmelden — unabhängig davon,
+          // ob das Passwort noch stimmt.
+          if (user.deactivatedAt) {
+            return null;
+          }
+
           const isValid = await bcryptjs.compare(
             credentials.password as string,
             user.password
@@ -46,6 +52,7 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
             email: user.email,
             name: user.name,
             role: user.role,
+            canStrategy: user.canStrategy,
             companyId: user.companyId,
             firstLogin: user.firstLogin,
           };
@@ -61,6 +68,7 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
       if (user) {
         token.id = user.id;
         token.role = (user as any).role;
+        token.canStrategy = (user as any).canStrategy;
         token.companyId = (user as any).companyId;
         token.firstLogin = (user as any).firstLogin;
       }
@@ -70,6 +78,7 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
       if (token && session.user) {
         session.user.id = token.id as string;
         (session.user as any).role = token.role;
+        (session.user as any).canStrategy = token.canStrategy;
         (session.user as any).companyId = token.companyId;
         (session.user as any).firstLogin = token.firstLogin;
       }

@@ -33,12 +33,30 @@ async function getBrowser(): Promise<Browser> {
       "--disable-setuid-sandbox",
       "--disable-dev-shm-usage",
       "--disable-gpu",
+      // Kein Netzwerkverkehr beim Start: der Renderer arbeitet ausschließlich
+      // mit dem übergebenen HTML und blockiert sonst in isolierten Umgebungen.
+      "--disable-background-networking",
+      "--disable-component-update",
+      "--disable-default-apps",
+      "--disable-sync",
+      "--no-first-run",
+      "--no-default-browser-check",
+      "--metrics-recording-only",
+      "--mute-audio",
     ],
   });
 
   process.once("exit", () => { _browser?.close(); });
 
   return _browser;
+}
+
+/** Schließt die Browser-Instanz (z. B. am Ende eines Testlaufs). */
+export async function closePdfBrowser(): Promise<void> {
+  if (!_browser) return;
+  const browser = _browser;
+  _browser = null;
+  await browser.close();
 }
 
 /**
@@ -52,7 +70,7 @@ export async function renderHtmlToPdf(html: string): Promise<Buffer> {
   const page = await browser.newPage();
 
   try {
-    await page.setContent(html, { waitUntil: "load" });
+    await page.setContent(html, { waitUntil: "load", timeout: 30_000 });
 
     const pdf = await page.pdf({
       format: "A4",
