@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import type { Fahrzeug } from "@/lib/strategie/haus";
+import { schildGroesse, type Fahrzeug } from "@/lib/strategie/haus";
 
 /**
  * Das Haus von außen.
@@ -58,6 +58,10 @@ export function Gebaeude({
 
   const hoehe = 150 + fenster.reihen * 62;
   const dach = 470 - hoehe;
+
+  // Breite Namen bekommen ein breiteres Schild, bis die Fassade voll ist.
+  const schildBreite = Math.min(560, Math.max(380, schild.length * 17));
+  const schildSchrift = schildGroesse(schild, schildBreite, 26);
 
   return (
     <svg viewBox="0 0 980 620" className="w-full h-auto block overflow-visible">
@@ -173,8 +177,22 @@ export function Gebaeude({
 
       {/* Das Schild — eigene Schicht, damit der Name austauschbar bleibt */}
       <g className="studio-schild">
-        <rect x="300" y={dach - 54} width="380" height="40" rx="7" fill="#050f1c" stroke="#1d4e74" strokeWidth="1" />
-        <text x="490" y={dach - 26} textAnchor="middle" fontSize="26" fontWeight="700"
+        {/*
+          Das Schild wächst mit dem Namen, die Schrift schrumpft darin.
+          Ein Name wird nie gekürzt — sonst steht dort etwas anderes als
+          der Name des Betriebs.
+        */}
+        <rect
+          x={490 - schildBreite / 2}
+          y={dach - 54}
+          width={schildBreite}
+          height="40"
+          rx="7"
+          fill="#050f1c"
+          stroke="#1d4e74"
+          strokeWidth="1"
+        />
+        <text x="490" y={dach - 26} textAnchor="middle" fontSize={schildSchrift} fontWeight="700"
           letterSpacing=".07em" fill="#eaf6ff" fontFamily="var(--font-space-grotesk)">
           {schild}
         </text>

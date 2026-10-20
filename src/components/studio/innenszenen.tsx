@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Innenraum } from "./innenraum";
 import { Pikto } from "./piktogramme";
 import { useTakt } from "./takt";
-import { profilTafeln, type HausDaten, type Raum } from "@/lib/strategie/haus";
+import { profilTafeln, schildGroesse, type HausDaten, type Raum } from "@/lib/strategie/haus";
 import {
   boden,
   flaeche,
@@ -50,7 +50,7 @@ export function Foyer({
   const d4 = rueckwand(0.37, 1, FOYER);
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-[#04080f]">
+    <div className="absolute inset-0 overflow-hidden bg-[#04080f]">
       <Innenraum
         kasten={FOYER}
         akzent="#00b8ff"
@@ -270,7 +270,7 @@ export function Flur({
   const [ueber, setzeUeber] = useState<string | null>(null);
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-[#04080f]">
+    <div className="absolute inset-0 overflow-hidden bg-[#04080f]">
       <Innenraum kasten={FLUR} akzent="#00b8ff" lichter={3} fenster="links">
         <g>
           <defs>
@@ -610,7 +610,7 @@ function Wandschild({ kasten, text }: { kasten: Kasten; text: string }) {
         y={(a.y + b.y) / 2 + 13}
         textAnchor="middle"
         className="font-mono"
-        fontSize="40"
+        fontSize={schildGroesse(text, b.x - a.x, 40)}
         fontWeight="700"
         letterSpacing="4"
         fill="#dceeff"

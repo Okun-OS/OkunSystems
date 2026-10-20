@@ -177,15 +177,29 @@ function Rahmen({
         </div>
         <div className="flex items-center gap-4">
           {sitzungId && (
-            <Link
-              href={`/admin/kunden/${company.id}/strategie/${sitzungId}/studio`}
-              target="_blank"
-              className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-[rgba(0,184,255,.1)]
-                border border-[rgba(0,184,255,.3)] text-[#00b8ff] text-xs font-semibold
-                hover:bg-[rgba(0,184,255,.18)] transition-colors"
-            >
-              ⬡ Haus ansehen
-            </Link>
+            <>
+              <Link
+                href={`/admin/kunden/${company.id}/strategie/${sitzungId}/studio`}
+                target="_blank"
+                className="flex items-center gap-2 px-3.5 py-2 rounded-lg
+                  border border-[#1a2840] text-[#8899b4] text-xs
+                  hover:text-[#dce9f6] hover:border-[rgba(0,184,255,.4)] transition-colors"
+              >
+                ⬡ Haus ansehen
+              </Link>
+              {/*
+                Der Weg ins Gespräch selbst: Haus, Gegenüber und Auswahl auf
+                einer Fläche. Die Vorschau daneben bleibt, was sie ist — ein
+                Blick vorher, ohne Kunden und ohne Video.
+              */}
+              <Link
+                href={`/admin/kunden/${company.id}/strategie/${sitzungId}/gespraech`}
+                className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-[#00b8ff]
+                  text-[#041018] text-xs font-bold hover:bg-[#33c7ff] transition-colors"
+              >
+                ▶ Gespräch führen
+              </Link>
+            </>
           )}
           <Link
             href={`/admin/kunden/${company.id}/leitfaden`}

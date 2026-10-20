@@ -102,7 +102,7 @@ export function WerkstattSzene({
     boden(REIHE, 0.5, WERKSTATT).y - (118 + 87) * massstab(REIHE, WERKSTATT);
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-[#04080f]">
+    <div className="absolute inset-0 overflow-hidden bg-[#04080f]">
       <Innenraum
         kasten={WERKSTATT}
         akzent={umgebaut ? "#2ee6c5" : "#00b8ff"}
