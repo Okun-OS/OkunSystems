@@ -210,6 +210,8 @@ export default async function IntegrationenPage() {
             ["Stripe", "STRIPE_WEBHOOK_SECRET"],
             ["Daily", "DAILY_API_KEY"],
             ["Daily", "DAILY_DOMAIN"],
+            ["Care", "OKUN_WHATSAPP (optional; ohne sie bleibt der WhatsApp-Knopf aus)"],
+            ["Care", "OKUN_CARE_EMAIL (optional, Default: care@okun-systems.com)"],
           ].map(([category, key]) => (
             <div key={key} className="flex items-baseline gap-3 py-0.5">
               <span className="text-[#555] w-20 flex-shrink-0">{category}</span>

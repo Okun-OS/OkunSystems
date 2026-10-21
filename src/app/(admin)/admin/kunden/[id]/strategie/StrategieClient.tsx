@@ -266,14 +266,49 @@ function Aufsetzen({
             }
           />
         </ul>
-        {!leitfadenVorhanden && (
-          <Link
-            href={`/admin/kunden/${company.id}/leitfaden`}
-            className="inline-block mt-3 text-[#00b8ff] text-xs hover:underline"
-          >
-            Leitfaden erzeugen →
-          </Link>
-        )}
+        {/*
+          Fehlt eine Voraussetzung, steht hier der Weg dorthin.
+
+          Vorher war das eine Sackgasse: „Es ist kein Strategietermin
+          angelegt." — und kein Wort dazu, wo man einen anlegt. Wer hier
+          landete, sah nur Vorbereitung und Leitfaden und hielt das
+          Transformation Studio für verschwunden.
+        */}
+        <div className="mt-3 flex flex-wrap items-center gap-4">
+          {!leitfadenVorhanden && (
+            <Link
+              href={`/admin/kunden/${company.id}/leitfaden`}
+              className="text-[#00b8ff] text-xs hover:underline"
+            >
+              Leitfaden erzeugen →
+            </Link>
+          )}
+          {termine.length === 0 && (
+            <Link
+              href={`/admin/kunden/${company.id}/termine`}
+              className="text-[#00b8ff] text-xs hover:underline"
+            >
+              Strategietermin anlegen →
+            </Link>
+          )}
+        </div>
+      </Karte>
+
+      {/*
+        Was am Ende dieses Wegs steht.
+
+        Das Haus ist der Grund, warum man hier überhaupt vorbereitet. Es
+        gehört deshalb auf diese Seite — auch solange es noch nicht steht,
+        damit niemand es für abgeschafft hält.
+      */}
+      <Karte titel="OKUN Transformation Studio">
+        <p className="text-[#888] text-xs leading-relaxed">
+          Aus dem Blueprint entsteht das Haus des Betriebs: ein Rundgang vom Vorplatz
+          bis in die Räume, durch den Sie im Termin führen. Sobald die Sitzung aufgesetzt
+          ist, stehen hier oben <b className="text-[#c9d4e4]">⬡ Haus ansehen</b> für den
+          Blick vorher und <b className="text-[#c9d4e4]">▶ Gespräch führen</b> für den
+          Termin selbst — Haus, Gegenüber und Auswahl auf einer Fläche.
+        </p>
       </Karte>
 
       {offen.length > 0 && (

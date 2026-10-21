@@ -110,6 +110,23 @@ export async function POST(req: Request) {
       });
     }
 
+    /*
+      Ab hier ist die Anmeldung gelungen — der Zugang ist eingerichtet.
+
+      `firstLogin` wurde bisher nur gesetzt und nie gelöscht. Es hing also
+      dauerhaft an jedem eingeladenen Konto, obwohl der Mensch längst im
+      Portal saß: „Einrichtung offen" in der Benutzerliste und der erste
+      Schritt der Onboarding-Checkliste blieben für immer stehen.
+    */
+    if (user.firstLogin) {
+      await db.user
+        .update({ where: { id: user.id }, data: { firstLogin: false } })
+        .catch(() => {
+          // Eine misslungene Notiz darf keine Anmeldung verhindern; beim
+          // nächsten Mal ist wieder Gelegenheit dazu.
+        });
+    }
+
     // Detect HTTPS (Railway is always HTTPS in production)
     const isSecure =
       new URL(req.url).protocol === "https:" ||
@@ -129,7 +146,7 @@ export async function POST(req: Request) {
         role: user.role,
         canStrategy: user.canStrategy,
         companyId: user.companyId,
-        firstLogin: user.firstLogin,
+        firstLogin: false,
       },
       secret: SECRET,
       salt: cookieName,

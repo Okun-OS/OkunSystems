@@ -14,16 +14,24 @@ export default async function ClientLayout({
   if (!session?.user) redirect("/login");
 
   const userRecord = await db.user.findUnique({
-    where: { id: (session.user as any).id },
+    where: { id: (session.user as { id: string }).id },
     include: { company: true },
   });
 
   if (!userRecord) redirect("/login");
   if (userRecord.role === "ADMIN") redirect("/admin/dashboard");
 
-  const studioOffen = userRecord.companyId
-    ? Boolean(await sitzungFuerKunde(userRecord.companyId))
-    : false;
+  const [studioOffen, projektOffen] = userRecord.companyId
+    ? await Promise.all([
+        sitzungFuerKunde(userRecord.companyId).then(Boolean),
+        db.project
+          .findFirst({
+            where: { companyId: userRecord.companyId, isVisibleToClient: true },
+            select: { id: true },
+          })
+          .then(Boolean),
+      ])
+    : [false, false];
 
   return (
     <div className="min-h-screen bg-[#080c14]">
@@ -35,6 +43,7 @@ export default async function ClientLayout({
           plan: userRecord.company?.plan,
         }}
         studioOffen={studioOffen}
+        projektOffen={projektOffen}
       />
       <main className="ml-[240px] min-h-screen flex flex-col">
         <div className="flex-1 p-6 md:p-8">{children}</div>

@@ -1,7 +1,8 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
-import { CheckCircle, Circle, Clock, Layers } from "lucide-react";
+import { CheckCircle, Circle, Clock, Layers, Loader } from "lucide-react";
+import { MEILENSTEIN_ZUSTAENDE } from "@/lib/projekt/auftrag";
 
 const STATUS_CFG: Record<string, { label: string; cls: string }> = {
   PLANNING:    { label: "Planung",      cls: "bg-[#888]/10 text-[#888] border-[#888]/20" },
@@ -113,7 +114,14 @@ export default async function PortalProjektPage() {
                   )}
                 </div>
 
-                {/* Milestones */}
+                {/*
+                  Meilensteine mit drei Zuständen.
+
+                  „Erledigt oder nicht" war zu wenig: Zwischen der Zusage im
+                  Strategiegespräch und dem Tag, an dem etwas läuft, liegen
+                  Wochen Arbeit. Genau die will der Kunde sehen — sonst
+                  wirkt das Projekt wochenlang wie nichts.
+                */}
                 {project.milestones.length > 0 && (
                   <div className="px-6 py-4 border-b border-[#1a2840]">
                     <div className="flex items-center justify-between mb-3">
@@ -121,40 +129,49 @@ export default async function PortalProjektPage() {
                         Meilensteine
                       </p>
                       <p className="text-[#555] text-xs tabular-nums">
-                        {completedMilestones}/{totalMilestones}
+                        {completedMilestones}/{totalMilestones} live
                       </p>
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-2.5">
                       {project.milestones.map((ms) => {
-                        const dueDate = ms.dueDate
-                          ? new Date(ms.dueDate).toLocaleDateString("de-DE", {
-                              day: "2-digit", month: "short",
-                            })
-                          : null;
+                        const zustand =
+                          MEILENSTEIN_ZUSTAENDE.find((z) => z.key === ms.zustand) ??
+                          MEILENSTEIN_ZUSTAENDE[0];
+                        const live = zustand.key === "live";
+                        const laeuft = zustand.key === "umsetzung";
                         return (
                           <div key={ms.id} className="flex items-start gap-3">
                             <div className="mt-0.5 flex-shrink-0">
-                              {ms.completed ? (
-                                <CheckCircle size={15} className="text-[#00b8ff]" />
+                              {live ? (
+                                <CheckCircle size={15} className="text-[#2ee6c5]" />
+                              ) : laeuft ? (
+                                <Loader size={15} className="text-[#00b8ff]" />
                               ) : (
                                 <Circle size={15} className="text-[#333]" />
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
                               <p
-                                className={`text-sm ${
-                                  ms.completed ? "text-[#555] line-through" : "text-[#f0f0f0]"
-                                }`}
+                                className={`text-sm ${live ? "text-[#8899b4]" : "text-[#f0f0f0]"}`}
                               >
                                 {ms.title}
                               </p>
-                              {ms.description && !ms.completed && (
+                              {ms.description && !live && (
                                 <p className="text-[#555] text-xs mt-0.5">{ms.description}</p>
                               )}
                             </div>
-                            {dueDate && !ms.completed && (
-                              <p className="text-[#555] text-xs flex-shrink-0">{dueDate}</p>
-                            )}
+                            <span
+                              className={`flex-shrink-0 text-[10px] px-2 py-0.5 rounded-full border whitespace-nowrap ${
+                                live
+                                  ? "bg-[#2ee6c5]/10 border-[#2ee6c5]/25 text-[#2ee6c5]"
+                                  : laeuft
+                                    ? "bg-[#00b8ff]/10 border-[#00b8ff]/25 text-[#00b8ff]"
+                                    : "bg-[#101c2e] border-[#1a2840] text-[#5b6b7f]"
+                              }`}
+                              title={zustand.kundentext}
+                            >
+                              {zustand.label}
+                            </span>
                           </div>
                         );
                       })}
