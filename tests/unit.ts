@@ -75,6 +75,23 @@ import {
   TASK_CATALOG,
   flowByKey,
 } from "../src/lib/blueprint/pillar3-catalog";
+import { careKontakt, mailtoLink, whatsappLink } from "../src/lib/care/kontakt";
+import { careArtLabel, istCareArt } from "../src/lib/care/katalog";
+import {
+  auftragsPosten,
+  istMeilensteinZustand,
+  projektFortschritt,
+  projektStatus,
+  zustandLabel,
+  type AuftragsPosten,
+} from "../src/lib/projekt/auftrag";
+import {
+  baueCheckliste,
+  fortschritt,
+  naechsterSchritt,
+  ONBOARDING_SCHRITTE,
+  type OnboardingStand,
+} from "../src/lib/onboarding/checkliste";
 
 let passed = 0;
 function test(name: string, fn: () => void) {
@@ -920,6 +937,162 @@ test("nach der Freischaltung steht der Zugang, nicht mehr das Angebot", () => {
     }),
     false
   );
+});
+
+console.log("\nOKUN Care");
+test("ohne gesetzte Nummer gibt es keinen WhatsApp-Kanal", () => {
+  delete process.env.OKUN_WHATSAPP;
+  assert.equal(careKontakt().whatsappNummer, null);
+});
+
+test("eine zu kurze Nummer gilt nicht als Kanal", () => {
+  process.env.OKUN_WHATSAPP = "0170";
+  assert.equal(careKontakt().whatsappNummer, null);
+});
+
+test("Schreibweise mit Plus und Leerzeichen wird zu reinen Ziffern", () => {
+  process.env.OKUN_WHATSAPP = "+49 170 1234567";
+  assert.equal(careKontakt().whatsappNummer, "491701234567");
+  delete process.env.OKUN_WHATSAPP;
+});
+
+test("der WhatsApp-Link nennt den Betrieb im vorbereiteten Text", () => {
+  const link = whatsappLink("491701234567", "Arwed Spanehl GmbH");
+  assert.ok(link.startsWith("https://wa.me/491701234567?text="));
+  assert.ok(decodeURIComponent(link).includes("Arwed Spanehl GmbH"));
+});
+
+test("der mailto-Betreff nennt Care und den Betrieb", () => {
+  const link = mailtoLink("care@okun-systems.com", "Arwed Spanehl GmbH");
+  assert.ok(decodeURIComponent(link).includes("OKUN Care — Arwed Spanehl GmbH"));
+});
+
+test("Care deckt ausdruecklich auch Automationen ab, nicht nur Support", () => {
+  assert.ok(istCareArt("automatisierung"));
+  assert.equal(careArtLabel("automatisierung"), "Automation");
+});
+
+test("eine unbekannte Art kippt die Anzeige nicht", () => {
+  assert.equal(istCareArt("quatsch"), false);
+  assert.equal(careArtLabel("quatsch"), "Sonstiges");
+});
+
+console.log("\nOnboarding-Checkliste");
+
+const LEER: OnboardingStand = {
+  zugangEingerichtet: false,
+  blueprintFertig: false,
+  strategieterminVorhanden: false,
+  studioFreigegeben: false,
+  lernenBegonnen: false,
+  selbstErledigt: [],
+};
+
+test("ein frischer Betrieb hat nichts erledigt", () => {
+  const schritte = baueCheckliste(LEER);
+  assert.equal(schritte.length, ONBOARDING_SCHRITTE.length);
+  assert.equal(fortschritt(schritte).erledigt, 0);
+  assert.equal(fortschritt(schritte).prozent, 0);
+});
+
+test("der Stand des Betriebs hakt von selbst ab", () => {
+  const schritte = baueCheckliste({
+    ...LEER,
+    zugangEingerichtet: true,
+    blueprintFertig: true,
+  });
+  assert.equal(schritte.find((s) => s.schluessel === "zugang")?.erledigt, true);
+  assert.equal(schritte.find((s) => s.schluessel === "blueprint")?.erledigt, true);
+  assert.equal(schritte.find((s) => s.schluessel === "termin")?.erledigt, false);
+});
+
+test("abgeleitete Schritte lassen sich nicht von Hand setzen", () => {
+  const schritte = baueCheckliste({ ...LEER, selbstErledigt: ["blueprint"] });
+  assert.equal(schritte.find((s) => s.schluessel === "blueprint")?.erledigt, false);
+  assert.equal(schritte.find((s) => s.schluessel === "blueprint")?.abhakbar, false);
+});
+
+test("selbst gesetzte Haken zaehlen und bleiben loesbar", () => {
+  const schritte = baueCheckliste({ ...LEER, selbstErledigt: ["video", "stammdaten"] });
+  const video = schritte.find((s) => s.schluessel === "video");
+  assert.equal(video?.erledigt, true);
+  assert.equal(video?.abhakbar, true);
+  assert.equal(fortschritt(schritte).erledigt, 2);
+});
+
+test("ein freigegebenes Studio laesst den Termin-Haken nicht zurueckfallen", () => {
+  const schritte = baueCheckliste({ ...LEER, studioFreigegeben: true });
+  assert.equal(schritte.find((s) => s.schluessel === "termin")?.erledigt, true);
+});
+
+test("der naechste Schritt ist nie einer, auf den der Kunde nur warten kann", () => {
+  const schritte = baueCheckliste({
+    ...LEER,
+    zugangEingerichtet: true,
+    blueprintFertig: true,
+    strategieterminVorhanden: true,
+    selbstErledigt: ["video", "stammdaten"],
+  });
+  // Offen sind jetzt „studio" (macht OKUN) und „lernen" (macht der Kunde).
+  assert.equal(naechsterSchritt(schritte)?.schluessel, "lernen");
+});
+
+test("ist alles erledigt, gibt es keinen naechsten Schritt mehr", () => {
+  const schritte = baueCheckliste({
+    zugangEingerichtet: true,
+    blueprintFertig: true,
+    strategieterminVorhanden: true,
+    studioFreigegeben: true,
+    lernenBegonnen: true,
+    selbstErledigt: ["video", "stammdaten"],
+  });
+  assert.equal(fortschritt(schritte).prozent, 100);
+  assert.equal(naechsterSchritt(schritte), null);
+});
+
+console.log("\nArbeitsauftrag und Projektstatus");
+
+const POSTEN: AuftragsPosten[] = [
+  { id: "c", titel: "Angebote automatisch verschicken", warum: null, art: "automatisierung", zustand: "gewaehlt", kundeSieht: true, position: 2 },
+  { id: "a", titel: "Termine ohne Rueckfragen", warum: "Weniger Telefonate", art: "automatisierung", zustand: "gewaehlt", kundeSieht: true, position: 0 },
+  { id: "b", titel: "Spaeter mal: Lager", warum: null, art: "automatisierung", zustand: "spaeter", kundeSieht: true, position: 1 },
+  { id: "d", titel: "Intern vorsortiert", warum: null, art: "automatisierung", zustand: "gewaehlt", kundeSieht: false, position: 3 },
+  { id: "e", titel: "Abgelehnt", warum: null, art: "automatisierung", zustand: "verworfen", kundeSieht: true, position: 4 },
+];
+
+test("in die Umsetzung geht nur Gewaehltes, in der Reihenfolge des Gespraechs", () => {
+  const auftrag = auftragsPosten(POSTEN);
+  assert.deepEqual(auftrag.map((p) => p.id), ["a", "c"]);
+});
+
+test("was der Kunde nie zur Wahl hatte, erscheint nicht in seinem Projekt", () => {
+  assert.equal(auftragsPosten(POSTEN).some((p) => p.id === "d"), false);
+});
+
+test("ein Posten auf spaeter ist kein Auftrag", () => {
+  assert.equal(auftragsPosten(POSTEN).some((p) => p.id === "b"), false);
+});
+
+test("Fortschritt: in Umsetzung zaehlt halb, live ganz", () => {
+  assert.equal(projektFortschritt([]), 0);
+  assert.equal(projektFortschritt(["geplant", "geplant"]), 0);
+  assert.equal(projektFortschritt(["umsetzung", "geplant"]), 25);
+  assert.equal(projektFortschritt(["live", "umsetzung"]), 75);
+  assert.equal(projektFortschritt(["live", "live"]), 100);
+});
+
+test("Status folgt den Meilensteinen, nicht der Hand", () => {
+  assert.equal(projektStatus([]), "PLANNING");
+  assert.equal(projektStatus(["geplant", "geplant"]), "PLANNING");
+  assert.equal(projektStatus(["geplant", "umsetzung"]), "ACTIVE");
+  assert.equal(projektStatus(["live", "geplant"]), "ACTIVE");
+  assert.equal(projektStatus(["live", "live"]), "COMPLETED");
+});
+
+test("ein unbekannter Zustand wird nicht gesetzt und faellt auf Geplant zurueck", () => {
+  assert.equal(istMeilensteinZustand("live"), true);
+  assert.equal(istMeilensteinZustand("fertig"), false);
+  assert.equal(zustandLabel("fertig"), "Geplant");
 });
 
 console.log(`\n${passed} Tests bestanden.\n`);

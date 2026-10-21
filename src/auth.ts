@@ -47,6 +47,25 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
             return null;
           }
 
+          /*
+            Nach der ersten erfolgreichen Anmeldung ist der Zugang eingerichtet.
+
+            `firstLogin` wurde bisher gesetzt und nie gelöscht — das Feld hieß
+            also „erster Login" und bedeutete „irgendwann einmal angelegt".
+            Davon hängt zweierlei ab: der Hinweis „Einrichtung offen" in der
+            Benutzerliste und der erste Schritt der Onboarding-Checkliste.
+            Beide standen dauerhaft offen.
+
+            Der Schreibvorgang läuft bewusst ohne `await`: Die Anmeldung soll
+            nicht auf ihn warten, und misslingt er, ist beim nächsten Login
+            wieder Gelegenheit dazu.
+          */
+          if (user.firstLogin) {
+            void db.user
+              .update({ where: { id: user.id }, data: { firstLogin: false } })
+              .catch(() => {});
+          }
+
           return {
             id: user.id,
             email: user.email,
@@ -54,7 +73,7 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
             role: user.role,
             canStrategy: user.canStrategy,
             companyId: user.companyId,
-            firstLogin: user.firstLogin,
+            firstLogin: false,
           };
         } catch (err) {
           console.error("[auth] authorize error:", err);

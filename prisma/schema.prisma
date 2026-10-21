@@ -66,6 +66,8 @@ model User {
   radarSessions         RadarSession[]               @relation("RadarCloser")
   strategieSitzungen    StrategieSitzung[]           @relation("StrategieBerater")
   strategieFreigaben    StrategieSitzung[]           @relation("StrategieFreigabe")
+  careLeistungen        CareLeistung[]               @relation("CareLeistungErfasstVon")
+  onboardingHaken       OnboardingHaken[]            @relation("OnboardingHakenVon")
 }
 
 model Company {
@@ -137,6 +139,8 @@ model Company {
   learningAssignments CustomerLearningAssignment[]
   activityLogs        ActivityLog[]
   careSubscription    CareSubscription?
+  careLeistungen      CareLeistung[]
+  onboardingHaken     OnboardingHaken[]
   // Sales & Closing relations
   closingSessions     ClosingSession[]
   offers              Offer[]
@@ -164,6 +168,14 @@ model Project {
   updatedAt         DateTime  @updatedAt
   isVisibleToClient Boolean   @default(false)
 
+  /// Das Strategiegespräch, aus dem dieses Projekt entstanden ist.
+  ///
+  /// Nur gesetzt, wenn es aus einer Auswahl übernommen wurde — und dann
+  /// genau einmal: Zweimal übernehmen soll dasselbe Projekt fortschreiben
+  /// und nicht ein zweites daneben stellen.
+  strategieSitzungId String?           @unique
+  strategieSitzung   StrategieSitzung? @relation(fields: [strategieSitzungId], references: [id])
+
   companyId  String
   company    Company     @relation(fields: [companyId], references: [id])
   milestones Milestone[]
@@ -178,6 +190,18 @@ model Milestone {
   completed   Boolean   @default(false)
   completedAt DateTime?
   order       Int       @default(0)
+
+  /// geplant | umsetzung | live
+  ///
+  /// „Fertig oder nicht" ist für den Kunden zu wenig: Zwischen der Zusage im
+  /// Gespräch und dem Tag, an dem etwas wirklich läuft, liegen Wochen, in
+  /// denen gearbeitet wird. Genau die will er sehen. `completed` bleibt
+  /// daneben bestehen und bedeutet `zustand == "live"`.
+  zustand String @default("geplant")
+
+  /// Der Posten aus dem Strategiegespräch, der zu diesem Meilenstein wurde.
+  postenId String?          @unique
+  posten   StrategiePosten? @relation(fields: [postenId], references: [id])
 
   projectId String
   project   Project @relation(fields: [projectId], references: [id])
@@ -898,6 +922,53 @@ model CareSubscription {
 
   companyId String  @unique
   company   Company @relation(fields: [companyId], references: [id])
+}
+
+/// Was im Rahmen von OKUN Care tatsächlich getan wurde.
+///
+/// Ein Abo, von dem man nichts sieht, wird gekündigt. Deshalb führt der
+/// Berater hier mit, was er gemacht hat — und der Kunde liest es auf seiner
+/// Care-Seite. Es ist bewusst eine Zeile mit Datum und nicht eine
+/// Zeiterfassung: Gezählt wird nicht die Minute, sondern dass etwas passiert
+/// ist.
+model CareLeistung {
+  id           String   @id @default(cuid())
+  titel        String
+  /// support | automatisierung | anpassung | checkin | sonstiges
+  art          String   @default("support")
+  beschreibung String?
+  erledigtAm   DateTime
+  /// Nur für die eigene Übersicht; der Kunde sieht sie nicht.
+  minuten      Int?
+  /// Interne Zeilen bleiben intern — etwa Vorarbeit, die niemand bestellt hat.
+  kundeSieht   Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  companyId    String
+  company      Company  @relation(fields: [companyId], references: [id])
+  erfasstVonId String?
+  erfasstVon   User?    @relation("CareLeistungErfasstVon", fields: [erfasstVonId], references: [id])
+
+  @@index([companyId, erledigtAm])
+}
+
+/// Die Haken, die sich nicht von selbst setzen.
+///
+/// Die Onboarding-Checkliste liest sich zum größten Teil aus dem Stand des
+/// Betriebs: Ein abgeschlossener Blueprint muss niemand bestätigen. Zwei oder
+/// drei Schritte weiß aber nur der Kunde — ob er das Video gesehen hat, ob er
+/// seine Daten geprüft hat. Nur die stehen hier.
+model OnboardingHaken {
+  id         String   @id @default(cuid())
+  schluessel String
+  erledigtAm DateTime @default(now())
+
+  companyId     String
+  company       Company @relation(fields: [companyId], references: [id])
+  erledigtVonId String?
+  erledigtVon   User?   @relation("OnboardingHakenVon", fields: [erledigtVonId], references: [id])
+
+  @@unique([companyId, schluessel])
 }
 
 // ─── OKUN Sales & Closing Module ─────────────────────────────────────────────
@@ -2058,6 +2129,8 @@ model StrategieSitzung {
   berater       User        @relation("StrategieBerater", fields: [beraterId], references: [id])
 
   posten StrategiePosten[]
+  /// Das Projekt, in das die Auswahl übernommen wurde.
+  projekt Project?
 
   @@index([companyId])
   @@index([sessionId])
@@ -2120,6 +2193,9 @@ model StrategiePosten {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  /// Der Meilenstein, zu dem dieser Posten in der Umsetzung geworden ist.
+  meilenstein Milestone?
 
   @@unique([sitzungId, schluessel])
   @@index([sitzungId])

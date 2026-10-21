@@ -14,6 +14,7 @@ import {
   ChevronDown,
   HeartHandshake,
   Building2,
+  Hammer,
 } from "lucide-react";
 import { OkunLogo } from "./okun-logo";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,8 @@ const navItems = [
     sondern ein Versprechen, das die Seite nicht hält.
   */
   { href: "/portal/studio", icon: Building2, label: "Transformation Studio", nurMitStudio: true },
+  /* Aus demselben Grund: Ohne freigegebenes Projekt gibt es nichts zu sehen. */
+  { href: "/portal/projekt", icon: Hammer, label: "Umsetzung", nurMitProjekt: true },
   { href: "/portal/lernen", icon: BookOpen, label: "Lernen" },
   { href: "/termine", icon: Calendar, label: "Termine" },
   { href: "/portal/dokumente", icon: FileText, label: "Dokumente" },
@@ -46,9 +49,11 @@ interface SidebarProps {
   };
   /** Gibt es ein freigegebenes Haus? Sonst fehlt der Punkt. */
   studioOffen?: boolean;
+  /** Gibt es ein für den Kunden freigegebenes Projekt? */
+  projektOffen?: boolean;
 }
 
-export function Sidebar({ user, studioOffen = false }: SidebarProps) {
+export function Sidebar({ user, studioOffen = false, projektOffen = false }: SidebarProps) {
   const pathname = usePathname();
   const paket = packageLabel(user.plan);
 
@@ -61,6 +66,7 @@ export function Sidebar({ user, studioOffen = false }: SidebarProps) {
       <nav className="flex-1 overflow-y-auto py-4 px-3">
         {navItems
           .filter((item) => !item.nurMitStudio || studioOffen)
+          .filter((item) => !item.nurMitProjekt || projektOffen)
           .map((item) => {
           const isActive = item.exact
             ? pathname === item.href

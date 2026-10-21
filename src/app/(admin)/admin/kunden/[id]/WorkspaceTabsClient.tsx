@@ -45,6 +45,12 @@ const ABSCHNITTE: Abschnitt[] = [
       { label: "Leitfaden", href: "/leitfaden" },
     ],
   },
+  /*
+    Die Umsetzung steht zwischen Gespräch und Betreuung, weil sie dort
+    hingehört: Was im Gespräch gewählt wurde, wird hier gebaut — und erst
+    danach betreut.
+  */
+  { label: "Umsetzung", href: "/projekt" },
   {
     label: "Betreuung",
     href: "/lernen",
@@ -52,6 +58,7 @@ const ABSCHNITTE: Abschnitt[] = [
       { label: "Lernen", href: "/lernen" },
       { label: "Termine", href: "/termine" },
       { label: "Dokumente", href: "/dokumente" },
+      { label: "OKUN Care", href: "/care" },
     ],
   },
   {
