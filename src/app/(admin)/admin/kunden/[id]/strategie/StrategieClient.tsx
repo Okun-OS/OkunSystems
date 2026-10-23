@@ -23,6 +23,7 @@ import {
   postenZustandSetzen,
   sitzungAufsetzen,
   sitzungFreigeben,
+  terminUndSitzungAnlegen,
 } from "./actions";
 import {
   POSTEN_ARTEN,
@@ -137,6 +138,7 @@ export default function StrategieClient({
           onAufsetzen={(terminId) =>
             fuehreAus(() => sitzungAufsetzen(company.id, terminId))
           }
+          onSofort={() => fuehreAus(() => terminUndSitzungAnlegen(company.id))}
         />
       </Rahmen>
     );
@@ -224,6 +226,7 @@ function Aufsetzen({
   pending,
   fehler,
   onAufsetzen,
+  onSofort,
 }: {
   company: { id: string };
   termine: Termin[];
@@ -232,6 +235,8 @@ function Aufsetzen({
   pending: boolean;
   fehler: string | null;
   onAufsetzen: (terminId: string) => void;
+  /** Termin und Sitzung in einem Zug — für den Fall, dass beides fehlt. */
+  onSofort: () => void;
 }) {
   const offen = termine.filter((t) => !t.sitzungId);
 
@@ -286,13 +291,71 @@ function Aufsetzen({
           {termine.length === 0 && (
             <Link
               href={`/admin/kunden/${company.id}/termine`}
-              className="text-[#00b8ff] text-xs hover:underline"
+              className="text-[#5b6b7f] text-xs hover:text-[#c9d4e4] transition-colors"
             >
-              Strategietermin anlegen →
+              Termin selbst anlegen →
             </Link>
           )}
         </div>
       </Karte>
+
+      {/*
+        Der kurze Weg.
+
+        Ohne Strategietermin war hier Schluss: Das Haus hängt an einer
+        Sitzung, die Sitzung an einem Termin, und der Termin wurde zwei
+        Seiten weiter in einem Formular angelegt. Dreimal hintereinander
+        sah es deshalb so aus, als gäbe es das Transformation Studio nicht
+        mehr. Ein Knopf legt jetzt beides an.
+      */}
+      {termine.length === 0 && (
+        <Karte titel="Gespräch aufsetzen">
+          {!blueprintFertigAm ? (
+            <p className="text-[#888] text-xs leading-relaxed">
+              Erst der Blueprint. Ohne abgeschlossene Aufnahme gibt es keine Zahlen,
+              aus denen das Haus entsteht.
+            </p>
+          ) : !leitfadenVorhanden ? (
+            <>
+              <p className="text-[#888] text-xs leading-relaxed">
+                Als Nächstes der Leitfaden: Aus ihm entstehen die Posten, die im
+                Gespräch zur Wahl stehen — und die Räume, durch die Sie führen.
+                Danach steht hier der Knopf, der das Gespräch aufsetzt.
+              </p>
+              <Link
+                href={`/admin/kunden/${company.id}/leitfaden`}
+                className="mt-3 inline-block px-4 py-2.5 rounded-lg bg-[#00b8ff]
+                  text-[#041018] text-xs font-bold hover:bg-[#33c7ff] transition-colors"
+              >
+                Leitfaden erzeugen →
+              </Link>
+            </>
+          ) : (
+            <>
+              <p className="text-[#888] text-xs leading-relaxed">
+                Legt einen Strategietermin für die nächste volle Stunde an und setzt die
+                Sitzung darauf auf. Danach steht das Haus — und der Termin lässt sich
+                unter{" "}
+                <Link
+                  href={`/admin/kunden/${company.id}/termine`}
+                  className="text-[#00b8ff] hover:underline"
+                >
+                  Termine
+                </Link>{" "}
+                auf den echten Zeitpunkt schieben.
+              </p>
+              <button
+                onClick={onSofort}
+                disabled={pending}
+                className="mt-3 px-4 py-2.5 rounded-lg bg-[#00b8ff] text-[#041018] text-xs
+                  font-bold disabled:bg-[#16283d] disabled:text-[#4a5a70] transition-colors"
+              >
+                {pending ? "…" : "Termin anlegen und Gespräch aufsetzen"}
+              </button>
+            </>
+          )}
+        </Karte>
+      )}
 
       {/*
         Was am Ende dieses Wegs steht.

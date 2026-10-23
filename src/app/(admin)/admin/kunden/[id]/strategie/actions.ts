@@ -12,6 +12,7 @@ import {
 } from "@/lib/strategie/engine";
 import type { PostenArt, PostenZustand } from "@/lib/strategie/katalog";
 import { beruehre, ladeSitzung, setzeAufgaben, setzeSitzungAuf } from "@/lib/strategie/sitzung";
+import { berlinTeile, berlinZeitpunkt } from "@/lib/zeit";
 
 /**
  * Die Vorbereitung des Strategiegesprächs.
@@ -46,6 +47,73 @@ export async function sitzungAufsetzen(companyId: string, appointmentId: string)
     const actor = await erlaubt();
     const ergebnis = await setzeSitzungAuf({ appointmentId, beraterId: actor.id });
     if ("error" in ergebnis) return ergebnis;
+    aktualisiere(companyId, ergebnis.sitzungId);
+    return ergebnis;
+  });
+}
+
+/**
+ * Termin anlegen und Sitzung in einem Zug aufsetzen.
+ *
+ * Der Weg ins Transformation Studio führt über eine Sitzung, die Sitzung
+ * über einen Strategietermin — und ein Betrieb, bei dem noch keiner
+ * angelegt ist, kam hier nicht weiter. Das Haus wirkte dadurch dreimal
+ * hintereinander verschwunden, obwohl nur ein Termin fehlte.
+ *
+ * Deshalb dieser eine Knopf. Der Termin ist echt und steht danach unter
+ * „Termine" — verschieben, umbenennen und absagen geht dort wie bei jedem
+ * anderen. Misslingt das Aufsetzen, wird er wieder entfernt: Ein Termin,
+ * zu dem es keine Sitzung gibt, wäre eine Leiche im Kalender des Kunden.
+ */
+export async function terminUndSitzungAnlegen(companyId: string) {
+  return guarded(async () => {
+    const actor = await erlaubt();
+
+    const company = await db.company.findUnique({
+      where: { id: companyId },
+      select: { id: true },
+    });
+    if (!company) return { error: "Betrieb nicht gefunden." };
+
+    /*
+      Die nächste volle Stunde in Berlin.
+
+      Nicht „jetzt": Ein Termin, der in der Vergangenheit beginnt, steht
+      beim Kunden sofort als verpasst. Und nicht in drei Tagen, weil der
+      Termin ohnehin verschoben wird — er ist der Haken, an dem die Sitzung
+      hängt, nicht die Verabredung.
+    */
+    const jetzt = new Date();
+    const t = berlinTeile(jetzt);
+    const beginn = berlinZeitpunkt(t.jahr, t.monat, t.tag, t.stunde + 1, 0);
+    const ende = new Date(beginn.getTime() + 60 * 60 * 1000);
+
+    const termin = await db.appointment.create({
+      data: {
+        title: "Strategiegespräch",
+        type: "STRATEGY",
+        status: "SCHEDULED",
+        startTime: beginn,
+        endTime: ende,
+        companyId,
+        notes: "Beim Aufsetzen der Sitzung angelegt — Zeit bei Bedarf anpassen.",
+      },
+      select: { id: true },
+    });
+
+    const ergebnis = await setzeSitzungAuf({
+      appointmentId: termin.id,
+      beraterId: actor.id,
+    });
+    if ("error" in ergebnis) {
+      await db.appointment.delete({ where: { id: termin.id } }).catch(() => {
+        // Bleibt er doch stehen, ist er unter „Termine" von Hand zu löschen —
+        // schlimmer wäre, die eigentliche Ursache hier zu verschlucken.
+      });
+      return ergebnis;
+    }
+
+    revalidatePath(`/admin/kunden/${companyId}/termine`);
     aktualisiere(companyId, ergebnis.sitzungId);
     return ergebnis;
   });
