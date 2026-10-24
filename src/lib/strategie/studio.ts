@@ -5,6 +5,7 @@ import {
   bauePlan,
   baueRaeume,
   baueRegal,
+  baueFundament,
   baueWorkforce,
   fahrzeugFuer,
   hallensatz,
@@ -14,6 +15,8 @@ import {
   type HausDaten,
   type PlanSchritt,
   type Regalfach,
+  type Fundament,
+  type Fundamentzeile,
   type WorkforceModul,
 } from "./haus";
 import { umfangFuer } from "@/lib/packages/umfang";
@@ -44,6 +47,8 @@ export type StudioDaten = {
   haus: HausDaten;
   ablaeufe: AblaufRaum[];
   regal: Regalfach[];
+  /** Der Grundlagenraum: was heute laeuft und was sich aendert. */
+  fundament: Fundament;
   workforce: WorkforceModul[];
   plan: PlanSchritt[];
   posten: StudioPosten[];
@@ -119,6 +124,28 @@ export async function ladeStudio(sitzungId: string): Promise<StudioDaten | null>
 
   const systemRecords = systeme.map((s) => ({ name: s.name, purposes: leseIds(s.purposes) }));
   const regal = baueRegal(systemRecords);
+
+  /*
+    Nur Bestaetigtes betritt das Haus.
+
+    Die Schablone rechnet maschinell; was sie vorschlaegt, ist ein Entwurf.
+    Erst wenn ein Mensch den Haken gesetzt hat, steht es hier — dieselbe
+    Regel wie bei den Posten.
+  */
+  const bestaetigt: Fundamentzeile[] = (
+    await db.grundlagenVorschlag.findMany({
+      where: { sitzungId: sitzung.id, zustand: "bestaetigt", kundeSieht: true },
+      orderBy: { position: "asc" },
+    })
+  ).map((v) => ({
+    bewegung: v.bewegung,
+    titel: v.titel,
+    begruendung: v.begruendung,
+    programme: leseIds(v.programme),
+    sparenProMonat: v.sparenProMonat,
+    erstZumVertragsende: v.erstZumVertragsende,
+  }));
+  const fundament = baueFundament(systemRecords, bestaetigt);
   const ablaeufe = flows.map((f) =>
     baueAblaufRaum({
       catalogKey: f.catalogKey,
@@ -160,8 +187,8 @@ export async function ladeStudio(sitzungId: string): Promise<StudioDaten | null>
       paket: sitzung.paket,
       ablaeufe: ablaeufe.length,
       stundenProMonat: aufwandGesamt,
-      luecken: regal.filter((r) => r.luecke).length,
-      felder: PURPOSES.length,
+      werkzeuge: fundament.heute.length,
+      aenderungen: fundament.bewegungen.length,
       plaetze: GRENZE_AUTOMATISIERUNGEN,
       vergeben,
       workforceGewaehlt: sitzung.posten.some(
@@ -186,6 +213,7 @@ export async function ladeStudio(sitzungId: string): Promise<StudioDaten | null>
     haus,
     ablaeufe,
     regal,
+    fundament,
     workforce: workforceBlock ? baueWorkforce(workforceBlock.beispiele, regal) : [],
     plan: umfang ? bauePlan(umfang.phasen) : [],
     posten: sitzung.posten

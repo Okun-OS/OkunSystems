@@ -5,7 +5,7 @@ import Image from "next/image";
 import { OkunLogo } from "@/components/layout/okun-logo";
 import { Gebaeude } from "./gebaeude";
 import { Boden, Himmel, Mondglanz, Regen, Sterne, Stadt } from "./kulisse";
-import type { AblaufRaum, HausDaten, Regalfach } from "@/lib/strategie/haus";
+import type { AblaufRaum, Fundament, HausDaten } from "@/lib/strategie/haus";
 import { useTakt } from "./takt";
 
 /**
@@ -259,18 +259,68 @@ export function Schnitt({
   Siehe `innenszenen.tsx` und `werkstatt.tsx`.
 */
 
-// ─── Szene 5 · Der Grundlagenraum ────────────────────────────────────────────
+// ─── Szene 5 · Das Fundament ─────────────────────────────────────────────────
 
-export function RegalSzene({
-  regal,
+/**
+ * Die digitalen Grundlagen — der erste Raum im Haus.
+ *
+ * Hier hingen einmal zwölf gleich große Fächer an der Wand, leer oder voll.
+ * Das war unsere Schublade, nicht seine: Ein Betrieb denkt nicht „ich habe
+ * zwölf Zwecke, vier sind leer", sondern „ich schreibe Rechnungen in Word".
+ * Alles wog gleich, ein leeres „Sonstiges" so schwer wie eine fehlende
+ * Rechnungsstellung, und am Ende sprangen alle Lücken gleichzeitig auf
+ * „wird eingerichtet" — ein Pauschalversprechen über zwölf Systeme.
+ *
+ * Jetzt sind es zwei Bilder, und man geht von einem zum anderen:
+ *
+ * **Heute** — die Werkzeuge, mit denen er wirklich arbeitet, mit seinen
+ * eigenen Bezeichnungen. Kein Urteil, keine Farbe, die etwas vorwirft.
+ *
+ * **Danach** — was sich ändert, und zwar nur das, was ein Mensch bestätigt
+ * hat. Vier Arten von Veränderung, jede ein Satz, den der Berater
+ * aussprechen kann.
+ */
+
+const BEWEGUNG: Record<
+  string,
+  { label: string; farbe: string; rahmen: string; grund: string }
+> = {
+  bleibt: {
+    label: "bleibt",
+    farbe: "#8899b4",
+    rahmen: "rgba(136,153,180,.3)",
+    grund: "rgba(136,153,180,.06)",
+  },
+  faellt_weg: {
+    label: "fällt weg",
+    farbe: "#2ee6c5",
+    rahmen: "rgba(46,230,197,.4)",
+    grund: "rgba(46,230,197,.07)",
+  },
+  geht_zusammen: {
+    label: "geht zusammen",
+    farbe: "#00b8ff",
+    rahmen: "rgba(0,184,255,.4)",
+    grund: "rgba(0,184,255,.07)",
+  },
+  fehlt: {
+    label: "kommt dazu",
+    farbe: "#f5a524",
+    rahmen: "rgba(245,165,36,.4)",
+    grund: "rgba(245,165,36,.07)",
+  },
+};
+
+export function FundamentSzene({
+  fundament,
   onZurueck,
 }: {
-  regal: Regalfach[];
+  fundament: Fundament;
   onZurueck: () => void;
 }) {
   const { stufe, setzeStufe, gefuehrt } = useTakt();
-  const gefuellt = stufe > 0;
-  const luecken = regal.filter((r) => r.luecke).length;
+  const danach = stufe > 0;
+  const aenderungen = fundament.bewegungen.length;
 
   return (
     <div
@@ -280,87 +330,141 @@ export function RegalSzene({
       <ZurueckKnopf onClick={onZurueck} />
 
       <div
-        className="absolute inset-x-0 top-[8%] text-center px-6"
+        className="absolute inset-x-0 top-[7%] text-center px-6"
         style={{ animation: "studio-auf .8s cubic-bezier(.2,.85,.25,1) both" }}
       >
         <p className="font-mono text-[9px] uppercase tracking-[0.26em] text-[#3a4f68] font-semibold">
           Digitale Grundlagen
         </p>
         <h2 className="mt-2.5 text-[clamp(21px,2.5vw,34px)] font-bold tracking-[-0.02em]">
-          Zwölf Fächer an der Wand
+          {danach ? "Was sich ändert" : "Womit Sie heute arbeiten"}
         </h2>
-        <p className="mt-2.5 mx-auto max-w-[60ch] text-[#90a6c0] text-[12.5px]">
-          Für jeden Zweck eines. {luecken === 0
-            ? "Bei Ihnen ist jedes belegt."
-            : `${luecken} ${luecken === 1 ? "Fach ist" : "Fächer sind"} bei Ihnen leer.`}{" "}
-          Rot heißt: zwei Programme für dieselbe Sache.
+        <p className="mt-2.5 mx-auto max-w-[62ch] text-[#90a6c0] text-[12.5px] leading-relaxed">
+          {danach
+            ? "Bevor wir etwas automatisieren, steht das Fundament. Das hier ist der erste Schritt — nicht der letzte."
+            : fundament.heute.length === 0
+              ? "Im Blueprint ist kein Programm erfasst."
+              : `${fundament.heute.length} Werkzeuge, so wie Sie sie genannt haben. Erst danach reden wir über Abläufe.`}
         </p>
       </div>
 
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-[46%] w-[min(94vw,1200px)] px-4">
-        <div className="grid grid-cols-6 gap-3">
-          {regal.map((f, i) => {
-            const gefuelltJetzt = gefuellt && f.luecke;
-            return (
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-[47%] w-[min(94vw,1120px)] px-4">
+        {!danach ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {fundament.heute.map((w, i) => (
               <div
-                key={f.zweckKey}
-                className={`rounded-xl border p-3.5 min-h-[112px] flex flex-col transition-all duration-700
-                  ${
-                    f.luecke && !gefuellt
-                      ? "border-dashed border-[rgba(245,165,36,.5)] bg-[rgba(245,165,36,.05)]"
-                      : f.doppelt && !gefuellt
-                        ? "border-[rgba(240,80,74,.45)] bg-[rgba(240,80,74,.06)]"
-                        : "border-[rgba(0,184,255,.25)] bg-[rgba(0,184,255,.05)]"
-                  }`}
-                style={{ animation: `studio-pop .7s cubic-bezier(.2,1.05,.3,1) ${0.2 + i * 0.05}s both` }}
+                key={`${w.name}-${i}`}
+                className="rounded-xl border border-[rgba(0,184,255,.22)] bg-[rgba(0,184,255,.04)] p-4 min-h-[96px] flex flex-col"
+                style={{
+                  animation: `studio-pop .7s cubic-bezier(.2,1.05,.3,1) ${0.15 + i * 0.05}s both`,
+                }}
               >
-                <p className="font-mono text-[8.6px] uppercase tracking-[0.14em] text-[#4d93ba]">
-                  {f.label}
-                </p>
-                <p className="mt-auto text-[11.5px] leading-snug">
-                  {gefuelltJetzt ? (
-                    <span className="text-[#2ee6c5]">wird eingerichtet</span>
-                  ) : f.luecke ? (
-                    <span className="text-[#f5a524]">leer</span>
-                  ) : (
-                    <span className="text-[#cfe0f2]">{f.programme.join(" · ")}</span>
-                  )}
+                <p className="text-[13px] font-semibold text-[#dce9f6] leading-snug">{w.name}</p>
+                <p className="mt-auto pt-2 text-[10.5px] text-[#5b7691] leading-snug">
+                  {w.zwecke.join(" · ") || "ohne Zuordnung"}
                 </p>
               </div>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-2.5 max-h-[52vh] overflow-y-auto pr-1">
+            {fundament.bewegungen.map((b, i) => {
+              const art = BEWEGUNG[b.bewegung] ?? BEWEGUNG.bleibt;
+              return (
+                <div
+                  key={`${b.titel}-${i}`}
+                  className="rounded-xl border px-5 py-4"
+                  style={{
+                    borderColor: art.rahmen,
+                    background: art.grund,
+                    animation: `studio-pop .7s cubic-bezier(.2,1.05,.3,1) ${0.1 + i * 0.07}s both`,
+                  }}
+                >
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <span
+                      className="font-mono text-[9px] uppercase tracking-[0.16em] px-2 py-0.5 rounded-full border"
+                      style={{ color: art.farbe, borderColor: art.rahmen }}
+                    >
+                      {art.label}
+                    </span>
+                    {b.sparenProMonat !== null && (
+                      <span className="font-mono text-[11.5px]" style={{ color: art.farbe }}>
+                        {b.sparenProMonat} € im Monat
+                        {b.erstZumVertragsende && (
+                          <span className="text-[#f5a524]"> · ab Vertragsende</span>
+                        )}
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-2 text-[14px] font-semibold text-[#eef3f9] leading-snug">
+                    {b.titel}
+                  </p>
+                  {b.begruendung && (
+                    <p className="mt-1 text-[12px] text-[#90a6c0] leading-relaxed">
+                      {b.begruendung}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+
+            {/*
+              Nichts bestätigt heißt nicht „nichts zu tun".
+
+              Der Kunde soll hier nicht vor einer leeren Fläche stehen und
+              denken, an seinen Grundlagen sei alles in Ordnung — es ist nur
+              noch nicht besprochen.
+            */}
+            {aenderungen === 0 && (
+              <p className="text-center text-[#5b7691] text-[12.5px] py-10 leading-relaxed">
+                An den Grundlagen ist noch nichts entschieden.
+                <br />
+                Das gehen wir im Gespräch gemeinsam durch.
+              </p>
+            )}
+
+            {(fundament.sparenSofort > 0 || fundament.sparenSpaeter > 0) && (
+              <p className="pt-2 text-center text-[12.5px] text-[#90a6c0]">
+                Zusammen mindestens{" "}
+                <span className="text-[#2ee6c5] font-semibold">
+                  {fundament.sparenSofort} €
+                </span>{" "}
+                im Monat
+                {fundament.sparenSpaeter > 0 && (
+                  <>
+                    , dazu{" "}
+                    <span className="text-[#f5a524]">{fundament.sparenSpaeter} €</span> ab
+                    Vertragsende
+                  </>
+                )}
+                .
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
-      <div className="absolute left-1/2 bottom-[11%] -translate-x-1/2 text-center">
+      <div className="absolute left-1/2 bottom-[9%] -translate-x-1/2 text-center">
         <button
-          onClick={() => setzeStufe(gefuellt ? 0 : 1)}
-          disabled={luecken === 0}
+          onClick={() => setzeStufe(danach ? 0 : 1)}
           hidden={gefuehrt}
           className={`flex items-center gap-3 px-7 py-3.5 rounded-full text-[#041018] text-[13.5px] font-bold
-            mx-auto transition-transform duration-300 hover:-translate-y-0.5 disabled:opacity-40 ${
-              gefuellt
+            mx-auto transition-transform duration-300 hover:-translate-y-0.5 ${
+              danach
                 ? "bg-[linear-gradient(135deg,#8af2dd,#2ee6c5)]"
                 : "bg-[linear-gradient(135deg,#7adcff,#00b8ff)]"
             }`}
         >
           <span className="text-base">✦</span>
-          {gefuellt ? "Zurück zu heute" : "Lücken schließen"}
+          {danach ? "Zurück zu heute" : "Was sich ändert"}
         </button>
       </div>
+
+      <StudioMarke />
     </div>
   );
 }
 
-// ─── Gemeinsame Kleinteile ───────────────────────────────────────────────────
-
-/*
-  Der Weg zurück — nur für den, der geht.
-
-  Wer mitsieht, bekommt ihn nicht zu sehen: Ein Knopf, der nichts tut, ist
-  schlimmer als keiner, und zwei Leute, die gleichzeitig durchs Haus laufen,
-  sind das Ende des Gesprächs.
-*/
 function ZurueckKnopf({ onClick }: { onClick: () => void }) {
   const { gefuehrt } = useTakt();
   if (gefuehrt) return null;

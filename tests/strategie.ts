@@ -44,6 +44,7 @@ import {
   schildName,
   stockwerkeFuer,
   wirdAutomatisch,
+  baueFundament,
 } from "../src/lib/strategie/haus";
 import type { GuideDocument } from "../src/lib/strategy-guide/types";
 import {
@@ -382,8 +383,8 @@ test("die Ansichten heißen wie die Räume des Hauses", () => {
   // Beide Seiten stehen am selben Ort. Gäbe es zwei Vokabulare, müsste
   // irgendwo eine Übersetzungstabelle stehen — und die wäre eines Tages falsch.
   const raeume = baueRaeume({
-    paket: "operations", ablaeufe: 1, stundenProMonat: 600, luecken: 2,
-    felder: 12, plaetze: 3, vergeben: 1, workforceGewaehlt: false,
+    paket: "operations", ablaeufe: 1, stundenProMonat: 600, werkzeuge: 6,
+    aenderungen: 2, plaetze: 3, vergeben: 1, workforceGewaehlt: false,
   });
   const ansichten = new Set(ANSICHTEN.map((a) => a.key as string));
   for (const r of raeume) {
@@ -501,7 +502,7 @@ test("das Regal hat immer zwölf Fächer, egal wie groß der Betrieb ist", () =>
 
 test("die Workforce-Tür ist bei Foundation sichtbar und verschlossen", () => {
   const basis = {
-    ablaeufe: 2, stundenProMonat: 3700, luecken: 3, felder: 12,
+    ablaeufe: 2, stundenProMonat: 3700, werkzeuge: 6, aenderungen: 3,
     plaetze: 3, vergeben: 2, workforceGewaehlt: false,
   };
   const foundation = baueRaeume({ ...basis, paket: "foundation" });
@@ -515,13 +516,32 @@ test("die Workforce-Tür ist bei Foundation sichtbar und verschlossen", () => {
 
 test("die Türschilder tragen echte Zahlen", () => {
   const raeume = baueRaeume({
-    paket: "foundation", ablaeufe: 1, stundenProMonat: 3770, luecken: 4,
-    felder: 12, plaetze: 3, vergeben: 2, workforceGewaehlt: false,
+    paket: "foundation", ablaeufe: 1, stundenProMonat: 3770, werkzeuge: 6,
+    aenderungen: 4, plaetze: 3, vergeben: 2, workforceGewaehlt: false,
   });
-  assert.equal(raeume[0].marke, "1 ABLAUF");
-  assert.match(raeume[0].kennzahl, /62,8 h/);
-  assert.equal(raeume[1].kennzahl, "4 Lücken");
+  // Die Grundlagen stehen vorn — erst das Fundament, dann die Abläufe.
+  assert.equal(raeume[0].marke, "6 WERKZEUGE");
+  assert.equal(raeume[0].kennzahl, "4 Änderungen");
+  assert.equal(raeume[1].marke, "1 ABLAUF");
+  assert.match(raeume[1].kennzahl, /62,8 h/);
   assert.equal(raeume[2].kennzahl, "2 vergeben");
+});
+
+test("ohne bestätigte Änderung sagt das Türschild „unverändert“", () => {
+  const raeume = baueRaeume({
+    paket: "foundation", ablaeufe: 1, stundenProMonat: 100, werkzeuge: 3,
+    aenderungen: 0, plaetze: 3, vergeben: 0, workforceGewaehlt: false,
+  });
+  assert.equal(raeume[0].kennzahl, "unverändert");
+  assert.equal(raeume[0].leer, false);
+});
+
+test("ohne jedes Programm steht der Grundlagenraum leer da", () => {
+  const raeume = baueRaeume({
+    paket: "foundation", ablaeufe: 0, stundenProMonat: 0, werkzeuge: 0,
+    aenderungen: 0, plaetze: 3, vergeben: 0, workforceGewaehlt: false,
+  });
+  assert.equal(raeume[0].leer, true);
 });
 
 // ─── Workforce-Raum und Plan ─────────────────────────────────────────────────
@@ -757,6 +777,51 @@ test("die Einführung nennt Anfang, Ende und die Zahlen", () => {
   assert.ok(werte.some((w) => w.startsWith("5 Stationen")));
   assert.ok(werte.some((w) => /davon von Hand/.test(w)));
   assert.ok(werte.some((w) => /ohne Programm/i.test(w)));
+});
+
+test("nur Bestaetigtes betritt das Fundament", () => {
+  const f = baueFundament(
+    [
+      { name: "Papershift", purposes: ["pur_scheduling"] },
+      { name: "kein System", purposes: [] },
+    ],
+    [
+      {
+        bewegung: "faellt_weg",
+        titel: "Papershift wird nicht mehr gebraucht",
+        begruendung: null,
+        programme: ["Papershift"],
+        sparenProMonat: 89,
+        erstZumVertragsende: true,
+      },
+    ]
+  );
+  // „kein System" ist kein Werkzeug und steht nicht im Haus.
+  assert.equal(f.heute.length, 1);
+  assert.equal(f.heute[0].name, "Papershift");
+  assert.deepEqual(f.heute[0].zwecke, ["Dienst- und Einsatzplanung"]);
+  assert.equal(f.bewegungen.length, 1);
+});
+
+test("die Ersparnis im Haus trennt sofort von zum Vertragsende", () => {
+  const zeile = (sparen: number, spaeter: boolean) => ({
+    bewegung: "faellt_weg",
+    titel: "x",
+    begruendung: null,
+    programme: [],
+    sparenProMonat: sparen,
+    erstZumVertragsende: spaeter,
+  });
+  const f = baueFundament([], [zeile(40, false), zeile(60, true)]);
+  assert.equal(f.sparenSofort, 40);
+  assert.equal(f.sparenSpaeter, 60);
+});
+
+test("ohne bestaetigte Zeilen bleibt das Fundament ohne Behauptung", () => {
+  const f = baueFundament([{ name: "Excel", purposes: ["pur_time"] }], []);
+  assert.equal(f.bewegungen.length, 0);
+  assert.equal(f.sparenSofort, 0);
+  assert.equal(f.heute.length, 1);
 });
 
 console.log(`\n${passed} Tests bestanden.\n`);

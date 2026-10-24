@@ -308,14 +308,85 @@ export function baueRegal(
   });
 }
 
+// ─── Das Fundament ───────────────────────────────────────────────────────────
+
+/**
+ * Der Grundlagenraum, neu gedacht.
+ *
+ * Vorher hingen hier zwölf gleich große Fächer an der Wand, leer oder voll.
+ * Das war unsere Schublade, nicht seine: Ein Betrieb denkt nicht „ich habe
+ * zwölf Zwecke, vier sind leer", sondern „ich schreibe Rechnungen in Word".
+ * Und es wog alles gleich — ein leeres „Sonstiges" stand so groß da wie eine
+ * fehlende Rechnungsstellung.
+ *
+ * Jetzt stehen hier zwei Dinge: was heute läuft, und was sich ändert. Das
+ * Erste kommt aus dem Blueprint und ist immer da. Das Zweite kommt aus der
+ * Schablone — aber nur, was ein Mensch bestätigt hat. Ein maschinell
+ * errechneter Vorschlag, einem Betrieb sein Programm zu streichen, hat auf
+ * dem Kundenbildschirm nichts verloren, bevor ihn jemand gelesen hat.
+ */
+
+export type Fundamentzeile = {
+  /** bleibt | faellt_weg | geht_zusammen | fehlt */
+  bewegung: string;
+  titel: string;
+  begruendung: string | null;
+  programme: string[];
+  sparenProMonat: number | null;
+  erstZumVertragsende: boolean;
+};
+
+export type Fundament = {
+  /** Was heute läuft — direkt aus dem Blueprint, ohne Urteil. */
+  heute: Array<{ name: string; zwecke: string[] }>;
+  /** Was sich ändert. Leer, solange nichts bestätigt ist. */
+  bewegungen: Fundamentzeile[];
+  /** Bestätigte Ersparnis im Monat, getrennt nach Fälligkeit. */
+  sparenSofort: number;
+  sparenSpaeter: number;
+};
+
+export function baueFundament(
+  systeme: Array<{ name: string; purposes: string[] }>,
+  bestaetigt: readonly Fundamentzeile[]
+): Fundament {
+  /*
+    „Kein System" ist kein System.
+
+    Im Katalog steht es als Auswahl, damit der Kunde sagen kann, dass er für
+    einen Zweck nichts hat. In seinem Haus als Werkzeug zu zeigen, wäre
+    Unsinn.
+  */
+  const heute = systeme
+    .filter((s) => s.purposes.length > 0)
+    .map((s) => ({
+      name: s.name,
+      zwecke: s.purposes
+        .map((key) => PURPOSES.find((p) => p.key === key)?.label ?? null)
+        .filter((l): l is string => Boolean(l)),
+    }));
+
+  let sofort = 0;
+  let spaeter = 0;
+  for (const z of bestaetigt) {
+    if (z.bewegung !== "faellt_weg" || z.sparenProMonat === null) continue;
+    if (z.erstZumVertragsende) spaeter += z.sparenProMonat;
+    else sofort += z.sparenProMonat;
+  }
+
+  return { heute, bewegungen: [...bestaetigt], sparenSofort: sofort, sparenSpaeter: spaeter };
+}
+
 // ─── Die Türschilder ─────────────────────────────────────────────────────────
 
 export function baueRaeume(input: {
   paket: string | null;
   ablaeufe: number;
   stundenProMonat: number;
-  luecken: number;
-  felder: number;
+  /** Wie viele Programme der Betrieb heute im Einsatz hat. */
+  werkzeuge: number;
+  /** Wie viele bestätigte Änderungen an den Grundlagen anstehen. */
+  aenderungen: number;
   plaetze: number;
   vergeben: number;
   workforceGewaehlt: boolean;
@@ -327,6 +398,18 @@ export function baueRaeume(input: {
 
   return [
     {
+      key: "grundlagen",
+      titel: "Digitale Grundlagen",
+      unterzeile: "Womit Sie heute arbeiten — und was sich daran ändert",
+      marke: `${input.werkzeuge} ${input.werkzeuge === 1 ? "WERKZEUG" : "WERKZEUGE"}`,
+      kennzahl:
+        input.aenderungen === 0
+          ? "unverändert"
+          : `${input.aenderungen} ${input.aenderungen === 1 ? "Änderung" : "Änderungen"}`,
+      verschlossen: false,
+      leer: input.werkzeuge === 0,
+    },
+    {
       key: "ablaeufe",
       titel: "Ihre Abläufe",
       unterzeile: "Station für Station, so wie es heute läuft",
@@ -334,18 +417,6 @@ export function baueRaeume(input: {
       kennzahl: `${stunden} h / Monat`,
       verschlossen: false,
       leer: input.ablaeufe === 0,
-    },
-    {
-      key: "grundlagen",
-      titel: "Digitale Grundlagen",
-      unterzeile: "Zwölf Fächer an der Wand, und was darin steht",
-      marke: `${input.felder} FÄCHER`,
-      kennzahl:
-        input.luecken === 0
-          ? "vollständig"
-          : `${input.luecken} ${input.luecken === 1 ? "Lücke" : "Lücken"}`,
-      verschlossen: false,
-      leer: false,
     },
     {
       key: "automationen",
