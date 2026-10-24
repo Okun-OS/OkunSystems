@@ -5,7 +5,7 @@ import type { StudioDaten } from "@/lib/strategie/studio";
 import type { AnsichtKey } from "@/lib/strategie/katalog";
 import { Abschied, PlanSzene, WorkforceSzene } from "./raeume";
 import { TaktGeber } from "./takt";
-import { Aussen, RegalSzene, Schnitt, StudioMarke } from "./szenen";
+import { Aussen, FundamentSzene, Schnitt, StudioMarke } from "./szenen";
 import { WerkstattSzene } from "./werkstatt";
 import { Flur, Foyer } from "./innenszenen";
 
@@ -236,7 +236,9 @@ export function Rundgang({
           />
         ))}
 
-      {ort === "grundlagen" && <RegalSzene regal={daten.regal} onZurueck={zurHalle} />}
+      {ort === "grundlagen" && (
+        <FundamentSzene fundament={daten.fundament} onZurueck={zurHalle} />
+      )}
 
       {ort === "automationen" && (
         <SockelSzene posten={daten.posten} onZurueck={zurHalle} />

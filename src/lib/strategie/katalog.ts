@@ -61,15 +61,24 @@ export const ANSICHTEN: Ansicht[] = [
     label: "Der Gang",
     frage: "Welche Teile des Betriebs sehen wir uns an?",
   },
+  /*
+    Die Grundlagen stehen vor den Abläufen.
+
+    Das ist keine Geschmacksfrage, sondern die eigene Leistungsreihenfolge:
+    Im Paketumfang steht „Digitale Grundlagen — die notwendigen Systeme
+    einrichten oder verbessern" vor „Auswahl und Umsetzung". Das Haus hat
+    die beiden lange andersherum gezeigt und damit dem eigenen Angebot
+    widersprochen. Erst das Fundament, dann die Abläufe, dann die Auswahl.
+  */
+  {
+    key: "grundlagen",
+    label: "Digitale Grundlagen",
+    frage: "Womit arbeiten Sie heute, und was ändern wir daran?",
+  },
   {
     key: "ablaeufe",
     label: "Ihre Abläufe",
     frage: "Was passiert Station für Station, und was davon bleibt?",
-  },
-  {
-    key: "grundlagen",
-    label: "Digitale Grundlagen",
-    frage: "Welche Werkzeuge fehlen, und welche richten wir ein?",
   },
   {
     key: "automationen",
