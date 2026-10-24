@@ -1010,6 +1010,35 @@ model GrundlagenVorschlag {
   @@index([sitzungId])
 }
 
+/// Eine Zeile aus dem Vorbereitungsgespräch.
+///
+/// Der Berater bereitet das Strategiegespräch im Dialog vor — mit Zugriff auf
+/// den Blueprint, den Leitfaden, die Schablone und die Websuche. Was dabei
+/// entschieden wird, landet nicht in diesem Verlauf, sondern in den Posten
+/// und Vorschlägen selbst; hier steht nur, wie es dazu kam.
+///
+/// Der Verlauf bleibt stehen, auch wenn er lang wird: Wer im Termin merkt,
+/// dass eine Begründung fehlt, will nachlesen können, warum etwas so
+/// entschieden wurde.
+model VorbereitungsNachricht {
+  id String @id @default(cuid())
+
+  /// user | assistant
+  rolle  String
+  inhalt String
+
+  /// JSON-Liste der Werkzeuge, die in diesem Zug benutzt wurden —
+  /// für die Anzeige („hat recherchiert", „hat zwei Posten gewählt").
+  werkzeuge String @default("[]")
+
+  createdAt DateTime @default(now())
+
+  sitzungId String
+  sitzung   StrategieSitzung @relation(fields: [sitzungId], references: [id], onDelete: Cascade)
+
+  @@index([sitzungId, createdAt])
+}
+
 // ─── OKUN Sales & Closing Module ─────────────────────────────────────────────
 
 model LegalDocument {
@@ -2162,6 +2191,17 @@ model StrategieSitzung {
   /// Heartbeat, solange der Berater im Gesprächsraum ist.
   beraterPresenceAt DateTime?
 
+  /// Wann die Vorbereitung abgeschlossen wurde.
+  ///
+  /// Gesetzt heißt: Jemand hat sich hingesetzt, die Auswahl durchgesprochen,
+  /// die Grundlagen entschieden und das Haus einmal selbst abgelaufen. Bis
+  /// dahin bleibt „Gespräch führen" zu — nicht aus Förmlichkeit, sondern weil
+  /// ein unvorbereitetes Strategiegespräch das Teuerste ist, was wir
+  /// anbieten.
+  vorbereitetAm DateTime?
+  /// Ob der Probedurchlauf durchs Haus stattgefunden hat.
+  probeAm       DateTime?
+
   /// Zählt bei jeder Änderung hoch; beide Seiten erkennen daran, ob ihr Stand
   /// veraltet ist.
   rev Int @default(0)
@@ -2192,6 +2232,8 @@ model StrategieSitzung {
   projekt Project?
   /// Die Schablone für die digitalen Grundlagen.
   grundlagen GrundlagenVorschlag[]
+  /// Das Gespräch, in dem die Vorbereitung entstanden ist.
+  vorbereitung VorbereitungsNachricht[]
 
   @@index([companyId])
   @@index([sessionId])
