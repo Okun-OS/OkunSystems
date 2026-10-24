@@ -1768,6 +1768,26 @@ model BlueprintSystem {
   /// Eigener Zweck, wenn „Sonstiges" gewählt wurde. Reine Bezeichnung.
   customPurpose String?
 
+  /// Was das Programm im Monat kostet, in ganzen Euro. Freiwillig.
+  ///
+  /// Ohne diese Zahl ist jeder Streichvorschlag im Strategiegespräch eine
+  /// Behauptung: „Spart Ihnen Geld" lässt sich nicht beziffern. `null` heißt
+  /// „nicht angegeben", nicht „kostenlos".
+  kostenProMonat Int?
+
+  /// monatlich | jahresvertrag | unbekannt
+  ///
+  /// Eine Jahreslizenz spart erst zum Vertragsende. Ohne diese Angabe nennt
+  /// das Gespräch ein Datum, das nicht stimmt.
+  bindung String?
+
+  /// laeuft | gehtso | aergert
+  ///
+  /// Die wichtigste der drei. Dass ein Modul von OKUN Workforce denselben
+  /// Zweck abdeckt, heißt nicht, dass man dem Betrieb sein Programm nehmen
+  /// sollte — wer damit zufrieden ist, empfindet den Vorschlag als Angriff.
+  zufriedenheit String?
+
   createdAt DateTime @default(now())
 
   @@index([sessionId])

@@ -78,6 +78,13 @@ import {
 import { careKontakt, mailtoLink, whatsappLink } from "../src/lib/care/kontakt";
 import { careArtLabel, istCareArt } from "../src/lib/care/katalog";
 import {
+  leseKosten,
+  istBindung,
+  istZufriedenheit,
+  MAX_KOSTEN_PRO_MONAT,
+} from "../src/lib/blueprint/pillar3-catalog";
+import { summiereKosten } from "../src/lib/blueprint/pillar3-engine";
+import {
   auftragsPosten,
   istMeilensteinZustand,
   projektFortschritt,
@@ -1093,6 +1100,59 @@ test("ein unbekannter Zustand wird nicht gesetzt und faellt auf Geplant zurueck"
   assert.equal(istMeilensteinZustand("live"), true);
   assert.equal(istMeilensteinZustand("fertig"), false);
   assert.equal(zustandLabel("fertig"), "Geplant");
+});
+
+console.log("\nKosten der Programme");
+test("eine glatte Zahl bleibt, was sie ist", () => {
+  assert.equal(leseKosten("49"), 49);
+  assert.equal(leseKosten(49), 49);
+});
+
+test("deutsche Schreibweise wird gelesen, Cent kaufmaennisch gerundet", () => {
+  assert.equal(leseKosten("49,90 €"), 50);
+  assert.equal(leseKosten("49,40"), 49);
+  assert.equal(leseKosten("1.200"), 1200);
+  assert.equal(leseKosten("1.299,50 €"), 1300);
+});
+
+test("Beiwerk im Feld haelt die Eingabe nicht auf", () => {
+  assert.equal(leseKosten("ca. 50 € pro Nutzer"), 50);
+  assert.equal(leseKosten("  80  "), 80);
+});
+
+test("ohne lesbare Zahl ist es nicht angegeben, nicht null Euro", () => {
+  assert.equal(leseKosten(""), null);
+  assert.equal(leseKosten("keine Ahnung"), null);
+  assert.equal(leseKosten(null), null);
+  assert.equal(leseKosten(undefined), null);
+  assert.equal(leseKosten("-20"), 20); // Das Minus gehoert nicht zur Zahl.
+});
+
+test("eine absurde Zahl wird gedeckelt statt uebernommen", () => {
+  assert.equal(leseKosten("99999999"), MAX_KOSTEN_PRO_MONAT);
+});
+
+test("nur Bekanntes wird summiert — die Summe ist eine Untergrenze", () => {
+  const ergebnis = summiereKosten([
+    { kostenProMonat: 49 },
+    { kostenProMonat: null },
+    { kostenProMonat: 131 },
+  ]);
+  assert.equal(ergebnis.summe, 180);
+  assert.equal(ergebnis.bekannt, 2);
+});
+
+test("ohne jede Angabe bleibt die Summe null und gilt als unbekannt", () => {
+  const ergebnis = summiereKosten([{ kostenProMonat: null }, { kostenProMonat: null }]);
+  assert.equal(ergebnis.summe, 0);
+  assert.equal(ergebnis.bekannt, 0);
+});
+
+test("nur bekannte Schluessel werden gespeichert", () => {
+  assert.equal(istBindung("jahresvertrag"), true);
+  assert.equal(istBindung("quartalsweise"), false);
+  assert.equal(istZufriedenheit("laeuft"), true);
+  assert.equal(istZufriedenheit("super"), false);
 });
 
 console.log(`\n${passed} Tests bestanden.\n`);

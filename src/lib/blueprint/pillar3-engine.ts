@@ -35,6 +35,12 @@ export type SystemRecord = {
   /** Zweck-Schlüssel. */
   purposes: string[];
   isCustom: boolean;
+  /** Monatskosten in Euro; `null`, wenn nicht angegeben. */
+  kostenProMonat?: number | null;
+  /** monatlich | jahresvertrag | unbekannt */
+  bindung?: string | null;
+  /** laeuft | gehtso | aergert */
+  zufriedenheit?: string | null;
 };
 
 export type TaskRecord = {
@@ -128,6 +134,15 @@ export type PurposeRow = {
   isGap: boolean;
 };
 
+/** Ein Programm mit dem, was es kostet und taugt. */
+export type Programmzeile = {
+  name: string;
+  purposeCount: number;
+  kostenProMonat: number | null;
+  bindung: string | null;
+  zufriedenheit: string | null;
+};
+
 export type SystemFinding = {
   rows: PurposeRow[];
   mediaBreaks: PurposeRow[];
@@ -135,7 +150,35 @@ export type SystemFinding = {
   /** Programme, die mehr Zwecke tragen, als ihnen zusteht. */
   overloaded: Array<{ name: string; purposeCount: number }>;
   systemCount: number;
+  /** Je Programm, was es kostet und wie es läuft. */
+  programme: Programmzeile[];
+  /** Summe der *bekannten* Monatskosten, in Euro. */
+  kostenProMonat: number;
+  /** Von wie vielen Programmen die Kosten bekannt sind. */
+  mitKosten: number;
 };
+
+/**
+ * Was die Programme zusammen im Monat kosten.
+ *
+ * Gezählt wird nur, was angegeben wurde. Die Summe ist damit immer eine
+ * Untergrenze — und genau so muss sie im Gespräch auch genannt werden,
+ * sonst wird aus „mindestens 180 €" irgendwann „nur 180 €".
+ */
+export function summiereKosten(programme: readonly { kostenProMonat: number | null }[]): {
+  summe: number;
+  bekannt: number;
+} {
+  let summe = 0;
+  let bekannt = 0;
+  for (const p of programme) {
+    if (typeof p.kostenProMonat === "number" && Number.isFinite(p.kostenProMonat)) {
+      summe += p.kostenProMonat;
+      bekannt++;
+    }
+  }
+  return { summe, bekannt };
+}
 
 export function analyseSystems(systems: SystemRecord[]): SystemFinding {
   const rows: PurposeRow[] = PURPOSES.map((purpose) => {
@@ -156,12 +199,24 @@ export function analyseSystems(systems: SystemRecord[]): SystemFinding {
     .map((system) => ({ name: system.name, purposeCount: system.purposes.length }))
     .sort((a, b) => b.purposeCount - a.purposeCount);
 
+  const programme: Programmzeile[] = systems.map((system) => ({
+    name: system.name,
+    purposeCount: system.purposes.length,
+    kostenProMonat: system.kostenProMonat ?? null,
+    bindung: system.bindung ?? null,
+    zufriedenheit: system.zufriedenheit ?? null,
+  }));
+  const kosten = summiereKosten(programme);
+
   return {
     rows,
     mediaBreaks: rows.filter((row) => row.isMediaBreak),
     gaps: rows.filter((row) => row.isGap),
     overloaded,
     systemCount: systems.length,
+    programme,
+    kostenProMonat: kosten.summe,
+    mitKosten: kosten.bekannt,
   };
 }
 

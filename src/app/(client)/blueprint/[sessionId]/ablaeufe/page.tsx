@@ -17,6 +17,8 @@ import {
   TASK_AREAS,
   TASK_CATALOG,
   flowByKey,
+  BINDUNGEN,
+  ZUFRIEDENHEITEN,
 } from "@/lib/blueprint/pillar3-catalog";
 import { selectFlows, type TaskRecord } from "@/lib/blueprint/pillar3-engine";
 import Pillar3Client from "./Pillar3Client";
@@ -112,6 +114,8 @@ export default async function Pillar3Page({
           maxTasks: MAX_TASKS,
           maxCustomTasks: MAX_CUSTOM_TASKS,
           frequencyUnits: FREQUENCY_UNITS,
+          bindungen: BINDUNGEN,
+          zufriedenheiten: ZUFRIEDENHEITEN,
         }}
         saved={{
           systems: systems.map((system) => ({
@@ -121,6 +125,9 @@ export default async function Pillar3Page({
             purposes: parseList(system.purposes),
             isCustom: system.isCustom,
             customPurpose: system.customPurpose ?? "",
+            kosten: system.kostenProMonat === null ? "" : String(system.kostenProMonat),
+            bindung: system.bindung ?? "",
+            zufriedenheit: system.zufriedenheit ?? "",
           })),
           tasks: tasks.map((task) => ({
             catalogKey: task.catalogKey,

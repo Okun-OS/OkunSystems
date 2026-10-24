@@ -223,6 +223,9 @@ export async function assembleBlueprintReport(
             category: system.category,
             purposes: parseList(system.purposes),
             isCustom: system.isCustom,
+            kostenProMonat: system.kostenProMonat,
+            bindung: system.bindung,
+            zufriedenheit: system.zufriedenheit,
           })),
           tasks: tasks.map((task) => ({
             id: task.id,

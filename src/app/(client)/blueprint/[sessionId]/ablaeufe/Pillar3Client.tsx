@@ -50,6 +50,8 @@ type Props = {
   catalog: {
     systemCategories: string[];
     systems: SystemEntry[];
+    bindungen: Array<{ key: string; label: string; hint?: string }>;
+    zufriedenheiten: Array<{ key: string; label: string; hint?: string }>;
     purposes: CatalogEntry[];
     taskAreas: string[];
     tasks: TaskEntry[];
@@ -64,6 +66,9 @@ type Props = {
   };
   saved: {
     systems: Array<{
+      kosten?: string;
+      bindung?: string;
+      zufriedenheit?: string;
       id: string;
       catalogKey: string | null;
       name: string;
@@ -95,6 +100,10 @@ type SystemState = {
   customName: string;
   purposes: string[];
   customPurpose: string;
+  /** Die drei freiwilligen Angaben — leer heißt „nicht beantwortet". */
+  kosten: string;
+  bindung: string;
+  zufriedenheit: string;
 };
 
 type TaskState = {
@@ -129,6 +138,9 @@ export default function Pillar3Client({ sessionId, catalog, saved, plannedFlows 
       customName: system.isCustom ? system.name : "",
       purposes: system.purposes,
       customPurpose: system.customPurpose,
+      kosten: system.kosten ?? "",
+      bindung: system.bindung ?? "",
+      zufriedenheit: system.zufriedenheit ?? "",
     }))
   );
 
@@ -192,7 +204,18 @@ export default function Pillar3Client({ sessionId, catalog, saved, plannedFlows 
     setSystems((prev) =>
       prev.some((s) => s.catalogKey === key)
         ? prev.filter((s) => s.catalogKey !== key)
-        : [...prev, { catalogKey: key, customName: "", purposes: [], customPurpose: "" }]
+        : [
+            ...prev,
+            {
+              catalogKey: key,
+              customName: "",
+              purposes: [],
+              customPurpose: "",
+              kosten: "",
+              bindung: "",
+              zufriedenheit: "",
+            },
+          ]
     );
   }
 
@@ -396,6 +419,66 @@ export default function Pillar3Client({ sessionId, catalog, saved, plannedFlows 
                                 className="w-full px-3 py-2 rounded-lg bg-[#080d14] border border-[#1a2840] text-[#f0f0f0] text-sm focus:outline-none focus:border-[#00b8ff]/50"
                               />
                             )}
+
+                            {/*
+                              Drei freiwillige Angaben.
+
+                              Sie entscheiden später darüber, ob aus einem
+                              Programm ein Streichvorschlag wird — und ob der
+                              gut ankommt. Freiwillig, weil jede Pflichtangabe
+                              mehr den Blueprint teurer macht; was fehlt,
+                              lässt sich im Strategiegespräch nachtragen.
+                            */}
+                            <div className="pt-1.5 border-t border-[#111e30] space-y-2.5">
+                              <div className="flex items-center gap-2.5 flex-wrap">
+                                <p className="text-[#666] text-xs">Was kostet es im Monat?</p>
+                                <input
+                                  value={selected.kosten}
+                                  onChange={(e) =>
+                                    updateSystem(entry.key, { kosten: e.target.value })
+                                  }
+                                  inputMode="decimal"
+                                  placeholder="z. B. 49"
+                                  className="w-28 px-3 py-1.5 rounded-lg bg-[#080d14] border border-[#1a2840] text-[#f0f0f0] text-sm placeholder-[#444] focus:outline-none focus:border-[#00b8ff]/50"
+                                />
+                                <span className="text-[#555] text-xs">€ — ungefähr reicht</span>
+                              </div>
+
+                              {selected.kosten.trim() !== "" && (
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <p className="text-[#666] text-xs mr-1">Vertrag:</p>
+                                  {catalog.bindungen.map((b) => (
+                                    <Chip
+                                      key={b.key}
+                                      label={b.label}
+                                      active={selected.bindung === b.key}
+                                      onClick={() =>
+                                        updateSystem(entry.key, {
+                                          bindung: selected.bindung === b.key ? "" : b.key,
+                                        })
+                                      }
+                                    />
+                                  ))}
+                                </div>
+                              )}
+
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <p className="text-[#666] text-xs mr-1">Und wie läuft es damit?</p>
+                                {catalog.zufriedenheiten.map((z) => (
+                                  <Chip
+                                    key={z.key}
+                                    label={z.label}
+                                    active={selected.zufriedenheit === z.key}
+                                    onClick={() =>
+                                      updateSystem(entry.key, {
+                                        zufriedenheit:
+                                          selected.zufriedenheit === z.key ? "" : z.key,
+                                      })
+                                    }
+                                  />
+                                ))}
+                              </div>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -419,6 +502,9 @@ export default function Pillar3Client({ sessionId, catalog, saved, plannedFlows 
                       customName: system.customName,
                       purposes: system.purposes,
                       customPurpose: system.customPurpose,
+                      kosten: system.kosten,
+                      bindung: system.bindung,
+                      zufriedenheit: system.zufriedenheit,
                     }))
                   ),
                 () => setStep(1)
