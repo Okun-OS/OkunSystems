@@ -46,10 +46,14 @@ export default async function KundenPage({
     include: {
       users: { where: { role: "CLIENT" }, take: 1 },
       projects: { orderBy: { updatedAt: "desc" }, take: 1 },
-      assessments: { orderBy: { updatedAt: "desc" }, take: 1 },
+      /*
+        Bewertung und OkunScore werden hier nicht mehr gelesen: Die Spalte
+        „Score" stand bei jedem Betrieb auf „—", weil der Blueprint 2.0
+        keinen schreibt. Mitzuladen, was niemand anzeigt, kostet bei jeder
+        Kundenliste eine Abfrage mehr.
+      */
       analysisSessions: {
         where: { blueprintVersion: "2.0" },
-        include: { score: true },
         orderBy: { updatedAt: "desc" },
         take: 1,
       },
@@ -136,171 +140,168 @@ export default async function KundenPage({
         </button>
       </form>
 
-      {/* Table */}
+      {/*
+        Die Liste der Betriebe — Zeilen, die Verweise *sind*.
+
+        Vorher war es eine Tabelle, über deren Zeile ein unsichtbares
+        `::after` lag, damit ein Klick irgendwo die Karte öffnet. Dieser
+        Kniff hängt daran, dass `position: relative` auf einem `<tr>` einen
+        Bezugspunkt schafft — in Chrome tut es das, in Safari nicht. Dort
+        rutschte die Fläche nach oben auf die Seite und lag über allem:
+        Jeder Klick, auch auf „Kunde hinzufügen", öffnete denselben Betrieb.
+
+        Deshalb keine Tabelle mehr und kein Kniff: Jede Zeile ist ein
+        einziger `<Link>` mit Rasterspalten. Das ist überall klickbar, mit
+        der Tastatur erreichbar, und es gibt nichts mehr, was über etwas
+        anderem liegen könnte.
+      */}
       <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-[#1a2840]">
-                {/*
-                  Sechs Spalten statt neun.
+          <div className="min-w-[940px]">
+            <div
+              className="grid gap-4 px-4 py-3 border-b border-[#1a2840]
+                text-xs font-medium text-[#888]
+                grid-cols-[minmax(200px,1.5fr)_minmax(110px,0.9fr)_minmax(170px,1.2fr)_96px_124px_minmax(150px,1fr)]"
+            >
+              {/*
+                Sechs Spalten statt neun.
 
-                  „Score" stand bei jedem Betrieb auf „—": Die Zahl schreibt
-                  nur die alte Advisor-Analyse, der Blueprint 2.0 rechnet mit
-                  einer eigenen Engine und legt keinen OkunScore an.
-                  „Projekte" zählte dasselbe für alle, und die Aktionsspalte
-                  enthielt zwei Verweise auf Seiten, die jetzt ein Klick auf
-                  die Zeile öffnet, sowie einen Knopf ohne Funktion. Alles
-                  zusammen zwang die Tabelle ins seitliche Scrollen — und der
-                  Weg zum Kunden lag ganz rechts.
-                */}
-                {[
-                  "Kunde",
-                  "Branche",
-                  "Ansprechpartner",
-                  "Status",
-                  "Analyse",
-                  "Nächster Schritt",
-                ].map((header) => (
-                  <th
-                    key={header}
-                    className="text-left text-xs font-medium text-[#888] px-4 py-3 whitespace-nowrap"
-                  >
-                    {header}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#111e30]">
-              {companies.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="px-4 py-12 text-center text-[#555] text-sm"
-                  >
-                    Keine Kunden gefunden.
-                  </td>
-                </tr>
-              ) : (
-                companies.map((company) => {
+                „Score" stand bei jedem Betrieb auf „—": Die Zahl schreibt
+                nur die alte Advisor-Analyse, der Blueprint 2.0 rechnet mit
+                einer eigenen Engine und legt keinen OkunScore an.
+                „Projekte" zählte dasselbe für alle, und die Aktionsspalte
+                enthielt zwei Verweise auf Seiten, die jetzt ein Klick auf
+                die Zeile öffnet, sowie einen Knopf ohne Funktion. Alles
+                zusammen zwang die Liste ins seitliche Scrollen — und der
+                Weg zum Kunden lag ganz rechts.
+              */}
+              {[
+                "Kunde",
+                "Branche",
+                "Ansprechpartner",
+                "Status",
+                "Analyse",
+                "Nächster Schritt",
+              ].map((header) => (
+                <span key={header} className="whitespace-nowrap">
+                  {header}
+                </span>
+              ))}
+            </div>
+
+            {companies.length === 0 ? (
+              <p className="px-4 py-12 text-center text-[#555] text-sm">
+                Keine Kunden gefunden.
+              </p>
+            ) : (
+              <div className="divide-y divide-[#111e30]">
+                {companies.map((company) => {
                   const contact = company.users[0];
                   const project = company.projects[0];
-                  const assessment = company.assessments[0];
                   const blueprintSession = company.analysisSessions[0];
-                  // Single source of truth: prefer OkunScore from Blueprint session, then Assessment
-                  const score = blueprintSession?.score?.totalScore ?? assessment?.score ?? null;
                   const blueprintStatus = blueprintSession?.status ?? null;
                   const projectPhase = company.projectPhase;
 
                   return (
-                    <tr
+                    <Link
                       key={company.id}
-                      className="relative hover:bg-[#101c2e] transition-colors group"
+                      href={`/admin/kunden/${company.id}`}
+                      className="grid gap-4 px-4 py-3.5 items-center
+                        hover:bg-[#101c2e] transition-colors group
+                        grid-cols-[minmax(200px,1.5fr)_minmax(110px,0.9fr)_minmax(170px,1.2fr)_96px_124px_minmax(150px,1fr)]"
                     >
                       {/* Kunde */}
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-[#00b8ff]/10 border border-[#00b8ff]/20 flex items-center justify-center flex-shrink-0">
-                            <span className="text-[#00b8ff] text-xs font-bold">
-                              {company.name.charAt(0)}
-                            </span>
-                          </div>
-                          <div>
-                            {/*
-                              Der Name ist der Weg hinein.
-
-                              Das `after:inset-0` legt eine unsichtbare Fläche
-                              über die ganze Zeile: Ein Klick irgendwo darauf
-                              öffnet den Betrieb, ohne dass man den Knopf am
-                              rechten Rand suchen muss.
-                            */}
-                            <Link
-                              href={`/admin/kunden/${company.id}`}
-                              className="text-sm font-medium text-[#f0f0f0] whitespace-nowrap
-                                hover:text-[#00b8ff] transition-colors
-                                after:absolute after:inset-0 after:content-['']"
-                            >
-                              {company.name}
-                            </Link>
-                            {company.plan ? (
-                              <span className="text-xs px-1.5 py-0.5 rounded bg-[#00b8ff]/10 border border-[#00b8ff]/20 text-[#00b8ff] capitalize">
-                                {company.plan}
-                              </span>
-                            ) : (
-                              <p className="text-xs text-[#888]">{company.website ?? "—"}</p>
-                            )}
-                          </div>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-[#00b8ff]/10 border border-[#00b8ff]/20 flex items-center justify-center flex-shrink-0">
+                          <span className="text-[#00b8ff] text-xs font-bold">
+                            {company.name.charAt(0)}
+                          </span>
                         </div>
-                      </td>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-[#f0f0f0] truncate group-hover:text-[#00b8ff] transition-colors">
+                            {company.name}
+                          </p>
+                          {company.plan ? (
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-[#00b8ff]/10 border border-[#00b8ff]/20 text-[#00b8ff] capitalize">
+                              {company.plan}
+                            </span>
+                          ) : (
+                            <p className="text-xs text-[#888] truncate">
+                              {company.website ?? "—"}
+                            </p>
+                          )}
+                        </div>
+                      </div>
 
                       {/* Branche */}
-                      <td className="px-4 py-3.5 text-sm text-[#888] whitespace-nowrap">
+                      <span className="text-sm text-[#888] truncate">
                         {company.industry ?? "—"}
-                      </td>
+                      </span>
 
                       {/* Ansprechpartner */}
-                      <td className="px-4 py-3.5">
+                      <div className="min-w-0">
                         {contact ? (
-                          <div>
-                            <p className="text-sm text-[#f0f0f0]">
+                          <>
+                            <p className="text-sm text-[#f0f0f0] truncate">
                               {contact.name ?? "—"}
                             </p>
-                            <p className="text-xs text-[#888]">
-                              {contact.email}
-                            </p>
-                          </div>
+                            <p className="text-xs text-[#888] truncate">{contact.email}</p>
+                          </>
                         ) : (
                           <span className="text-sm text-[#555]">—</span>
                         )}
-                      </td>
+                      </div>
 
                       {/* Status */}
-                      <td className="px-4 py-3.5">
+                      <div>
                         <StatusPill status={company.status} />
-                      </td>
+                      </div>
 
-                      {/* Blueprint / Projektphase */}
-                      <td className="px-4 py-3.5 whitespace-nowrap">
+                      {/* Blueprint */}
+                      <div className="whitespace-nowrap">
                         {blueprintStatus === "COMPLETED" ? (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-[#00b8ff]/10 text-[#00b8ff] border border-[#00b8ff]/20">Abgeschlossen</span>
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-[#00b8ff]/10 text-[#00b8ff] border border-[#00b8ff]/20">
+                            Abgeschlossen
+                          </span>
                         ) : blueprintStatus === "ACTIVE" || blueprintStatus === "PAUSED" ? (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">In Bearbeitung</span>
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+                            In Bearbeitung
+                          </span>
                         ) : (
                           <span className="text-xs text-[#555]">—</span>
                         )}
-                      </td>
+                      </div>
 
                       {/* Nächster Schritt */}
-                      <td className="px-4 py-3.5 text-sm text-[#888] whitespace-nowrap">
+                      <span className="text-sm text-[#888] truncate">
                         {projectPhase === "onboarding"
                           ? "Onboarding abschließen"
                           : projectPhase === "blueprint"
-                          ? "Blueprint ausfüllen"
-                          : projectPhase === "internal_review"
-                          ? "Auswertung erstellen"
-                          : projectPhase === "strategy_session"
-                          ? "Strategiegespräch führen"
-                          : projectPhase === "learning"
-                          ? "Lerninhalte begleiten"
-                          : projectPhase === "implementation"
-                          ? "Implementierung begleiten"
-                          : projectPhase === "stabilization"
-                          ? "Stabilisierung"
-                          : projectPhase === "completed"
-                          ? "Abgeschlossen"
-                          : project?.status === "PLANNING"
-                          ? "Projekt starten"
-                          : project?.status === "IN_PROGRESS"
-                          ? "Analyse fortführen"
-                          : "Strategiegespräch"}
-                      </td>
-
-                    </tr>
+                            ? "Blueprint ausfüllen"
+                            : projectPhase === "internal_review"
+                              ? "Auswertung erstellen"
+                              : projectPhase === "strategy_session"
+                                ? "Strategiegespräch führen"
+                                : projectPhase === "learning"
+                                  ? "Lerninhalte begleiten"
+                                  : projectPhase === "implementation"
+                                    ? "Implementierung begleiten"
+                                    : projectPhase === "stabilization"
+                                      ? "Stabilisierung"
+                                      : projectPhase === "completed"
+                                        ? "Abgeschlossen"
+                                        : project?.status === "PLANNING"
+                                          ? "Projekt starten"
+                                          : project?.status === "IN_PROGRESS"
+                                            ? "Analyse fortführen"
+                                            : "Strategiegespräch"}
+                      </span>
+                    </Link>
                   );
-                })
-              )}
-            </tbody>
-          </table>
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
