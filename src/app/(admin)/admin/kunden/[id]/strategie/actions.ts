@@ -13,6 +13,7 @@ import {
 import type { PostenArt, PostenZustand } from "@/lib/strategie/katalog";
 import { beruehre, ladeSitzung, setzeAufgaben, setzeSitzungAuf } from "@/lib/strategie/sitzung";
 import { berlinTeile, berlinZeitpunkt } from "@/lib/zeit";
+import { schabloneFuerSitzung, schreibeSchablone } from "@/lib/grundlagen/laden";
 
 /**
  * Die Vorbereitung des Strategiegesprächs.
@@ -297,5 +298,46 @@ export async function auswahlStand(sitzungId: string) {
         kundeSieht: p.kundeSieht,
       }))
     );
+  });
+}
+
+/**
+ * Die Grundlagen-Schablone neu rechnen.
+ *
+ * Was ein Mensch schon bestätigt oder verworfen hat, bleibt stehen — ein
+ * zweiter Durchlauf nach einer Korrektur im Blueprint soll die Arbeit nicht
+ * wegwerfen, die in der Vorbereitung schon steckt.
+ */
+export async function schabloneRechnen(sitzungId: string) {
+  return guarded(async () => {
+    await erlaubt();
+    const sitzung = await hole(sitzungId);
+    const ergebnis = await schabloneFuerSitzung(sitzungId);
+    if (!ergebnis) return { error: "Strategiesitzung nicht gefunden." };
+    const geschrieben = await schreibeSchablone(sitzungId, ergebnis.vorschlaege);
+    aktualisiere(sitzung.companyId, sitzungId);
+    return { ok: true as const, ...geschrieben, ohneKosten: ergebnis.ohneKosten };
+  });
+}
+
+/** Einen Vorschlag bestätigen oder verwerfen. Nur hier wird entschieden. */
+export async function vorschlagZustand(
+  sitzungId: string,
+  vorschlagId: string,
+  zustand: "offen" | "bestaetigt" | "verworfen"
+) {
+  return guarded(async () => {
+    await erlaubt();
+    const sitzung = await hole(sitzungId);
+    await db.grundlagenVorschlag.updateMany({
+      where: { id: vorschlagId, sitzungId },
+      data: {
+        zustand,
+        // Erst die Bestätigung eines Menschen macht es für den Kunden sichtbar.
+        kundeSieht: zustand === "bestaetigt",
+      },
+    });
+    aktualisiere(sitzung.companyId, sitzungId);
+    return { ok: true as const };
   });
 }

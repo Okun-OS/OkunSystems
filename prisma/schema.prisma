@@ -971,6 +971,45 @@ model OnboardingHaken {
   @@unique([companyId, schluessel])
 }
 
+/// Ein Vorschlag aus der Grundlagen-Schablone.
+///
+/// Entsteht maschinell aus dem Abgleich von Soll und Ist — und wartet dann.
+/// `zustand` steht auf `offen`, `kundeSieht` auf `false`: Nichts, was ein
+/// Abgleich errechnet hat, erreicht den Kundenbildschirm, bevor ein Mensch
+/// es gelesen und bestätigt hat. Bei Vorschlägen, die einem Betrieb etwas
+/// wegnehmen, ist das keine Förmlichkeit.
+model GrundlagenVorschlag {
+  id String @id @default(cuid())
+
+  /// bleibt | faellt_weg | geht_zusammen | fehlt
+  bewegung    String
+  titel       String
+  begruendung String?
+
+  /// JSON-Liste der betroffenen Programmnamen.
+  programme String @default("[]")
+  /// JSON-Liste der Zweck-Schlüssel.
+  zweckKeys String @default("[]")
+
+  /// Was der Wegfall im Monat spart, in Euro. Null heißt unbekannt.
+  sparenProMonat Int?
+  /// Greift erst zum Vertragsende — mindestens ein Jahresvertrag im Spiel.
+  erstZumVertragsende Boolean @default(false)
+
+  /// offen | bestaetigt | verworfen
+  zustand    String  @default("offen")
+  kundeSieht Boolean @default(false)
+  position   Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sitzungId String
+  sitzung   StrategieSitzung @relation(fields: [sitzungId], references: [id], onDelete: Cascade)
+
+  @@index([sitzungId])
+}
+
 // ─── OKUN Sales & Closing Module ─────────────────────────────────────────────
 
 model LegalDocument {
@@ -2151,6 +2190,8 @@ model StrategieSitzung {
   posten StrategiePosten[]
   /// Das Projekt, in das die Auswahl übernommen wurde.
   projekt Project?
+  /// Die Schablone für die digitalen Grundlagen.
+  grundlagen GrundlagenVorschlag[]
 
   @@index([companyId])
   @@index([sessionId])

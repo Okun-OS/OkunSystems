@@ -85,6 +85,13 @@ import {
 } from "../src/lib/blueprint/pillar3-catalog";
 import { summiereKosten } from "../src/lib/blueprint/pillar3-engine";
 import {
+  legeSchabloneAn,
+  ersparnis,
+  workforceImPaket,
+  WORKFORCE_ZWECKE,
+  type Programm,
+} from "../src/lib/grundlagen/schablone";
+import {
   auftragsPosten,
   istMeilensteinZustand,
   projektFortschritt,
@@ -1153,6 +1160,138 @@ test("nur bekannte Schluessel werden gespeichert", () => {
   assert.equal(istBindung("quartalsweise"), false);
   assert.equal(istZufriedenheit("laeuft"), true);
   assert.equal(istZufriedenheit("super"), false);
+});
+
+console.log("\nSchablone fuer die digitalen Grundlagen");
+
+function prog(teil: Partial<Programm> & { name: string; zwecke: string[] }): Programm {
+  return {
+    kostenProMonat: null,
+    bindung: null,
+    zufriedenheit: null,
+    ...teil,
+  };
+}
+
+test("Workforce steckt nur in Operations und Custom", () => {
+  assert.equal(workforceImPaket("operations"), true);
+  assert.equal(workforceImPaket("custom"), true);
+  assert.equal(workforceImPaket("foundation"), false);
+  assert.equal(workforceImPaket(null), false);
+});
+
+test("die Zuordnung behauptet nur drei Zwecke, nicht sechs Module", () => {
+  // Auswertungen und Lohnabrechnung sind bewusst nicht dabei.
+  assert.deepEqual([...WORKFORCE_ZWECKE], ["pur_scheduling", "pur_time", "pur_hr"]);
+  assert.equal(WORKFORCE_ZWECKE.includes("pur_reports"), false);
+});
+
+test("ein abgedecktes Programm faellt weg und nennt die Ersparnis", () => {
+  const v = legeSchabloneAn({
+    paket: "operations",
+    zweckeMitAufwand: [],
+    programme: [
+      prog({ name: "Papershift", zwecke: ["pur_scheduling"], kostenProMonat: 89, zufriedenheit: "aergert" }),
+    ],
+  });
+  const weg = v.filter((x) => x.bewegung === "faellt_weg");
+  assert.equal(weg.length, 1);
+  assert.equal(weg[0].sparenProMonat, 89);
+  assert.equal(weg[0].pruefen, true);
+});
+
+test("wer zufrieden ist, behaelt sein Programm", () => {
+  const v = legeSchabloneAn({
+    paket: "operations",
+    zweckeMitAufwand: [],
+    programme: [
+      prog({ name: "Papershift", zwecke: ["pur_scheduling"], kostenProMonat: 89, zufriedenheit: "laeuft" }),
+    ],
+  });
+  assert.equal(v.filter((x) => x.bewegung === "faellt_weg").length, 0);
+  assert.equal(v.filter((x) => x.bewegung === "bleibt").length, 1);
+});
+
+test("ein Programm, das mehr kann als Workforce, faellt nicht weg", () => {
+  const v = legeSchabloneAn({
+    paket: "operations",
+    zweckeMitAufwand: [],
+    programme: [
+      prog({
+        name: "Branchensoftware",
+        zwecke: ["pur_scheduling", "pur_invoices"],
+        kostenProMonat: 300,
+        zufriedenheit: "gehtso",
+      }),
+    ],
+  });
+  assert.equal(v.filter((x) => x.bewegung === "faellt_weg").length, 0);
+});
+
+test("ohne Workforce im Paket wird nichts gestrichen", () => {
+  const v = legeSchabloneAn({
+    paket: "foundation",
+    zweckeMitAufwand: [],
+    programme: [
+      prog({ name: "Papershift", zwecke: ["pur_scheduling"], kostenProMonat: 89, zufriedenheit: "aergert" }),
+    ],
+  });
+  assert.equal(v.filter((x) => x.bewegung === "faellt_weg").length, 0);
+});
+
+test("zwei Programme fuer denselben Zweck gehen zusammen", () => {
+  const v = legeSchabloneAn({
+    paket: "foundation",
+    zweckeMitAufwand: [],
+    programme: [
+      prog({ name: "Lexoffice", zwecke: ["pur_invoices"] }),
+      prog({ name: "Excel", zwecke: ["pur_invoices"] }),
+    ],
+  });
+  const zus = v.filter((x) => x.bewegung === "geht_zusammen");
+  assert.equal(zus.length, 1);
+  assert.deepEqual(zus[0].programme, ["Lexoffice", "Excel"]);
+});
+
+test("was ohnehin abgeloest wird, bekommt keine zweite Empfehlung", () => {
+  const v = legeSchabloneAn({
+    paket: "operations",
+    zweckeMitAufwand: [],
+    programme: [
+      prog({ name: "Papershift", zwecke: ["pur_scheduling"], zufriedenheit: "aergert" }),
+      prog({ name: "Excel", zwecke: ["pur_scheduling"], zufriedenheit: "aergert" }),
+    ],
+  });
+  assert.equal(v.filter((x) => x.bewegung === "geht_zusammen").length, 0);
+  assert.equal(v.filter((x) => x.bewegung === "faellt_weg").length, 2);
+});
+
+test("eine Luecke zaehlt nur, wo auch Zeit anfaellt", () => {
+  const ohne = legeSchabloneAn({ paket: "foundation", zweckeMitAufwand: [], programme: [] });
+  assert.equal(ohne.filter((x) => x.bewegung === "fehlt").length, 0);
+
+  const mit = legeSchabloneAn({
+    paket: "foundation",
+    zweckeMitAufwand: ["pur_customers"],
+    programme: [],
+  });
+  assert.equal(mit.filter((x) => x.bewegung === "fehlt").length, 1);
+});
+
+test("Ersparnis trennt sofort von zum Vertragsende und zaehlt Unbekanntes", () => {
+  const v = legeSchabloneAn({
+    paket: "operations",
+    zweckeMitAufwand: [],
+    programme: [
+      prog({ name: "A", zwecke: ["pur_time"], kostenProMonat: 40, bindung: "monatlich", zufriedenheit: "aergert" }),
+      prog({ name: "B", zwecke: ["pur_hr"], kostenProMonat: 60, bindung: "jahresvertrag", zufriedenheit: "gehtso" }),
+      prog({ name: "C", zwecke: ["pur_scheduling"], kostenProMonat: null, zufriedenheit: "aergert" }),
+    ],
+  });
+  const e = ersparnis(v);
+  assert.equal(e.sofort, 40);
+  assert.equal(e.zumVertragsende, 60);
+  assert.equal(e.unbekannt, 1);
 });
 
 console.log(`\n${passed} Tests bestanden.\n`);
