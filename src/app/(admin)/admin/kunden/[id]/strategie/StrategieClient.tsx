@@ -83,6 +83,7 @@ type Sitzung = {
   interneNotiz: string | null;
   freigegebenAm: string | null;
   freigegebenVon: string | null;
+  vorbereitetAm: string | null;
   abgeschlossenAm: string | null;
   terminStart: string | null;
   companyId: string;
@@ -145,7 +146,7 @@ export default function StrategieClient({
   }
 
   return (
-    <Rahmen company={company} sitzungId={sitzung.id}>
+    <Rahmen company={company} sitzungId={sitzung.id} vorbereitetAm={sitzung.vorbereitetAm}>
       <Vorbereitung
         sitzung={sitzung}
         pending={pending}
@@ -159,10 +160,13 @@ export default function StrategieClient({
 function Rahmen({
   company,
   sitzungId,
+  vorbereitetAm,
   children,
 }: {
   company: { id: string; name: string };
   sitzungId?: string | null;
+  /** Gesetzt heißt: Die Vorbereitung ist durch, das Gespräch darf beginnen. */
+  vorbereitetAm?: string | null;
   children: React.ReactNode;
 }) {
   return (
@@ -194,13 +198,32 @@ function Rahmen({
                 einer Fläche. Die Vorschau daneben bleibt, was sie ist — ein
                 Blick vorher, ohne Kunden und ohne Video.
               */}
-              <Link
-                href={`/admin/kunden/${company.id}/strategie/${sitzungId}/gespraech`}
-                className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-[#00b8ff]
-                  text-[#041018] text-xs font-bold hover:bg-[#33c7ff] transition-colors"
-              >
-                ▶ Gespräch führen
-              </Link>
+              {/*
+                Ohne Vorbereitung kein Gespräch.
+
+                Das ist die teuerste Stunde, die wir verkaufen — und sie wird
+                einmal gehalten. Wer unvorbereitet hineingeht, merkt im Termin,
+                dass ein Posten nicht eingeordnet ist, und kann nichts mehr
+                tun. Der Knopf bleibt deshalb zu, bis die Vorbereitung
+                abgeschlossen ist; der Weg dorthin steht direkt darunter.
+              */}
+              {vorbereitetAm ? (
+                <Link
+                  href={`/admin/kunden/${company.id}/strategie/${sitzungId}/gespraech`}
+                  className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-[#00b8ff]
+                    text-[#041018] text-xs font-bold hover:bg-[#33c7ff] transition-colors"
+                >
+                  ▶ Gespräch führen
+                </Link>
+              ) : (
+                <span
+                  title="Erst die Vorbereitung abschließen — unten im Vorbereitungsgespräch."
+                  className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-[#16283d]
+                    text-[#4a5a70] text-xs font-bold cursor-not-allowed"
+                >
+                  ▶ Gespräch führen
+                </span>
+              )}
             </>
           )}
           <Link

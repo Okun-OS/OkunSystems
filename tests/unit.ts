@@ -84,6 +84,8 @@ import {
   MAX_KOSTEN_PRO_MONAT,
 } from "../src/lib/blueprint/pillar3-catalog";
 import { summiereKosten } from "../src/lib/blueprint/pillar3-engine";
+import { anweisung, lage, type Kontext } from "../src/lib/vorbereitung/kontext";
+import { WERKZEUGE } from "../src/lib/vorbereitung/werkzeuge";
 import {
   legeSchabloneAn,
   ersparnis,
@@ -1292,6 +1294,80 @@ test("Ersparnis trennt sofort von zum Vertragsende und zaehlt Unbekanntes", () =
   assert.equal(e.sofort, 40);
   assert.equal(e.zumVertragsende, 60);
   assert.equal(e.unbekannt, 1);
+});
+
+console.log("\nVorbereitungsgespraech");
+
+const KONTEXT: Kontext = {
+  firma: "Nordlicht Gebaeudetechnik GmbH",
+  branche: "Handwerk",
+  paket: "operations",
+  beraterName: "Felix",
+  bericht: null,
+  dossier: null,
+  posten: [
+    { id: "p1", titel: "Serviceberichte ohne Abtippen", art: "automatisierung", zustand: "kandidat", warum: "Spart das Abtippen.", kundeSieht: true },
+  ],
+  programme: [
+    { name: "Papershift", zwecke: ["pur_scheduling"], kostenProMonat: 89, bindung: "jahresvertrag", zufriedenheit: "laeuft" },
+    { name: "Excel", zwecke: ["pur_time"], kostenProMonat: null, bindung: null, zufriedenheit: null },
+  ],
+  vorschlaege: [
+    { id: "v1", bewegung: "faellt_weg", titel: "Excel wird nicht mehr gebraucht", zustand: "offen", sparenProMonat: null },
+  ],
+};
+
+test("die Anweisung nennt Betrieb, Paket und die Paketgrenze", () => {
+  const text = anweisung(KONTEXT);
+  assert.ok(text.includes("Nordlicht Gebaeudetechnik GmbH"));
+  assert.ok(text.includes("operations"));
+  assert.ok(/h.chstens 3 Automatisierungen/.test(text));
+});
+
+test("die Anweisung verbietet ausdruecklich das Erfinden von Zahlen", () => {
+  const text = anweisung(KONTEXT);
+  assert.ok(text.includes("Keine Zahl erfinden"));
+  // Der Satz laeuft ueber einen Zeilenumbruch, deshalb nur das Ende pruefen.
+  assert.ok(text.includes("nicht null."));
+});
+
+test("die Lage markiert ein zufriedenes Programm als tabu", () => {
+  const text = lage(KONTEXT);
+  assert.ok(text.includes("Papershift"));
+  assert.ok(text.includes("läuft gut — nicht ablösen"));
+});
+
+test("die Lage sagt, bei wie vielen Programmen der Preis fehlt", () => {
+  const text = lage(KONTEXT);
+  assert.ok(text.includes("Bei 1 von 2 Programmen fehlt der Preis"));
+});
+
+test("Posten und Vorschlaege stehen mit ihrer ID da, damit Werkzeuge sie treffen", () => {
+  const text = lage(KONTEXT);
+  assert.ok(text.includes("[p1]"));
+  assert.ok(text.includes("[v1]"));
+});
+
+test("ohne Daten bleibt die Lage leer statt erfunden", () => {
+  const text = lage({ ...KONTEXT, programme: [], posten: [], vorschlaege: [] });
+  assert.equal(text.includes("Programme im Einsatz"), false);
+  assert.equal(text.includes("Posten aus dem Leitfaden"), false);
+});
+
+test("jedes Werkzeug hat einen Namen, eine Beschreibung und ein Schema", () => {
+  assert.ok(WERKZEUGE.length >= 8);
+  for (const w of WERKZEUGE) {
+    assert.ok(w.name.length > 0, `Name fehlt: ${JSON.stringify(w)}`);
+    assert.ok((w.description ?? "").length > 20, `Beschreibung zu knapp: ${w.name}`);
+    assert.equal(w.input_schema.type, "object");
+  }
+});
+
+test("der Abschluss fragt nach dem Probedurchlauf", () => {
+  const w = WERKZEUGE.find((x) => x.name === "vorbereitung_abschliessen");
+  assert.ok(w);
+  const eigenschaften = w!.input_schema.properties as Record<string, unknown>;
+  assert.ok("probeGelaufen" in eigenschaften);
 });
 
 console.log(`\n${passed} Tests bestanden.\n`);

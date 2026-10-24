@@ -5,6 +5,8 @@ import { mayDoStrategy } from "@/lib/team/roles";
 import { ladeSitzung } from "@/lib/strategie/sitzung";
 import StrategieClient from "./StrategieClient";
 import { GrundlagenKarte, type VorschlagZeile } from "./GrundlagenKarte";
+import { VorbereitungsChat, type ChatZeile } from "./VorbereitungsChat";
+import { ladeVerlauf } from "@/lib/vorbereitung/gespraech";
 
 /**
  * Die Vorbereitung des Strategiegesprächs.
@@ -96,6 +98,22 @@ export default async function StrategiePage({
       })
     : [];
 
+  const verlauf: ChatZeile[] = sitzung
+    ? (await ladeVerlauf(sitzung.id)).map((n) => ({
+        id: n.id,
+        rolle: n.rolle,
+        inhalt: n.inhalt,
+        werkzeuge: leseListe(n.werkzeuge),
+      }))
+    : [];
+
+  const stand = sitzung
+    ? await db.strategieSitzung.findUnique({
+        where: { id: sitzung.id },
+        select: { vorbereitetAm: true, probeAm: true },
+      })
+    : null;
+
   return (
     <div className="space-y-6">
       <StrategieClient
@@ -115,6 +133,7 @@ export default async function StrategiePage({
           ? {
               ...sitzung,
               freigegebenAm: sitzung.freigegebenAm?.toISOString() ?? null,
+              vorbereitetAm: stand?.vorbereitetAm?.toISOString() ?? null,
               beraterPresenceAt: sitzung.beraterPresenceAt?.toISOString() ?? null,
               abgeschlossenAm: sitzung.abgeschlossenAm?.toISOString() ?? null,
               terminStart: sitzung.terminStart?.toISOString() ?? null,
@@ -122,6 +141,13 @@ export default async function StrategiePage({
           : null
       }
       />
+      {sitzung && (
+        <VorbereitungsChat
+          sitzungId={sitzung.id}
+          verlauf={verlauf}
+          vorbereitetAm={stand?.vorbereitetAm?.toISOString() ?? null}
+        />
+      )}
       {sitzung && (
         <GrundlagenKarte
           sitzungId={sitzung.id}
