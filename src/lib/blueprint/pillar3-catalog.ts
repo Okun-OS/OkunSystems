@@ -131,6 +131,89 @@ export const PURPOSES: PurposeEntry[] = [
 /** Der Zweck, der nach einer eigenen Bezeichnung verlangt. */
 export const OTHER_PURPOSE_KEY = "pur_other";
 
+// ─── Was ein Programm kostet und taugt ───────────────────────────────────────
+
+/**
+ * Drei Angaben je Programm, die der Blueprint bisher nicht erhoben hat.
+ *
+ * Sie entscheiden im Strategiegespräch darüber, ob aus einem Programm ein
+ * Streichvorschlag wird:
+ *
+ * - **Kosten** — ohne sie ist „spart Ihnen Geld" eine Behauptung.
+ * - **Bindung** — eine Jahreslizenz spart erst zum Vertragsende. Wer das
+ *   verschweigt, verwandelt sein bestes Argument in eine Beschwerde.
+ * - **Zufriedenheit** — die wichtigste von dreien. Dass OKUN Workforce die
+ *   Dienstplanung abdeckt, heißt nicht, dass man sie dem Chef wegnehmen
+ *   sollte, der mit seiner zufrieden ist. Ohne diese Angabe empfiehlt das
+ *   System irgendwann, jemandem sein Lieblingswerkzeug zu streichen.
+ *
+ * Alle drei sind freiwillig: Eine Pflichtangabe mehr je Programm kostet
+ * Abschlüsse im Blueprint, und was fehlt, lässt sich in der Vorbereitung
+ * nachtragen.
+ */
+
+export type Auswahl = { key: string; label: string; hint?: string };
+
+export const BINDUNGEN: Auswahl[] = [
+  { key: "monatlich", label: "monatlich kündbar" },
+  { key: "jahresvertrag", label: "Jahresvertrag" },
+  { key: "unbekannt", label: "weiß ich nicht" },
+];
+
+export const ZUFRIEDENHEITEN: Auswahl[] = [
+  { key: "laeuft", label: "läuft gut", hint: "Daran würden wir nichts ändern." },
+  { key: "gehtso", label: "geht so", hint: "Erfüllt den Zweck, mehr nicht." },
+  { key: "aergert", label: "ärgert uns", hint: "Kostet regelmäßig Nerven oder Zeit." },
+];
+
+export function istBindung(wert: string): boolean {
+  return BINDUNGEN.some((b) => b.key === wert);
+}
+
+export function istZufriedenheit(wert: string): boolean {
+  return ZUFRIEDENHEITEN.some((z) => z.key === wert);
+}
+
+/** Obergrenze für die Monatskosten eines einzelnen Programms, in Euro. */
+export const MAX_KOSTEN_PRO_MONAT = 100_000;
+
+/**
+ * Was der Kunde ins Kostenfeld tippt, als ganze Euro.
+ *
+ * Er schreibt „49,90 €", „ca. 50", „1.200" oder „keine Ahnung" — alles drei
+ * ist zu erwarten, und nichts davon darf die Eingabe blockieren. Deutsche
+ * Schreibweise: Punkt trennt Tausender, Komma die Cent. Gerundet wird
+ * kaufmännisch, weil Cent in einem Gespräch über Jahresersparnisse keine
+ * Rolle spielen. Was sich nicht lesen lässt, ist `null` und damit „nicht
+ * angegeben" — nicht „kostet nichts".
+ */
+export function leseKosten(roh: string | number | null | undefined): number | null {
+  if (roh === null || roh === undefined) return null;
+  if (typeof roh === "number") {
+    if (!Number.isFinite(roh) || roh < 0) return null;
+    return Math.min(Math.round(roh), MAX_KOSTEN_PRO_MONAT);
+  }
+
+  const text = roh.trim();
+  if (!text) return null;
+
+  // Nur die erste Zahl; „ca. 50 € pro Nutzer" ist 50.
+  const treffer = /\d[\d.,]*/.exec(text.replace(/\s/g, ""));
+  if (!treffer) return null;
+
+  let zahl = treffer[0];
+  // Punkt als Tausendertrenner entfernen, Komma zum Dezimalpunkt machen.
+  if (zahl.includes(",")) {
+    zahl = zahl.replace(/\./g, "").replace(",", ".");
+  } else if (/^\d{1,3}(\.\d{3})+$/.test(zahl)) {
+    zahl = zahl.replace(/\./g, "");
+  }
+
+  const wert = Number(zahl);
+  if (!Number.isFinite(wert) || wert < 0) return null;
+  return Math.min(Math.round(wert), MAX_KOSTEN_PRO_MONAT);
+}
+
 /** Ab wie vielen Zwecken ein einzelnes Programm als Behelfslösung gilt. */
 export const MULTI_PURPOSE_THRESHOLD = 5;
 

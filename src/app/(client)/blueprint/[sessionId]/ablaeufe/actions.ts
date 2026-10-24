@@ -24,6 +24,9 @@ import {
   nearestFrequencyBand,
   systemByKey,
   taskByKey,
+  istBindung,
+  istZufriedenheit,
+  leseKosten,
 } from "@/lib/blueprint/pillar3-catalog";
 import { WEEKS_PER_MONTH } from "@/lib/blueprint/pillar3-catalog";
 import { minutesPerMonth } from "@/lib/blueprint/pillar3-engine";
@@ -75,6 +78,12 @@ export type SystemSelection = {
   purposes: string[];
   /** Eigener Zweck, wenn „Sonstiges" gewählt wurde. */
   customPurpose?: string;
+  /** Monatskosten, wie der Kunde sie getippt hat. Freiwillig. */
+  kosten?: string;
+  /** monatlich | jahresvertrag | unbekannt */
+  bindung?: string;
+  /** laeuft | gehtso | aergert */
+  zufriedenheit?: string;
 };
 
 export async function saveSystems(
@@ -91,6 +100,9 @@ export async function saveSystems(
     purposes: string[];
     isCustom: boolean;
     customPurpose: string | null;
+    kostenProMonat: number | null;
+    bindung: string | null;
+    zufriedenheit: string | null;
   }> = [];
 
   for (const selection of selections) {
@@ -110,6 +122,18 @@ export async function saveSystems(
       isCustom: Boolean(entry.needsName && customName),
       // Die Bezeichnung steht nur, wenn „Sonstiges" auch angehakt ist.
       customPurpose: purposes.includes(OTHER_PURPOSE_KEY) ? customPurpose : null,
+      /*
+        Die drei freiwilligen Angaben.
+
+        Unlesbares wird zu `null` und nicht zu `0`: „nicht angegeben" und
+        „kostet nichts" sind im Gespräch zwei verschiedene Sätze.
+      */
+      kostenProMonat: leseKosten(selection.kosten),
+      bindung: selection.bindung && istBindung(selection.bindung) ? selection.bindung : null,
+      zufriedenheit:
+        selection.zufriedenheit && istZufriedenheit(selection.zufriedenheit)
+          ? selection.zufriedenheit
+          : null,
     });
   }
 
@@ -123,6 +147,9 @@ export async function saveSystems(
           name: row.name,
           category: row.category,
           purposes: JSON.stringify(row.purposes),
+          kostenProMonat: row.kostenProMonat,
+          bindung: row.bindung,
+          zufriedenheit: row.zufriedenheit,
           isCustom: row.isCustom,
           customPurpose: row.customPurpose,
         },

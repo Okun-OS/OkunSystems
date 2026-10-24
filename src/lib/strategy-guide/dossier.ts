@@ -113,6 +113,38 @@ export function buildDossier(
       );
     }
 
+    /*
+      Kosten und Zufriedenheit je Programm.
+
+      Erst damit lässt sich sagen, was ein Streichvorschlag spart — und ob
+      er überhaupt einer sein darf. Nicht angegeben heißt „unbekannt", nicht
+      „kostenlos"; das muss auch so dastehen, sonst rechnet der Leitfaden
+      mit einer Null, die niemand genannt hat.
+    */
+    const mitAngabe = p3.systems.programme.filter(
+      (prog) => prog.kostenProMonat !== null || prog.zufriedenheit !== null
+    );
+    if (mitAngabe.length > 0) {
+      zeilen.push("\nWas die Programme kosten und taugen:");
+      for (const prog of mitAngabe) {
+        const teile: string[] = [];
+        teile.push(
+          prog.kostenProMonat === null
+            ? "Kosten unbekannt"
+            : `${prog.kostenProMonat} € / Monat`
+        );
+        if (prog.bindung) teile.push(bindungText(prog.bindung));
+        if (prog.zufriedenheit) teile.push(zufriedenheitText(prog.zufriedenheit));
+        zeilen.push(`- ${prog.name}: ${teile.join(", ")}`);
+      }
+      if (p3.systems.mitKosten > 0) {
+        zeilen.push(
+          `\nBekannte Software-Kosten zusammen: mindestens ${p3.systems.kostenProMonat} € im ` +
+            `Monat (${p3.systems.mitKosten} von ${p3.systems.systemCount} Programmen mit Angabe).`
+        );
+      }
+    }
+
     zeilen.push(
       `\n### Aufgaben — zusammen ${formatHours(p3.tasks.totalHoursPerMonth)} Stunden im Monat`
     );
@@ -203,4 +235,25 @@ export function buildDossier(
   }
 
   return teile.join("\n\n---\n\n");
+}
+
+/** „Jahresvertrag" statt `jahresvertrag` — der Leitfaden liest Prosa. */
+function bindungText(key: string): string {
+  if (key === "monatlich") return "monatlich kündbar";
+  if (key === "jahresvertrag") return "Jahresvertrag";
+  return "Vertragsbindung unbekannt";
+}
+
+/**
+ * Wie zufrieden der Betrieb damit ist.
+ *
+ * Bewusst deutlich formuliert: „läuft gut" muss im Leitfaden als Warnung
+ * ankommen, nicht als Randnotiz. Ein Programm, mit dem jemand zufrieden
+ * ist, wird nicht abgelöst, auch wenn ein Modul dasselbe könnte.
+ */
+function zufriedenheitText(key: string): string {
+  if (key === "laeuft") return "läuft gut — nicht ablösen";
+  if (key === "gehtso") return "geht so";
+  if (key === "aergert") return "ärgert den Betrieb";
+  return "ohne Urteil";
 }
