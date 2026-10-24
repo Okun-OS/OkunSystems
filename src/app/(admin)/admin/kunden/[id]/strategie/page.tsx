@@ -4,6 +4,7 @@ import { getActor } from "@/lib/auth-guards";
 import { mayDoStrategy } from "@/lib/team/roles";
 import { ladeSitzung } from "@/lib/strategie/sitzung";
 import StrategieClient from "./StrategieClient";
+import { GrundlagenKarte, type VorschlagZeile } from "./GrundlagenKarte";
 
 /**
  * Die Vorbereitung des Strategiegesprächs.
@@ -64,8 +65,40 @@ export default async function StrategiePage({
   const offeneSitzung = termine.find((t) => t.strategieSitzung)?.strategieSitzung ?? null;
   const sitzung = offeneSitzung ? await ladeSitzung(offeneSitzung.id) : null;
 
+  /*
+    Die Grundlagen-Schablone, soweit sie schon gerechnet wurde.
+
+    Bewusst nur das Gespeicherte: Bei jedem Aufruf neu zu rechnen hieße, dass
+    sich die Liste unter der Hand ändert, während jemand sie durchgeht.
+  */
+  const grundlagen: VorschlagZeile[] = sitzung
+    ? (
+        await db.grundlagenVorschlag.findMany({
+          where: { sitzungId: sitzung.id },
+          orderBy: { position: "asc" },
+        })
+      ).map((v) => ({
+        id: v.id,
+        bewegung: v.bewegung,
+        titel: v.titel,
+        begruendung: v.begruendung,
+        programme: leseListe(v.programme),
+        sparenProMonat: v.sparenProMonat,
+        erstZumVertragsende: v.erstZumVertragsende,
+        zustand: v.zustand,
+      }))
+    : [];
+
+  const programme = sitzung
+    ? await db.blueprintSystem.findMany({
+        where: { sessionId: sitzung.sessionId },
+        select: { kostenProMonat: true },
+      })
+    : [];
+
   return (
-    <StrategieClient
+    <div className="space-y-6">
+      <StrategieClient
       company={company}
       termine={termine.map((t) => ({
         id: t.id,
@@ -88,6 +121,25 @@ export default async function StrategiePage({
             }
           : null
       }
-    />
+      />
+      {sitzung && (
+        <GrundlagenKarte
+          sitzungId={sitzung.id}
+          vorschlaege={grundlagen}
+          ohneKosten={programme.filter((p) => p.kostenProMonat === null).length}
+          programme={programme.length}
+        />
+      )}
+    </div>
   );
+}
+
+/** Eine gespeicherte JSON-Liste, die auch kaputt sein darf. */
+function leseListe(roh: string): string[] {
+  try {
+    const gelesen: unknown = JSON.parse(roh);
+    return Array.isArray(gelesen) ? gelesen.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
 }
