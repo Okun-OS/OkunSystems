@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { BesprechungPanel } from "./BesprechungPanel";
 import { fuehrtZurBesprechung, terminartLabel } from "@/lib/termine/arten";
 import { gegenueber } from "@/lib/termine/gegenueber";
+import { gastLink } from "@/lib/termine/gastzugang";
 import { formatiereBerlin } from "@/lib/zeit";
 import { db } from "@/lib/db";
 import { redirect, notFound } from "next/navigation";
@@ -54,6 +55,7 @@ export default async function TerminDetailPage({
           name: true,
           industry: true,
           plan: true,
+          contactEmail: true,
           analysisSessions: {
             where: { blueprintVersion: "2.0", status: "COMPLETED" },
             orderBy: { completedAt: "desc" },
@@ -389,6 +391,9 @@ export default async function TerminDetailPage({
           <div className="col-span-12">
             <BesprechungPanel
               terminId={id}
+              gastLink={appointment.gastToken ? gastLink(appointment.gastToken) : null}
+              eingeladenAn={appointment.gastEmail ?? company?.contactEmail ?? null}
+              eingeladenAm={appointment.gastEingeladenAm?.toISOString() ?? null}
               ziel={appointment.besprechung?.ziel ?? null}
               vorbereitung={appointment.besprechung?.vorbereitung ?? null}
               mitschrift={appointment.besprechung?.mitschrift ?? ""}

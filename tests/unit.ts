@@ -94,7 +94,7 @@ import {
   waehlbareArten,
   STANDARD_ART,
 } from "../src/lib/termine/arten";
-import { leseHinweise } from "../src/lib/termine/beistand";
+import { leseHinweise, leseBeistand } from "../src/lib/termine/beistand";
 import { gegenueber, darfOhneKunden } from "../src/lib/termine/gegenueber";
 import { WERKZEUGE } from "../src/lib/vorbereitung/werkzeuge";
 import {
@@ -1470,6 +1470,33 @@ test("eine unbekannte Art darf nicht ohne Kunden angelegt werden", () => {
   // Lieber eine Absage als ein Termin, von dem niemand weiss, was er kann.
   assert.equal(darfOhneKunden("WORKSHOP_2019"), false);
   assert.equal(darfOhneKunden(null), false);
+});
+
+test("der Beistand liefert Lage und Hinweise getrennt", () => {
+  const b = leseBeistand(
+    '{"lage":"Er beschreibt die Dienstplanung.","hinweise":[{"art":"frage","text":"Wie viele Mitarbeiter?"}]}'
+  );
+  assert.equal(b.lage, "Er beschreibt die Dienstplanung.");
+  assert.equal(b.hinweise.length, 1);
+  assert.equal(b.hinweise[0].art, "frage");
+});
+
+test("eine Lage ohne Hinweise ist der Normalfall", () => {
+  const b = leseBeistand('{"lage":"Noch Begruessung, nichts zur Sache."}');
+  assert.equal(b.lage, "Noch Begruessung, nichts zur Sache.");
+  assert.deepEqual(b.hinweise, []);
+});
+
+test("auch die alte Form — ein nacktes Array — wird noch gelesen", () => {
+  const b = leseBeistand('[{"art":"notiz","text":"49 Euro pro Nutzer"}]');
+  assert.equal(b.lage, null);
+  assert.equal(b.hinweise.length, 1);
+});
+
+test("eine kaputte Antwort stoert das Gespraech nicht", () => {
+  assert.deepEqual(leseBeistand("Hm, schwer zu sagen"), { lage: null, hinweise: [] });
+  assert.deepEqual(leseBeistand(""), { lage: null, hinweise: [] });
+  assert.deepEqual(leseBeistand('{"lage":"   "}'), { lage: null, hinweise: [] });
 });
 
 test("Hinweise: das leere Array ist der Normalfall", () => {

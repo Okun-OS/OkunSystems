@@ -6,6 +6,8 @@ import { getActor, guarded } from "@/lib/auth-guards";
 import { bereiteVor } from "@/lib/termine/beistand";
 import { schreibeProtokoll, LeereMitschriftError } from "@/lib/termine/protokoll";
 import { gegenueber } from "@/lib/termine/gegenueber";
+import { gastZugang } from "@/lib/termine/gastzugang";
+import { sendBesprechungsEinladung } from "@/lib/email";
 
 /**
  * Die Besprechung rundherum: Ziel setzen, Protokoll erzeugen, freigeben.
@@ -178,5 +180,85 @@ export async function protokollFreigeben(terminId: string, frei: boolean) {
     });
     revalidatePath(`/admin/termine/${terminId}`);
     return { ok: true as const };
+  });
+}
+
+/**
+ * Den Gastlink holen — und ihn beim ersten Mal ausstellen.
+ *
+ * Getrennt vom Versand, weil der Link auch ohne Mailversand etwas wert ist:
+ * Kopieren und über den eigenen Kanal schicken geht immer.
+ */
+export async function gastLinkHolen(terminId: string) {
+  return guarded(async () => {
+    await erlaubt();
+    const zugang = await gastZugang(terminId);
+    if (!zugang.ok) return { error: zugang.error };
+    revalidatePath(`/admin/termine/${terminId}`);
+    return { ok: true as const, link: zugang.link };
+  });
+}
+
+/**
+ * Die Einladung verschicken.
+ *
+ * An die hinterlegte Adresse des Gastes oder, bei einem Kunden, an dessen
+ * Ansprechpartner. Scheitert der Versand, sagt die Antwort warum — und der
+ * Link kommt trotzdem zurück, damit er von Hand verschickt werden kann.
+ */
+export async function einladungSenden(terminId: string, anAdresse?: string) {
+  return guarded(async () => {
+    const actor = await erlaubt();
+    const termin = await db.appointment.findUnique({
+      where: { id: terminId },
+      select: {
+        id: true, title: true, startTime: true, endTime: true,
+        gastName: true, gastEmail: true,
+        company: { select: { name: true, contactEmail: true, contactFirstName: true, contactLastName: true } },
+      },
+    });
+    if (!termin) return { error: "Termin nicht gefunden." };
+
+    const zugang = await gastZugang(terminId);
+    if (!zugang.ok) return { error: zugang.error };
+
+    const adresse = (anAdresse ?? termin.gastEmail ?? termin.company?.contactEmail ?? "").trim();
+    if (!adresse) {
+      return {
+        ok: true as const,
+        link: zugang.link,
+        error:
+          "Für diesen Termin ist keine E-Mail-Adresse hinterlegt. " +
+          "Den Link können Sie kopieren und selbst verschicken.",
+      };
+    }
+
+    const name =
+      termin.gastName ??
+      [termin.company?.contactFirstName, termin.company?.contactLastName]
+        .filter(Boolean)
+        .join(" ") ??
+      null;
+
+    const ergebnis = await sendBesprechungsEinladung({
+      toEmail: adresse,
+      toName: name,
+      titel: termin.title,
+      beginn: termin.startTime,
+      ende: termin.endTime,
+      link: zugang.link,
+      vonName: actor.name ?? "OKUN Systems",
+    });
+
+    if (!ergebnis.ok) {
+      return { ok: true as const, link: zugang.link, error: ergebnis.error };
+    }
+
+    await db.appointment.update({
+      where: { id: terminId },
+      data: { gastEingeladenAm: new Date() },
+    });
+    revalidatePath(`/admin/termine/${terminId}`);
+    return { ok: true as const, link: zugang.link, gesendetAn: adresse };
   });
 }

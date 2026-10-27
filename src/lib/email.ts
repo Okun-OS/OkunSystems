@@ -744,3 +744,85 @@ export async function sendInvoiceEmail({
     `,
   });
 }
+
+/**
+ * Die Einladung zu einer Besprechung.
+ *
+ * Anders als die übrigen Funktionen hier schweigt diese nicht, wenn nichts
+ * gesendet werden konnte. Eine Einladung, die niemand bekommt, ist der
+ * Unterschied zwischen einem Termin und einem leeren Raum — das muss der
+ * sehen, der auf „Einladung senden" geklickt hat.
+ */
+export async function sendBesprechungsEinladung({
+  toEmail,
+  toName,
+  titel,
+  beginn,
+  ende,
+  link,
+  vonName,
+}: {
+  toEmail: string;
+  toName: string | null;
+  titel: string;
+  beginn: Date;
+  ende: Date;
+  link: string;
+  vonName: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!resend) {
+    return {
+      ok: false,
+      error:
+        "Es ist kein Mailversand eingerichtet (RESEND_API_KEY fehlt). " +
+        "Der Link unten lässt sich aber kopieren und von Hand verschicken.",
+    };
+  }
+
+  const tag = beginn.toLocaleDateString("de-DE", {
+    weekday: "long", day: "2-digit", month: "long", year: "numeric", timeZone: ZONE,
+  });
+  const von = beginn.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: ZONE });
+  const bis = ende.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: ZONE });
+  const anrede = toName?.trim() ? `Hallo ${toName.trim()},` : "Guten Tag,";
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM_ADDRESS,
+      to: toEmail,
+      subject: `Einladung: ${titel} — OKUN Systems`,
+      html: `
+      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#080c14;color:#f0f0f0;padding:32px;border-radius:12px;">
+        <h1 style="font-size:20px;font-weight:700;color:#f0f0f0;margin:0 0 8px;">${titel}</h1>
+        <p style="color:#888;font-size:14px;margin:0 0 24px;">${anrede} ${vonName} lädt Sie zu einem Videogespräch ein.</p>
+        <div style="background:#0c1520;border:1px solid #1a2840;border-radius:8px;padding:20px;margin-bottom:24px;">
+          <p style="margin:4px 0;color:#888;font-size:14px;">📅 ${tag}</p>
+          <p style="margin:4px 0 16px;color:#888;font-size:14px;">🕐 ${von} – ${bis} Uhr</p>
+          <a href="${link}" style="display:inline-block;background:#00b8ff;color:#000;font-weight:700;font-size:14px;text-decoration:none;padding:12px 24px;border-radius:8px;">
+            Gespräch betreten
+          </a>
+        </div>
+        <p style="color:#555;font-size:12px;line-height:1.6;">
+          Sie brauchen kein Konto und keine Installation — das Gespräch läuft im Browser.
+          Der Link gilt bis kurz nach dem Termin:<br>
+          <a href="${link}" style="color:#00b8ff;word-break:break-all;">${link}</a>
+        </p>
+        <div style="margin-top:24px;padding-top:16px;border-top:1px solid #111e30;">
+          <p style="color:#444;font-size:11px;margin:0;">OKUN Systems · <a href="https://okun-systems.com" style="color:#444;">okun-systems.com</a></p>
+        </div>
+      </div>
+    `,
+    });
+    if (error) {
+      console.error("[email] Besprechungseinladung abgelehnt:", error);
+      return { ok: false, error: `Der Versand wurde abgelehnt: ${error.message ?? "unbekannter Grund"}` };
+    }
+    return { ok: true };
+  } catch (fehler) {
+    console.error("[email] Besprechungseinladung fehlgeschlagen:", fehler);
+    return {
+      ok: false,
+      error: fehler instanceof Error ? fehler.message : "Der Versand ist fehlgeschlagen.",
+    };
+  }
+}

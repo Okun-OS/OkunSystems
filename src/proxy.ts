@@ -61,9 +61,18 @@ export async function proxy(req: NextRequest) {
     nextUrl.pathname === "/passwort-vergessen" ||
     nextUrl.pathname.startsWith("/passwort-reset/");
   const isClosingRoute = nextUrl.pathname.startsWith("/closing/");
+  /*
+    Der Gastzugang zur Besprechung.
+
+    Wie beim Closing: Wer eingeladen wurde, hat kein Konto bei uns. Sein
+    Zugang ist der Link, und die Seite dahinter prüft ihn selbst. Ohne diese
+    Ausnahme landet der Gast auf dem Anmeldeformular — und damit auf einer
+    Seite, auf der er nichts zu suchen hat.
+  */
+  const isGastRoute = nextUrl.pathname.startsWith("/besprechung/");
   const isApiRoute = nextUrl.pathname.startsWith("/api/");
 
-  if (isApiRoute || isClosingRoute || isPublicPage) {
+  if (isApiRoute || isClosingRoute || isGastRoute || isPublicPage) {
     return NextResponse.next();
   }
 

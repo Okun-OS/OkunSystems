@@ -33,7 +33,9 @@ export default async function BesprechungsRaumSeite({
       type: true,
       company: { select: { id: true, name: true } },
       gastName: true,
-      besprechung: { select: { ziel: true, vorbereitung: true, mitschrift: true } },
+      besprechung: {
+        select: { ziel: true, vorbereitung: true, mitschrift: true, protokoll: true },
+      },
     },
   });
   if (!termin) notFound();
@@ -84,6 +86,7 @@ export default async function BesprechungsRaumSeite({
       ziel={termin.besprechung?.ziel ?? null}
       vorbereitung={termin.besprechung?.vorbereitung ?? null}
       mitschrift={termin.besprechung?.mitschrift ?? ""}
+      protokoll={termin.besprechung?.protokoll ?? null}
       zurueckLink={zurueck}
     />
   );
