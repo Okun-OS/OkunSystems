@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getActor } from "@/lib/auth-guards";
 import { hinweise } from "@/lib/termine/beistand";
+import { schreibeProtokoll } from "@/lib/termine/protokoll";
+import { gegenueber } from "@/lib/termine/gegenueber";
 
 /**
  * Was während der Besprechung passiert.
@@ -17,7 +19,15 @@ async function zugang(terminId: string) {
 
   const termin = await db.appointment.findUnique({
     where: { id: terminId },
-    select: { id: true, companyId: true, besprechung: { select: { id: true } } },
+    select: {
+      id: true,
+      title: true,
+      startTime: true,
+      companyId: true,
+      gastName: true,
+      company: { select: { id: true, name: true } },
+      besprechung: { select: { id: true } },
+    },
   });
   if (!termin) {
     return { fehler: NextResponse.json({ error: "Termin nicht gefunden" }, { status: 404 }) };
@@ -51,13 +61,19 @@ export async function POST(
     /** Soll ein Hinweis angefragt werden? */
     hinweisBitte?: boolean;
     bereitsGesagt?: string[];
+    bisherigeLage?: string[];
+    /** Soll das Protokoll auf den neuesten Stand gebracht werden? */
+    protokollBitte?: boolean;
   };
 
   const besprechung = await db.besprechung.upsert({
     where: { appointmentId: terminId },
     create: { appointmentId: terminId },
     update: {},
-    select: { id: true, ziel: true, vorbereitung: true, transkript: true },
+    select: {
+      id: true, ziel: true, vorbereitung: true, transkript: true,
+      mitschrift: true, freigegebenAm: true,
+    },
   });
 
   const neu = (body.gesagt ?? "").trim();
@@ -76,23 +92,72 @@ export async function POST(
     });
   }
 
-  if (!body.hinweisBitte) return NextResponse.json({ ok: true, hinweise: [] });
+  if (!body.hinweisBitte && !body.protokollBitte) {
+    return NextResponse.json({ ok: true, hinweise: [] });
+  }
 
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ ok: true, hinweise: [], ohneModell: true });
   }
 
-  try {
-    const gefunden = await hinweise({
-      ziel: besprechung.ziel,
-      vorbereitung: besprechung.vorbereitung,
-      letztes: neu,
-      bereitsGesagt: (body.bereitsGesagt ?? []).slice(-6),
+  const mitschrift =
+    typeof body.mitschrift === "string" ? body.mitschrift : besprechung.mitschrift;
+  const transkript = `${besprechung.transkript}${besprechung.transkript && neu ? "\n" : ""}${neu}`;
+
+  /*
+    Beistand und Protokoll laufen nebeneinander.
+
+    Beides braucht das Modell, und beides darf das andere nicht aufhalten:
+    Das Protokoll ist der langsamere Teil, der Hinweis der dringendere.
+  */
+  const [beistand, protokoll] = await Promise.all([
+    body.hinweisBitte
+      ? hinweise({
+          ziel: besprechung.ziel,
+          vorbereitung: besprechung.vorbereitung,
+          letztes: neu,
+          bereitsGesagt: (body.bereitsGesagt ?? []).slice(-6),
+          bisherigeLage: (body.bisherigeLage ?? []).slice(-4),
+        }).catch((fehler) => {
+          // Mitten im Gespräch ist ein Fehler die schlechteste aller Antworten.
+          console.error("[besprechung] Hinweis fehlgeschlagen:", fehler);
+          return { lage: null, hinweise: [] };
+        })
+      : Promise.resolve({ lage: null, hinweise: [] }),
+    body.protokollBitte && (transkript.trim() || mitschrift.trim())
+      ? schreibeProtokoll({
+          titel: geprueft.termin.title,
+          beginn: geprueft.termin.startTime,
+          firma: gegenueber(geprueft.termin).name,
+          teilnehmer: [],
+          ziel: besprechung.ziel,
+          transkript,
+          notizen: mitschrift,
+        }).catch((fehler) => {
+          console.error("[besprechung] Zwischenstand fehlgeschlagen:", fehler);
+          return null;
+        })
+      : Promise.resolve(null),
+  ]);
+
+  /*
+    Der Zwischenstand überschreibt nichts Freigegebenes.
+
+    Was der Kunde schon lesen darf, ist durchgesehen worden. Ein Entwurf,
+    der sich im Hintergrund darüberschreibt, nimmt dieser Durchsicht ihren
+    Sinn.
+  */
+  if (protokoll && !besprechung.freigegebenAm) {
+    await db.besprechung.update({
+      where: { id: besprechung.id },
+      data: { protokoll, protokollAm: new Date() },
     });
-    return NextResponse.json({ ok: true, hinweise: gefunden });
-  } catch (fehler) {
-    // Mitten im Gespräch ist ein Fehler die schlechteste aller Antworten.
-    console.error("[besprechung] Hinweis fehlgeschlagen:", fehler);
-    return NextResponse.json({ ok: true, hinweise: [] });
   }
+
+  return NextResponse.json({
+    ok: true,
+    lage: beistand.lage,
+    hinweise: beistand.hinweise,
+    protokoll: protokoll ?? undefined,
+  });
 }

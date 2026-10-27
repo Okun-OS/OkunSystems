@@ -2,8 +2,10 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Check, FileText, Loader2, Target, Video } from "lucide-react";
+import { Check, Copy, FileText, Loader2, Mail, Target, Video } from "lucide-react";
 import {
+  einladungSenden,
+  gastLinkHolen,
   protokollErzeugen,
   protokollFreigeben,
   protokollSetzen,
@@ -30,6 +32,9 @@ export function BesprechungPanel({
   protokoll,
   protokollAm,
   freigegebenAm,
+  gastLink,
+  eingeladenAn,
+  eingeladenAm,
 }: {
   terminId: string;
   ziel: string | null;
@@ -39,12 +44,20 @@ export function BesprechungPanel({
   protokoll: string | null;
   protokollAm: string | null;
   freigegebenAm: string | null;
+  /** Der bereits ausgestellte Gastlink, falls es einen gibt. */
+  gastLink: string | null;
+  /** Wohin eine Einladung ginge — leer, wenn keine Adresse hinterlegt ist. */
+  eingeladenAn: string | null;
+  eingeladenAm: string | null;
 }) {
   const [pending, start] = useTransition();
   const [fehler, setzeFehler] = useState<string | null>(null);
   const [zielText, setzeZielText] = useState(ziel ?? "");
   const [protokollText, setzeProtokollText] = useState(protokoll ?? "");
   const [bearbeitet, setzeBearbeitet] = useState(false);
+  const [link, setzeLink] = useState<string | null>(gastLink);
+  const [kopiert, setzeKopiert] = useState(false);
+  const [versandt, setzeVersandt] = useState<string | null>(null);
 
   function fuehreAus(fn: () => Promise<unknown>) {
     setzeFehler(null);
@@ -74,6 +87,85 @@ export function BesprechungPanel({
           {fehler}
         </p>
       )}
+
+      {/* Einladung */}
+      <div className="pb-4 border-b border-[#111e30]">
+        <p className="text-[#888] text-xs font-medium flex items-center gap-1.5 mb-2">
+          <Mail size={12} className="text-[#00b8ff]" />
+          Einladung
+        </p>
+
+        {link ? (
+          <div className="flex items-center gap-2">
+            <code className="flex-1 min-w-0 truncate px-3 py-2 rounded-lg bg-[#060a10] border border-[#1a2840] text-[#8899b4] text-[11px]">
+              {link}
+            </code>
+            <button
+              onClick={() => {
+                void navigator.clipboard?.writeText(link);
+                setzeKopiert(true);
+                setTimeout(() => setzeKopiert(false), 2000);
+              }}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#1a2840]
+                text-[#8899b4] text-xs hover:text-[#dce9f6] transition-colors flex-shrink-0"
+            >
+              {kopiert ? <Check size={12} /> : <Copy size={12} />}
+              {kopiert ? "Kopiert" : "Kopieren"}
+            </button>
+          </div>
+        ) : (
+          <p className="text-[#555] text-xs">
+            Noch kein Link ausgestellt.
+          </p>
+        )}
+
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <button
+            onClick={() =>
+              fuehreAus(async () => {
+                const r = await einladungSenden(terminId);
+                if (r && "link" in r && r.link) setzeLink(r.link);
+                if (r && "gesendetAn" in r && r.gesendetAn) setzeVersandt(r.gesendetAn);
+                return r;
+              })
+            }
+            disabled={pending}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#101c2e]
+              border border-[#1a2840] text-[#c9d4e4] text-xs font-medium
+              hover:border-[rgba(0,184,255,.4)] disabled:opacity-50 transition-colors"
+          >
+            {pending ? <Loader2 size={12} className="animate-spin" /> : <Mail size={12} />}
+            {eingeladenAm ? "Einladung erneut senden" : "Einladung senden"}
+          </button>
+
+          {!link && (
+            <button
+              onClick={() =>
+                fuehreAus(async () => {
+                  const r = await gastLinkHolen(terminId);
+                  if (r && "link" in r && r.link) setzeLink(r.link);
+                  return r;
+                })
+              }
+              disabled={pending}
+              className="px-3.5 py-2 rounded-lg border border-[#1a2840] text-[#8899b4]
+                text-xs hover:text-[#dce9f6] disabled:opacity-50 transition-colors"
+            >
+              Nur Link erzeugen
+            </button>
+          )}
+        </div>
+
+        <p className="mt-2 text-[#5b6b7f] text-[11px] leading-relaxed">
+          {versandt
+            ? `Gesendet an ${versandt}.`
+            : eingeladenAm
+              ? `Zuletzt verschickt am ${new Date(eingeladenAm).toLocaleString("de-DE")}${eingeladenAn ? ` an ${eingeladenAn}` : ""}.`
+              : eingeladenAn
+                ? `Geht an ${eingeladenAn}. Der Gast braucht kein Konto — der Link führt in unseren Raum, nicht zum Videoanbieter.`
+                : "Keine E-Mail-Adresse hinterlegt — Link kopieren und selbst verschicken."}
+        </p>
+      </div>
 
       {/* Ziel */}
       <div>

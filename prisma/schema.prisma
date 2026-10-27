@@ -252,6 +252,16 @@ model Appointment {
   /// Das Gegenueber, wenn es kein Kunde ist: Name und, wenn bekannt, E-Mail.
   gastName  String?
   gastEmail String?
+
+  /// Der Link, mit dem ein Gast ohne Konto in den Raum kommt.
+  ///
+  /// Bewusst im Klartext und nicht als Hash: Anders als ein Closing-Zugang
+  /// ist das eine Einladung zu einem Videogespraech, die man mehrfach
+  /// verschickt, weiterleitet und nachschlaegt — wie ein Zoom-Link. Er
+  /// traegt keine Daten, oeffnet nur diesen einen Raum und laeuft mit dem
+  /// Termin ab.
+  gastToken        String?   @unique
+  gastEingeladenAm DateTime?
   attendees         User[]
   analysisSessionId String?
   analysisSession   AnalysisSession? @relation(fields: [analysisSessionId], references: [id])
