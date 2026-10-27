@@ -1,14 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { Video } from "lucide-react";
+import { Loader2, Video } from "lucide-react";
 import { OkunCall } from "@/components/closing/okun-call";
+import { frageGeraete } from "@/lib/video/geraete";
 
 /**
  * Der Gast betritt den Raum — unter seinem Namen und in unserem Haus.
  *
  * Der Name wird gefragt, nicht geraten: Im Gespräch steht er an der Kachel,
  * und „Gast" an einer Kachel ist das Gegenteil von persönlich.
+ *
+ * Kamera und Mikrofon werden hier im Klick freigegeben, nicht erst im
+ * Gespräch. Ein Browser fragt nur, wenn die Frage aus einer Handlung des
+ * Benutzers kommt; kommt sie später aus einem Effekt, bleibt der Beitritt
+ * stumm hängen. Und ist etwas gesperrt, steht der Grund hier — nicht hinter
+ * einem Kreisel, der sich dreht.
  */
 export function GastRaum({
   raumUrl,
@@ -21,6 +28,25 @@ export function GastRaum({
 }) {
   const [name, setzeName] = useState(vorschlag);
   const [drin, setzeDrin] = useState(false);
+  const [fragt, setzeFragt] = useState(false);
+  const [ohneKamera, setzeOhneKamera] = useState(false);
+  const [huerde, setzeHuerde] = useState<string | null>(null);
+
+  async function betreten() {
+    setzeHuerde(null);
+    setzeFragt(true);
+    try {
+      const antwort = await frageGeraete();
+      if (!antwort.ok) {
+        setzeHuerde(antwort.grund);
+        return;
+      }
+      setzeOhneKamera(!antwort.kamera);
+      setzeDrin(true);
+    } finally {
+      setzeFragt(false);
+    }
+  }
 
   if (!drin) {
     return (
@@ -39,14 +65,38 @@ export function GastRaum({
           />
         </div>
         <button
-          onClick={() => setzeDrin(true)}
-          disabled={name.trim().length < 2}
+          onClick={() => void betreten()}
+          disabled={name.trim().length < 2 || fragt}
           className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl
             bg-[#00b8ff] text-[#041018] text-sm font-bold hover:bg-[#33c7ff]
             disabled:bg-[#16283d] disabled:text-[#4a5a70] transition-colors"
         >
-          <Video size={15} /> Gespräch betreten
+          {fragt ? <Loader2 size={15} className="animate-spin" /> : <Video size={15} />}
+          {fragt ? "Kamera und Mikrofon freigeben…" : "Gespräch betreten"}
         </button>
+
+        {huerde && (
+          <div className="px-3.5 py-3 rounded-xl bg-[rgba(240,80,74,.08)] border border-[rgba(240,80,74,.25)]">
+            <p className="text-[#f0a09a] text-xs leading-relaxed">{huerde}</p>
+            <button
+              onClick={() => {
+                /*
+                  Trotzdem hinein — ohne Bild und ohne Ton.
+
+                  Zuhören und Mitlesen geht auch so, und wer erst einmal drin
+                  ist, kann die Freigabe im Gespräch nachholen. Besser als vor
+                  einer verschlossenen Tür zu stehen.
+                */
+                setzeOhneKamera(true);
+                setzeDrin(true);
+              }}
+              className="mt-2.5 px-3.5 py-2 rounded-lg border border-[#1a2840] text-[#c9d4e4]
+                text-xs font-medium hover:border-[rgba(0,184,255,.4)] transition-colors"
+            >
+              Trotzdem beitreten
+            </button>
+          </div>
+        )}
       </div>
     );
   }
@@ -57,6 +107,7 @@ export function GastRaum({
         roomUrl={raumUrl}
         userName={name.trim()}
         role="client"
+        startOhneKamera={ohneKamera}
         slide={null}
         onLeave={() => setzeDrin(false)}
         stageLayout={({ kacheln, steuerung }) => (
