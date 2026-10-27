@@ -1,4 +1,6 @@
 import { auth } from "@/auth";
+import { BesprechungPanel } from "./BesprechungPanel";
+import { fuehrtZurBesprechung, terminartLabel } from "@/lib/termine/arten";
 import { db } from "@/lib/db";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
@@ -43,6 +45,7 @@ export default async function TerminDetailPage({
   const appointment = await db.appointment.findUnique({
     where: { id },
     include: {
+      besprechung: true,
       company: {
         select: {
           id: true,
@@ -129,11 +132,10 @@ export default async function TerminDetailPage({
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className={`text-xs px-2 py-0.5 rounded-full border ${sc.cls}`}>{sc.label}</span>
-              {appointment.type === "STRATEGY" && (
-                <span className="text-xs px-2 py-0.5 rounded-full border text-purple-400 bg-purple-500/10 border-purple-500/20">
-                  Strategiegespräch
-                </span>
-              )}
+              {/* Die Art stand hier nur für das Strategiegespräch — jetzt für jede. */}
+              <span className="text-xs px-2 py-0.5 rounded-full border text-purple-400 bg-purple-500/10 border-purple-500/20">
+                {terminartLabel(appointment.type)}
+              </span>
             </div>
             <h1 className="text-xl font-bold text-[#f0f0f0] mt-1">{appointment.title}</h1>
             <Link
@@ -330,6 +332,28 @@ export default async function TerminDetailPage({
             </div>
           </div>
         </div>
+
+        {/*
+          Die Besprechung.
+
+          Nur bei den Arten, die keinen eigenen Arbeitsplatz haben — ein
+          Strategiegespräch wird nebenan vorbereitet, ein Closing führt ins
+          Closing-Portal.
+        */}
+        {fuehrtZurBesprechung(appointment.type) && (
+          <div className="col-span-12">
+            <BesprechungPanel
+              terminId={id}
+              ziel={appointment.besprechung?.ziel ?? null}
+              vorbereitung={appointment.besprechung?.vorbereitung ?? null}
+              mitschrift={appointment.besprechung?.mitschrift ?? ""}
+              transkriptLaenge={appointment.besprechung?.transkript.length ?? 0}
+              protokoll={appointment.besprechung?.protokoll ?? null}
+              protokollAm={appointment.besprechung?.protokollAm?.toISOString() ?? null}
+              freigegebenAm={appointment.besprechung?.freigegebenAm?.toISOString() ?? null}
+            />
+          </div>
+        )}
 
         {/* Right column — video (sticky when URL is set, create button otherwise) */}
         <div className="col-span-12 lg:col-span-7 lg:sticky lg:top-6">

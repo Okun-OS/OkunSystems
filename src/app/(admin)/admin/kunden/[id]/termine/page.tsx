@@ -1,4 +1,6 @@
 import { auth } from "@/auth";
+import { berlinZeitpunkt, formatiereBerlin } from "@/lib/zeit";
+import { STANDARD_ART, terminart, waehlbareArten } from "@/lib/termine/arten";
 import { db } from "@/lib/db";
 import { redirect, notFound } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -20,7 +22,7 @@ export default async function CustomerTerminePage({
   params: Promise<{ id: string }>;
 }) {
   const session = await auth();
-  if (!session?.user || (session.user as any).role !== "ADMIN") redirect("/login");
+  if (!session?.user || (session.user as { role?: string }).role !== "ADMIN") redirect("/login");
 
   const { id } = await params;
 
@@ -35,11 +37,13 @@ export default async function CustomerTerminePage({
     orderBy: { startTime: "desc" },
   });
 
-  const adminId = (session.user as any).id as string;
+  const adminId = (session.user as { id: string }).id;
 
   async function createAppointment(formData: FormData) {
     "use server";
     const title = formData.get("title") as string;
+    const artRoh = String(formData.get("art") ?? STANDARD_ART);
+    const art = terminart(artRoh) ? artRoh : STANDARD_ART;
     const startDate = formData.get("startDate") as string;
     const startTime = formData.get("startTime") as string;
     const endTime = formData.get("endTime") as string;
@@ -47,13 +51,29 @@ export default async function CustomerTerminePage({
 
     if (!title || !startDate || !startTime || !endTime) return;
 
-    const startDt = new Date(`${startDate}T${startTime}`);
-    const endDt = new Date(`${startDate}T${endTime}`);
+    /*
+      Die Eingabe meint Berliner Zeit, nicht Serverzeit.
+
+      `new Date("2026-11-05T10:00")` liest die Zeit in der Zone des
+      Prozesses — bei Railway ist das UTC. Angelegt wurde 10 Uhr, im Portal
+      des Kunden stand 11. Dasselbe Problem wie seinerzeit bei der
+      Terminbuchung, nur an einer zweiten Stelle.
+    */
+    const startDt = berlinAus(startDate, startTime);
+    const endDt = berlinAus(startDate, endTime);
+    if (!startDt || !endDt) return;
 
     await db.appointment.create({
       data: {
         title,
-        type: "STRATEGY",
+        /*
+          Die Art wird gewählt, nicht angenommen.
+
+          Vorher wurde jeder hier angelegte Termin ein Strategiegespräch —
+          auch die Rückfrage von zwanzig Minuten. Der Videoraum hieß dann
+          „strategiegespraech-…", und im Portal des Kunden stand es auch so.
+        */
+        type: art,
         startTime: startDt,
         endTime: endDt,
         notes: notes || null,
@@ -73,12 +93,27 @@ export default async function CustomerTerminePage({
           Neuen Termin anlegen
         </h2>
         <form action={createAppointment} className="grid grid-cols-2 gap-3">
-          <div className="col-span-2">
+          <div>
+            <label className="block text-xs font-medium text-[#888] mb-1.5">Art *</label>
+            <select
+              name="art"
+              defaultValue={STANDARD_ART}
+              className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm focus:outline-none focus:border-[#00b8ff]/50"
+            >
+              {waehlbareArten().map((a) => (
+                <option key={a.key} value={a.key}>
+                  {a.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
             <label className="block text-xs font-medium text-[#888] mb-1.5">Titel *</label>
             <input
               name="title"
               required
-              defaultValue="Strategiegespräch"
+              defaultValue="Besprechung"
+              placeholder="Worum geht es?"
               className="w-full bg-[#060a10] border border-[#1a2840] rounded-lg px-3 py-2.5 text-[#f0f0f0] text-sm placeholder-[#555] focus:outline-none focus:border-[#00b8ff]/50"
             />
           </div>
@@ -161,13 +196,15 @@ export default async function CustomerTerminePage({
                   <CalendarDays size={14} className="text-[#555] flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-[#f0f0f0] text-sm font-medium">{appt.title}</p>
+                    {/*
+                      In Berliner Zeit, nicht in Serverzeit.
+
+                      Ohne Zone formatiert der Server in UTC — der Kunde las
+                      im Portal 10 Uhr, hier stand 9. Dieselbe Zahl auf
+                      beiden Seiten ist das Mindeste bei einem Termin.
+                    */}
                     <p className="text-[#555] text-xs mt-0.5">
-                      {new Date(appt.startTime).toLocaleDateString("de-DE", {
-                        day: "2-digit", month: "long", year: "numeric",
-                      })}{" "}
-                      {new Date(appt.startTime).toLocaleTimeString("de-DE", {
-                        hour: "2-digit", minute: "2-digit",
-                      })} Uhr
+                      {formatiereBerlin(appt.startTime)} Uhr
                     </p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
@@ -186,5 +223,19 @@ export default async function CustomerTerminePage({
         )}
       </div>
     </div>
+  );
+}
+
+/** „2026-11-05" und „10:00" als der Moment, in dem es in Berlin so spät ist. */
+function berlinAus(datum: string, zeit: string): Date | null {
+  const tag = /^(\d{4})-(\d{2})-(\d{2})$/.exec(datum);
+  const uhr = /^(\d{2}):(\d{2})$/.exec(zeit);
+  if (!tag || !uhr) return null;
+  return berlinZeitpunkt(
+    Number(tag[1]),
+    Number(tag[2]),
+    Number(tag[3]),
+    Number(uhr[1]),
+    Number(uhr[2])
   );
 }
