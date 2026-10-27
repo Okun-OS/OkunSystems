@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { getActor, guarded } from "@/lib/auth-guards";
 import { bereiteVor } from "@/lib/termine/beistand";
 import { schreibeProtokoll, LeereMitschriftError } from "@/lib/termine/protokoll";
+import { gegenueber } from "@/lib/termine/gegenueber";
 
 /**
  * Die Besprechung rundherum: Ziel setzen, Protokoll erzeugen, freigeben.
@@ -29,7 +30,8 @@ async function hole(terminId: string) {
       title: true,
       startTime: true,
       companyId: true,
-      company: { select: { name: true } },
+      company: { select: { id: true, name: true } },
+      gastName: true,
       attendees: { select: { name: true } },
       besprechung: true,
     },
@@ -53,7 +55,7 @@ export async function zielSetzen(terminId: string, ziel: string) {
     let vorbereitung: string | null = null;
     if (sauber && process.env.ANTHROPIC_API_KEY) {
       try {
-        vorbereitung = await bereiteVor(sauber, termin.company.name);
+        vorbereitung = await bereiteVor(sauber, gegenueber(termin).name);
       } catch (fehler) {
         // Das Ziel ist das Wichtige; die Vorbereitung lässt sich nachholen.
         console.error("[besprechung] Vorbereitung fehlgeschlagen:", fehler);
@@ -97,7 +99,7 @@ export async function protokollErzeugen(terminId: string) {
       const protokoll = await schreibeProtokoll({
         titel: termin.title,
         beginn: termin.startTime,
-        firma: termin.company.name,
+        firma: gegenueber(termin).name,
         teilnehmer: termin.attendees.map((a) => a.name).filter((n): n is string => Boolean(n)),
         ziel: termin.besprechung?.ziel ?? null,
         transkript: termin.besprechung?.transkript ?? "",

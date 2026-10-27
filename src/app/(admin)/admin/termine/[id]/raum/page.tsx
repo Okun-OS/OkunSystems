@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { getActor } from "@/lib/auth-guards";
 import { beraterTicket, ensureAppointmentRoom, raumName } from "@/lib/daily";
 import { fuehrtZurBesprechung, terminartLabel } from "@/lib/termine/arten";
+import { gegenueber } from "@/lib/termine/gegenueber";
 import { BesprechungsRaum } from "./BesprechungsRaum";
 
 /**
@@ -31,6 +32,7 @@ export default async function BesprechungsRaumSeite({
       title: true,
       type: true,
       company: { select: { id: true, name: true } },
+      gastName: true,
       besprechung: { select: { ziel: true, vorbereitung: true, mitschrift: true } },
     },
   });
@@ -75,7 +77,7 @@ export default async function BesprechungsRaumSeite({
     <BesprechungsRaum
       terminId={id}
       titel={termin.title}
-      firma={termin.company.name}
+      firma={gegenueber(termin).name}
       raumUrl={raum.url}
       ticket={ticket}
       beraterName={actor.name ?? "OKUN Systems"}

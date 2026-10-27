@@ -140,3 +140,23 @@ export function formatiereBerlin(
   if (Number.isNaN(datum.getTime())) return "—";
   return datum.toLocaleString("de-DE", { ...optionen, timeZone: ZONE });
 }
+
+/**
+ * Was ein Formular liefert — „2026-11-05" und „10:00" — als der Moment, in
+ * dem es in Berlin so spät ist.
+ *
+ * `new Date("2026-11-05T10:00")` liest die Zeit in der Zone des Prozesses;
+ * bei Railway ist das UTC. Angelegt wurde 10 Uhr, im Portal des Kunden stand
+ * 11. Deshalb geht jede Formulareingabe durch diese Funktion.
+ */
+export function berlinAusEingabe(datum: string, zeit: string): Date | null {
+  const tag = /^(\d{4})-(\d{2})-(\d{2})$/.exec(datum.trim());
+  const uhr = /^(\d{1,2}):(\d{2})$/.exec(zeit.trim());
+  if (!tag || !uhr) return null;
+  const stunde = Number(uhr[1]);
+  const minute = Number(uhr[2]);
+  if (stunde > 23 || minute > 59) return null;
+  const zahlen = tagAusSchluessel(`${tag[1]}-${tag[2]}-${tag[3]}`);
+  if (!zahlen) return null;
+  return berlinZeitpunkt(zahlen.jahr, zahlen.monat, zahlen.tag, stunde, minute);
+}

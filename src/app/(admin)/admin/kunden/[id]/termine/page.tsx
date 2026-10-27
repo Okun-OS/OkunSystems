@@ -1,5 +1,5 @@
 import { auth } from "@/auth";
-import { berlinZeitpunkt, formatiereBerlin } from "@/lib/zeit";
+import { berlinAusEingabe, formatiereBerlin } from "@/lib/zeit";
 import { STANDARD_ART, terminart, waehlbareArten } from "@/lib/termine/arten";
 import { db } from "@/lib/db";
 import { redirect, notFound } from "next/navigation";
@@ -59,8 +59,8 @@ export default async function CustomerTerminePage({
       des Kunden stand 11. Dasselbe Problem wie seinerzeit bei der
       Terminbuchung, nur an einer zweiten Stelle.
     */
-    const startDt = berlinAus(startDate, startTime);
-    const endDt = berlinAus(startDate, endTime);
+    const startDt = berlinAusEingabe(startDate, startTime);
+    const endDt = berlinAusEingabe(startDate, endTime);
     if (!startDt || !endDt) return;
 
     await db.appointment.create({
@@ -223,19 +223,5 @@ export default async function CustomerTerminePage({
         )}
       </div>
     </div>
-  );
-}
-
-/** „2026-11-05" und „10:00" als der Moment, in dem es in Berlin so spät ist. */
-function berlinAus(datum: string, zeit: string): Date | null {
-  const tag = /^(\d{4})-(\d{2})-(\d{2})$/.exec(datum);
-  const uhr = /^(\d{2}):(\d{2})$/.exec(zeit);
-  if (!tag || !uhr) return null;
-  return berlinZeitpunkt(
-    Number(tag[1]),
-    Number(tag[2]),
-    Number(tag[3]),
-    Number(uhr[1]),
-    Number(uhr[2])
   );
 }

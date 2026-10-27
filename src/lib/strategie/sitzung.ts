@@ -173,6 +173,17 @@ export async function setzeSitzungAuf(params: {
   if (termin.strategieSitzung) {
     return { error: "Für diesen Termin gibt es bereits eine Strategiesitzung." };
   }
+  /*
+    Ein Strategiegespräch braucht einen Betrieb.
+
+    Seit es Termine ohne Kunden gibt — Erstkontakt, Verband, Partner — kann
+    `companyId` fehlen. Ein Haus ohne Blueprint wäre leer, deshalb hier die
+    klare Absage statt einer halben Sitzung.
+  */
+  const companyId = termin.companyId;
+  if (!companyId) {
+    return { error: "Ein Strategiegespräch braucht einen Betrieb aus der Kundenliste." };
+  }
 
   // Der Blueprint am Termin, sonst der zuletzt abgeschlossene des Betriebs.
   const blueprint = termin.analysisSessionId
@@ -181,7 +192,7 @@ export async function setzeSitzungAuf(params: {
         select: { id: true },
       })
     : await db.analysisSession.findFirst({
-        where: { companyId: termin.companyId, blueprintVersion: "2.0", status: "COMPLETED" },
+        where: { companyId, blueprintVersion: "2.0", status: "COMPLETED" },
         orderBy: { completedAt: "desc" },
         select: { id: true },
       });
@@ -221,10 +232,10 @@ export async function setzeSitzungAuf(params: {
   const sitzung = await db.strategieSitzung.create({
     data: {
       appointmentId: termin.id,
-      companyId: termin.companyId,
+      companyId,
       sessionId: blueprint.id,
       beraterId: params.beraterId,
-      paket: termin.company.contractPackage,
+      paket: termin.company?.contractPackage ?? null,
       guideVersionId: fassung.id,
       status: "vorbereitet",
       posten: { create: entwuerfe.map((e) => zuDatensatz(e, aufgaben)) },

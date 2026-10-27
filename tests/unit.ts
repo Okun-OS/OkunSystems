@@ -32,6 +32,7 @@ import {
 } from "../src/lib/closing/master-data";
 import { calculateInvoiceTotals } from "../src/lib/invoicing/calc";
 import {
+  berlinAusEingabe,
   berlinStundeVon,
   berlinTagesgrenzen,
   berlinWochentagVon,
@@ -94,6 +95,7 @@ import {
   STANDARD_ART,
 } from "../src/lib/termine/arten";
 import { leseHinweise } from "../src/lib/termine/beistand";
+import { gegenueber, darfOhneKunden } from "../src/lib/termine/gegenueber";
 import { WERKZEUGE } from "../src/lib/vorbereitung/werkzeuge";
 import {
   legeSchabloneAn,
@@ -879,6 +881,22 @@ test("der Wochentag kommt aus dem Kalender, nicht aus der Zone", () => {
   assert.equal(berlinWochentagVon(2026, 10, 12), 1, "Montag");
 });
 
+test("eine Formulareingabe meint Berliner Zeit, nicht Serverzeit", () => {
+  // Der Fehler: angelegt wurde 10 Uhr, im Portal des Kunden stand 11.
+  const sommer = berlinAusEingabe("2026-07-15", "10:00");
+  assert.equal(sommer?.toISOString(), "2026-07-15T08:00:00.000Z");
+  const winter = berlinAusEingabe("2026-01-15", "10:00");
+  assert.equal(winter?.toISOString(), "2026-01-15T09:00:00.000Z");
+});
+
+test("eine unbrauchbare Eingabe gibt null statt eines falschen Termins", () => {
+  assert.equal(berlinAusEingabe("", "10:00"), null);
+  assert.equal(berlinAusEingabe("2026-07-15", ""), null);
+  assert.equal(berlinAusEingabe("15.07.2026", "10:00"), null);
+  assert.equal(berlinAusEingabe("2026-07-15", "25:00"), null);
+  assert.equal(berlinAusEingabe("2026-07-15", "10:70"), null);
+});
+
 test("ein gebuchter Termin wird in Berliner Zeit angezeigt", () => {
   // Was der Kunde ausgewählt hat, muss er im Portal wiederfinden.
   const gebucht = berlinZeitpunkt(2026, 7, 15, 13);
@@ -1414,6 +1432,44 @@ test("eine unbekannte Art zeigt ihren rohen Wert statt einer falschen Beschriftu
   assert.equal(terminartLabel("WORKSHOP_2019"), "WORKSHOP_2019");
   assert.equal(terminartLabel(null), "Termin");
   assert.equal(hatVideoraum("WORKSHOP_2019"), false);
+});
+
+console.log("\nTermine ohne Kunden");
+
+test("ist ein Kunde da, zaehlt sein Name und seine Kundenseite", () => {
+  const mit = gegenueber({
+    company: { id: "c1", name: "Arwed Dienstleistungen" },
+    companyId: "c1",
+    gastName: "wird ignoriert",
+  });
+  assert.equal(mit.name, "Arwed Dienstleistungen");
+  assert.equal(mit.companyId, "c1");
+});
+
+test("ohne Kunden zaehlt der Gastname, und es gibt keine Kundenseite", () => {
+  const mit = gegenueber({ company: null, companyId: null, gastName: "Feuerwehr Freiburg" });
+  assert.equal(mit.name, "Feuerwehr Freiburg");
+  assert.equal(mit.companyId, null);
+});
+
+test("weder Kunde noch Name gibt einen ehrlichen Platzhalter", () => {
+  const mit = gegenueber({ company: null, companyId: null, gastName: "   " });
+  assert.equal(mit.name, "Ohne Angabe");
+  assert.equal(mit.companyId, null);
+});
+
+test("Strategiegespraech und Closing gehen nur mit einem Betrieb", () => {
+  assert.equal(darfOhneKunden("STRATEGY"), false);
+  assert.equal(darfOhneKunden("CLOSING_CALL"), false);
+  assert.equal(darfOhneKunden("MEETING"), true);
+  assert.equal(darfOhneKunden("REVIEW"), true);
+  assert.equal(darfOhneKunden("ONSITE"), true);
+});
+
+test("eine unbekannte Art darf nicht ohne Kunden angelegt werden", () => {
+  // Lieber eine Absage als ein Termin, von dem niemand weiss, was er kann.
+  assert.equal(darfOhneKunden("WORKSHOP_2019"), false);
+  assert.equal(darfOhneKunden(null), false);
 });
 
 test("Hinweise: das leere Array ist der Normalfall", () => {

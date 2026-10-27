@@ -2,7 +2,11 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { CalendarDays, Video, Clock, ArrowRight, Plus } from "lucide-react";
+import { CalendarDays, Video, Clock, ArrowRight } from "lucide-react";
+import { formatiereBerlin } from "@/lib/zeit";
+import { terminartLabel } from "@/lib/termine/arten";
+import { gegenueber } from "@/lib/termine/gegenueber";
+import { NeuerTermin } from "./NeuerTermin";
 
 function statusLabel(s: string) {
   switch (s) {
@@ -15,25 +19,34 @@ function statusLabel(s: string) {
 
 export default async function AdminTerminePage() {
   const session = await auth();
-  if (!session?.user || (session.user as any).role !== "ADMIN") redirect("/login");
+  if (!session?.user || (session.user as { role?: string }).role !== "ADMIN") redirect("/login");
 
-  const appointments = await db.appointment.findMany({
-    include: {
-      company: { select: { id: true, name: true } },
-    },
-    orderBy: { startTime: "desc" },
-  });
+  const [appointments, kunden] = await Promise.all([
+    db.appointment.findMany({
+      include: {
+        company: { select: { id: true, name: true } },
+      },
+      orderBy: { startTime: "desc" },
+    }),
+    db.company.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
 
   const upcoming = appointments.filter((a) => a.startTime >= new Date() && a.status !== "CANCELLED");
   const past = appointments.filter((a) => a.startTime < new Date() || a.status === "CANCELLED");
 
   return (
     <div className="max-w-[1100px] mx-auto">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-start justify-between gap-4 flex-wrap mb-8">
         <div>
           <h1 className="text-2xl font-bold text-[#f0f0f0]">Termine</h1>
-          <p className="text-[#888] text-sm mt-1">Alle Kundentermine im Überblick</p>
+          <p className="text-[#888] text-sm mt-1">
+            Alle Termine im Überblick — mit Kunden und mit allen anderen
+          </p>
         </div>
+        <NeuerTermin kunden={kunden} />
       </div>
 
       {/* Stats */}
@@ -64,33 +77,43 @@ export default async function AdminTerminePage() {
           <div className="space-y-2">
             {upcoming.map((appt) => {
               const sc = statusLabel(appt.status);
+              const mit = gegenueber(appt);
               return (
                 <Link
                   key={appt.id}
                   href={`/admin/termine/${appt.id}`}
-                  className="bg-[#0c1520] border border-[#1a2840] hover:border-[#00b8ff]/30 rounded-xl p-4 flex items-center justify-between group transition-colors"
+                  className="bg-[#0c1520] border border-[#1a2840] hover:border-[#00b8ff]/30 rounded-xl p-4 flex items-center justify-between gap-4 group transition-colors"
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4 min-w-0">
                     <div className="w-10 h-10 rounded-lg bg-[#00b8ff]/10 border border-[#00b8ff]/20 flex items-center justify-center flex-shrink-0">
                       <CalendarDays size={16} className="text-[#00b8ff]" />
                     </div>
-                    <div>
-                      <p className="text-[#f0f0f0] font-medium text-sm">{appt.title}</p>
-                      <div className="flex items-center gap-3 mt-0.5">
-                        <span className="text-[#888] text-xs">{appt.company.name}</span>
+                    <div className="min-w-0">
+                      <p className="text-[#f0f0f0] font-medium text-sm truncate">{appt.title}</p>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <span className="text-[#888] text-xs">{mit.name}</span>
+                        {!mit.companyId && (
+                          <span className="text-[10px] px-1.5 py-px rounded-full border border-[#1a2840] text-[#6b7f99]">
+                            kein Kunde
+                          </span>
+                        )}
                         <span className="text-[#555] text-xs">·</span>
+                        <span className="text-[#888] text-xs">{terminartLabel(appt.type)}</span>
+                        <span className="text-[#555] text-xs">·</span>
+                        {/*
+                          Berliner Zeit, nicht Serverzeit — sonst steht hier
+                          eine andere Stunde als im Portal des Kunden.
+                        */}
                         <span className="text-[#888] text-xs">
-                          {new Date(appt.startTime).toLocaleDateString("de-DE", {
+                          {formatiereBerlin(appt.startTime, {
                             day: "2-digit", month: "long", year: "numeric",
-                          })}{" "}
-                          {new Date(appt.startTime).toLocaleTimeString("de-DE", {
                             hour: "2-digit", minute: "2-digit",
                           })} Uhr
                         </span>
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-shrink-0">
                     {appt.meetingUrl && (
                       <Video size={14} className="text-blue-400" />
                     )}
@@ -115,30 +138,33 @@ export default async function AdminTerminePage() {
           <div className="space-y-2 opacity-70">
             {past.map((appt) => {
               const sc = statusLabel(appt.status);
+              const mit = gegenueber(appt);
               return (
                 <Link
                   key={appt.id}
                   href={`/admin/termine/${appt.id}`}
-                  className="bg-[#0c1520] border border-[#1a2840] hover:border-[#3a3a3a] rounded-xl p-4 flex items-center justify-between group transition-colors"
+                  className="bg-[#0c1520] border border-[#1a2840] hover:border-[#3a3a3a] rounded-xl p-4 flex items-center justify-between gap-4 group transition-colors"
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4 min-w-0">
                     <div className="w-10 h-10 rounded-lg bg-[#101c2e] border border-[#1a2840] flex items-center justify-center flex-shrink-0">
                       <CalendarDays size={16} className="text-[#555]" />
                     </div>
-                    <div>
-                      <p className="text-[#888] font-medium text-sm">{appt.title}</p>
-                      <div className="flex items-center gap-3 mt-0.5">
-                        <span className="text-[#555] text-xs">{appt.company.name}</span>
+                    <div className="min-w-0">
+                      <p className="text-[#888] font-medium text-sm truncate">{appt.title}</p>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <span className="text-[#555] text-xs">{mit.name}</span>
+                        <span className="text-[#333] text-xs">·</span>
+                        <span className="text-[#555] text-xs">{terminartLabel(appt.type)}</span>
                         <span className="text-[#333] text-xs">·</span>
                         <span className="text-[#555] text-xs">
-                          {new Date(appt.startTime).toLocaleDateString("de-DE", {
+                          {formatiereBerlin(appt.startTime, {
                             day: "2-digit", month: "long", year: "numeric",
                           })}
                         </span>
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-shrink-0">
                     <span className={`text-xs px-2 py-0.5 rounded-full border ${sc.cls}`}>
                       {sc.label}
                     </span>
@@ -156,7 +182,7 @@ export default async function AdminTerminePage() {
           <CalendarDays size={40} className="text-[#333] mx-auto mb-4" />
           <p className="text-[#888] text-sm">Noch keine Termine vorhanden.</p>
           <p className="text-[#555] text-xs mt-1">
-            Termine werden über das Buchungsformular oder direkt im Kundenprofil angelegt.
+            Oben rechts anlegen — mit einem Kunden oder mit jemandem, der noch keiner ist.
           </p>
         </div>
       )}
