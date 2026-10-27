@@ -131,12 +131,29 @@ export type OkunCallProps = {
   canNext?: boolean;
   onStopPresentation?: () => void;
   onPageCount?: (pageCount: number) => void;
+  /**
+   * Von vornherein ohne Kamera beitreten.
+   *
+   * Gesetzt, wenn die Seite davor schon gefragt hat und nur der Ton
+   * freigegeben wurde — dann gar nicht erst nach dem Bild fragen.
+   */
+  startOhneKamera?: boolean;
 };
 
 export function OkunCall(props: OkunCallProps) {
   // Ein erneuter Versuch hängt ein frisches Gesprächsobjekt ein: nach einem
   // Verbindungsfehler ist das bisherige bei Daily nicht mehr zu gebrauchen.
   const [attempt, setAttempt] = useState(0);
+  /*
+    Der Beitritt ohne Kamera überlebt den Neuversuch.
+
+    Er ist der Ausweg aus dem häufigsten Grund, warum jemand nicht
+    hineinkommt: Die Kamera ist belegt, gesperrt oder der Browser hat nie
+    gefragt. Ohne Kamera kommt man trotzdem ins Gespräch — mit Ton, und das
+    ist das, worauf es ankommt. Deshalb steht der Schalter hier oben, wo der
+    Wechsel des Gesprächsobjekts ihn nicht mitnimmt.
+  */
+  const [ohneKamera, setzeOhneKamera] = useState(Boolean(props.startOhneKamera));
 
   return (
     <DailyProvider
@@ -145,7 +162,15 @@ export function OkunCall(props: OkunCallProps) {
       userName={props.userName}
       token={props.meetingToken}
     >
-      <CallSurface {...props} onRetry={() => setAttempt((n) => n + 1)} />
+      <CallSurface
+        {...props}
+        ohneKamera={ohneKamera}
+        onOhneKamera={() => {
+          setzeOhneKamera(true);
+          setAttempt((n) => n + 1);
+        }}
+        onRetry={() => setAttempt((n) => n + 1)}
+      />
       {/* Ohne diese Komponente bleibt das Gespräch stumm. */}
       <DailyAudio />
     </DailyProvider>
@@ -203,7 +228,13 @@ function CallSurface({
   onStopPresentation,
   onPageCount,
   onRetry,
-}: OkunCallProps & { onRetry: () => void }) {
+  ohneKamera,
+  onOhneKamera,
+}: OkunCallProps & {
+  onRetry: () => void;
+  ohneKamera: boolean;
+  onOhneKamera: () => void;
+}) {
   const daily = useDaily();
   const meetingState = useMeetingState();
   const localSessionId = useLocalSessionId();
@@ -235,10 +266,10 @@ function CallSurface({
     const state = daily.meetingState();
     if (state === "joined-meeting" || state === "joining-meeting") return;
     joinStarted.current = true;
-    daily.join().catch((err: unknown) => {
+    daily.join(ohneKamera ? { startVideoOff: true } : {}).catch((err: unknown) => {
       setFailure(describeFailure(err instanceof Error ? err.message : errorText(err)));
     });
-  }, [daily]);
+  }, [daily, ohneKamera]);
 
   // Fehler benennen, statt den Ladekreis weiterdrehen zu lassen.
   useEffect(() => {
@@ -267,6 +298,27 @@ function CallSurface({
   useEffect(() => {
     if (!connecting) return;
     const timer = setTimeout(() => setTakingLong(true), 15_000);
+    return () => clearTimeout(timer);
+  }, [connecting]);
+
+  /*
+    Irgendwann ist Warten keine Antwort mehr.
+
+    Ein Beitritt, der nach einer Minute nicht steht, kommt auch nicht mehr.
+    Daily meldet in diesen Fällen oft gar nichts — kein Fehler, kein
+    Abbruch —, und der Wartende sitzt vor einem Kreisel, der sich für immer
+    dreht. Genau das ist einem Interessenten passiert.
+  */
+  useEffect(() => {
+    if (!connecting) return;
+    const timer = setTimeout(() => {
+      setFailure(
+        "Der Beitritt kam nicht zustande. Das liegt fast immer an einer der drei " +
+          "Ursachen: Die Kamera ist belegt oder gesperrt, der Browser hat nie nach " +
+          "der Freigabe gefragt, oder eine Firewall blockiert die Verbindung. " +
+          "Es geht auch ohne Kamera — nur mit Ton."
+      );
+    }, 60_000);
     return () => clearTimeout(timer);
   }, [connecting]);
 
@@ -458,7 +510,11 @@ function CallSurface({
     if (failureMessage) {
       return (
         <div className="h-full min-h-0 bg-[#05090f] p-3">
-          <CallProblem message={failureMessage} onRetry={retry} />
+          <CallProblem
+            message={failureMessage}
+            onRetry={retry}
+            onOhneKamera={ohneKamera ? undefined : onOhneKamera}
+          />
         </div>
       );
     }
@@ -480,13 +536,43 @@ function CallSurface({
       dem Bildschirm. Das eigene Bild braucht nur so viel Platz, dass man sieht,
       ob man noch im Bild ist.
     */
+    /*
+      Solange verbunden wird, steht hier die Verbindungsanzeige.
+
+      Vorher standen an dieser Stelle zwei Kacheln mit dem Wort „verbindet…"
+      — und sonst nichts: kein Hinweis, warum es dauert, kein Knopf, es noch
+      einmal zu versuchen, keine Meldung über eine gesperrte Kamera. Wer
+      nicht hineinkam, sah genau dasselbe wie jemand, bei dem es gleich
+      losgeht. Das ist einem Interessenten passiert, und zwar zweimal.
+    */
+    if (connecting) {
+      return (
+        <>
+          {stageLayout({
+            kacheln: (
+              <Connecting
+                takingLong={takingLong}
+                onRetry={retry}
+                onOhneKamera={ohneKamera ? undefined : onOhneKamera}
+                hinweis={deviceHint}
+              />
+            ),
+            steuerung,
+            zustand: "verbindet",
+            teilnehmer: remoteIds.length + (localSessionId ? 1 : 0),
+          })}
+          {chatWidget}
+        </>
+      );
+    }
+
     const kacheln = (
       <div className="relative">
         <Kachel
           sessionId={gegenueber}
           rolle={isAdvisor ? "Interessent" : "OKUN Systems · Berater"}
           akzent="#00b8ff"
-          platzhalter={connecting ? "verbindet…" : "wartet auf Beitritt"}
+          platzhalter="wartet auf Beitritt"
           gross
         />
         <div className="absolute bottom-2.5 right-2.5 w-[38%] max-w-[150px] rounded-xl overflow-hidden shadow-[0_10px_30px_-10px_rgba(0,0,0,0.9)] ring-1 ring-[#0a1726]">
@@ -495,13 +581,13 @@ function CallSurface({
             rolle={isAdvisor ? "Sie" : "Ihr Unternehmen"}
             akzent="#22c55e"
             istSelbst
-            platzhalter={connecting ? "verbindet…" : "Kamera aus"}
+            platzhalter="Kamera aus"
             winzig
           />
         </div>
       </div>
     );
-    const zustand = connecting ? "verbindet" : gegenueber ? "verbunden" : "allein";
+    const zustand = gegenueber ? "verbunden" : "allein";
     const teilnehmer = remoteIds.length + (localSessionId ? 1 : 0);
     return (
       <>
@@ -516,9 +602,18 @@ function CallSurface({
     <div className="flex flex-col h-full min-h-0 bg-[#05090f]">
       <div className="flex-1 min-h-0 p-3">
         {failureMessage ? (
-          <CallProblem message={failureMessage} onRetry={retry} />
+          <CallProblem
+            message={failureMessage}
+            onRetry={retry}
+            onOhneKamera={ohneKamera ? undefined : onOhneKamera}
+          />
         ) : connecting ? (
-          <Connecting takingLong={takingLong} onRetry={retry} />
+          <Connecting
+            takingLong={takingLong}
+            onRetry={retry}
+            onOhneKamera={ohneKamera ? undefined : onOhneKamera}
+            hinweis={deviceHint}
+          />
         ) : stageMode === "people" ? (
           <PeopleStage localSessionId={localSessionId} remoteIds={remoteIds} />
         ) : (
@@ -640,23 +735,47 @@ function CallSurface({
 }
 
 /** Der Beitritt läuft — mit Ausweg, falls er zu lange dauert. */
-function Connecting({ takingLong, onRetry }: { takingLong: boolean; onRetry: () => void }) {
+function Connecting({
+  takingLong,
+  onRetry,
+  onOhneKamera,
+  hinweis,
+}: {
+  takingLong: boolean;
+  onRetry: () => void;
+  /** Fehlt, wenn ohnehin schon ohne Kamera versucht wird. */
+  onOhneKamera?: () => void;
+  /** Was der Browser zu Kamera oder Mikrofon gemeldet hat. */
+  hinweis?: string | null;
+}) {
   return (
-    <div className="h-full flex flex-col items-center justify-center gap-3 px-6 text-center">
+    <div className="h-full min-h-[220px] flex flex-col items-center justify-center gap-3 px-6 text-center">
       <Loader2 size={22} className="text-[#00b8ff] animate-spin" />
       <p className="text-[#8899b4] text-sm">Gespräch wird verbunden…</p>
+      {hinweis && <p className="text-[#fca5a5] text-xs max-w-sm">{hinweis}</p>}
       {takingLong && (
         <>
-          <p className="text-[#5b6b7f] text-xs max-w-sm">
-            Das dauert länger als gewöhnlich. Häufig liegt es an einer Firewall, einem VPN oder
-            einer verweigerten Kamera-Freigabe.
+          <p className="text-[#5b6b7f] text-xs max-w-sm leading-relaxed">
+            Das dauert länger als gewöhnlich. Meistens fragt der Browser gerade nach
+            der Freigabe für Kamera und Mikrofon — oben in der Adressleiste nachsehen.
+            Sonst liegt es an einer Firewall oder einem VPN.
           </p>
-          <button
-            onClick={onRetry}
-            className="px-4 py-2 rounded-lg border border-[#16283d] text-[#c9d4e4] text-xs font-semibold hover:text-[#eef2f7] hover:border-[#2a3a55] transition-colors"
-          >
-            Erneut verbinden
-          </button>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <button
+              onClick={onRetry}
+              className="px-4 py-2 rounded-lg border border-[#16283d] text-[#c9d4e4] text-xs font-semibold hover:text-[#eef2f7] hover:border-[#2a3a55] transition-colors"
+            >
+              Erneut verbinden
+            </button>
+            {onOhneKamera && (
+              <button
+                onClick={onOhneKamera}
+                className="px-4 py-2 rounded-lg bg-[#00b8ff] text-[#041018] text-xs font-bold hover:bg-[#33c7ff] transition-colors"
+              >
+                Ohne Kamera beitreten
+              </button>
+            )}
+          </div>
         </>
       )}
     </div>
@@ -664,18 +783,37 @@ function Connecting({ takingLong, onRetry }: { takingLong: boolean; onRetry: () 
 }
 
 /** Der Beitritt ist gescheitert — der Grund steht da, wo sonst das Bild wäre. */
-function CallProblem({ message, onRetry }: { message: string; onRetry: () => void }) {
+function CallProblem({
+  message,
+  onRetry,
+  onOhneKamera,
+}: {
+  message: string;
+  onRetry: () => void;
+  /** Fehlt, wenn ohnehin schon ohne Kamera versucht wird. */
+  onOhneKamera?: () => void;
+}) {
   return (
-    <div className="h-full flex flex-col items-center justify-center gap-3 px-6 text-center">
+    <div className="h-full min-h-[220px] flex flex-col items-center justify-center gap-3 px-6 text-center">
       <AlertTriangle size={22} className="text-[#fca5a5]" />
       <p className="text-[#eef2f7] text-sm font-semibold">Das Gespräch konnte nicht verbunden werden</p>
-      <p className="text-[#8899b4] text-xs max-w-sm">{message}</p>
-      <button
-        onClick={onRetry}
-        className="px-4 py-2 rounded-lg bg-[#00b8ff] text-[#041018] text-xs font-bold hover:bg-[#0099d6] transition-colors"
-      >
-        Erneut verbinden
-      </button>
+      <p className="text-[#8899b4] text-xs max-w-sm leading-relaxed">{message}</p>
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        <button
+          onClick={onRetry}
+          className="px-4 py-2 rounded-lg border border-[#16283d] text-[#c9d4e4] text-xs font-semibold hover:text-[#eef2f7] hover:border-[#2a3a55] transition-colors"
+        >
+          Erneut verbinden
+        </button>
+        {onOhneKamera && (
+          <button
+            onClick={onOhneKamera}
+            className="px-4 py-2 rounded-lg bg-[#00b8ff] text-[#041018] text-xs font-bold hover:bg-[#33c7ff] transition-colors"
+          >
+            Ohne Kamera beitreten
+          </button>
+        )}
+      </div>
     </div>
   );
 }
