@@ -158,12 +158,33 @@ export type OkunCallProps = {
  * Knopf daneben.
  */
 export function OkunCall(props: OkunCallProps) {
+  /*
+    Kein Ticket heißt: kein `token`. Nicht `token: undefined`.
+
+    Das war der Fehler, an dem jeder Gast hängen blieb. daily-js prüft die
+    übergebenen Eigenschaften und lehnt `token: undefined` ab —
+    „property 'token': token should be a string". Das Gesprächsobjekt kam
+    dann gar nicht erst zustande, `join()` wurde nie aufgerufen, und die
+    Oberfläche stand für immer auf „Gespräch wird verbunden…" im Zustand
+    „new". Der Fehler stand nur in der Entwicklerkonsole.
+
+    Betroffen war genau, wer kein Ticket hat: Gast, Kunde, Interessent im
+    Closing. Die Beraterseite bekommt eines fürs Mithören — deshalb lief sie
+    weiter, und deshalb sah es so lange nach einem Problem beim anderen aus.
+
+    Der Schlüssel darf also nicht mit leerem Wert dabei sein; er muss fehlen.
+  */
+  const zugang =
+    typeof props.meetingToken === "string" && props.meetingToken.trim()
+      ? { token: props.meetingToken }
+      : {};
+  const name =
+    typeof props.userName === "string" && props.userName.trim()
+      ? { userName: props.userName }
+      : {};
+
   return (
-    <DailyProvider
-      url={props.roomUrl}
-      userName={props.userName}
-      token={props.meetingToken}
-    >
+    <DailyProvider url={props.roomUrl} {...name} {...zugang}>
       <CallSurface {...props} />
       {/* Ohne diese Komponente bleibt das Gespräch stumm. */}
       <DailyAudio />
