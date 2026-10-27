@@ -140,37 +140,30 @@ export type OkunCallProps = {
   startOhneKamera?: boolean;
 };
 
+/**
+ * Ein Gespräch, ein Gesprächsobjekt.
+ *
+ * Früher hängte ein erneuter Versuch ein frisches Objekt ein: Das alte wurde
+ * abgeräumt und der Anbieter mit neuem Schlüssel neu gestellt. Das ging
+ * schief, und zwar sichtbar — auf dem Telefon eines Interessenten stand
+ * „undefined is not an object (evaluating 'this.properties.url')". Genau das
+ * meldet daily-js, wenn auf ein abgeräumtes Gesprächsobjekt zugegriffen wird:
+ * Daily duldet immer nur eines, und beim Wechsel kann das sterbende noch
+ * einmal herausgegeben werden.
+ *
+ * Deshalb bleibt das Objekt jetzt stehen. Ein neuer Versuch ist `leave()` und
+ * danach `join()` auf demselben Objekt — der Weg, den Daily dafür vorsieht.
+ * Hilft auch das nicht, bleibt das Neuladen der Seite, und das steht als
+ * Knopf daneben.
+ */
 export function OkunCall(props: OkunCallProps) {
-  // Ein erneuter Versuch hängt ein frisches Gesprächsobjekt ein: nach einem
-  // Verbindungsfehler ist das bisherige bei Daily nicht mehr zu gebrauchen.
-  const [attempt, setAttempt] = useState(0);
-  /*
-    Der Beitritt ohne Kamera überlebt den Neuversuch.
-
-    Er ist der Ausweg aus dem häufigsten Grund, warum jemand nicht
-    hineinkommt: Die Kamera ist belegt, gesperrt oder der Browser hat nie
-    gefragt. Ohne Kamera kommt man trotzdem ins Gespräch — mit Ton, und das
-    ist das, worauf es ankommt. Deshalb steht der Schalter hier oben, wo der
-    Wechsel des Gesprächsobjekts ihn nicht mitnimmt.
-  */
-  const [ohneKamera, setzeOhneKamera] = useState(Boolean(props.startOhneKamera));
-
   return (
     <DailyProvider
-      key={attempt}
       url={props.roomUrl}
       userName={props.userName}
       token={props.meetingToken}
     >
-      <CallSurface
-        {...props}
-        ohneKamera={ohneKamera}
-        onOhneKamera={() => {
-          setzeOhneKamera(true);
-          setAttempt((n) => n + 1);
-        }}
-        onRetry={() => setAttempt((n) => n + 1)}
-      />
+      <CallSurface {...props} />
       {/* Ohne diese Komponente bleibt das Gespräch stumm. */}
       <DailyAudio />
     </DailyProvider>
@@ -202,6 +195,22 @@ function describeFailure(raw: string | null): string {
   if (text.includes("nbf") || text.includes("not before")) {
     return "Der Gesprächsraum ist noch nicht freigegeben. Bitte kurz warten und erneut versuchen.";
   }
+  /*
+    Ein kaputtes Gesprächsobjekt ist kein Satz, den jemand lesen sollte.
+
+    „undefined is not an object (evaluating 'this.properties.url')" stand so
+    auf dem Telefon eines Interessenten. Dahinter steckt immer dasselbe: Es
+    wurde auf ein abgeräumtes Gesprächsobjekt zugegriffen. Dagegen hilft nur
+    ein sauberer Anfang, und den gibt es beim Neuladen der Seite.
+  */
+  if (
+    text.includes("properties.url") ||
+    text.includes("use after destroy") ||
+    text.includes("duplicate dailyiframe") ||
+    text.includes("undefined is not an object")
+  ) {
+    return "Die Verbindung ist abgerissen und ließ sich nicht wieder aufbauen. Ein Neuladen der Seite setzt alles zurück.";
+  }
   if (
     text.includes("network") ||
     text.includes("connection") ||
@@ -227,14 +236,8 @@ function CallSurface({
   canNext,
   onStopPresentation,
   onPageCount,
-  onRetry,
-  ohneKamera,
-  onOhneKamera,
-}: OkunCallProps & {
-  onRetry: () => void;
-  ohneKamera: boolean;
-  onOhneKamera: () => void;
-}) {
+  startOhneKamera,
+}: OkunCallProps) {
   const daily = useDaily();
   const meetingState = useMeetingState();
   const localSessionId = useLocalSessionId();
@@ -251,6 +254,12 @@ function CallSurface({
   const [chatOffen, setChatOffen] = useState(false);
   const [ungelesen, setUngelesen] = useState(0);
   const [takingLong, setTakingLong] = useState(false);
+  /*
+    Ohne Kamera beitreten — der Ausweg aus dem häufigsten Grund, warum jemand
+    nicht hineinkommt: Die Kamera ist belegt, gesperrt, oder der Browser hat
+    nie danach gefragt. Mit Ton ist es immer noch ein Gespräch.
+  */
+  const [ohneKamera, setzeOhneKamera] = useState(Boolean(startOhneKamera));
   const [deviceHint, setDeviceHint] = useState<string | null>(null);
   const joinStarted = useRef(false);
 
@@ -263,6 +272,19 @@ function CallSurface({
   // „left-meeting“, und dann unterblieb der Beitritt früher stillschweigend.
   useEffect(() => {
     if (!daily || joinStarted.current) return;
+    /*
+      Auf ein abgeräumtes Gesprächsobjekt wird nicht beigetreten.
+
+      daily-react gibt in seltenen Fällen ein bereits abgeräumtes heraus —
+      im Code der Bibliothek steht dazu ein offenes „TODO". Der Beitritt
+      stirbt dann mit „undefined is not an object"; so stand es auf dem
+      Telefon eines Interessenten. Hier wird daraus eine Meldung mit einem
+      Knopf, der tatsächlich hilft.
+    */
+    if (daily.isDestroyed?.()) {
+      setFailure(describeFailure("use after destroy"));
+      return;
+    }
     const state = daily.meetingState();
     if (state === "joined-meeting" || state === "joining-meeting") return;
     joinStarted.current = true;
@@ -322,23 +344,44 @@ function CallSurface({
     return () => clearTimeout(timer);
   }, [connecting]);
 
-  const retry = useCallback(() => {
-    setFailure(null);
-    setTakingLong(false);
-    joinStarted.current = false;
-    // Daily duldet kein zweites Gesprächsobjekt neben dem alten — das
-    // gescheiterte wird deshalb abgeräumt, bevor ein neues entsteht.
-    const current = daily;
-    void (async () => {
-      try {
-        await current?.destroy();
-      } catch {
-        // Ein bereits abgeräumtes Objekt ist genau das, was wir wollten.
-      } finally {
-        onRetry();
+  /**
+   * Noch einmal beitreten — auf demselben Gesprächsobjekt.
+   *
+   * `leave()` und danach `join()`: der Weg, den Daily für einen zweiten
+   * Anlauf vorsieht. Das Objekt abzuräumen und ein neues zu stellen war der
+   * Grund für „undefined is not an object"; es bleibt deshalb stehen.
+   */
+  const verbindeNeu = useCallback(
+    (ohneBild: boolean) => {
+      const current = daily;
+      setFailure(null);
+      setTakingLong(false);
+      if (ohneBild) setzeOhneKamera(true);
+      if (!current) return;
+
+      if (current.isDestroyed?.()) {
+        setFailure(describeFailure("use after destroy"));
+        return;
       }
-    })();
-  }, [daily, onRetry]);
+
+      void (async () => {
+        try {
+          const zustand = current.meetingState();
+          if (zustand !== "new" && zustand !== "left-meeting") {
+            await current.leave();
+          }
+          joinStarted.current = true;
+          await current.join(ohneBild || ohneKamera ? { startVideoOff: true } : {});
+        } catch (err: unknown) {
+          setFailure(describeFailure(err instanceof Error ? err.message : errorText(err)));
+        }
+      })();
+    },
+    [daily, ohneKamera]
+  );
+
+  const retry = useCallback(() => verbindeNeu(false), [verbindeNeu]);
+  const onOhneKamera = useCallback(() => verbindeNeu(true), [verbindeNeu]);
 
   // Eingehende Nachrichten: Zeiger anzeigen bzw. Stand neu holen.
   useEffect(() => {
@@ -775,6 +818,12 @@ function Connecting({
                 Ohne Kamera beitreten
               </button>
             )}
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 rounded-lg border border-[#16283d] text-[#c9d4e4] text-xs font-semibold hover:text-[#eef2f7] hover:border-[#2a3a55] transition-colors"
+            >
+              Seite neu laden
+            </button>
           </div>
         </>
       )}
@@ -808,11 +857,24 @@ function CallProblem({
         {onOhneKamera && (
           <button
             onClick={onOhneKamera}
-            className="px-4 py-2 rounded-lg bg-[#00b8ff] text-[#041018] text-xs font-bold hover:bg-[#33c7ff] transition-colors"
+            className="px-4 py-2 rounded-lg border border-[#16283d] text-[#c9d4e4] text-xs font-semibold hover:text-[#eef2f7] hover:border-[#2a3a55] transition-colors"
           >
             Ohne Kamera beitreten
           </button>
         )}
+        {/*
+          Der Weg, der immer funktioniert.
+
+          Beim Neuladen entsteht alles neu — das Gesprächsobjekt, der Raum,
+          die Freigabe. Wer zweimal vor einer verschlossenen Tür stand, soll
+          nicht raten müssen, was als Nächstes hilft.
+        */}
+        <button
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 rounded-lg bg-[#00b8ff] text-[#041018] text-xs font-bold hover:bg-[#33c7ff] transition-colors"
+        >
+          Seite neu laden
+        </button>
       </div>
     </div>
   );

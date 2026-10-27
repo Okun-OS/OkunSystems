@@ -109,7 +109,17 @@ export function GastRaum({
         role="client"
         startOhneKamera={ohneKamera}
         slide={null}
-        onLeave={() => setzeDrin(false)}
+        /*
+          Verlassen heißt: Seite neu laden.
+
+          Beim Verlassen räumt daily-react das Gesprächsobjekt ab — und gibt
+          es beim nächsten Beitritt in genau diesem Zustand wieder heraus
+          (im Code der Bibliothek steht dazu ein offenes „TODO"). Der zweite
+          Beitritt stirbt dann mit „undefined is not an object". Ein Neuladen
+          ist der einzige Weg, der das zuverlässig vermeidet, und kostet hier
+          nichts: Danach steht wieder die Eingangsseite mit dem Namensfeld.
+        */
+        onLeave={() => window.location.reload()}
         stageLayout={({ kacheln, steuerung }) => (
           <div className="h-full flex flex-col">
             <div className="px-5 py-3 border-b border-[#0f1d2f] flex items-center justify-between gap-4">
