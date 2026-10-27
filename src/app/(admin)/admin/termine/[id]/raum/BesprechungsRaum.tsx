@@ -156,11 +156,24 @@ function Beistand({
   );
   useDailyEvent(
     "transcription-error",
-    useCallback(() => {
+    useCallback((ereignis: { errorMsg?: string }) => {
       setzeHoert(false);
+      /*
+        Die häufigste Ursache zuerst, und zwar als Anleitung.
+
+        Daily gibt die Transkription nur frei, wenn im Konto eine
+        Zahlungsmethode hinterlegt ist — kein Abonnement, keine Laufzeit,
+        nur eine Karte. Vorher kommt hier immer ein Fehler, und die
+        Meldung von Daily sagt das nicht. Wer den Grund nicht kennt, sucht
+        ihn in den falschen Einstellungen.
+      */
+      const vonDaily = ereignis?.errorMsg?.trim();
       setzeFehler(
-        "Daily lässt das Mithören nicht zu. Wahrscheinlich ist die Transkription " +
-          "für die Domain nicht freigeschaltet."
+        "Daily lässt das Mithören nicht zu. In aller Regel fehlt im Daily-Konto " +
+          "eine Zahlungsmethode — die Transkription gibt es nur mit hinterlegter " +
+          "Karte (dashboard.daily.co/billing). Kein Abonnement, Abrechnung nach " +
+          "Verbrauch." +
+          (vonDaily ? ` Daily meldet: ${vonDaily}` : "")
       );
     }, [])
   );
@@ -258,8 +271,9 @@ function Beistand({
           </button>
         ) : (
           <p className="text-[#5b6b7f] text-[11px] leading-relaxed">
-            Mithören steht nicht zur Verfügung. Die Stichpunkte unten tragen das
-            Protokoll trotzdem.
+            Mithören steht nicht zur Verfügung — es kam kein Zutrittsticket zustande
+            (<span className="font-mono">DAILY_API_KEY</span> prüfen). Die
+            Stichpunkte unten tragen das Protokoll trotzdem.
           </p>
         )}
         {hoert && (
