@@ -13,8 +13,6 @@ import {
   Circle,
 } from "lucide-react";
 import { WelcomeVideoPlayer, WelcomeVideoPlaceholder } from "./WelcomeVideoPlayer";
-import { OnboardingCheckliste } from "./OnboardingCheckliste";
-import { ladeCheckliste } from "@/lib/onboarding/laden";
 
 const PROJECT_PHASES = [
   { value: "onboarding",       label: "Onboarding" },
@@ -41,7 +39,7 @@ export default async function DashboardPage() {
   if (!company) redirect("/dashboard");
 
   // Load all data in parallel
-  const [assignments, documents, nextAppointment, analysisSession, welcomeVideo, checkliste] =
+  const [assignments, documents, nextAppointment, analysisSession, welcomeVideo] =
     await Promise.all([
       db.customerLearningAssignment.findMany({
         where: { companyId: company.id, status: "active" },
@@ -77,7 +75,6 @@ export default async function DashboardPage() {
         select: { id: true, status: true, completedAt: true },
       }),
       db.systemSetting.findUnique({ where: { key: "welcome_video_url" } }),
-      ladeCheckliste(company.id, user.id),
     ]);
 
   // Chapter progress
@@ -116,13 +113,6 @@ export default async function DashboardPage() {
         </h1>
         <p className="text-[#888] text-sm mt-1">{company.name}</p>
       </div>
-
-      {/*
-        Die ersten Schritte stehen vor allem anderen — und nur, solange
-        etwas offen ist. Die Liste nimmt sich selbst weg, wenn sie fertig
-        ist (siehe `OnboardingCheckliste`).
-      */}
-      <OnboardingCheckliste schritte={checkliste} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         {/* Welcome Video */}

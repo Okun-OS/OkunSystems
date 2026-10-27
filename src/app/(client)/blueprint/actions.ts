@@ -97,24 +97,55 @@ export async function submitBlueprintAnswer(
   }
 
   // Load the question and selected options to compute score
-  const [question, selectedOptions] = await Promise.all([
+  const [question, gefundeneOptionen] = await Promise.all([
     db.questionTemplate.findUnique({
       where: { id: questionId },
       select: { questionType: true, activationConds: true },
     }),
+    /*
+      Nur Antworten, die zu dieser Frage gehoeren.
+
+      Ohne `questionId` wurde hier alles gewertet, was als ID ankam — auch
+      Antworten einer anderen Frage. Das ist nicht nur eine Anzeigefrage: Die
+      Punkte und Signale dieser fremden Antworten flossen in die Auswertung
+      dieser Frage ein. Der Browser hat sie geschickt, weil er die Auswahl der
+      vorigen Frage behielt; verlassen darf sich der Server darauf ohnehin nie.
+    */
     db.answerOption.findMany({
-      where: { id: { in: selectedOptionIds } },
+      where: { id: { in: selectedOptionIds }, questionId },
       select: { id: true, points: true, signalCategory: true, signalValue: true },
     }),
   ]);
 
+  const conds: Array<{ type: string; mode?: string; cap?: number; max?: number }> = (() => {
+    try { return JSON.parse(question?.activationConds || "[]"); }
+    catch { return []; }
+  })();
+
+  /*
+    Und hoechstens so viele, wie die Frage zulaesst.
+
+    Zweite Sicherung hinter dem Formular: „Bitte bis zu 3 auswaehlen" ist
+    eine Regel der Frage, nicht eine Hoeflichkeit der Oberflaeche.
+  */
+  const maxAuswahl = conds.find((c) => c.type === "MAX_SELECTIONS")?.max ?? null;
+  const inReihenfolge = selectedOptionIds.filter((id) =>
+    gefundeneOptionen.some((o) => o.id === id)
+  );
+  const gueltigeIds = maxAuswahl ? inReihenfolge.slice(0, maxAuswahl) : inReihenfolge;
+  if (gueltigeIds.length !== selectedOptionIds.length) {
+    console.warn(
+      `[blueprint] Antwort gekuerzt: ${selectedOptionIds.length} geschickt, ` +
+        `${gueltigeIds.length} gehoeren zu Frage ${questionId}.`
+    );
+  }
+  const selectedOptions = gueltigeIds
+    .map((id) => gefundeneOptionen.find((o) => o.id === id)!)
+    .filter(Boolean);
+
   // Compute score (type B only, not gating)
   let computedScore: number | null = null;
   if (question?.questionType === "B") {
-    const conds: Array<{ type: string; mode?: string; cap?: number }> = (() => {
-      try { return JSON.parse(question.activationConds || "[]"); }
-      catch { return []; }
-    })();
     const mode = conds.find((c) => c.type === "SCORE_MODE")?.mode ?? "SINGLE";
     const cap = conds.find((c) => c.type === "SCORE_CAP")?.cap ?? null;
 
@@ -143,14 +174,14 @@ export async function submitBlueprintAnswer(
     create: {
       sessionId,
       questionId,
-      selectedOptionIds: JSON.stringify(selectedOptionIds),
+      selectedOptionIds: JSON.stringify(gueltigeIds),
       freeText: freeText ?? null,
       computedScore,
       computedSignals: JSON.stringify(signals),
       status: "ANSWERED",
     },
     update: {
-      selectedOptionIds: JSON.stringify(selectedOptionIds),
+      selectedOptionIds: JSON.stringify(gueltigeIds),
       freeText: freeText ?? null,
       computedScore,
       computedSignals: JSON.stringify(signals),

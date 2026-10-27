@@ -98,6 +98,33 @@ export default function BlueprintQuestionnaire({
     return () => clearTimeout(timer);
   }, [question.id, showHelp, selected.size, freeText]);
 
+  /*
+    Die Auswahl gehoert zu genau einer Frage.
+
+    Der Fehler, den das hier behebt: Nach dem Antworten laedt `router.refresh()`
+    die naechste Frage in dieselbe Komponente — React behaelt den Zustand, weil
+    sich Typ und Position im Baum nicht aendern. Die angeklickten Antworten der
+    vorigen Frage blieben also stehen. Sichtbar wurde es als „4 / 3 ausgewaehlt ·
+    Maximum erreicht", obwohl kein einziges Kaestchen angehakt war: Die vier
+    Haken gehoerten zur Frage davor, und weil ihre IDs zu dieser Frage nicht
+    passen, war nichts zu sehen — aber alles gesperrt.
+
+    Deshalb wird der Zustand beim Fragewechsel zurueckgesetzt, und zwar
+    waehrend des Renderns statt in einem Effekt: Ein Effekt laeuft erst nach
+    dem Zeichnen, und fuer einen Wimpernschlag waere „Weiter" mit der alten
+    Auswahl anklickbar.
+  */
+  const [zustandFuerFrage, setzeZustandFuerFrage] = useState(question.id);
+  if (zustandFuerFrage !== question.id) {
+    setzeZustandFuerFrage(question.id);
+    setSelected(new Set());
+    setFreeText("");
+    setConditionalTexts({});
+    setShowHelp(false);
+    setHelpMessages([]);
+    setHelpInput("");
+  }
+
   const isFreeTextOnly = question.options.length === 0;
 
   async function fetchHelpExplanation(
