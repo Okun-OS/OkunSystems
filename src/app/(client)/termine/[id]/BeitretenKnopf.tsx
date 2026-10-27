@@ -86,7 +86,15 @@ export function BeitretenKnopf({
         role="client"
         startOhneKamera={ohneKamera}
         slide={null}
-        onLeave={() => setzeDrin(false)}
+        /*
+          Verlassen heißt: Seite neu laden.
+
+          Sonst gibt daily-react beim zweiten Beitritt das abgeräumte
+          Gesprächsobjekt heraus, und der Beitritt stirbt mit
+          „undefined is not an object". Nach dem Neuladen steht wieder der
+          Termin mit dem Knopf da.
+        */
+        onLeave={() => window.location.reload()}
         stageLayout={({ kacheln, steuerung }) => (
           <div className="h-full flex flex-col">
             <div className="px-5 py-3 border-b border-[#0f1d2f]">
