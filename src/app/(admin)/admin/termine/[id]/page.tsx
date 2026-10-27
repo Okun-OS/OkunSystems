@@ -1,6 +1,8 @@
 import { auth } from "@/auth";
 import { BesprechungPanel } from "./BesprechungPanel";
 import { fuehrtZurBesprechung, terminartLabel } from "@/lib/termine/arten";
+import { gegenueber } from "@/lib/termine/gegenueber";
+import { formatiereBerlin } from "@/lib/zeit";
 import { db } from "@/lib/db";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
@@ -38,7 +40,7 @@ export default async function TerminDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const session = await auth();
-  if (!session?.user || (session.user as any).role !== "ADMIN") redirect("/login");
+  if (!session?.user || (session.user as { role?: string }).role !== "ADMIN") redirect("/login");
 
   const { id } = await params;
 
@@ -66,8 +68,25 @@ export default async function TerminDetailPage({
   if (!appointment) notFound();
 
   const sc = statusLabel(appointment.status);
+  /*
+    Ein Termin hat nicht zwingend einen Kunden.
+
+    Erstkontakt, Verband, Partner — dafür steht ein Name am Termin statt
+    einer Verknüpfung. Alles Kundengebundene auf dieser Seite hängt deshalb
+    an `company` und bleibt sonst aus: Ein Blueprint, den es nicht gibt, ist
+    kein leerer Kasten, sondern gar keiner.
+  */
   const company = appointment.company;
-  const blueprintSession = company.analysisSessions[0] ?? null;
+  const mit = gegenueber(appointment);
+  /*
+    Bei einer Besprechung entsteht der Raum beim Betreten.
+
+    Deshalb hier kein zweiter Weg daneben: „Videoraum erstellen" und der
+    leere Kasten „Kein Videoraum aktiv" sind für diese Arten nur zwei
+    Knöpfe, die dasselbe halb können.
+  */
+  const inDieBesprechung = fuehrtZurBesprechung(appointment.type);
+  const blueprintSession = company?.analysisSessions[0] ?? null;
 
   // Load Blueprint 2.0 report data if session exists
   let reportData: Awaited<ReturnType<typeof assembleBlueprintReport>> | null = null;
@@ -79,38 +98,42 @@ export default async function TerminDetailPage({
     }
   }
 
-  // Load active learning assignments
-  const learningAssignments = await db.customerLearningAssignment.findMany({
-    where: { companyId: company.id, status: "active" },
-    include: {
-      chapter: {
-        select: {
-          title: true,
-          lessons: {
+  // Load active learning assignments — nur bei einem Kunden.
+  const learningAssignments = company
+    ? await db.customerLearningAssignment.findMany({
+        where: { companyId: company.id, status: "active" },
+        include: {
+          chapter: {
             select: {
-              id: true,
-              progress: {
-                where: { user: { companyId: company.id } },
-                select: { status: true },
-                take: 1,
+              title: true,
+              lessons: {
+                select: {
+                  id: true,
+                  progress: {
+                    where: { user: { companyId: company.id } },
+                    select: { status: true },
+                    take: 1,
+                  },
+                },
               },
             },
           },
         },
-      },
-    },
-    orderBy: { activatedAt: "desc" },
-  });
+        orderBy: { activatedAt: "desc" },
+      })
+    : [];
 
   // Load PUBLISHED chapters not yet active for this company
   const assignedChapterIds = new Set(
     learningAssignments.map((a) => a.chapterId)
   );
-  const allPublishedChapters = await db.learningChapter.findMany({
-    where: { status: "PUBLISHED", isActive: true },
-    select: { id: true, title: true, estimatedMinutes: true, order: true },
-    orderBy: [{ order: "asc" }, { title: "asc" }],
-  });
+  const allPublishedChapters = company
+    ? await db.learningChapter.findMany({
+        where: { status: "PUBLISHED", isActive: true },
+        select: { id: true, title: true, estimatedMinutes: true, order: true },
+        orderBy: [{ order: "asc" }, { title: "asc" }],
+      })
+    : [];
   const availableChapters = allPublishedChapters.filter(
     (c) => !assignedChapterIds.has(c.id)
   );
@@ -138,23 +161,33 @@ export default async function TerminDetailPage({
               </span>
             </div>
             <h1 className="text-xl font-bold text-[#f0f0f0] mt-1">{appointment.title}</h1>
-            <Link
-              href={`/admin/kunden/${company.id}`}
-              className="text-[#00b8ff] text-sm hover:underline mt-0.5 inline-block"
-            >
-              {company.name}
-            </Link>
+            {mit.companyId ? (
+              <Link
+                href={`/admin/kunden/${mit.companyId}`}
+                className="text-[#00b8ff] text-sm hover:underline mt-0.5 inline-block"
+              >
+                {mit.name}
+              </Link>
+            ) : (
+              <p className="text-[#c9d4e4] text-sm mt-0.5">
+                {mit.name}
+                <span className="ml-2 text-[10px] px-1.5 py-px rounded-full border border-[#1a2840] text-[#6b7f99]">
+                  kein Kunde
+                </span>
+              </p>
+            )}
           </div>
           <div className="text-right">
+            {/* Berliner Zeit — auf dem Server wäre es sonst UTC. */}
             <p className="text-[#f0f0f0] font-semibold">
-              {new Date(appointment.startTime).toLocaleDateString("de-DE", {
+              {formatiereBerlin(appointment.startTime, {
                 weekday: "long", day: "2-digit", month: "long", year: "numeric",
               })}
             </p>
             <p className="text-[#888] text-sm mt-0.5">
-              {new Date(appointment.startTime).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}
+              {formatiereBerlin(appointment.startTime, { hour: "2-digit", minute: "2-digit" })}
               {" – "}
-              {new Date(appointment.endTime).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr
+              {formatiereBerlin(appointment.endTime, { hour: "2-digit", minute: "2-digit" })} Uhr
             </p>
           </div>
         </div>
@@ -164,6 +197,14 @@ export default async function TerminDetailPage({
             <div className="flex items-center gap-2 text-[#888]">
               <User size={13} className="text-[#555]" />
               <span>{appointment.bookedByName}</span>
+            </div>
+          )}
+          {appointment.gastEmail && (
+            <div className="flex items-center gap-2 text-[#888]">
+              <Mail size={13} className="text-[#555]" />
+              <a href={`mailto:${appointment.gastEmail}`} className="hover:text-[#00b8ff] transition-colors">
+                {appointment.gastEmail}
+              </a>
             </div>
           )}
           {appointment.bookedByEmail && (
@@ -193,7 +234,7 @@ export default async function TerminDetailPage({
         {/* Left column — workspace tools (scrollable) */}
         <div className="col-span-12 lg:col-span-5 space-y-5">
           {/* Video room control — only show create button when no URL yet */}
-          {!appointment.meetingUrl && (
+          {!appointment.meetingUrl && !inDieBesprechung && (
             <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
               <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4 flex items-center gap-2">
                 <Video size={15} className="text-blue-400" />
@@ -207,8 +248,8 @@ export default async function TerminDetailPage({
             </div>
           )}
 
-          {/* Blueprint context */}
-          {reportData ? (
+          {/* Blueprint context — nur bei einem Kunden */}
+          {company && (reportData ? (
             <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
               <h2 className="text-[#f0f0f0] font-semibold text-sm mb-4 flex items-center gap-2">
                 <TrendingUp size={15} className="text-[#00b8ff]" />
@@ -296,14 +337,16 @@ export default async function TerminDetailPage({
                 Blueprint-Portal öffnen →
               </Link>
             </div>
-          )}
+          ))}
 
-          {/* Lernfreigabe */}
-          <AppointmentLearningRelease
-            companyId={company.id}
-            availableChapters={availableChapters}
-            activeAssignments={learningAssignments}
-          />
+          {/* Lernfreigabe — nur bei einem Kunden */}
+          {company && (
+            <AppointmentLearningRelease
+              companyId={company.id}
+              availableChapters={availableChapters}
+              activeAssignments={learningAssignments}
+            />
+          )}
 
           {/* Notes */}
           {appointment.notes && (
@@ -313,7 +356,8 @@ export default async function TerminDetailPage({
             </div>
           )}
 
-          {/* Quick links */}
+          {/* Quick links — nur bei einem Kunden */}
+          {company && (
           <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-5">
             <h2 className="text-[#888] text-xs font-semibold uppercase tracking-wide mb-3">Kundenlinks</h2>
             <div className="space-y-1.5">
@@ -331,6 +375,7 @@ export default async function TerminDetailPage({
               ))}
             </div>
           </div>
+          )}
         </div>
 
         {/*
@@ -340,7 +385,7 @@ export default async function TerminDetailPage({
           Strategiegespräch wird nebenan vorbereitet, ein Closing führt ins
           Closing-Portal.
         */}
-        {fuehrtZurBesprechung(appointment.type) && (
+        {inDieBesprechung && (
           <div className="col-span-12">
             <BesprechungPanel
               terminId={id}
@@ -361,7 +406,7 @@ export default async function TerminDetailPage({
             <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-4">
               <CreateRoomButton appointmentId={id} initialUrl={appointment.meetingUrl} />
             </div>
-          ) : (
+          ) : inDieBesprechung ? null : (
             <div className="bg-[#060a10] border border-dashed border-[#1a2840] rounded-xl p-8 flex flex-col items-center justify-center text-center" style={{ aspectRatio: "16/9" }}>
               <Video size={32} className="text-[#333] mb-3" />
               <p className="text-[#555] text-sm">Kein Videoraum aktiv</p>

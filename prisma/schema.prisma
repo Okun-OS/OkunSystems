@@ -240,8 +240,18 @@ model Appointment {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  companyId         String
-  company           Company          @relation(fields: [companyId], references: [id])
+  /// Mit wem — wenn es ein Kunde ist.
+  ///
+  /// Optional, weil nicht jedes Gespraech mit einem Kunden ist: Erstkontakt,
+  /// Partner, Verband, Ausschreibung. Fuer so einen Termin steht unten ein
+  /// Name statt einer Verknuepfung, und alles Kundengebundene — Blueprint,
+  /// Lernfreigabe, Kundenportal — bleibt aus.
+  companyId         String?
+  company           Company?         @relation(fields: [companyId], references: [id])
+
+  /// Das Gegenueber, wenn es kein Kunde ist: Name und, wenn bekannt, E-Mail.
+  gastName  String?
+  gastEmail String?
   attendees         User[]
   analysisSessionId String?
   analysisSession   AnalysisSession? @relation(fields: [analysisSessionId], references: [id])
