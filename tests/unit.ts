@@ -85,6 +85,15 @@ import {
 } from "../src/lib/blueprint/pillar3-catalog";
 import { summiereKosten } from "../src/lib/blueprint/pillar3-engine";
 import { anweisung, lage, type Kontext } from "../src/lib/vorbereitung/kontext";
+import {
+  fuehrtZurBesprechung,
+  hatVideoraum,
+  terminart,
+  terminartLabel,
+  waehlbareArten,
+  STANDARD_ART,
+} from "../src/lib/termine/arten";
+import { leseHinweise } from "../src/lib/termine/beistand";
 import { WERKZEUGE } from "../src/lib/vorbereitung/werkzeuge";
 import {
   legeSchabloneAn,
@@ -1368,6 +1377,69 @@ test("der Abschluss fragt nach dem Probedurchlauf", () => {
   assert.ok(w);
   const eigenschaften = w!.input_schema.properties as Record<string, unknown>;
   assert.ok("probeGelaufen" in eigenschaften);
+});
+
+console.log("\nBesprechungen");
+
+test("die Standardart ist waehlbar und hat einen Videoraum", () => {
+  assert.ok(terminart(STANDARD_ART));
+  assert.ok(waehlbareArten().some((a) => a.key === STANDARD_ART));
+  assert.equal(hatVideoraum(STANDARD_ART), true);
+});
+
+test("das Closing laesst sich hier nicht anlegen", () => {
+  // Es entsteht im Vertriebsbereich, nicht im Terminformular.
+  assert.equal(waehlbareArten().some((a) => a.key === "CLOSING_CALL"), false);
+});
+
+test("Arten mit eigenem Arbeitsplatz landen nicht in der Besprechung", () => {
+  assert.equal(fuehrtZurBesprechung("STRATEGY"), false);
+  assert.equal(fuehrtZurBesprechung("CLOSING_CALL"), false);
+  assert.equal(fuehrtZurBesprechung("MEETING"), true);
+  assert.equal(fuehrtZurBesprechung("SUPPORT"), true);
+});
+
+test("ein Termin vor Ort bekommt keinen Videoraum", () => {
+  assert.equal(hatVideoraum("ONSITE"), false);
+  assert.equal(fuehrtZurBesprechung("ONSITE"), false);
+});
+
+test("jede Art hat einen eigenen Raum-Namensraum oder gar keinen", () => {
+  for (const a of waehlbareArten()) {
+    if (a.raumPraefix !== null) assert.ok(a.raumPraefix.length > 0, a.key);
+  }
+});
+
+test("eine unbekannte Art zeigt ihren rohen Wert statt einer falschen Beschriftung", () => {
+  assert.equal(terminartLabel("WORKSHOP_2019"), "WORKSHOP_2019");
+  assert.equal(terminartLabel(null), "Termin");
+  assert.equal(hatVideoraum("WORKSHOP_2019"), false);
+});
+
+test("Hinweise: das leere Array ist der Normalfall", () => {
+  assert.deepEqual(leseHinweise("[]"), []);
+  assert.deepEqual(leseHinweise(""), []);
+  assert.deepEqual(leseHinweise("   "), []);
+});
+
+test("Hinweise werden auch aus einem Codeblock gelesen", () => {
+  const h = leseHinweise('```json\n[{"art":"frage","text":"Nach dem Budget fragen."}]\n```');
+  assert.equal(h.length, 1);
+  assert.equal(h[0].art, "frage");
+});
+
+test("hoechstens zwei Hinweise, auch wenn das Modell mehr schickt", () => {
+  const h = leseHinweise(
+    '[{"art":"frage","text":"a"},{"art":"notiz","text":"b"},{"art":"achtung","text":"c"}]'
+  );
+  assert.equal(h.length, 2);
+});
+
+test("kaputte Antworten stoeren das Gespraech nicht", () => {
+  assert.deepEqual(leseHinweise("{nicht json"), []);
+  assert.deepEqual(leseHinweise('"ein String"'), []);
+  // Leerer Text ist kein Hinweis.
+  assert.deepEqual(leseHinweise('[{"art":"frage","text":"   "}]'), []);
 });
 
 console.log(`\n${passed} Tests bestanden.\n`);

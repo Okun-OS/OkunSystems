@@ -85,6 +85,14 @@ type CallMessage =
 
 export type OkunCallProps = {
   roomUrl: string;
+  /**
+   * Zutrittsticket mit erweiterten Rechten.
+   *
+   * Die Räume sind offen; ein Ticket braucht nur, wer mehr darf als
+   * teilnehmen — etwa die Transkription starten. Ohne Ticket tritt man
+   * genau wie bisher bei.
+   */
+  meetingToken?: string;
   userName: string;
   role: "advisor" | "client";
   slide: CallSlide | null;
@@ -131,7 +139,12 @@ export function OkunCall(props: OkunCallProps) {
   const [attempt, setAttempt] = useState(0);
 
   return (
-    <DailyProvider key={attempt} url={props.roomUrl} userName={props.userName}>
+    <DailyProvider
+      key={attempt}
+      url={props.roomUrl}
+      userName={props.userName}
+      token={props.meetingToken}
+    >
       <CallSurface {...props} onRetry={() => setAttempt((n) => n + 1)} />
       {/* Ohne diese Komponente bleibt das Gespräch stumm. */}
       <DailyAudio />

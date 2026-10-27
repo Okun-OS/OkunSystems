@@ -68,6 +68,7 @@ model User {
   strategieFreigaben    StrategieSitzung[]           @relation("StrategieFreigabe")
   careLeistungen        CareLeistung[]               @relation("CareLeistungErfasstVon")
   onboardingHaken       OnboardingHaken[]            @relation("OnboardingHakenVon")
+  besprechungsFreigaben Besprechung[]                @relation("BesprechungFreigabe")
 }
 
 model Company {
@@ -246,6 +247,7 @@ model Appointment {
   analysisSession   AnalysisSession? @relation(fields: [analysisSessionId], references: [id])
   closingSession    ClosingSession?
   strategieSitzung  StrategieSitzung?
+  besprechung       Besprechung?
 }
 
 model Document {
@@ -1037,6 +1039,63 @@ model VorbereitungsNachricht {
   sitzung   StrategieSitzung @relation(fields: [sitzungId], references: [id], onDelete: Cascade)
 
   @@index([sitzungId, createdAt])
+}
+
+/// Eine schlichte Besprechung — Video, Titel, Protokoll.
+///
+/// Nicht jedes Gespräch ist ein Strategiegespräch oder ein Closing. Für die
+/// Rückfrage zwischendurch, die Abstimmung zum Projekt, den Check-in gab es
+/// bisher nichts: Jeder Termin wurde zum Strategiegespräch erklärt und bekam
+/// einen Raum, der auch so hieß.
+///
+/// Hängt am Termin, nicht am Betrieb: Titel, Zeit und Teilnehmer stehen
+/// dort schon.
+model Besprechung {
+  id String @id @default(cuid())
+
+  /// Was in diesem Gespräch erreicht werden soll.
+  ///
+  /// Wird vor dem Termin festgelegt und ist die Grundlage für alles Weitere:
+  /// Ohne Ziel kann niemand sagen, ob ein Hinweis gerade hilft oder stört.
+  /// Ein Gespräch ohne Ziel braucht auch keinen Beistand.
+  ziel String?
+
+  /// Worauf zu achten ist — aus dem Ziel abgeleitet, vom Berater korrigiert.
+  vorbereitung String?
+
+  /// Das Mitgehörte, fortlaufend angehängt.
+  ///
+  /// Kommt von Dailys Transkription, wenn sie für die Domain freigeschaltet
+  /// ist. Ist sie es nicht, bleibt das Feld leer und das Protokoll entsteht
+  /// aus der Mitschrift — dasselbe Ergebnis, nur mit mehr Tippen.
+  transkript String @default("")
+
+  /// Stichpunkte, während das Gespräch läuft — eine Zeile je Punkt.
+  ///
+  /// Zweite Quelle des Protokolls und Rückfallebene, wenn nicht mitgehört
+  /// wird. Bewusst roh: Wer mitschreibt, soll tippen können, ohne auf Form
+  /// zu achten. Die Form macht danach die Maschine.
+  mitschrift String @default("")
+
+  /// Das erzeugte Protokoll als Fließtext.
+  protokoll     String?
+  protokollAm   DateTime?
+
+  /// Erst mit der Freigabe sieht der Kunde das Protokoll.
+  ///
+  /// Dieselbe Regel wie beim Leitfaden und bei den Grundlagen: Was eine
+  /// Maschine geschrieben hat, liest ein Mensch, bevor es den Betrieb
+  /// erreicht. Bei einem Protokoll kommt hinzu, dass darin steht, was
+  /// angeblich vereinbart wurde.
+  freigegebenAm   DateTime?
+  freigegebenById String?
+  freigegebenBy   User?     @relation("BesprechungFreigabe", fields: [freigegebenById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  appointmentId String      @unique
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
 }
 
 // ─── OKUN Sales & Closing Module ─────────────────────────────────────────────

@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { terminart } from "@/lib/termine/arten";
 
 /**
  * Daily.co-Videoräume.
@@ -167,7 +168,19 @@ export async function ensureAppointmentRoom(appointmentId: string): Promise<Dail
   });
   if (!appointment) return { ok: false, error: "Termin nicht gefunden." };
 
-  const prefix = appointment.type === "CLOSING_CALL" ? "closing" : "strategiegespraech";
+  /*
+    Der Namensraum kommt aus dem Katalog der Terminarten.
+
+    Vorher stand hier eine Zeile, die alles außer dem Closing zum
+    Strategiegespräch erklärte — eine Besprechung bekam damit einen Raum,
+    der „strategiegespraech-…" hieß. Arten ohne Videoraum, etwa ein Termin
+    vor Ort, liefen trotzdem durch und legten einen an.
+  */
+  const art = terminart(appointment.type);
+  if (!art?.raumPraefix) {
+    return { ok: false, error: "Für diese Terminart gibt es keinen Videoraum." };
+  }
+  const prefix = art.raumPraefix;
   const result = await ensureDailyRoom({
     name: buildRoomName(prefix, appointment.id),
     endsAt: appointment.endTime,
@@ -180,4 +193,59 @@ export async function ensureAppointmentRoom(appointmentId: string): Promise<Dail
   });
 
   return result;
+}
+
+/**
+ * Ein Zutrittsticket mit Admin-Recht für die Transkription.
+ *
+ * Die Räume hier sind offen — wer die Adresse hat, kommt hinein. Für das
+ * Mithören reicht das nicht: Daily lässt die Transkription nur starten, wer
+ * dafür berechtigt ist, und ohne Ticket ist das niemand.
+ *
+ * Deshalb bekommt nur die Beraterseite ein Ticket, und nur mit diesem einen
+ * Recht. Der Kunde tritt weiter ohne bei: Niemand soll ungefragt mithören
+ * lassen können.
+ *
+ * `null` heißt: Es gibt kein Ticket, also wird nicht mitgehört. Das ist eine
+ * Einschränkung, kein Fehler — das Gespräch läuft trotzdem.
+ */
+export async function beraterTicket(
+  roomName: string,
+  name: string
+): Promise<string | null> {
+  const key = dailyApiKey();
+  if (!key) return null;
+
+  try {
+    const res = await fetch(`${dailyApiBase()}/meeting-tokens`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        properties: {
+          room_name: roomName,
+          user_name: name,
+          is_owner: true,
+          permissions: { canAdmin: ["transcription"] },
+          // Nach dem Termin ist das Ticket wertlos.
+          exp: Math.floor(Date.now() / 1000) + 6 * 60 * 60,
+        },
+      }),
+    });
+    if (!res.ok) {
+      console.warn("[daily] Ticket abgelehnt:", await readError(res));
+      return null;
+    }
+    const daten = (await res.json()) as { token?: string };
+    return daten.token ?? null;
+  } catch (fehler) {
+    console.warn("[daily] Ticket nicht erreichbar:", fehler);
+    return null;
+  }
+}
+
+/** Den Raumnamen aus einer Daily-Adresse lesen. */
+export function raumName(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const teil = url.split("/").filter(Boolean).pop();
+  return teil || null;
 }
