@@ -11,6 +11,7 @@ import {
   useParticipantIds,
   useParticipantProperty,
   useScreenShare,
+  useWaitingParticipants,
 } from "@daily-co/daily-react";
 import type { DailyEventObjectAppMessage } from "@daily-co/daily-js";
 import {
@@ -243,6 +244,14 @@ function CallSurface({
   const localSessionId = useLocalSessionId();
   const remoteIds = useParticipantIds({ filter: "remote" });
   const { screens, isSharingScreen, startScreenShare, stopScreenShare } = useScreenShare();
+  /*
+    Wer anklopft, soll nicht vor der Tür stehen bleiben.
+
+    Räume werden offen angelegt, aber ein älterer Raum kann noch verschlossen
+    sein — dann landet das Gegenüber im Warteraum und wartet, ohne dass es
+    hier jemand merkt. Diese Zeile macht das sichtbar, mit einem Knopf daneben.
+  */
+  const { waitingParticipants, grantAccess } = useWaitingParticipants();
 
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
@@ -260,6 +269,16 @@ function CallSurface({
     nie danach gefragt. Mit Ton ist es immer noch ein Gespräch.
   */
   const [ohneKamera, setzeOhneKamera] = useState(Boolean(startOhneKamera));
+  /*
+    Steht der Beitretende im Warteraum?
+
+    Ein verschlossener Raum löst den Beitritt nicht auf, sondern stellt den
+    Gast in einen Warteraum — ohne Fehler, ohne Ende. In einer fertigen
+    Oberfläche stünde dort „Warten auf Einlass"; in unserer stand bisher
+    nichts. Jetzt wird der Einlass angefragt und gesagt, worauf gewartet wird.
+  */
+  const [imWarteraum, setzeImWarteraum] = useState(false);
+  const einlassGebeten = useRef(false);
   const [deviceHint, setDeviceHint] = useState<string | null>(null);
   const joinStarted = useRef(false);
 
@@ -281,10 +300,7 @@ function CallSurface({
       Telefon eines Interessenten. Hier wird daraus eine Meldung mit einem
       Knopf, der tatsächlich hilft.
     */
-    if (daily.isDestroyed?.()) {
-      setFailure(describeFailure("use after destroy"));
-      return;
-    }
+    if (daily.isDestroyed?.()) return;
     const state = daily.meetingState();
     if (state === "joined-meeting" || state === "joining-meeting") return;
     joinStarted.current = true;
@@ -292,6 +308,34 @@ function CallSurface({
       setFailure(describeFailure(err instanceof Error ? err.message : errorText(err)));
     });
   }, [daily, ohneKamera]);
+
+  // Der Warteraum: Einlass bitten und es sichtbar machen.
+  useEffect(() => {
+    if (!daily) return;
+    const onZutritt = (event?: unknown) => {
+      const stufe = (
+        event as { access?: { level?: string } | string } | undefined
+      )?.access;
+      const level = typeof stufe === "object" ? stufe?.level : undefined;
+      if (level === "lobby") {
+        setzeImWarteraum(true);
+        if (!einlassGebeten.current) {
+          einlassGebeten.current = true;
+          try {
+            daily.requestAccess({ name: userName, access: { level: "full" } });
+          } catch {
+            // Dann bleibt es beim Hinweis — einlassen muss ohnehin die Gegenseite.
+          }
+        }
+      } else if (level === "full") {
+        setzeImWarteraum(false);
+      }
+    };
+    daily.on("access-state-updated", onZutritt);
+    return () => {
+      daily.off("access-state-updated", onZutritt);
+    };
+  }, [daily, userName]);
 
   // Fehler benennen, statt den Ladekreis weiterdrehen zu lassen.
   useEffect(() => {
@@ -313,7 +357,12 @@ function CallSurface({
   // Auch ohne Ereignis darf ein Fehlzustand nicht unbemerkt bleiben: meldet
   // Daily „error“, ohne dass eine Meldung ankam, steht hier trotzdem etwas.
   const failureMessage =
-    failure ?? (meetingState === "error" ? describeFailure(null) : null);
+    failure ??
+    (daily?.isDestroyed?.()
+      ? describeFailure("use after destroy")
+      : meetingState === "error"
+        ? describeFailure(null)
+        : null);
   const connecting = meetingState !== "joined-meeting" && !failureMessage;
 
   // Dauert der Beitritt ungewöhnlich lange, bekommt der Wartende einen Ausweg.
@@ -335,14 +384,14 @@ function CallSurface({
     if (!connecting) return;
     const timer = setTimeout(() => {
       setFailure(
-        "Der Beitritt kam nicht zustande. Das liegt fast immer an einer der drei " +
-          "Ursachen: Die Kamera ist belegt oder gesperrt, der Browser hat nie nach " +
-          "der Freigabe gefragt, oder eine Firewall blockiert die Verbindung. " +
-          "Es geht auch ohne Kamera — nur mit Ton."
+        "Der Beitritt kam nicht zustande. Häufigste Ursachen: Die Kamera ist belegt " +
+          "oder gesperrt, der Browser hat nie nach der Freigabe gefragt, oder eine " +
+          "Firewall blockiert die Verbindung. Es geht auch ohne Kamera — nur mit Ton. " +
+          `(Zustand: ${daily?.meetingState() ?? "unbekannt"}${imWarteraum ? ", Warteraum" : ""})`
       );
     }, 60_000);
     return () => clearTimeout(timer);
-  }, [connecting]);
+  }, [connecting, daily, imWarteraum]);
 
   /**
    * Noch einmal beitreten — auf demselben Gesprächsobjekt.
@@ -598,6 +647,8 @@ function CallSurface({
                 onRetry={retry}
                 onOhneKamera={ohneKamera ? undefined : onOhneKamera}
                 hinweis={deviceHint}
+                imWarteraum={imWarteraum}
+                zustand={meetingState ?? null}
               />
             ),
             steuerung,
@@ -611,6 +662,9 @@ function CallSurface({
 
     const kacheln = (
       <div className="relative">
+        {isAdvisor && waitingParticipants.length > 0 && (
+          <Warteraum teilnehmer={waitingParticipants} einlassen={grantAccess} />
+        )}
         <Kachel
           sessionId={gegenueber}
           rolle={isAdvisor ? "Interessent" : "OKUN Systems · Berater"}
@@ -644,6 +698,9 @@ function CallSurface({
     <>
     <div className="flex flex-col h-full min-h-0 bg-[#05090f]">
       <div className="flex-1 min-h-0 p-3">
+        {isAdvisor && waitingParticipants.length > 0 && (
+          <Warteraum teilnehmer={waitingParticipants} einlassen={grantAccess} />
+        )}
         {failureMessage ? (
           <CallProblem
             message={failureMessage}
@@ -656,6 +713,8 @@ function CallSurface({
             onRetry={retry}
             onOhneKamera={ohneKamera ? undefined : onOhneKamera}
             hinweis={deviceHint}
+            imWarteraum={imWarteraum}
+            zustand={meetingState ?? null}
           />
         ) : stageMode === "people" ? (
           <PeopleStage localSessionId={localSessionId} remoteIds={remoteIds} />
@@ -777,12 +836,47 @@ function CallSurface({
   );
 }
 
+/**
+ * Jemand steht im Warteraum.
+ *
+ * Nur zu sehen, wenn ein Raum noch Einlass verlangt — neue Räume tun das
+ * nicht. Dann aber sofort und mit einem Knopf: Wer draußen wartet, sieht
+ * nichts als einen Kreisel.
+ */
+function Warteraum({
+  teilnehmer,
+  einlassen,
+}: {
+  teilnehmer: { id: string; name?: string }[];
+  einlassen: (id: string) => void;
+}) {
+  return (
+    <div className="mb-3 px-3.5 py-2.5 rounded-xl bg-[rgba(245,165,36,.1)] border border-[rgba(245,165,36,.3)]">
+      {teilnehmer.map((t) => (
+        <div key={t.id} className="flex items-center justify-between gap-3">
+          <p className="text-[#f5a524] text-xs">
+            <span className="font-semibold">{t.name || "Jemand"}</span> wartet auf Einlass.
+          </p>
+          <button
+            onClick={() => einlassen(t.id)}
+            className="px-3 py-1.5 rounded-lg bg-[#f5a524] text-[#241a05] text-[11px] font-bold hover:bg-[#ffb935] transition-colors flex-shrink-0"
+          >
+            Einlassen
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** Der Beitritt läuft — mit Ausweg, falls er zu lange dauert. */
 function Connecting({
   takingLong,
   onRetry,
   onOhneKamera,
   hinweis,
+  imWarteraum,
+  zustand,
 }: {
   takingLong: boolean;
   onRetry: () => void;
@@ -790,11 +884,23 @@ function Connecting({
   onOhneKamera?: () => void;
   /** Was der Browser zu Kamera oder Mikrofon gemeldet hat. */
   hinweis?: string | null;
+  /** Der Raum verlangt Einlass — darauf wird gerade gewartet. */
+  imWarteraum?: boolean;
+  /** Dailys Zustand, damit ein Bildschirmfoto die Ursache verrät. */
+  zustand?: string | null;
 }) {
   return (
     <div className="h-full min-h-[220px] flex flex-col items-center justify-center gap-3 px-6 text-center">
       <Loader2 size={22} className="text-[#00b8ff] animate-spin" />
-      <p className="text-[#8899b4] text-sm">Gespräch wird verbunden…</p>
+      <p className="text-[#8899b4] text-sm">
+        {imWarteraum ? "Sie stehen im Warteraum…" : "Gespräch wird verbunden…"}
+      </p>
+      {imWarteraum && (
+        <p className="text-[#5b6b7f] text-xs max-w-sm leading-relaxed">
+          Dieser Raum verlangt Einlass. Ihr Gegenüber muss Sie hereinlassen — das
+          sieht es auf seiner Seite.
+        </p>
+      )}
       {hinweis && <p className="text-[#fca5a5] text-xs max-w-sm">{hinweis}</p>}
       {takingLong && (
         <>
@@ -825,6 +931,19 @@ function Connecting({
               Seite neu laden
             </button>
           </div>
+          {/*
+            Der Zustand im Klartext.
+
+            Zwei Zeilen Technik, die ein Bildschirmfoto wert sind: „joining"
+            heißt etwas anderes als „loading", und wer nicht hineinkommt,
+            schickt ohnehin ein Foto. Dann steht die Ursache darauf.
+          */}
+          {zustand && (
+            <p className="font-mono text-[9px] text-[#2c3c52] uppercase tracking-[0.14em]">
+              Zustand: {zustand}
+              {imWarteraum ? " · Warteraum" : ""}
+            </p>
+          )}
         </>
       )}
     </div>

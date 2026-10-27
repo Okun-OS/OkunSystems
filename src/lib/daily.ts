@@ -56,7 +56,12 @@ export type DailyRoomResult =
   | { ok: true; url: string; name: string; reused: boolean; extended: boolean }
   | { ok: false; error: string };
 
-type DailyRoom = { name?: string; url?: string; config?: { exp?: number } };
+type DailyRoom = {
+  name?: string;
+  url?: string;
+  privacy?: string;
+  config?: { exp?: number };
+};
 
 async function readError(res: Response): Promise<string> {
   const text = await res.text();
@@ -76,14 +81,25 @@ async function getRoom(name: string, key: string): Promise<DailyRoom | null> {
   return (await res.json()) as DailyRoom;
 }
 
-async function extendRoom(name: string, key: string, exp: number): Promise<DailyRoom | null> {
+/** Ablaufzeit verlängern und, falls nötig, den Raum öffnen. */
+async function repariereRaum(
+  name: string,
+  key: string,
+  was: { exp?: number; oeffnen?: boolean }
+): Promise<DailyRoom | null> {
   const res = await fetch(`${dailyApiBase()}/rooms/${encodeURIComponent(name)}`, {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ properties: { exp } }),
+    body: JSON.stringify({
+      ...(was.oeffnen ? { privacy: "public" } : {}),
+      properties: {
+        ...(was.exp ? { exp: was.exp } : {}),
+        ...(was.oeffnen ? { enable_knocking: false } : {}),
+      },
+    }),
   });
   if (!res.ok) {
-    console.warn(`[daily] Ablaufzeit von ${name} konnte nicht verlängert werden:`, await readError(res));
+    console.warn(`[daily] Raum ${name} ließ sich nicht anpassen:`, await readError(res));
     return null;
   }
   return (await res.json()) as DailyRoom;
@@ -114,12 +130,29 @@ export async function ensureDailyRoom(input: {
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         name: input.name,
+        /*
+          Ausdrücklich offen, nicht „wie im Konto eingestellt".
+
+          Ein privater Raum lässt niemanden ohne Ticket herein: Daily stellt
+          den Beitretenden in einen Warteraum und löst den Beitritt erst auf,
+          wenn jemand ihn einlässt. In einer fertigen Oberfläche steht dann
+          „Warten auf Einlass"; in einer eigenen — unserer — hängt der
+          Beitritt still, ohne Fehler, ohne Ende. Genau so sah es auf dem
+          Telefon des Interessenten aus.
+
+          Der Schutz liegt hier nicht an der Tür, sondern am Schlüssel: Der
+          Raumname ist nicht zu erraten, und der Link kommt nur aus einer
+          Einladung.
+        */
+        privacy: "public",
         properties: {
           exp,
           enable_screenshare: true,
           enable_chat: true,
           start_video_off: false,
           start_audio_off: false,
+          // Kein Warteraum. Wer den Link hat, ist eingeladen.
+          enable_knocking: false,
         },
       }),
     });
@@ -141,9 +174,22 @@ export async function ensureDailyRoom(input: {
   const existing = await getRoom(input.name, key);
   if (existing?.url) {
     let extended = false;
-    if (!existing.config?.exp || existing.config.exp < Math.floor(Date.now() / 1000) + 300) {
-      const updated = await extendRoom(input.name, key, exp);
-      extended = Boolean(updated);
+    const abgelaufen =
+      !existing.config?.exp || existing.config.exp < Math.floor(Date.now() / 1000) + 300;
+    /*
+      Ein vorhandener Raum wird auch geöffnet, wenn er noch verschlossen ist.
+
+      Räume aus früheren Fassungen tragen die Voreinstellung des Kontos. War
+      die „privat", sperrte der Raum jeden ohne Ticket aus — und zwar stumm.
+      Beim Verlängern wird das gleich mitgerichtet.
+    */
+    const verschlossen = existing.privacy !== undefined && existing.privacy !== "public";
+    if (abgelaufen || verschlossen) {
+      const updated = await repariereRaum(input.name, key, {
+        ...(abgelaufen ? { exp } : {}),
+        ...(verschlossen ? { oeffnen: true } : {}),
+      });
+      extended = Boolean(updated) && abgelaufen;
     }
     return { ok: true, url: existing.url, name: input.name, reused: true, extended };
   }
