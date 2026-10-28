@@ -693,7 +693,7 @@ function CallSurface({
           platzhalter="wartet auf Beitritt"
           gross
         />
-        <div className="absolute bottom-2.5 right-2.5 w-[38%] max-w-[150px] rounded-xl overflow-hidden shadow-[0_10px_30px_-10px_rgba(0,0,0,0.9)] ring-1 ring-[#0a1726]">
+        <EigeneEcke>
           <Kachel
             sessionId={localSessionId}
             rolle={isAdvisor ? "Sie" : "Ihr Unternehmen"}
@@ -702,7 +702,7 @@ function CallSurface({
             platzhalter="Kamera aus"
             winzig
           />
-        </div>
+        </EigeneEcke>
       </div>
     );
     const zustand = gegenueber ? "verbunden" : "allein";
@@ -854,6 +854,65 @@ function CallSurface({
     </div>
       {chatWidget}
     </>
+  );
+}
+
+/**
+ * Das eigene Bild — dahin, wo es gerade nicht stört.
+ *
+ * Es sitzt unten rechts, und dort liegt im Zweifel genau das, was man sehen
+ * will: ein geteiltes Dokument, eine Hand, ein Blatt Papier. Also lässt es
+ * sich ziehen. Die Lage bleibt innerhalb des Bildes, und beim Doppelklick
+ * geht es zurück in seine Ecke.
+ */
+function EigeneEcke({ children }: { children: React.ReactNode }) {
+  const [lage, setzeLage] = useState({ rechts: 10, unten: 10 });
+  const zieht = useRef<{ x: number; y: number } | null>(null);
+  const eigen = useRef<HTMLDivElement>(null);
+
+  function begrenze(rechts: number, unten: number) {
+    const el = eigen.current;
+    const eltern = el?.parentElement;
+    if (!el || !eltern) return { rechts, unten };
+    const maxRechts = Math.max(eltern.clientWidth - el.offsetWidth, 0);
+    const maxUnten = Math.max(eltern.clientHeight - el.offsetHeight, 0);
+    return {
+      rechts: Math.min(Math.max(rechts, 0), maxRechts),
+      unten: Math.min(Math.max(unten, 0), maxUnten),
+    };
+  }
+
+  return (
+    <div
+      ref={eigen}
+      onPointerDown={(e) => {
+        e.currentTarget.setPointerCapture(e.pointerId);
+        zieht.current = { x: e.clientX, y: e.clientY };
+      }}
+      onPointerMove={(e) => {
+        if (!zieht.current) return;
+        const dx = e.clientX - zieht.current.x;
+        const dy = e.clientY - zieht.current.y;
+        zieht.current = { x: e.clientX, y: e.clientY };
+        // Nach rechts ziehen heißt: der Abstand zum rechten Rand wird kleiner.
+        setzeLage((l) => begrenze(l.rechts - dx, l.unten - dy));
+      }}
+      onPointerUp={(e) => {
+        zieht.current = null;
+        e.currentTarget.releasePointerCapture?.(e.pointerId);
+      }}
+      onPointerCancel={() => {
+        zieht.current = null;
+      }}
+      onDoubleClick={() => setzeLage({ rechts: 10, unten: 10 })}
+      title="Ziehen zum Verschieben · Doppelklick setzt zurück"
+      style={{ right: lage.rechts, bottom: lage.unten, touchAction: "none" }}
+      className="absolute w-[38%] max-w-[150px] rounded-xl overflow-hidden
+        shadow-[0_10px_30px_-10px_rgba(0,0,0,0.9)] ring-1 ring-[#0a1726]
+        cursor-grab active:cursor-grabbing select-none"
+    >
+      {children}
+    </div>
   );
 }
 
@@ -1215,14 +1274,27 @@ function BelegteKachel({
   const videoOn = useParticipantProperty(sessionId, "video");
 
   return (
-    <div className={`relative ${form} overflow-hidden border border-[#13243c] bg-[#0a111c]`}>
+    <div className={`relative ${form} overflow-hidden border border-[#13243c] bg-black`}>
       {videoOn ? (
+        /*
+          Das ganze Bild, nicht ein Ausschnitt daraus.
+
+          `cover` füllt die Kachel und schneidet dafür ab, was nicht
+          hineinpasst. Bei einer Kamera im Hochformat — jedes Telefon — oder
+          im Verhältnis 4:3 bleibt davon ein Ausschnitt übrig, der aussieht,
+          als säße das Gegenüber mit der Nase am Objektiv. Genau so kam es
+          an. `contain` zeigt, was die Kamera sieht; die Ränder bleiben
+          dunkel, und das ist das kleinere Übel.
+
+          Die kleine eigene Kachel darf weiter füllen: Dort geht es nur
+          darum, ob man noch im Bild ist.
+        */
         <DailyVideo
           sessionId={sessionId}
           type="video"
-          fit="cover"
+          fit={winzig ? "cover" : "contain"}
           automirror
-          className="w-full h-full object-cover"
+          className={`w-full h-full ${winzig ? "object-cover" : "object-contain"}`}
         />
       ) : (
         <div className="w-full h-full flex items-center justify-center bg-[linear-gradient(160deg,#0d1a2b,#070d17)]">
