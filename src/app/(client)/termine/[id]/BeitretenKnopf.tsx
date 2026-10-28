@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Loader2, Video } from "lucide-react";
 import { OkunCall } from "@/components/closing/okun-call";
+import { OkunLogo } from "@/components/layout/okun-logo";
 import { frageGeraete } from "@/lib/video/geraete";
 
 /**
@@ -97,13 +98,15 @@ export function BeitretenKnopf({
         onLeave={() => window.location.reload()}
         stageLayout={({ kacheln, steuerung }) => (
           <div className="h-full flex flex-col">
-            <div className="px-5 py-3 border-b border-[#0f1d2f]">
-              <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-[#3f5572]">
-                Besprechung
-              </p>
-              <h1 className="text-[#f0f0f0] text-sm font-semibold truncate">{titel}</h1>
+            <div className="px-5 py-2.5 border-b border-[#0f1d2f] flex flex-col items-center">
+              <div className="w-[116px]">
+                <OkunLogo size="sm" />
+              </div>
+              <h1 className="mt-1 text-[#8da3bd] text-xs font-medium truncate max-w-full">
+                {titel}
+              </h1>
             </div>
-            <div className="flex-1 min-h-0 p-4 overflow-y-auto">{kacheln}</div>
+            <div className="flex-1 min-h-0 p-4">{kacheln}</div>
             <div className="px-4 py-3 border-t border-[#0f1d2f]">{steuerung}</div>
           </div>
         )}
