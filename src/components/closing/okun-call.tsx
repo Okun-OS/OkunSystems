@@ -291,6 +291,16 @@ function CallSurface({
   */
   const [ohneKamera, setzeOhneKamera] = useState(Boolean(startOhneKamera));
   /*
+    Wer ist groß?
+
+    Normalerweise das Gegenüber — im Gespräch ist dessen Gesicht das
+    Wichtigste auf dem Schirm. Ein Klick auf das eigene Bild dreht es um,
+    etwa um zu prüfen, wie man selbst ankommt oder was die Kamera gerade
+    zeigt. Und solange niemand sonst da ist, steht man ohnehin selbst groß:
+    Ein leeres Rechteck anzusehen, während man wartet, hilft niemandem.
+  */
+  const [getauscht, setzeGetauscht] = useState(false);
+  /*
     Steht der Beitretende im Warteraum?
 
     Ein verschlossener Raum löst den Beitritt nicht auf, sondern stellt den
@@ -325,9 +335,28 @@ function CallSurface({
     const state = daily.meetingState();
     if (state === "joined-meeting" || state === "joining-meeting") return;
     joinStarted.current = true;
-    daily.join(ohneKamera ? { startVideoOff: true } : {}).catch((err: unknown) => {
-      setFailure(describeFailure(err instanceof Error ? err.message : errorText(err)));
-    });
+    /*
+      Erst die Kamera, dann der Beitritt.
+
+      `startCamera()` holt die eigene Kamera, bevor das Gespräch steht —
+      damit sieht man sich selbst schon, während verbunden wird, und weiß,
+      ob man im Bild sitzt. Scheitert es, geht der Beitritt trotzdem
+      weiter: Ohne Bild ist ein Gespräch immer noch ein Gespräch.
+    */
+    void (async () => {
+      if (!ohneKamera) {
+        try {
+          await daily.startCamera();
+        } catch {
+          // Kein Vorschaubild. Mehr folgt daraus nicht.
+        }
+      }
+      try {
+        await daily.join(ohneKamera ? { startVideoOff: true } : {});
+      } catch (err: unknown) {
+        setFailure(describeFailure(err instanceof Error ? err.message : errorText(err)));
+      }
+    })();
   }, [daily, ohneKamera]);
 
   // Der Warteraum: Einlass bitten und es sichtbar machen.
@@ -620,15 +649,31 @@ function CallSurface({
    * sonst stünde der Interessent vor einem Cockpit ohne Bild und ohne Grund.
    */
   if (stageLayout && !screenId) {
+    /*
+      Auch die Störmeldung bleibt im Haus.
+
+      Vorher ersetzte sie die ganze Fläche — samt Kopfzeile, Logo und
+      Steuerleiste. Wer nicht hineinkam, stand damit vor einer nackten
+      Fehlermeldung auf schwarzem Grund und wusste nicht einmal mehr, wo er
+      ist. Jetzt sitzt sie da, wo sonst das Bild ist.
+    */
     if (failureMessage) {
       return (
-        <div className="h-full min-h-0 bg-[#05090f] p-3">
-          <CallProblem
-            message={failureMessage}
-            onRetry={retry}
-            onOhneKamera={ohneKamera ? undefined : onOhneKamera}
-          />
-        </div>
+        <>
+          {stageLayout({
+            kacheln: (
+              <CallProblem
+                message={failureMessage}
+                onRetry={retry}
+                onOhneKamera={ohneKamera ? undefined : onOhneKamera}
+              />
+            ),
+            steuerung,
+            zustand: "verbindet",
+            teilnehmer: remoteIds.length + (localSessionId ? 1 : 0),
+          })}
+          {chatWidget}
+        </>
       );
     }
     /*
@@ -641,6 +686,8 @@ function CallSurface({
       die Frage aufkommt.
     */
     const gegenueber = remoteIds[0] ?? null;
+    // Allein im Raum heißt: man sieht sich selbst, nicht ein leeres Rechteck.
+    const selbstGross = getauscht || !gegenueber;
     /*
       Das Gegenüber groß, man selbst als Einblendung in der Ecke.
 
@@ -663,14 +710,38 @@ function CallSurface({
         <>
           {stageLayout({
             kacheln: (
-              <Connecting
-                takingLong={takingLong}
-                onRetry={retry}
-                onOhneKamera={ohneKamera ? undefined : onOhneKamera}
-                hinweis={deviceHint}
-                imWarteraum={imWarteraum}
-                zustand={meetingState ?? null}
-              />
+              /*
+                Das eigene Bild steht schon da, während verbunden wird.
+
+                Wer wartet, will wissen, ob die Kamera überhaupt läuft und ob
+                er im Bild sitzt. Ein leerer Kreisel beantwortet das nicht.
+                Sobald Daily die eigene Kamera kennt, liegt sie darunter und
+                die Anzeige legt sich darüber.
+              */
+              <div className="relative h-full min-h-[220px]">
+                {localSessionId && (
+                  <div className="absolute inset-0 opacity-45">
+                    <Kachel
+                      sessionId={localSessionId}
+                      rolle={isAdvisor ? "Sie" : "Ihr Unternehmen"}
+                      akzent="#22c55e"
+                      istSelbst
+                      platzhalter="Kamera aus"
+                      gross
+                    />
+                  </div>
+                )}
+                <div className="relative h-full">
+                  <Connecting
+                    takingLong={takingLong}
+                    onRetry={retry}
+                    onOhneKamera={ohneKamera ? undefined : onOhneKamera}
+                    hinweis={deviceHint}
+                    imWarteraum={imWarteraum}
+                    zustand={meetingState ?? null}
+                  />
+                </div>
+              </div>
             ),
             steuerung,
             zustand: "verbindet",
@@ -682,26 +753,52 @@ function CallSurface({
     }
 
     const kacheln = (
-      <div className="relative">
+      <div className="relative h-full min-h-0">
         {isAdvisor && waitingParticipants.length > 0 && (
-          <Warteraum teilnehmer={waitingParticipants} einlassen={grantAccess} />
+          <div className="absolute top-3 left-3 right-3 z-10">
+            <Warteraum teilnehmer={waitingParticipants} einlassen={grantAccess} />
+          </div>
         )}
-        <Kachel
-          sessionId={gegenueber}
-          rolle={isAdvisor ? "Interessent" : "OKUN Systems · Berater"}
-          akzent="#00b8ff"
-          platzhalter="wartet auf Beitritt"
-          gross
-        />
-        <EigeneEcke>
+        {/*
+          Selbst groß, wenn getauscht wurde — oder wenn sonst niemand da ist.
+        */}
+        {selbstGross ? (
           <Kachel
             sessionId={localSessionId}
             rolle={isAdvisor ? "Sie" : "Ihr Unternehmen"}
             akzent="#22c55e"
             istSelbst
             platzhalter="Kamera aus"
-            winzig
+            gross
           />
+        ) : (
+          <Kachel
+            sessionId={gegenueber}
+            rolle={isAdvisor ? "Interessent" : "OKUN Systems · Berater"}
+            akzent="#00b8ff"
+            platzhalter="wartet auf Beitritt"
+            gross
+          />
+        )}
+        <EigeneEcke onKlick={() => setzeGetauscht((t) => !t)}>
+          {selbstGross ? (
+            <Kachel
+              sessionId={gegenueber}
+              rolle={isAdvisor ? "Interessent" : "OKUN Systems · Berater"}
+              akzent="#00b8ff"
+              platzhalter="wartet"
+              winzig
+            />
+          ) : (
+            <Kachel
+              sessionId={localSessionId}
+              rolle={isAdvisor ? "Sie" : "Ihr Unternehmen"}
+              akzent="#22c55e"
+              istSelbst
+              platzhalter="Kamera aus"
+              winzig
+            />
+          )}
         </EigeneEcke>
       </div>
     );
@@ -865,9 +962,25 @@ function CallSurface({
  * sich ziehen. Die Lage bleibt innerhalb des Bildes, und beim Doppelklick
  * geht es zurück in seine Ecke.
  */
-function EigeneEcke({ children }: { children: React.ReactNode }) {
+function EigeneEcke({
+  children,
+  onKlick,
+}: {
+  children: React.ReactNode;
+  /** Ein Klick — nicht ein Ziehen — tauscht groß und klein. */
+  onKlick?: () => void;
+}) {
   const [lage, setzeLage] = useState({ rechts: 10, unten: 10 });
   const zieht = useRef<{ x: number; y: number } | null>(null);
+  /*
+    Geklickt oder gezogen?
+
+    Dieselbe Kachel kann beides. Wer sie bewegt, will nicht tauschen; wer
+    sie antippt, will nicht verschieben. Entschieden wird nach der
+    zurückgelegten Strecke: ein paar Pixel sind ein Klick mit zittriger
+    Hand, alles darüber ist ein Ziehen.
+  */
+  const strecke = useRef(0);
   const eigen = useRef<HTMLDivElement>(null);
 
   function begrenze(rechts: number, unten: number) {
@@ -888,11 +1001,13 @@ function EigeneEcke({ children }: { children: React.ReactNode }) {
       onPointerDown={(e) => {
         e.currentTarget.setPointerCapture(e.pointerId);
         zieht.current = { x: e.clientX, y: e.clientY };
+        strecke.current = 0;
       }}
       onPointerMove={(e) => {
         if (!zieht.current) return;
         const dx = e.clientX - zieht.current.x;
         const dy = e.clientY - zieht.current.y;
+        strecke.current += Math.abs(dx) + Math.abs(dy);
         zieht.current = { x: e.clientX, y: e.clientY };
         // Nach rechts ziehen heißt: der Abstand zum rechten Rand wird kleiner.
         setzeLage((l) => begrenze(l.rechts - dx, l.unten - dy));
@@ -900,12 +1015,17 @@ function EigeneEcke({ children }: { children: React.ReactNode }) {
       onPointerUp={(e) => {
         zieht.current = null;
         e.currentTarget.releasePointerCapture?.(e.pointerId);
+        if (strecke.current < 6) onKlick?.();
       }}
       onPointerCancel={() => {
         zieht.current = null;
       }}
       onDoubleClick={() => setzeLage({ rechts: 10, unten: 10 })}
-      title="Ziehen zum Verschieben · Doppelklick setzt zurück"
+      title={
+        onKlick
+          ? "Klicken zum Tauschen · Ziehen zum Verschieben · Doppelklick setzt die Lage zurück"
+          : "Ziehen zum Verschieben · Doppelklick setzt zurück"
+      }
       style={{ right: lage.rechts, bottom: lage.unten, touchAction: "none" }}
       className="absolute w-[38%] max-w-[150px] rounded-xl overflow-hidden
         shadow-[0_10px_30px_-10px_rgba(0,0,0,0.9)] ring-1 ring-[#0a1726]
@@ -1210,7 +1330,21 @@ function Kachel({
   /** Die eingeblendete eigene Kachel. */
   winzig?: boolean;
 }) {
-  const form = gross ? "aspect-[16/10] rounded-2xl" : winzig ? "aspect-video rounded-xl" : "aspect-video rounded-xl";
+  /*
+    Die große Kachel nimmt die Fläche, die da ist.
+
+    Vorher stand hier ein festes Seitenverhältnis (16:10). Auf einem
+    Notebook mit vielen Tabs ist die Fläche aber flacher als das —
+    die Kachel wurde höher als das Fenster, zu sehen war ein waagerechter
+    Streifen aus der Mitte, und die eingeblendete eigene Kachel lag
+    unterhalb des sichtbaren Bereichs. Es sah aus wie ein Zoom und wie ein
+    fehlendes Selbstbild; es war beides dasselbe Problem.
+  */
+  const form = gross
+    ? "h-full w-full rounded-2xl"
+    : winzig
+      ? "aspect-video rounded-xl"
+      : "aspect-video rounded-xl";
 
   if (!sessionId) {
     return (

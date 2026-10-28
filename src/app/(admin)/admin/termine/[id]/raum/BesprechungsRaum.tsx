@@ -91,7 +91,7 @@ export function BesprechungsRaum({
                 </Link>
               </div>
 
-              <div className="flex-1 min-h-0 p-4 overflow-y-auto">{kacheln}</div>
+              <div className="flex-1 min-h-0 p-4">{kacheln}</div>
               <div className="px-4 py-3 border-t border-[#0f1d2f]">{steuerung}</div>
             </div>
 
