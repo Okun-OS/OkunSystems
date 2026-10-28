@@ -270,7 +270,22 @@ function Beistand({
       if (hoert) {
         daily.stopTranscription();
       } else {
-        daily.startTranscription();
+        /*
+          Auf Deutsch zuhören, nicht auf Englisch.
+
+          Ohne Angabe nimmt Daily die Voreinstellung seines Dienstleisters —
+          und die ist Englisch. Deutsche Sätze kommen dann als lautähnlicher
+          Unsinn zurück, aus dem das Protokoll hinterher etwas zu machen
+          versucht. Mit Satzzeichen, weil ein Protokoll aus einer Textwurst
+          schlechter wird. Und in Europa verarbeitet, weil das hier
+          Kundengespräche sind.
+        */
+        daily.startTranscription({
+          language: "de",
+          model: "nova-2",
+          punctuate: true,
+          transcription_geo: "eu",
+        });
       }
     } catch {
       setzeFehler("Das Mithören ließ sich nicht starten.");
