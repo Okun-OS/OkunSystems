@@ -26,8 +26,8 @@ export function CreateRoomButton({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Fehler");
       setUrl(data.meetingUrl);
-    } catch (err: any) {
-      setError(err.message ?? "Fehler beim Erstellen");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Fehler beim Erstellen");
     } finally {
       setLoading(false);
     }

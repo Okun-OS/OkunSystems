@@ -9,6 +9,8 @@ import {
   useLocalSessionId,
   useMeetingState,
   useParticipantIds,
+  useActiveSpeakerId,
+  useNetwork,
   useParticipantProperty,
   useScreenShare,
   useWaitingParticipants,
@@ -24,6 +26,9 @@ import {
   MonitorUp,
   MousePointer2,
   PhoneOff,
+  Sparkles,
+  Signal,
+  SignalLow,
   Square,
   Video as VideoIcon,
   VideoOff,
@@ -139,6 +144,9 @@ export type OkunCallProps = {
    * freigegeben wurde — dann gar nicht erst nach dem Bild fragen.
    */
   startOhneKamera?: boolean;
+  /** Im Vorraum gewählte Geräte. */
+  kameraId?: string | null;
+  mikroId?: string | null;
 };
 
 /**
@@ -259,6 +267,8 @@ function CallSurface({
   onStopPresentation,
   onPageCount,
   startOhneKamera,
+  kameraId,
+  mikroId,
 }: OkunCallProps) {
   const daily = useDaily();
   const meetingState = useMeetingState();
@@ -273,6 +283,10 @@ function CallSurface({
     hier jemand merkt. Diese Zeile macht das sichtbar, mit einem Knopf daneben.
   */
   const { waitingParticipants, grantAccess } = useWaitingParticipants();
+  const aktiverSprecher = useActiveSpeakerId();
+  const netz = useNetwork();
+  const [unschaerfe, setzeUnschaerfe] = useState(false);
+  const [dauer, setzeDauer] = useState(0);
 
   /*
     Mikrofon und Kamera werden bei Daily abgelesen, nicht mitgezählt.
@@ -389,10 +403,44 @@ function CallSurface({
             // Dann steht es in der Steuerleiste.
           }
         }
+        /*
+          Was im Vorraum gewählt wurde, gilt auch im Gespräch.
+
+          Ohne das nimmt Daily, was der Browser zuletzt benutzt hat — und
+          das ist bei zwei Kameras nicht verlässlich die, die man eben noch
+          im Vorschaubild gesehen hat.
+        */
+        if (kameraId || mikroId) {
+          try {
+            await daily.setInputDevicesAsync({
+              ...(kameraId && !ohneKamera ? { videoDeviceId: kameraId } : {}),
+              ...(mikroId ? { audioDeviceId: mikroId } : {}),
+            });
+          } catch {
+            // Dann bleibt es beim Standardgerät.
+          }
+        }
+        /*
+          Rauschunterdrückung, ohne dass jemand danach fragen muss.
+
+          Tastatur, Lüfter, Straße — in einem Beratungsgespräch stört das
+          mehr, als es Rechenzeit kostet. Kann die Maschine es nicht, läuft
+          das Gespräch unverändert weiter.
+        */
+        try {
+          await daily.updateInputSettings({
+            audio: { processor: { type: "noise-cancellation" } },
+          });
+        } catch {
+          // Ältere Geräte können das nicht. Kein Grund, etwas zu melden.
+        }
       } catch (err: unknown) {
         setFailure(describeFailure(err instanceof Error ? err.message : errorText(err)));
       }
     })();
+    // kameraId/mikroId bewusst nicht in der Liste: Ein Geraetewechsel
+    // mitten im Gespraech darf keinen zweiten Beitritt ausloesen.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [daily, ohneKamera]);
 
   // Der Warteraum: Einlass bitten und es sichtbar machen.
@@ -622,6 +670,38 @@ function CallSurface({
   // nicht heran. Hier bekommt es einen Draht dorthin — in beide Richtungen.
   useEffect(() => registriereSender(() => send({ k: "radar" })), [send]);
 
+  /*
+    Wie lange das Gespräch schon läuft.
+
+    Eine kleine Zahl, die viel ausmacht: Wer sie sieht, weiß, ob er noch in
+    der Zeit ist, ohne auf die Uhr des Rechners zu schauen.
+  */
+  useEffect(() => {
+    if (meetingState !== "joined-meeting") return;
+    const start = Date.now();
+    const id = setInterval(() => setzeDauer(Math.floor((Date.now() - start) / 1000)), 1000);
+    return () => clearInterval(id);
+  }, [meetingState]);
+
+  /** Hintergrund weichzeichnen — oder wieder scharf stellen. */
+  async function wechsleUnschaerfe() {
+    if (!daily) return;
+    const neu = !unschaerfe;
+    setzeUnschaerfe(neu);
+    try {
+      await daily.updateInputSettings({
+        video: {
+          processor: neu
+            ? { type: "background-blur", config: { strength: 0.6 } }
+            : { type: "none" },
+        },
+      });
+    } catch {
+      // Kann die Maschine nicht — dann bleibt der Hintergrund, wie er ist.
+      setzeUnschaerfe(!neu);
+    }
+  }
+
   function toggleMic() {
     daily?.setLocalAudio(!micOn);
   }
@@ -666,11 +746,33 @@ function CallSurface({
               : "Mikrofon aus — niemand hört Sie"}
         </span>
       )}
+      {meetingState === "joined-meeting" && (
+        <span className="mr-1 hidden sm:flex items-center gap-2 px-2.5 py-1.5 rounded-lg
+          bg-[rgba(255,255,255,.04)] border border-[rgba(255,255,255,.07)]">
+          {/* Läuft seit — und wie die Leitung steht. */}
+          <span className="font-mono text-[11px] text-[#8da3bd] tabular-nums">
+            {String(Math.floor(dauer / 60)).padStart(2, "0")}:
+            {String(dauer % 60).padStart(2, "0")}
+          </span>
+          {netz.threshold === "low" || netz.threshold === "very-low" ? (
+            <SignalLow size={13} className="text-[#f5a524]" />
+          ) : (
+            <Signal size={13} className="text-[#2ee6c5]" />
+          )}
+        </span>
+      )}
       <ControlButton active={micOn} onClick={toggleMic} label={micOn ? "Stumm" : "Ton an"}>
         {micOn ? <Mic size={15} /> : <MicOff size={15} />}
       </ControlButton>
       <ControlButton active={camOn} onClick={toggleCam} label={camOn ? "Kamera aus" : "Kamera an"}>
         {camOn ? <VideoIcon size={15} /> : <VideoOff size={15} />}
+      </ControlButton>
+      <ControlButton
+        active={unschaerfe}
+        onClick={() => void wechsleUnschaerfe()}
+        label={unschaerfe ? "Hintergrund scharf" : "Hintergrund weichzeichnen"}
+      >
+        <Sparkles size={15} />
       </ControlButton>
       {isAdvisor && (
         <ControlButton
@@ -770,6 +872,7 @@ function CallSurface({
                 istSelbst={id === localSessionId}
                 platzhalter="Kamera aus"
                 imGitter
+                spricht={id === aktiverSprecher}
               />
             ))}
           </div>
@@ -869,6 +972,7 @@ function CallSurface({
             istSelbst
             platzhalter="Kamera aus"
             gross
+            spricht={Boolean(localSessionId) && localSessionId === aktiverSprecher}
           />
         ) : (
           <Kachel
@@ -877,6 +981,7 @@ function CallSurface({
             akzent="#00b8ff"
             platzhalter="wartet auf Beitritt"
             gross
+            spricht={Boolean(gegenueber) && gegenueber === aktiverSprecher}
           />
         )}
         <EigeneEcke onKlick={() => setzeGetauscht((t) => !t)}>
@@ -1419,6 +1524,7 @@ function Kachel({
   gross,
   winzig,
   imGitter,
+  spricht,
 }: {
   sessionId: string | null;
   rolle: string;
@@ -1431,6 +1537,8 @@ function Kachel({
   winzig?: boolean;
   /** Eine von mehreren gleich großen Kacheln. */
   imGitter?: boolean;
+  /** Dieser Teilnehmer redet gerade. */
+  spricht?: boolean;
 }) {
   /*
     Die große Kachel nimmt die Fläche, die da ist.
@@ -1498,6 +1606,7 @@ function Kachel({
       istSelbst={istSelbst}
       form={form}
       winzig={winzig}
+      spricht={spricht}
     />
   );
 }
@@ -1509,6 +1618,7 @@ function BelegteKachel({
   istSelbst,
   form,
   winzig,
+  spricht,
 }: {
   sessionId: string;
   rolle: string;
@@ -1516,13 +1626,29 @@ function BelegteKachel({
   istSelbst?: boolean;
   form: string;
   winzig?: boolean;
+  spricht?: boolean;
 }) {
   const name = useParticipantProperty(sessionId, "user_name");
   const audioOn = useParticipantProperty(sessionId, "audio");
   const videoOn = useParticipantProperty(sessionId, "video");
 
+  /*
+    Wer spricht, bekommt den Rahmen.
+
+    Kein Blinken, kein Springen der Kacheln — nur ein ruhiger Rand, der
+    kommt und geht. In einer Runde mit mehreren erkennt man damit in einem
+    Wimpernschlag, wer gerade redet; zu zweit ist es kaum zu bemerken und
+    stört deshalb auch nicht.
+  */
   return (
-    <div className={`relative ${form} overflow-hidden border border-[#13243c] bg-black`}>
+    <div
+      className={`relative ${form} overflow-hidden border bg-black transition-[border-color,box-shadow] duration-300`}
+      style={
+        spricht
+          ? { borderColor: "rgba(46,230,197,.55)", boxShadow: "0 0 0 1px rgba(46,230,197,.35), 0 0 26px -6px rgba(46,230,197,.45)" }
+          : { borderColor: "#13243c" }
+      }
+    >
       {videoOn ? (
         /*
           Das ganze Bild, nicht ein Ausschnitt daraus.
@@ -1589,11 +1715,22 @@ function KachelName({
       </div>
     );
   }
+  /*
+    Der Name als Schild, nicht als Schrift auf dem Bild.
+
+    Vorher lag ein Farbverlauf über dem unteren Drittel des Bildes, damit
+    die Schrift lesbar blieb — und nahm dabei ein Drittel des Gesichts mit.
+    Ein kleines Schild in der Ecke braucht den Verlauf nicht.
+  */
   return (
-    <div className="absolute inset-x-0 bottom-0 bg-[linear-gradient(to_top,rgba(5,9,15,0.94),transparent)] px-3 pt-8 pb-2.5">
-      <div className="flex items-center gap-2 min-w-0">
+    <div className="absolute left-2.5 bottom-2.5 max-w-[calc(100%-20px)]">
+      <div
+        className="flex items-center gap-2 min-w-0 px-2.5 py-1.5 rounded-lg
+          bg-[rgba(4,8,15,.62)] border border-[rgba(255,255,255,.08)]
+          backdrop-blur-md shadow-[0_6px_20px_-10px_rgba(0,0,0,.9)]"
+      >
         <span
-          className="w-[3px] h-[22px] rounded-full flex-shrink-0"
+          className="w-[3px] h-[18px] rounded-full flex-shrink-0"
           style={{ background: akzent, boxShadow: `0 0 10px ${akzent}` }}
         />
         <span className="min-w-0">

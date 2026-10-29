@@ -1,20 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Video } from "lucide-react";
+import { Video } from "lucide-react";
 import { OkunCall } from "@/components/closing/okun-call";
+import { Vorraum, type VorraumWahl } from "@/components/closing/vorraum";
 import { OkunLogo } from "@/components/layout/okun-logo";
-import { frageGeraete } from "@/lib/video/geraete";
 
 /**
  * Der Weg ins Gespräch, von der Kundenseite.
  *
- * Ohne Ticket: Der Kunde nimmt teil, mehr nicht. Das Mithören startet die
- * Beraterseite — und alle sehen es, weil Daily es anzeigt.
- *
- * Kamera und Mikrofon werden im Klick freigegeben: Ein Browser fragt nur,
- * wenn die Frage aus einer Handlung des Benutzers kommt. Sonst bleibt der
- * Beitritt hängen, ohne dass jemand den Grund sieht.
+ * Erst der Vorraum — eigenes Bild, Kamera und Mikrofon zur Wahl —, dann
+ * das Gespräch. Ohne Ticket: Der Kunde nimmt teil, mehr nicht. Das
+ * Mithören startet die Beraterseite, und alle sehen es.
  */
 export function BeitretenKnopf({
   raumUrl,
@@ -25,56 +22,43 @@ export function BeitretenKnopf({
   titel: string;
   name: string;
 }) {
-  const [drin, setzeDrin] = useState(false);
-  const [fragt, setzeFragt] = useState(false);
-  const [ohneKamera, setzeOhneKamera] = useState(false);
-  const [huerde, setzeHuerde] = useState<string | null>(null);
+  const [offen, setzeOffen] = useState(false);
+  const [wahl, setzeWahl] = useState<VorraumWahl | null>(null);
 
-  async function betreten() {
-    setzeHuerde(null);
-    setzeFragt(true);
-    try {
-      const antwort = await frageGeraete();
-      if (!antwort.ok) {
-        setzeHuerde(antwort.grund);
-        return;
-      }
-      setzeOhneKamera(!antwort.kamera);
-      setzeDrin(true);
-    } finally {
-      setzeFragt(false);
-    }
+  if (!offen) {
+    return (
+      <button
+        onClick={() => setzeOffen(true)}
+        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#00b8ff]
+          text-[#041018] text-sm font-semibold hover:bg-[#33c7ff] transition-colors"
+      >
+        <Video size={15} /> Dem Gespräch beitreten
+      </button>
+    );
   }
 
-  if (!drin) {
+  if (!wahl) {
     return (
-      <div className="space-y-3">
-        <button
-          onClick={() => void betreten()}
-          disabled={fragt}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#00b8ff]
-            text-[#041018] text-sm font-semibold hover:bg-[#33c7ff]
-            disabled:bg-[#16283d] disabled:text-[#4a5a70] transition-colors"
-        >
-          {fragt ? <Loader2 size={15} className="animate-spin" /> : <Video size={15} />}
-          {fragt ? "Kamera und Mikrofon freigeben…" : "Dem Gespräch beitreten"}
-        </button>
-
-        {huerde && (
-          <div className="px-3.5 py-3 rounded-xl bg-[rgba(240,80,74,.08)] border border-[rgba(240,80,74,.25)]">
-            <p className="text-[#f0a09a] text-xs leading-relaxed">{huerde}</p>
-            <button
-              onClick={() => {
-                setzeOhneKamera(true);
-                setzeDrin(true);
-              }}
-              className="mt-2.5 px-3.5 py-2 rounded-lg border border-[#1a2840] text-[#c9d4e4]
-                text-xs font-medium hover:border-[rgba(0,184,255,.4)] transition-colors"
-            >
-              Trotzdem beitreten
-            </button>
+      <div className="fixed inset-0 z-[120] bg-[#04080f] overflow-y-auto py-10 px-4">
+        <div className="flex justify-center mb-7">
+          <div className="w-[150px]">
+            <OkunLogo size="sm" />
           </div>
-        )}
+        </div>
+        <Vorraum
+          titel={titel}
+          vorschlag={name}
+          nameAendern={false}
+          onBetreten={setzeWahl}
+        />
+        <p className="mt-5 text-center">
+          <button
+            onClick={() => setzeOffen(false)}
+            className="text-[#5b6b7f] hover:text-[#c9d4e4] text-xs transition-colors"
+          >
+            Abbrechen
+          </button>
+        </p>
       </div>
     );
   }
@@ -85,16 +69,12 @@ export function BeitretenKnopf({
         roomUrl={raumUrl}
         userName={name}
         role="client"
-        startOhneKamera={ohneKamera}
         slide={null}
-        /*
-          Verlassen heißt: Seite neu laden.
-
-          Sonst gibt daily-react beim zweiten Beitritt das abgeräumte
-          Gesprächsobjekt heraus, und der Beitritt stirbt mit
-          „undefined is not an object". Nach dem Neuladen steht wieder der
-          Termin mit dem Knopf da.
-        */
+        startOhneKamera={wahl.ohneKamera}
+        kameraId={wahl.kamera}
+        mikroId={wahl.mikro}
+        // Verlassen lädt neu: Sonst gibt daily-react beim zweiten Beitritt
+        // das abgeräumte Gesprächsobjekt heraus.
         onLeave={() => window.location.reload()}
         stageLayout={({ kacheln, steuerung }) => (
           <div className="h-full flex flex-col">
@@ -107,7 +87,9 @@ export function BeitretenKnopf({
               </h1>
             </div>
             <div className="flex-1 min-h-0 p-4">{kacheln}</div>
-            <div className="px-4 py-3 border-t border-[#0f1d2f]">{steuerung}</div>
+            <div className="px-4 py-3 border-t border-[#0f1d2f] flex justify-center">
+              {steuerung}
+            </div>
           </div>
         )}
       />

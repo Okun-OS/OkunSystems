@@ -49,7 +49,7 @@ export default async function GastSeite({
 
   return (
     <div className="min-h-screen bg-[#04080f] flex items-center justify-center p-6">
-      <div className="w-full max-w-[460px]">
+      <div className="w-full max-w-[760px]">
         {/*
           Feste Breite um das Logo.
 
@@ -63,35 +63,37 @@ export default async function GastSeite({
           </div>
         </div>
 
-        <div className="bg-[#0a121c] border border-[#16263d] rounded-2xl p-7">
-          <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-[#3f5572]">
-            Besprechung
-          </p>
-          <h1 className="text-[#f0f0f0] text-lg font-bold mt-1.5">{sicht.titel}</h1>
-          <p className="text-[#8899b4] text-sm mt-2">
-            {formatiereBerlin(sicht.beginn, {
-              weekday: "long", day: "2-digit", month: "long",
-              hour: "2-digit", minute: "2-digit",
-            })}
-            {" – "}
-            {formatiereBerlin(sicht.ende, { hour: "2-digit", minute: "2-digit" })} Uhr
-          </p>
+        {/*
+          Der Vorraum ist die Seite, nicht ihr Inhalt.
 
-          <div className="mt-6">
-            {raum.ok ? (
-              <GastRaum
-                raumUrl={raum.url}
-                titel={sicht.titel}
-                vorschlag={sicht.gastName ?? ""}
-              />
-            ) : (
-              <p className="text-[#5b6b7f] text-xs leading-relaxed">
-                Der Raum steht noch nicht bereit. Versuchen Sie es kurz vor dem Termin
-                noch einmal — er wird erst dann geöffnet.
-              </p>
-            )}
+          Er bringt sein eigenes Bild und seine eigene Überschrift mit; eine
+          Karte darum wäre eine Karte in einer Karte. Wann der Termin ist,
+          steht darunter — zur Sicherheit, falls jemand zu früh dran ist.
+        */}
+        {raum.ok ? (
+          <GastRaum
+            raumUrl={raum.url}
+            titel={sicht.titel}
+            vorschlag={sicht.gastName ?? ""}
+          />
+        ) : (
+          <div className="bg-[#0a121c] border border-[#16263d] rounded-2xl p-7">
+            <h1 className="text-[#f0f0f0] text-lg font-bold">{sicht.titel}</h1>
+            <p className="text-[#5b6b7f] text-xs leading-relaxed mt-3">
+              Der Raum steht noch nicht bereit. Versuchen Sie es kurz vor dem Termin
+              noch einmal — er wird erst dann geöffnet.
+            </p>
           </div>
-        </div>
+        )}
+
+        <p className="mt-5 text-center text-[12px] text-[#5b6b7f]">
+          {formatiereBerlin(sicht.beginn, {
+            weekday: "long", day: "2-digit", month: "long",
+            hour: "2-digit", minute: "2-digit",
+          })}
+          {" – "}
+          {formatiereBerlin(sicht.ende, { hour: "2-digit", minute: "2-digit" })} Uhr
+        </p>
 
         <p className="mt-6 text-center text-[11px] text-[#3f5572] leading-relaxed">
           Sie brauchen kein Konto und keine Installation. Das Gespräch läuft im Browser.
