@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useDaily, useDailyEvent } from "@daily-co/daily-react";
 import { ArrowLeft, Ear, EarOff, FileText, Loader2, PenLine, Radio, Target } from "lucide-react";
 import { OkunCall } from "@/components/closing/okun-call";
+import { Vorraum, type VorraumWahl } from "@/components/closing/vorraum";
+import { OkunLogo } from "@/components/layout/okun-logo";
 
 /**
  * Die Besprechung — ein ganz normales Videogespräch, nur in unserem Haus.
@@ -62,6 +64,41 @@ export function BesprechungsRaum({
   protokoll: string | null;
   zurueckLink: string;
 }) {
+  /*
+    Auch der Berater geht durch den Vorraum.
+
+    Gerade er: Er führt das Gespräch, und wenn bei ihm die falsche Kamera
+    läuft oder das Mikrofon stumm bleibt, merkt es niemand rechtzeitig. Ein
+    Blick auf das eigene Bild vorher kostet fünf Sekunden.
+  */
+  const [wahl, setzeWahl] = useState<VorraumWahl | null>(null);
+
+  if (!wahl) {
+    return (
+      <div className="fixed inset-0 z-[120] bg-[#04080f] overflow-y-auto py-10 px-4">
+        <div className="flex justify-center mb-7">
+          <div className="w-[150px]">
+            <OkunLogo size="sm" />
+          </div>
+        </div>
+        <Vorraum
+          titel={`${titel} · ${firma}`}
+          vorschlag={beraterName}
+          nameAendern={false}
+          onBetreten={setzeWahl}
+        />
+        <p className="mt-5 text-center">
+          <Link
+            href={zurueckLink}
+            className="text-[#5b6b7f] hover:text-[#c9d4e4] text-xs transition-colors"
+          >
+            Zurück zum Termin
+          </Link>
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-[120] bg-[#04080f]">
       <OkunCall
@@ -70,6 +107,9 @@ export function BesprechungsRaum({
         userName={beraterName}
         role="advisor"
         slide={null}
+        startOhneKamera={wahl.ohneKamera}
+        kameraId={wahl.kamera}
+        mikroId={wahl.mikro}
         onLeave={() => {
           window.location.href = zurueckLink;
         }}
