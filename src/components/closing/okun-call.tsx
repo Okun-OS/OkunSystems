@@ -274,8 +274,21 @@ function CallSurface({
   */
   const { waitingParticipants, grantAccess } = useWaitingParticipants();
 
-  const [micOn, setMicOn] = useState(true);
-  const [camOn, setCamOn] = useState(true);
+  /*
+    Mikrofon und Kamera werden bei Daily abgelesen, nicht mitgezählt.
+
+    Vorher standen hier zwei Schalter, die mit „an" anfingen und nur
+    wussten, was man selbst angeklickt hatte. Sendete die Kamera nicht —
+    weil ein anderes Programm sie hielt, weil der Beitritt sie nicht
+    veröffentlicht hat —, zeigte die Leiste trotzdem „Kamera aus"
+    (also: läuft). Man sieht sich selbst, hält alles für in Ordnung, und
+    das Gegenüber sieht einen nicht. Genau so ist es in einem offiziellen
+    Gespräch passiert.
+  */
+  const localAudio = useParticipantProperty(localSessionId ?? "", "audio");
+  const localVideo = useParticipantProperty(localSessionId ?? "", "video");
+  const micOn = localAudio !== false;
+  const camOn = localVideo !== false;
   const [pointing, setPointing] = useState(false);
   const [remotePointer, setRemotePointer] = useState<{ x: number; y: number } | null>(null);
   const pointerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -336,23 +349,31 @@ function CallSurface({
     if (state === "joined-meeting" || state === "joining-meeting") return;
     joinStarted.current = true;
     /*
-      Erst die Kamera, dann der Beitritt.
+      Beitreten, und danach nachsehen, ob die Kamera wirklich sendet.
 
-      `startCamera()` holt die eigene Kamera, bevor das Gespräch steht —
-      damit sieht man sich selbst schon, während verbunden wird, und weiß,
-      ob man im Bild sitzt. Scheitert es, geht der Beitritt trotzdem
-      weiter: Ohne Bild ist ein Gespräch immer noch ein Gespräch.
+      Hier stand gestern ein `startCamera()` vor dem Beitritt — für ein
+      Vorschaubild, während verbunden wird. Danach kam ein Gespräch, in dem
+      der eine sich selbst sah und der andere ihn nicht. Die Kamera vor dem
+      Beitritt zu öffnen und sie dann im Beitritt noch einmal zu belegen,
+      ist auf manchen Rechnern genau der Unterschied zwischen „läuft
+      örtlich" und „wird gesendet". Ein Vorschaubild ist das nicht wert.
+
+      Stattdessen wird nach dem Beitritt ausdrücklich eingeschaltet, was
+      eingeschaltet sein soll. Ist die Kamera dann immer noch aus, sagt es
+      die Steuerleiste — sie liest ihren Zustand seit heute bei Daily ab
+      und nicht bei sich selbst.
     */
     void (async () => {
-      if (!ohneKamera) {
-        try {
-          await daily.startCamera();
-        } catch {
-          // Kein Vorschaubild. Mehr folgt daraus nicht.
-        }
-      }
       try {
         await daily.join(ohneKamera ? { startVideoOff: true } : {});
+        if (!ohneKamera) {
+          try {
+            daily.setLocalVideo(true);
+            daily.setLocalAudio(true);
+          } catch {
+            // Dann steht es in der Steuerleiste.
+          }
+        }
       } catch (err: unknown) {
         setFailure(describeFailure(err instanceof Error ? err.message : errorText(err)));
       }
@@ -587,15 +608,11 @@ function CallSurface({
   useEffect(() => registriereSender(() => send({ k: "radar" })), [send]);
 
   function toggleMic() {
-    const next = !micOn;
-    setMicOn(next);
-    daily?.setLocalAudio(next);
+    daily?.setLocalAudio(!micOn);
   }
 
   function toggleCam() {
-    const next = !camOn;
-    setCamOn(next);
-    daily?.setLocalVideo(next);
+    daily?.setLocalVideo(!camOn);
   }
 
   function leave() {
@@ -617,6 +634,23 @@ function CallSurface({
   // unten und, falls der Aufrufer das Layout übernimmt, bei ihm.
   const steuerung = (
     <div className="flex items-center gap-2">
+      {/*
+        Was aus ist, steht da — nicht nur als Symbol.
+
+        Ein durchgestrichenes Kamerasymbol übersieht man, während man
+        redet. „Niemand sieht Sie" übersieht man nicht. Die Zeile erscheint
+        nur, wenn tatsächlich nichts gesendet wird; was sie sagt, liest sie
+        bei Daily ab.
+      */}
+      {meetingState === "joined-meeting" && (!camOn || !micOn) && (
+        <span className="mr-1 px-2.5 py-1.5 rounded-lg bg-[rgba(240,80,74,.12)] border border-[rgba(240,80,74,.35)] text-[#f0a09a] text-[11px] font-semibold whitespace-nowrap">
+          {!camOn && !micOn
+            ? "Kamera und Mikrofon aus — niemand sieht und hört Sie"
+            : !camOn
+              ? "Kamera aus — niemand sieht Sie"
+              : "Mikrofon aus — niemand hört Sie"}
+        </span>
+      )}
       <ControlButton active={micOn} onClick={toggleMic} label={micOn ? "Stumm" : "Ton an"}>
         {micOn ? <Mic size={15} /> : <MicOff size={15} />}
       </ControlButton>
@@ -1431,13 +1465,15 @@ function BelegteKachel({
           className={`w-full h-full ${winzig ? "object-cover" : "object-contain"}`}
         />
       ) : (
-        <div className="w-full h-full flex items-center justify-center bg-[linear-gradient(160deg,#0d1a2b,#070d17)]">
+        <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-[linear-gradient(160deg,#0d1a2b,#070d17)]">
           <span
             className="w-9 h-9 rounded-full text-[13px] font-bold flex items-center justify-center"
             style={{ background: `${akzent}1f`, color: akzent }}
           >
             {(name ?? "?").trim().charAt(0).toUpperCase() || "?"}
           </span>
+          {/* Ein Buchstabe im Kreis sagt nicht, warum kein Bild da ist. */}
+          {!winzig && <span className="text-[#44546b] text-[10px]">Kamera aus</span>}
         </div>
       )}
       <KachelName
