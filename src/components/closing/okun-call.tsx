@@ -737,6 +737,56 @@ function CallSurface({
     const gegenueber = remoteIds[0] ?? null;
     // Allein im Raum heißt: man sieht sich selbst, nicht ein leeres Rechteck.
     const selbstGross = getauscht || !gegenueber;
+
+    /*
+      Ab drei im Raum wird aus der Bühne ein Gitter.
+
+      Vorher stand hier genau ein Gegenüber groß und man selbst in der Ecke
+      — wer als dritter dazukam, war im Raum, aber auf keinem Bildschirm zu
+      sehen. Mit drei Teilnehmern gibt es kein „Gegenüber" mehr, sondern
+      eine Runde, und die gehört gleich verteilt: zwei Spalten bis vier
+      Personen, danach drei.
+    */
+    if (remoteIds.length > 1) {
+      const alle = [...remoteIds, ...(localSessionId ? [localSessionId] : [])];
+      const spalten = alle.length <= 4 ? 2 : 3;
+      const gitter = (
+        <div className="relative h-full min-h-0">
+          {isAdvisor && waitingParticipants.length > 0 && (
+            <div className="absolute top-3 left-3 right-3 z-10">
+              <Warteraum teilnehmer={waitingParticipants} einlassen={grantAccess} />
+            </div>
+          )}
+          <div
+            className="h-full grid gap-3 auto-rows-fr"
+            style={{ gridTemplateColumns: `repeat(${spalten}, minmax(0,1fr))` }}
+          >
+            {alle.map((id) => (
+              <Kachel
+                key={id}
+                sessionId={id}
+                rolle={id === localSessionId ? "Sie" : "Teilnehmer"}
+                akzent={id === localSessionId ? "#22c55e" : "#00b8ff"}
+                istSelbst={id === localSessionId}
+                platzhalter="Kamera aus"
+                imGitter
+              />
+            ))}
+          </div>
+        </div>
+      );
+      return (
+        <>
+          {stageLayout({
+            kacheln: gitter,
+            steuerung,
+            zustand: "verbunden",
+            teilnehmer: alle.length,
+          })}
+          {chatWidget}
+        </>
+      );
+    }
     /*
       Das Gegenüber groß, man selbst als Einblendung in der Ecke.
 
@@ -1368,6 +1418,7 @@ function Kachel({
   platzhalter,
   gross,
   winzig,
+  imGitter,
 }: {
   sessionId: string | null;
   rolle: string;
@@ -1378,6 +1429,8 @@ function Kachel({
   gross?: boolean;
   /** Die eingeblendete eigene Kachel. */
   winzig?: boolean;
+  /** Eine von mehreren gleich großen Kacheln. */
+  imGitter?: boolean;
 }) {
   /*
     Die große Kachel nimmt die Fläche, die da ist.
@@ -1403,7 +1456,9 @@ function Kachel({
     ? "h-full w-full min-h-[180px] rounded-2xl"
     : winzig
       ? "aspect-video rounded-xl"
-      : "aspect-video rounded-xl";
+      : imGitter
+        ? "h-full w-full min-h-[110px] rounded-xl"
+        : "aspect-video rounded-xl";
 
   if (!sessionId) {
     return (
