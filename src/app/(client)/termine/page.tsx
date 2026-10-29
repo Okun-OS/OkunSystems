@@ -1,17 +1,12 @@
 import { auth } from "@/auth";
+import Link from "next/link";
+import { fuehrtZurBesprechung, terminartLabel } from "@/lib/termine/arten";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { CalendarDays, Video, MapPin, Clock } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 import { requireBlueprintComplete } from "@/lib/require-blueprint";
 import BookingCalendar from "@/components/BookingCalendar";
-
-const TYPE_LABELS: Record<string, string> = {
-  STRATEGY: "Strategiegespräch",
-  REVIEW: "Review-Termin",
-  SUPPORT: "Supporttermin",
-  OTHER: "Sonstiger Termin",
-};
 
 export default async function TerminePage() {
   const session = await auth();
@@ -130,7 +125,7 @@ function AppointmentCard({
   };
   isPast?: boolean;
 }) {
-  const typeLabel = TYPE_LABELS[appointment.type] ?? appointment.type;
+  const typeLabel = terminartLabel(appointment.type);
   return (
     <div
       className={`bg-[#0c1520] border rounded-xl p-5 ${
@@ -163,7 +158,23 @@ function AppointmentCard({
                   <span>{appointment.location}</span>
                 </div>
               )}
-              {appointment.meetingUrl && (
+              {/*
+                Der Weg führt über unsere Seite, nicht direkt zu Daily.
+
+                Dort entsteht der Raum erst beim Betreten — ein abgelaufener
+                wäre sonst eine tote Adresse. Und das freigegebene Protokoll
+                steht gleich daneben.
+              */}
+              {fuehrtZurBesprechung(appointment.type) && (
+                <Link
+                  href={`/termine/${appointment.id}`}
+                  className="flex items-center gap-1.5 text-[#00b8ff] text-xs hover:underline"
+                >
+                  <Video size={12} />
+                  {isPast ? "Termin und Protokoll" : "Zum Gespräch"}
+                </Link>
+              )}
+              {!fuehrtZurBesprechung(appointment.type) && appointment.meetingUrl && (
                 <div className="flex items-center gap-1.5 text-[#00b8ff] text-xs">
                   <Video size={12} />
                   <a

@@ -1,8 +1,24 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
+import {
+  berlinStundeVon,
+  berlinTagesgrenzen,
+  berlinWochentagVon,
+  berlinZeitpunkt,
+  tagAusSchluessel,
+} from "@/lib/zeit";
 
-const SLOT_HOURS = [9, 10, 11, 13, 14, 15, 16, 17];
+/**
+ * Die freien Zeitfenster eines Tages.
+ *
+ * Alle Stunden sind **deutsche Ortszeit**. Vorher wurden sie mit `setHours`
+ * gebaut, also in der Zeitzone des Servers — und der steht bei Railway in UTC.
+ * Wer 13 Uhr wählte, buchte damit 13:00 UTC; im Portal stand anschließend
+ * 15 Uhr. Die Beschriftung stimmte, der gespeicherte Zeitpunkt nicht.
+ */
+
+const SLOT_STUNDEN = [9, 10, 11, 13, 14, 15, 16, 17];
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -11,40 +27,33 @@ export async function GET(req: NextRequest) {
   const dateParam = req.nextUrl.searchParams.get("date");
   if (!dateParam) return NextResponse.json({ error: "Missing date" }, { status: 400 });
 
-  const date = new Date(dateParam);
-  if (isNaN(date.getTime())) return NextResponse.json({ error: "Invalid date" }, { status: 400 });
+  const tag = tagAusSchluessel(dateParam);
+  if (!tag) return NextResponse.json({ error: "Invalid date" }, { status: 400 });
 
-  const dayOfWeek = date.getDay(); // 0 = Sun, 6 = Sat
-  if (dayOfWeek === 0 || dayOfWeek === 6) {
+  // Wochenenden bleiben frei. Der Wochentag folgt aus den Kalenderzahlen,
+  // nicht aus einem Zeitpunkt — sonst entscheidet wieder die Serverzone.
+  const wochentag = berlinWochentagVon(tag.jahr, tag.monat, tag.tag);
+  if (wochentag === 0 || wochentag === 6) {
     return NextResponse.json({ slots: [] });
   }
 
-  // Check already-booked slots on this day
-  const dayStart = new Date(date);
-  dayStart.setHours(0, 0, 0, 0);
-  const dayEnd = new Date(date);
-  dayEnd.setHours(23, 59, 59, 999);
+  const { von, bis } = berlinTagesgrenzen(tag.jahr, tag.monat, tag.tag);
 
-  const bookedAppointments = await db.appointment.findMany({
+  const belegt = await db.appointment.findMany({
     where: {
-      startTime: { gte: dayStart, lte: dayEnd },
+      startTime: { gte: von, lte: bis },
       status: { not: "CANCELLED" },
     },
     select: { startTime: true },
   });
 
-  const bookedHours = new Set(
-    bookedAppointments.map((a) => new Date(a.startTime).getHours())
-  );
+  // Verglichen wird die Stunde, die in Berlin auf der Uhr steht.
+  const belegteStunden = new Set(belegt.map((a) => berlinStundeVon(new Date(a.startTime))));
 
-  const slots = SLOT_HOURS.filter((h) => !bookedHours.has(h)).map((h) => {
-    const slotTime = new Date(date);
-    slotTime.setHours(h, 0, 0, 0);
-    return {
-      time: slotTime.toISOString(),
-      label: `${h.toString().padStart(2, "0")}:00 Uhr`,
-    };
-  });
+  const slots = SLOT_STUNDEN.filter((h) => !belegteStunden.has(h)).map((h) => ({
+    time: berlinZeitpunkt(tag.jahr, tag.monat, tag.tag, h).toISOString(),
+    label: `${h.toString().padStart(2, "0")}:00 Uhr`,
+  }));
 
   return NextResponse.json({ slots });
 }

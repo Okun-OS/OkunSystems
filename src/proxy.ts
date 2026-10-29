@@ -1,22 +1,78 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
+import { canAccessAdminPath, homeFor, isAdminPath } from "@/lib/closing/role-access";
 
 const secret =
   process.env.AUTH_SECRET ||
   process.env.NEXTAUTH_SECRET ||
   "okun-systems-platform-secret-please-set-NEXTAUTH_SECRET-in-railway";
 
-export async function proxy(req: NextRequest) {
+/**
+ * Öffentliche Seiten der Website.
+ *
+ * Sie liegen in derselben Anwendung wie das Portal, dürfen aber keine
+ * Anmeldung verlangen — sonst sieht ein Interessent statt der Startseite ein
+ * Anmeldeformular.
+ */
+const PUBLIC_PAGES = new Set([
+  "/",
+  "/leistungen",
+  "/ueber-uns",
+  "/kontakt",
+  "/impressum",
+  "/datenschutz",
+]);
+
+/**
+ * Website und Portal leben auf der nackten Domain.
+ *
+ * `www` zeigt auf dieselbe Anwendung. Ohne Weiterleitung entstehen zwei
+ * getrennte Anmeldungen: das Sitzungs-Cookie wird ohne `Domain`-Angabe
+ * gesetzt und gilt damit nur für genau den Hostnamen, unter dem man sich
+ * angemeldet hat. Wer sich auf `www.` anmeldet und später die nackte Domain
+ * aufruft, steht dort vor dem Anmeldeformular — und umgekehrt.
+ *
+ * Hinter dem Railway-Proxy steht der vom Besucher aufgerufene Hostname in
+ * `x-forwarded-host`; `host` ist nur der Rückfall für den lokalen Betrieb.
+ * Ein Port bleibt erhalten, damit die Entwicklungsumgebung nicht bricht.
+ */
+function apexUrl(req: NextRequest): URL | null {
+  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
+  if (!host?.toLowerCase().startsWith("www.")) return null;
+
   const { nextUrl } = req;
+  const protocol =
+    req.headers.get("x-forwarded-proto") ?? nextUrl.protocol.replace(":", "");
+
+  return new URL(
+    `${protocol}://${host.slice(4)}${nextUrl.pathname}${nextUrl.search}`
+  );
+}
+
+export async function proxy(req: NextRequest) {
+  const apex = apexUrl(req);
+  if (apex) return NextResponse.redirect(apex, 308);
+
+  const { nextUrl } = req;
+  const isPublicPage = PUBLIC_PAGES.has(nextUrl.pathname);
   const isAuthPage =
     nextUrl.pathname === "/login" ||
     nextUrl.pathname.startsWith("/einladung/") ||
     nextUrl.pathname === "/passwort-vergessen" ||
     nextUrl.pathname.startsWith("/passwort-reset/");
   const isClosingRoute = nextUrl.pathname.startsWith("/closing/");
+  /*
+    Der Gastzugang zur Besprechung.
+
+    Wie beim Closing: Wer eingeladen wurde, hat kein Konto bei uns. Sein
+    Zugang ist der Link, und die Seite dahinter prüft ihn selbst. Ohne diese
+    Ausnahme landet der Gast auf dem Anmeldeformular — und damit auf einer
+    Seite, auf der er nichts zu suchen hat.
+  */
+  const isGastRoute = nextUrl.pathname.startsWith("/besprechung/");
   const isApiRoute = nextUrl.pathname.startsWith("/api/");
 
-  if (isApiRoute || isClosingRoute) {
+  if (isApiRoute || isClosingRoute || isGastRoute || isPublicPage) {
     return NextResponse.next();
   }
 
@@ -33,30 +89,56 @@ export async function proxy(req: NextRequest) {
 
   const isLoggedIn = !!token;
   const role = token?.role as string | undefined;
+  const canStrategy = token?.canStrategy === true;
 
   if (!isLoggedIn && !isAuthPage) {
     return NextResponse.redirect(new URL("/login", nextUrl));
   }
 
-  const isAdminOrCloser = role === "ADMIN" || role === "CLOSER";
+  const isStaff = role === "ADMIN" || role === "CLOSER" || role === "STRATEGIST";
 
   if (isLoggedIn && isAuthPage) {
-    if (isAdminOrCloser) {
-      return NextResponse.redirect(new URL("/admin/dashboard", nextUrl));
-    }
-    return NextResponse.redirect(new URL("/dashboard", nextUrl));
+    // Jede Rolle landet auf ihrer eigenen Startseite — ein Mitarbeiter, der
+    // nur Strategiegespräche führt, hat auf dem Admin-Dashboard nichts zu
+    // suchen und würde von dort sofort wieder weggeleitet.
+    return NextResponse.redirect(new URL(homeFor(role ?? "CLIENT"), nextUrl));
   }
 
-  if (isLoggedIn && nextUrl.pathname === "/") {
-    if (isAdminOrCloser) {
-      return NextResponse.redirect(new URL("/admin/dashboard", nextUrl));
+  // Bereichsschranke: ein CLOSER darf nur den Sales-/Closing-Bereich betreten.
+  // Die maßgebliche Prüfung erfolgt zusätzlich serverseitig gegen die Datenbank
+  // (siehe (admin)/layout.tsx und auth-guards.ts) — hier wird nur früh
+  // umgeleitet, damit gar nicht erst gerendert wird.
+  if (isLoggedIn && isAdminPath(nextUrl.pathname)) {
+    if (!isStaff) {
+      return NextResponse.redirect(new URL("/dashboard", nextUrl));
     }
-    return NextResponse.redirect(new URL("/dashboard", nextUrl));
+    if (!canAccessAdminPath(role ?? "", nextUrl.pathname, canStrategy)) {
+      return NextResponse.redirect(new URL(homeFor(role ?? "CLIENT"), nextUrl));
+    }
   }
 
-  return NextResponse.next();
+  // Der Pfad wird weitergereicht, damit das Layout ihn gegen die in der
+  // Datenbank hinterlegte Rolle prüfen kann.
+  const headers = new Headers(req.headers);
+  headers.set("x-okun-pathname", nextUrl.pathname);
+  return NextResponse.next({ request: { headers } });
 }
 
+/**
+ * Statische Dateien bleiben außen vor.
+ *
+ * Vorher waren nur PNG-Dateien ausgenommen. Alles andere aus `public/` lief
+ * durch die Anmeldeschranke und wurde für nicht angemeldete Besucher auf
+ * `/login` umgeleitet — was auf der Kundenseite des Closings zuschlägt: der
+ * Kunde ist nicht angemeldet, sein Zugang läuft über das Token. Der
+ * PDF-Worker kam dort als Anmeldeseite an, und die Folie ließ sich nicht
+ * anzeigen.
+ *
+ * Alles in `public/` ist ohnehin öffentlich; Privates läuft über API-Routen
+ * mit eigener Prüfung.
+ */
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.png$).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpe?g|gif|webp|avif|svg|ico|mjs|js|css|map|pdf|txt|xml|json|woff2?|ttf|otf|eot|mp4|webm|wasm)$).*)",
+  ],
 };

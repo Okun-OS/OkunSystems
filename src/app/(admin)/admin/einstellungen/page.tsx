@@ -142,24 +142,57 @@ export default async function AdminEinstellungenPage() {
         </p>
       </div>
 
-      {/* Legal documents */}
+      {/* Closing Portal */}
       <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6 mb-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <FileText size={16} className="text-[#888]" />
-            <h2 className="text-[#f0f0f0] font-semibold text-sm">Rechtliche Dokumente</h2>
-          </div>
-          <Link
-            href="/admin/einstellungen/rechtliches"
-            className="flex items-center gap-1.5 text-[#00b8ff] text-sm hover:underline"
-          >
-            Verwalten
-            <ArrowRight size={14} />
-          </Link>
+        <div className="flex items-center gap-2 mb-4">
+          <FileText size={16} className="text-[#00b8ff]" />
+          <h2 className="text-[#f0f0f0] font-semibold text-sm">Closing Portal</h2>
         </div>
-        <p className="text-[#888] text-xs mt-2 leading-relaxed">
-          AGBs, Datenschutzerklärung und weitere Dokumente – werden Kunden im Closing zur Zustimmung angezeigt.
+        <p className="text-[#888] text-xs mb-5 leading-relaxed">
+          Vertragsabschluss, Nachweiskette und Rechnungsdokumente. Alle Texte und Dokumente
+          werden hier gepflegt – im Code ist nichts davon fest hinterlegt.
         </p>
+        <div className="grid sm:grid-cols-2 gap-3">
+          {[
+            {
+              href: "/admin/einstellungen/team",
+              title: "Team & Closer",
+              desc: "Interne Zugänge anlegen. Closer arbeiten nur an ihren eigenen Leads und Closings.",
+            },
+            {
+              href: "/admin/einstellungen/unternehmen",
+              title: "Unternehmensdaten",
+              desc: "Firmierung, Anschrift, Bank, Register – Grundlage für Rechnungen und Protokolle.",
+            },
+            {
+              href: "/admin/einstellungen/vertragsdokumente",
+              title: "Rechtliche Dokumente & Erklärungen",
+              desc: "AGB, AVV & Anlagen mit versionierten Dateien – und der Wortlaut der Checkbox, die der Kunde dazu abhakt.",
+            },
+            {
+              href: "/admin/einstellungen/closing-scripts",
+              title: "Closing Scripts",
+              desc: "Teleprompter-Texte für die Vertragsaufzeichnung inkl. Platzhaltern.",
+            },
+            {
+              href: "/admin/einstellungen/vorlagen",
+              title: "Dokumentvorlagen",
+              desc: "Rechnungs- und Protokollvorlage im OKUN-Briefbogen, versioniert.",
+            },
+          ].map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="block px-4 py-3.5 rounded-lg border border-[#1a2840] bg-[#0a1119] hover:border-[#00b8ff]/40 transition-colors group"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[#eef2f7] text-sm font-semibold">{item.title}</span>
+                <ArrowRight size={14} className="text-[#5b6b7f] group-hover:text-[#00b8ff]" />
+              </div>
+              <p className="text-[#5b6b7f] text-xs mt-1 leading-relaxed">{item.desc}</p>
+            </Link>
+          ))}
+        </div>
       </div>
 
       {/* Integrations */}

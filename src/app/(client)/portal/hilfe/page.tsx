@@ -75,11 +75,11 @@ export default function HilfePage() {
         </p>
         <div className="space-y-3">
           <a
-            href="mailto:support@okun-systems.de"
+            href="mailto:support@okun-systems.com"
             className="flex items-center gap-3 text-sm text-[#888] hover:text-[#f0f0f0] transition-colors"
           >
             <Mail size={14} className="text-[#555] flex-shrink-0" />
-            support@okun-systems.de
+            support@okun-systems.com
           </a>
           <div className="flex items-center gap-3 text-sm text-[#888]">
             <Phone size={14} className="text-[#555] flex-shrink-0" />

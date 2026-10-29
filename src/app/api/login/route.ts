@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import bcryptjs from "bcryptjs";
 import { encode } from "@auth/core/jwt";
 import { Resend } from "resend";
+import { homeFor } from "@/lib/closing/role-access";
 
 const SECRET =
   process.env.AUTH_SECRET ||
@@ -28,7 +29,7 @@ async function send2FACode(user: { id: string; email: string; name: string | nul
   if (apiKey) {
     try {
       const resend = new Resend(apiKey);
-      const from = process.env.EMAIL_FROM ?? "OKUN Systems <noreply@okun-systems.de>";
+      const from = process.env.EMAIL_FROM ?? "OKUN Systems <noreply@okun-systems.com>";
       await resend.emails.send({
         from,
         to: user.email,
@@ -109,6 +110,23 @@ export async function POST(req: Request) {
       });
     }
 
+    /*
+      Ab hier ist die Anmeldung gelungen — der Zugang ist eingerichtet.
+
+      `firstLogin` wurde bisher nur gesetzt und nie gelöscht. Es hing also
+      dauerhaft an jedem eingeladenen Konto, obwohl der Mensch längst im
+      Portal saß: „Einrichtung offen" in der Benutzerliste und der erste
+      Schritt der Onboarding-Checkliste blieben für immer stehen.
+    */
+    if (user.firstLogin) {
+      await db.user
+        .update({ where: { id: user.id }, data: { firstLogin: false } })
+        .catch(() => {
+          // Eine misslungene Notiz darf keine Anmeldung verhindern; beim
+          // nächsten Mal ist wieder Gelegenheit dazu.
+        });
+    }
+
     // Detect HTTPS (Railway is always HTTPS in production)
     const isSecure =
       new URL(req.url).protocol === "https:" ||
@@ -126,8 +144,9 @@ export async function POST(req: Request) {
         email: user.email,
         name: user.name ?? "",
         role: user.role,
+        canStrategy: user.canStrategy,
         companyId: user.companyId,
-        firstLogin: user.firstLogin,
+        firstLogin: false,
       },
       secret: SECRET,
       salt: cookieName,
@@ -145,8 +164,7 @@ export async function POST(req: Request) {
       .filter(Boolean)
       .join("; ");
 
-    const redirectTo =
-      user.role === "ADMIN" ? "/admin/dashboard" : "/dashboard";
+    const redirectTo = homeFor(user.role);
 
     const response = Response.json({ ok: true, redirectTo });
     response.headers.set("Set-Cookie", cookieValue);

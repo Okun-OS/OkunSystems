@@ -2,6 +2,11 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { LeadDetailClient } from "./LeadDetailClient";
+import {
+  getMasterDataRequirements,
+  validateMasterData,
+  MASTER_DATA_FIELDS,
+} from "@/lib/closing/master-data";
 
 export default async function LeadDetailPage({
   params,
@@ -57,6 +62,15 @@ export default async function LeadDetailPage({
     redirect("/admin/sales/leads");
   }
 
+  // Serverseitige Vollständigkeitsprüfung der Vertragsstammdaten.
+  const requirements = await getMasterDataRequirements();
+  const validation = validateMasterData(company, requirements);
+  const masterDataValues = Object.fromEntries(
+    [...MASTER_DATA_FIELDS.map((f) => f.key), "billingDiffers", "billingHouseNumber", "billingCountry"].map(
+      (key) => [key, (company as unknown as Record<string, unknown>)[key] ?? null]
+    )
+  );
+
   const closers = await db.user.findMany({
     where: { role: { in: ["ADMIN", "CLOSER"] } },
     select: { id: true, name: true, role: true },
@@ -69,6 +83,22 @@ export default async function LeadDetailPage({
       closers={closers}
       currentUserId={userId}
       currentUserRole={userRecord.role}
+      masterData={{
+        values: masterDataValues as Record<string, string | boolean | null>,
+        // Alle aktiven Felder übergeben: die rechtsform- und
+        // rechnungsanschriftabhängige Sichtbarkeit steuert das Formular selbst,
+        // damit sich die Rechtsform überhaupt erst auswählen lässt.
+        requirements: requirements
+          .filter((req) => req.isActive)
+          .map((req) => ({
+            key: req.key,
+            label: req.label,
+            group: req.group,
+            isRequired: req.isRequired,
+            helpText: req.helpText,
+          })),
+        missing: validation.missing.map((m) => ({ key: m.key, label: m.label })),
+      }}
     />
   );
 }

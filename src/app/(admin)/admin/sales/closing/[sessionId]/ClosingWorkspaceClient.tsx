@@ -2,6 +2,10 @@
 
 import { useState, useTransition, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import {
+  kannGezeigtWerden,
+  knopfBeschriftung,
+} from "@/lib/closing/angebot-sicht";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -18,18 +22,31 @@ import {
   Mic,
   MicOff,
   Video,
+  Mail,
   Square,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import {
-  updateClosingSessionStatus,
+  startClosingConversation,
+  markAgreementReached,
   createOfferForSession,
   presentOffer,
-  closeContract,
+  emailOfferToClient,
   resendClientInvitation,
   saveChecklistState,
   saveClosingNotes,
 } from "../actions";
-import { createInvoiceFromOffer } from "../../rechnungen/actions";
+import { setSpecialStatus } from "../portal-actions";
+import { isFailure } from "@/lib/action-result";
+import { STATUS_LABELS as CLOSING_STATUS_LABELS, normalizeStatus } from "@/lib/closing/state-machine";
+import { ContractClosurePanel, type ContractClosureData } from "./ContractClosurePanel";
+import { PresentationPanel, type PresentationItem } from "./PresentationPanel";
+import { type CallSlide } from "@/components/closing/okun-call";
+import { useGespraech } from "@/components/closing/gespraech-host";
+import { showSlide, stopPresentation } from "./presentation-actions";
+import { RadarPanel } from "./RadarPanel";
+import type { RadarCloserAnsicht } from "@/lib/radar/views";
 
 // ─── Closing checklist definition ────────────────────────────────────────────
 const CLOSING_CHECKLIST = [
@@ -90,32 +107,45 @@ const CLOSING_CHECKLIST = [
 const ALL_STEP_IDS = CLOSING_CHECKLIST.flatMap((p) => p.steps.map((s) => s.id));
 
 // ─── Labels & colors ──────────────────────────────────────────────────────────
-const STATUS_LABELS: Record<string, string> = {
-  closing_scheduled: "Termin geplant",
-  in_progress: "Gespräch läuft",
-  offer_presented: "Angebot präsentiert",
-  agreement_reached: "Einigung erzielt",
-  consent_given: "Consent erteilt",
-  contract_closed: "Abgeschlossen",
-  verloren: "Verloren",
-};
+const STATUS_LABELS: Record<string, string> = CLOSING_STATUS_LABELS;
 
 const STATUS_COLORS: Record<string, string> = {
+  lead: "bg-[#1a2840] text-[#8899b4]",
   closing_scheduled: "bg-[rgba(0,184,255,0.1)] text-[#00b8ff]",
-  in_progress: "bg-[rgba(0,184,255,0.15)] text-[#00b8ff]",
+  closing_in_progress: "bg-[rgba(0,184,255,0.15)] text-[#00b8ff]",
   offer_presented: "bg-[rgba(245,158,11,0.1)] text-[#f59e0b]",
   agreement_reached: "bg-[rgba(245,158,11,0.15)] text-[#f59e0b]",
-  consent_given: "bg-[rgba(34,197,94,0.1)] text-[#22c55e]",
+  consent_pending: "bg-[rgba(139,92,246,0.12)] text-[#a78bfa]",
+  consents_confirmed: "bg-[rgba(139,92,246,0.2)] text-[#a78bfa]",
+  recording: "bg-[rgba(239,68,68,0.15)] text-[#fca5a5]",
+  recording_completed: "bg-[rgba(34,197,94,0.1)] text-[#22c55e]",
   contract_closed: "bg-[rgba(34,197,94,0.2)] text-[#22c55e]",
-  verloren: "bg-[rgba(239,68,68,0.1)] text-[#ef4444]",
+  payment_pending: "bg-[rgba(245,158,11,0.12)] text-[#f59e0b]",
+  paid: "bg-[rgba(34,197,94,0.2)] text-[#22c55e]",
+  customer_activated: "bg-[rgba(34,197,94,0.25)] text-[#22c55e]",
+  lost: "bg-[rgba(239,68,68,0.1)] text-[#ef4444]",
+  cancelled: "bg-[rgba(239,68,68,0.1)] text-[#ef4444]",
 };
 
-const NEXT_STATUS_MAP: Record<string, { value: string; label: string; color: string }> = {
-  closing_scheduled: { value: "in_progress", label: "Gespräch starten", color: "bg-[#00b8ff] text-black" },
-  in_progress: { value: "offer_presented", label: "Angebot zeigen", color: "bg-[#f59e0b] text-black" },
-  offer_presented: { value: "agreement_reached", label: "Einigung markieren", color: "bg-[#22c55e] text-black" },
-  agreement_reached: { value: "consent_given", label: "Consent bestätigt", color: "bg-[#22c55e] text-black" },
-  consent_given: { value: "contract_closed", label: "Vertrag abschließen", color: "bg-[#22c55e] text-black" },
+/**
+ * Nur diese beiden Übergänge löst der Closer direkt aus. Alle weiteren Status
+ * entstehen aus echten Ereignissen (Snapshot, Bestätigung, Aufzeichnung,
+ * Zahlung) und lassen sich nicht manuell setzen.
+ */
+const NEXT_STEP_MAP: Record<
+  string,
+  { label: string; color: string; run: (sessionId: string) => Promise<unknown> }
+> = {
+  closing_scheduled: {
+    label: "Gespräch starten",
+    color: "bg-[#00b8ff] text-black",
+    run: startClosingConversation,
+  },
+  offer_presented: {
+    label: "Einigung markieren",
+    color: "bg-[#22c55e] text-black",
+    run: markAgreementReached,
+  },
 };
 
 const CONTENT_TYPE_LABELS: Record<string, string> = {
@@ -214,15 +244,30 @@ interface Props {
   offerTemplates: OfferTemplate[];
   legalDocuments: LegalDocument[];
   currentUserId: string;
+  /** Serverseitig ermittelter Stand des Vertragsabschlusses. */
+  closure: ContractClosureData;
+  /** Rolle des angemeldeten Benutzers — nur ADMIN gibt Präsentationen frei. */
+  viewerRole: string;
+  presentations: PresentationItem[];
+  /** Die laufende oder zuletzt geführte Radar-Analyse, aus Closer-Sicht. */
+  radar: RadarCloserAnsicht | null;
+  /** Sieht der Interessent das Radar gerade in seinem Gesprächsfenster? */
+  radarAufBuehne: boolean;
+  livePresentationId: string | null;
+  liveSlidePosition: number | null;
+  liveSlidePage: number | null;
 }
 
 // ─── Call timer ────────────────────────────────────────────────────────────────
 function CallTimer({ startedAt }: { startedAt: Date }) {
-  const [elapsed, setElapsed] = useState(0);
+  const [elapsed, setElapsed] = useState(() =>
+    Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000)
+  );
   useEffect(() => {
-    const base = Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000);
-    setElapsed(base);
-    const id = setInterval(() => setElapsed((e) => e + 1), 1000);
+    const id = setInterval(
+      () => setElapsed(Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000)),
+      1000
+    );
     return () => clearInterval(id);
   }, [startedAt]);
   const h = Math.floor(elapsed / 3600);
@@ -246,10 +291,202 @@ export function ClosingWorkspaceClient({
   offerTemplates,
   legalDocuments,
   currentUserId,
+  closure,
+  viewerRole,
+  presentations,
+  radar,
+  radarAufBuehne,
+  livePresentationId,
+  liveSlidePosition,
+  liveSlidePage,
 }: Props) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"overview" | "maske" | "skript" | "angebot" | "consent" | "protokoll">("overview");
-  const [callActive, setCallActive] = useState(false);
+  const [activeTab, setActiveTab] = useState<
+    | "overview"
+    | "maske"
+    | "radar"
+    | "praesentation"
+    | "skript"
+    | "angebot"
+    | "abschluss"
+    | "protokoll"
+  >("overview");
+  /*
+    Das Gespräch gehört nicht dieser Seite.
+
+    Es läuft im Layout (siehe `gespraech-host.tsx`) und überlebt damit jeden
+    Seitenwechsel. Hier wird es nur gestartet, beendet und — solange diese
+    Seite offen ist — um die Folienschaltung ergänzt.
+  */
+  const gespraech = useGespraech();
+  const callActive = gespraech.aktiv;
+  const [offerMailPending, setOfferMailPending] = useState(false);
+  const [offerMailResult, setOfferMailResult] = useState<
+    { ok: true; toEmail: string } | { ok: false; error: string } | null
+  >(null);
+  const [callJoinPending, setCallJoinPending] = useState(false);
+  const [callJoinError, setCallJoinError] = useState<string | null>(null);
+
+  // Vor dem Beitritt den Videoraum sicherstellen: ein abgelaufener Raum wird
+  // dabei neu angelegt. Sonst bleibt das Gespräch auf beiden Seiten bei
+  // „wird verbunden…“ stehen, ohne dass jemand den Grund sieht.
+  const joinCall = useCallback(async () => {
+    const appointmentId = closingSession.appointment?.id;
+    if (!appointmentId || callJoinPending) return;
+    setCallJoinPending(true);
+    setCallJoinError(null);
+    try {
+      const res = await fetch("/api/daily/create-room", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appointmentId }),
+      });
+      const data = (await res.json()) as { meetingUrl?: string; error?: string };
+      if (!res.ok || !data.meetingUrl) {
+        setCallJoinError(data.error ?? "Der Gesprächsraum konnte nicht geöffnet werden.");
+        return;
+      }
+      gespraech.starten({
+        raumUrl: data.meetingUrl,
+        name: closingSession.closer.name ?? "Berater",
+        closingSessionId: closingSession.id,
+        titel: closingSession.company.name,
+        zurueckLink: `/admin/sales/closing/${closingSession.id}`,
+      });
+    } catch {
+      setCallJoinError("Keine Verbindung zum Server. Bitte erneut versuchen.");
+    } finally {
+      setCallJoinPending(false);
+    }
+  }, [
+    closingSession.appointment?.id,
+    closingSession.id,
+    closingSession.closer.name,
+    closingSession.company.name,
+    callJoinPending,
+    gespraech,
+  ]);
+
+  // ─── Präsentationssteuerung ────────────────────────────────────────────────
+  // Der Berater blättert zuerst lokal und dann auf dem Server: die Bedienung
+  // reagiert sofort, und ein Neuaufbau der Seite fasst das laufende Gespräch
+  // nicht an. Sobald der Serverstand nachgezogen ist, stimmen beide überein.
+  const livePresentation = presentations.find((p) => p.id === livePresentationId) ?? null;
+  const liveSlides = livePresentation?.slides ?? [];
+
+  const serverKey = `${livePresentationId ?? ""}|${liveSlidePosition ?? ""}|${liveSlidePage ?? ""}`;
+  const [slideView, setSlideView] = useState(() => ({
+    key: serverKey,
+    presentationId: livePresentationId,
+    position: liveSlidePosition,
+    page: liveSlidePage && liveSlidePage > 0 ? liveSlidePage : 1,
+    pageCount: 1,
+  }));
+
+  // Der Serverstand hat sich geändert (Start, Stopp, oder jemand anderes hat
+  // geblättert) — Anzeige daran ausrichten.
+  if (slideView.key !== serverKey) {
+    const justStarted = Boolean(livePresentationId) && slideView.presentationId !== livePresentationId;
+    setSlideView({
+      key: serverKey,
+      presentationId: livePresentationId,
+      position: liveSlidePosition,
+      page: liveSlidePage && liveSlidePage > 0 ? liveSlidePage : 1,
+      pageCount: 1,
+    });
+    // Eine startende Präsentation braucht Platz — aber das Fenster bleibt
+    // verschiebbar. Vollbild gibt es weiterhin über die Schaltfläche; es
+    // ungefragt zu erzwingen, nahm dem Berater die Kontrolle über sein Bild.
+    // Das Fenster zieht sich beim Start einer Präsentation selbst auf —
+    // siehe `gespraech-host.tsx`.
+  }
+
+  const liveIndex = liveSlides.findIndex((slide) => slide.position === slideView.position);
+  const currentSlide = liveIndex >= 0 ? liveSlides[liveIndex] : null;
+  const currentIsPdf = currentSlide?.mimeType === "application/pdf";
+
+  const liveSlide: CallSlide | null =
+    currentSlide && livePresentation
+      ? {
+          slideId: currentSlide.id,
+          mimeType: currentSlide.mimeType,
+          title: livePresentation.title,
+          slideTitle: currentSlide.title,
+          position: currentSlide.position,
+          slideCount: liveSlides.length,
+          page: slideView.page,
+          src: `/api/admin/presentations/slide?slideId=${encodeURIComponent(currentSlide.id)}`,
+        }
+      : null;
+
+  const canNextSlide = Boolean(
+    currentSlide &&
+      ((currentIsPdf && slideView.page < slideView.pageCount) ||
+        liveIndex < liveSlides.length - 1)
+  );
+  const canPrevSlide = Boolean(
+    currentSlide && ((currentIsPdf && slideView.page > 1) || liveIndex > 0)
+  );
+
+  function moveTo(position: number, page: number) {
+    setSlideView((view) => ({
+      ...view,
+      // Auf den Stand vorgreifen, den der Server gleich meldet — sonst würde
+      // die Rückmeldung die eigene Eingabe wieder überschreiben.
+      key: `${livePresentationId ?? ""}|${position}|${page}`,
+      position,
+      page,
+      pageCount: position === view.position ? view.pageCount : 1,
+    }));
+    void showSlide(closingSession.id, position, page);
+  }
+
+  function notePageCount(pageCount: number) {
+    setSlideView((view) => (view.pageCount === pageCount ? view : { ...view, pageCount }));
+  }
+
+  function goToNextSlide() {
+    if (!currentSlide) return;
+    if (currentIsPdf && slideView.page < slideView.pageCount) {
+      moveTo(currentSlide.position, slideView.page + 1);
+      return;
+    }
+    const next = liveSlides[liveIndex + 1];
+    if (next) moveTo(next.position, 1);
+  }
+
+  function goToPreviousSlide() {
+    if (!currentSlide) return;
+    if (currentIsPdf && slideView.page > 1) {
+      moveTo(currentSlide.position, slideView.page - 1);
+      return;
+    }
+    const previous = liveSlides[liveIndex - 1];
+    if (previous) moveTo(previous.position, 1);
+  }
+
+  /*
+    Die Folienschaltung beim Gesprächsfenster anmelden.
+
+    Sie lebt hier, weil sie zu diesem Closing gehört; das Fenster lebt im
+    Layout, weil es den Seitenwechsel überleben muss. Verlässt der Berater
+    die Seite, meldet sich die Schaltung ab — das Gespräch läuft weiter, nur
+    ohne Blättern, bis er zurück ist.
+  */
+  useEffect(() => {
+    gespraech.setzeSteuerung({
+      slide: liveSlide,
+      onPrev: goToPreviousSlide,
+      onNext: goToNextSlide,
+      canPrev: canPrevSlide,
+      canNext: canNextSlide,
+      onStopPresentation: () => {
+        void stopPresentation(closingSession.id).then(() => router.refresh());
+      },
+      onPageCount: notePageCount,
+    });
+    return () => gespraech.setzeSteuerung(null);
+  });
 
   // Status actions
   const [statusPending, startStatusTransition] = useTransition();
@@ -268,18 +505,9 @@ export function ClosingWorkspaceClient({
   const [resendLinkCopied, setResendLinkCopied] = useState(false);
   const [resendError, setResendError] = useState<string | null>(null);
 
-  // Consent & payment
+  // Zahlung (Stripe-Checkout als Alternative zum Rechnungsweg)
   const [paymentPending, setPaymentPending] = useState(false);
   const [consentError, setConsentError] = useState<string | null>(null);
-
-  // Unified contract flow state
-  // null → not started, "offer_confirmed" → offer sent confirmed,
-  // "recording_consent" → consent prompt shown, "confirm" → recording done, awaiting admin confirm
-  const [contractFlowStep, setContractFlowStep] = useState<null | "offer_confirmed" | "recording_consent" | "confirm">(
-    closingSession.status === "contract_closed" ? null : null
-  );
-  const [invoiceId, setInvoiceId] = useState<string | null>(null);
-  const [invoiceError, setInvoiceError] = useState<string | null>(null);
 
   // ─── Maske state ────────────────────────────────────────────────────────────
   const [checklist, setChecklist] = useState<Record<string, boolean>>(() => {
@@ -289,61 +517,23 @@ export function ClosingWorkspaceClient({
   });
   const [notes, setNotes] = useState(closingSession.company.closingNotes ?? "");
   const [notesSaved, setNotesSaved] = useState(false);
-  const [recordingStatus, setRecordingStatus] = useState(closingSession.recordingStatus);
-  const [recordingPending, setRecordingPending] = useState(false);
+  const recordingStatus = closingSession.recordingStatus;
   const notesTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const checklistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ─── Draggable + resizable video overlay ──────────────────────────────────
-  const [vidPos, setVidPos] = useState({ x: 0, y: 0 });
-  const [vidSize, setVidSize] = useState({ w: 420, h: 300 });
-  const vidPosInitialized = useRef(false);
-  const isDragging = useRef(false);
-  const isResizing = useRef(false);
-  const dragOrigin = useRef({ mx: 0, my: 0, x: 0, y: 0 });
-  const resizeOrigin = useRef({ mx: 0, my: 0, w: 0, h: 0 });
-
-  // Recording consent gate
-  const [recordingConsentChecked, setRecordingConsentChecked] = useState(false);
 
   const checkedCount = ALL_STEP_IDS.filter((id) => checklist[id]).length;
   const totalCount = ALL_STEP_IDS.length;
   const progress = totalCount > 0 ? Math.round((checkedCount / totalCount) * 100) : 0;
 
-  // ─── Drag + resize events ─────────────────────────────────────────────────
-  useEffect(() => {
-    function onMove(e: MouseEvent) {
-      if (isDragging.current) {
-        setVidPos({
-          x: dragOrigin.current.x + (e.clientX - dragOrigin.current.mx),
-          y: dragOrigin.current.y + (e.clientY - dragOrigin.current.my),
-        });
-      }
-      if (isResizing.current) {
-        setVidSize({
-          w: Math.max(280, resizeOrigin.current.w + (e.clientX - resizeOrigin.current.mx)),
-          h: Math.max(180, resizeOrigin.current.h + (e.clientY - resizeOrigin.current.my)),
-        });
-      }
-    }
-    function onUp() {
-      isDragging.current = false;
-      isResizing.current = false;
-    }
-    document.addEventListener("mousemove", onMove);
-    document.addEventListener("mouseup", onUp);
-    return () => {
-      document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("mouseup", onUp);
-    };
-  }, []);
+  /*
+    Die Anwesenheitsmeldung hängt am Gespräch, nicht an dieser Seite.
 
-  useEffect(() => {
-    if (callActive && !vidPosInitialized.current) {
-      setVidPos({ x: Math.max(20, window.innerWidth - 460), y: 108 });
-      vidPosInitialized.current = true;
-    }
-  }, [callActive]);
+    Vorher endete sie, sobald der Berater eine andere Seite öffnete — der
+    Interessent sah dann „Ihr Berater ist nicht da", obwohl er im Raum saß.
+    Jetzt meldet sie der Host, solange das Gespräch läuft (siehe
+    `gespraech-host.tsx`).
+  */
 
   const handleChecklistChange = useCallback(
     (stepId: string, checked: boolean) => {
@@ -371,96 +561,30 @@ export function ClosingWorkspaceClient({
     [closingSession.id]
   );
 
-  async function handleStartRecording() {
-    setRecordingPending(true);
-    try {
-      // Signal client to show consent popup
-      await fetch("/api/closing/set-pending-action", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ closingSessionId: closingSession.id, action: "recording_consent" }),
-      });
-      // Start recording
-      const res = await fetch("/api/daily/start-recording", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ closingSessionId: closingSession.id }),
-      });
-      const data = (await res.json()) as { ok?: boolean; recordingStatus?: string; error?: string };
-      if (data.ok) setRecordingStatus("recording");
-      else setConsentError(data.error ?? "Aufzeichnung konnte nicht gestartet werden.");
-    } catch { setConsentError("Netzwerkfehler beim Starten der Aufzeichnung."); }
-    finally { setRecordingPending(false); }
-  }
-
-  async function handleStopRecording() {
-    setRecordingPending(true);
-    try {
-      const res = await fetch("/api/daily/stop-recording", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ closingSessionId: closingSession.id }),
-      });
-      const data = (await res.json()) as { ok?: boolean; error?: string };
-      if (data.ok) {
-        setRecordingStatus("stopped");
-        // Auto-close contract
-        const activeOffer = closingSession.offers.find((o) => o.id === closingSession.activeOfferId);
-        if (activeOffer && closingSession.status !== "contract_closed") {
-          const closeResult = await closeContract(closingSession.id, {
-            offerId: activeOffer.id,
-            packageType: closingSession.company.contractPackage ?? "custom",
-            agbVersion: legalDocuments.find((d) => d.type === "agb")?.version ?? "1.0",
-            privacyVersion: legalDocuments.find((d) => d.type === "datenschutz")?.version ?? "1.0",
-            closerName: closingSession.closer.name ?? "Closer",
-            companyName: closingSession.company.name,
-          });
-          if (closeResult?.error) {
-            setConsentError(closeResult.error);
-            return;
-          }
-        }
-        setContractFlowStep("confirm");
-        router.refresh();
-      } else {
-        setConsentError(data.error ?? "Fehler beim Stoppen der Aufzeichnung.");
-      }
-    } catch { setConsentError("Netzwerkfehler beim Stoppen der Aufzeichnung."); }
-    finally { setRecordingPending(false); }
-  }
-
-  async function handleConfirmSuccess() {
-    const activeOffer = closingSession.offers.find((o) => o.id === closingSession.activeOfferId);
-    if (!activeOffer) { setInvoiceError("Kein aktives Angebot."); return; }
-    setInvoiceError(null);
-    startInvoiceTransition(async () => {
-      const result = await createInvoiceFromOffer(activeOffer.id);
-      if (result?.error) setInvoiceError(result.error);
-      else if (result?.invoiceId) {
-        setInvoiceId(result.invoiceId);
-        setContractFlowStep(null);
-        router.refresh();
-      }
-    });
-  }
-
   // ─── Other handlers ─────────────────────────────────────────────────────────
-  function handleStatusAdvance() {
-    const next = NEXT_STATUS_MAP[closingSession.status];
+  function handleNextStep() {
+    const next = NEXT_STEP_MAP[status];
     if (!next) return;
     setActionError(null);
     startStatusTransition(async () => {
-      const result = await updateClosingSessionStatus(closingSession.id, next.value);
-      if (result?.error) setActionError(result.error);
+      const result = await next.run(closingSession.id);
+      if (isFailure(result as object)) setActionError((result as { error: string }).error);
       else router.refresh();
     });
   }
 
-  function handleStatusChange(newStatus: string) {
+  /** Sonderstatus verlangen eine Begründung und werden auditiert. */
+  function handleSpecialStatus(target: "lost" | "cancelled") {
+    const reason = window.prompt(
+      target === "lost"
+        ? "Bitte begründen Sie, warum dieses Closing als verloren gilt:"
+        : "Bitte begründen Sie die Stornierung:"
+    );
+    if (!reason?.trim()) return;
     setActionError(null);
     startStatusTransition(async () => {
-      const result = await updateClosingSessionStatus(closingSession.id, newStatus);
-      if (result?.error) setActionError(result.error);
+      const result = await setSpecialStatus(closingSession.id, target, reason.trim());
+      if (isFailure(result as object)) setActionError((result as { error: string }).error);
       else router.refresh();
     });
   }
@@ -469,7 +593,7 @@ export function ClosingWorkspaceClient({
     setActionError(null);
     startOfferTransition(async () => {
       const result = await createOfferForSession(closingSession.id, templateId);
-      if (result?.error) setActionError(result.error);
+      if (isFailure(result as object)) setActionError((result as { error: string }).error);
       else router.refresh();
     });
   }
@@ -478,9 +602,30 @@ export function ClosingWorkspaceClient({
     setActionError(null);
     startOfferTransition(async () => {
       const result = await presentOffer(closingSession.id, offerId);
-      if (result?.error) setActionError(result.error);
+      if (isFailure(result as object)) setActionError((result as { error: string }).error);
       else router.refresh();
     });
+  }
+
+  // „Schicken Sie mir das nochmal per Mail" — genau dafür, mitten im Gespräch.
+  function handleEmailOffer() {
+    setOfferMailPending(true);
+    setOfferMailResult(null);
+    void (async () => {
+      try {
+        const result = await emailOfferToClient(closingSession.id);
+        if (isFailure(result as object)) {
+          setOfferMailResult({ ok: false, error: (result as { error: string }).error });
+        } else {
+          setOfferMailResult({ ok: true, toEmail: (result as { toEmail: string }).toEmail });
+          router.refresh();
+        }
+      } catch {
+        setOfferMailResult({ ok: false, error: "Der Versand ist fehlgeschlagen." });
+      } finally {
+        setOfferMailPending(false);
+      }
+    })();
   }
 
   function handleResendInvitation() {
@@ -488,8 +633,8 @@ export function ClosingWorkspaceClient({
     setResendLink(null);
     startResendTransition(async () => {
       const result = await resendClientInvitation(closingSession.id);
-      if (result?.error) setResendError(result.error);
-      else if (result?.closingUrl) setResendLink(result.closingUrl);
+      if (isFailure(result as object)) setResendError((result as { error: string }).error);
+      else setResendLink((result as { closingUrl: string }).closingUrl);
     });
   }
 
@@ -511,10 +656,11 @@ export function ClosingWorkspaceClient({
     finally { setPaymentPending(false); }
   }
 
+  const status = normalizeStatus(closingSession.status);
   const activeOfferObj = closingSession.offers.find((o) => o.id === closingSession.activeOfferId);
   const isPaid = activeOfferObj?.status === "accepted";
 
-  const nextAction = NEXT_STATUS_MAP[closingSession.status];
+  const nextAction = NEXT_STEP_MAP[status];
   const filteredContent = contentTypeFilter === "all"
     ? salesContent
     : salesContent.filter((c) => c.type === contentTypeFilter);
@@ -539,8 +685,8 @@ export function ClosingWorkspaceClient({
           <div>
             <div className="flex items-center gap-3 mb-1">
               <h1 className="text-2xl font-bold text-[#f0f0f0]">{closingSession.company.name}</h1>
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded text-xs font-semibold ${STATUS_COLORS[closingSession.status] ?? "bg-[#1a2840] text-[#888]"}`}>
-                {STATUS_LABELS[closingSession.status] ?? closingSession.status}
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded text-xs font-semibold ${STATUS_COLORS[status] ?? "bg-[#1a2840] text-[#888]"}`}>
+                {STATUS_LABELS[status] ?? status}
               </span>
             </div>
             <p className="text-sm text-[#666]">
@@ -557,7 +703,7 @@ export function ClosingWorkspaceClient({
             {actionError && <p className="text-[#ef4444] text-xs max-w-xs">{actionError}</p>}
             {nextAction && (
               <button
-                onClick={handleStatusAdvance}
+                onClick={handleNextStep}
                 disabled={statusPending}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm transition-colors disabled:opacity-50 ${nextAction.color}`}
               >
@@ -565,11 +711,12 @@ export function ClosingWorkspaceClient({
                 {statusPending ? "…" : nextAction.label}
               </button>
             )}
-            {closingSession.status !== "contract_closed" && closingSession.status !== "verloren" && (
+            {status !== "lost" && status !== "cancelled" && status !== "customer_activated" && (
               <button
-                onClick={() => handleStatusChange("verloren")}
+                onClick={() => handleSpecialStatus("lost")}
                 disabled={statusPending}
                 className="px-3 py-2.5 rounded-lg text-sm text-[#ef4444] border border-[rgba(239,68,68,0.2)] hover:bg-[rgba(239,68,68,0.05)] transition-colors disabled:opacity-50"
+                title="Verlangt eine Begründung und wird auditiert"
               >
                 Verloren
               </button>
@@ -584,9 +731,23 @@ export function ClosingWorkspaceClient({
           [
             { key: "overview", label: "Übersicht" },
             { key: "maske", label: "Gesprächs-Maske" },
+            {
+              key: "radar",
+              label: radarAufBuehne
+                ? "OKUN Radar (läuft)"
+                : radar
+                  ? `OKUN Radar (${radar.fortschritt.prozent} %)`
+                  : "OKUN Radar",
+            },
+            {
+              key: "praesentation",
+              label: livePresentationId
+                ? `Präsentation (läuft)`
+                : `Präsentation (${presentations.length})`,
+            },
             { key: "skript", label: `Bibliothek (${salesContent.length})` },
             { key: "angebot", label: `Angebote (${closingSession.offers.length})` },
-            { key: "consent", label: `Consent & Abschluss (${closingSession.consentRecords.length})` },
+            { key: "abschluss", label: "Vertragsabschluss" },
             { key: "protokoll", label: `Protokoll (${closingSession.events.length})` },
           ] as const
         ).map((tab) => (
@@ -670,11 +831,19 @@ export function ClosingWorkspaceClient({
                 )}
                 {closingSession.appointment.meetingUrl ? (
                   <button
-                    onClick={() => { setCallActive(true); setActiveTab("maske"); }}
-                    className="mt-3 flex items-center gap-2 text-xs text-[#00b8ff] hover:underline"
+                    onClick={() => {
+                      setActiveTab("maske");
+                      if (!callActive) void joinCall();
+                    }}
+                    disabled={callJoinPending}
+                    className="mt-3 flex items-center gap-2 text-xs text-[#00b8ff] hover:underline disabled:opacity-60"
                   >
                     <Video size={12} />
-                    {callActive ? "Gespräch läuft" : "Gespräch beitreten"}
+                    {callActive
+                      ? "Gespräch läuft"
+                      : callJoinPending
+                        ? "Gesprächsraum wird geöffnet…"
+                        : "Gespräch beitreten"}
                   </button>
                 ) : (
                   <CreateRoomButton appointmentId={closingSession.appointment.id} />
@@ -736,19 +905,48 @@ export function ClosingWorkspaceClient({
             <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-4 flex items-center gap-4 flex-wrap">
               {closingSession.appointment?.meetingUrl ? (
                 <button
-                  onClick={() => setCallActive((v) => !v)}
-                  className={`flex items-center gap-2 px-3 py-2 border text-sm font-medium rounded-lg transition-colors ${
+                  onClick={() => (callActive ? gespraech.beenden() : void joinCall())}
+                  disabled={callJoinPending}
+                  className={`flex items-center gap-2 px-3 py-2 border text-sm font-medium rounded-lg transition-colors disabled:opacity-60 ${
                     callActive
                       ? "bg-[rgba(239,68,68,0.1)] border-[rgba(239,68,68,0.3)] text-[#ef4444] hover:bg-[rgba(239,68,68,0.15)]"
                       : "bg-[rgba(0,184,255,0.1)] border-[rgba(0,184,255,0.2)] text-[#00b8ff] hover:bg-[rgba(0,184,255,0.15)]"
                   }`}
                 >
                   <Video size={14} />
-                  {callActive ? "Gespräch verlassen" : "Gespräch beitreten"}
+                  {callActive
+                    ? "Gespräch verlassen"
+                    : callJoinPending
+                      ? "Gesprächsraum wird geöffnet…"
+                      : "Gespräch beitreten"}
                 </button>
               ) : closingSession.appointment ? (
                 <CreateRoomButton appointmentId={closingSession.appointment.id} />
               ) : null}
+
+              {/* Im Gespräch der kürzeste Weg zu „schicken Sie mir das nochmal". */}
+              {closingSession.activeOfferId && (
+                <button
+                  onClick={handleEmailOffer}
+                  disabled={offerMailPending}
+                  className="flex items-center gap-2 px-3 py-2 border border-[#1a2840] bg-[#0c1520] hover:bg-[#16283d] disabled:opacity-40 text-[#f0f0f0] text-sm font-medium rounded-lg transition-colors"
+                >
+                  <Mail size={14} />
+                  {offerMailPending ? "Wird gesendet…" : "Angebot per E-Mail"}
+                </button>
+              )}
+
+              {offerMailResult && (
+                <p className={`text-xs ${offerMailResult.ok ? "text-[#22c55e]" : "text-[#ef4444]"}`}>
+                  {offerMailResult.ok
+                    ? `Angebot an ${offerMailResult.toEmail} gesendet.`
+                    : offerMailResult.error}
+                </p>
+              )}
+
+              {callJoinError && (
+                <p className="text-[#ef4444] text-xs w-full">{callJoinError}</p>
+              )}
 
               {/* Recording status indicator (initiation is in Consent & Abschluss tab) */}
               {recordingStatus === "recording" && (
@@ -765,7 +963,7 @@ export function ClosingWorkspaceClient({
               )}
               {recordingStatus === "idle" && (
                 <button
-                  onClick={() => { setContractFlowStep("offer_confirmed"); setActiveTab("consent"); }}
+                  onClick={() => setActiveTab("abschluss")}
                   className="flex items-center gap-2 px-3 py-2 bg-[rgba(34,197,94,0.08)] hover:bg-[rgba(34,197,94,0.12)] border border-[rgba(34,197,94,0.2)] text-[#22c55e] text-sm font-medium rounded-lg transition-colors"
                 >
                   <Mic size={14} />
@@ -891,7 +1089,7 @@ export function ClosingWorkspaceClient({
                 Angebot erstellen →
               </button>
               <button
-                onClick={() => setActiveTab("consent")}
+                onClick={() => setActiveTab("abschluss")}
                 className="px-3 py-2.5 bg-[#0c1520] border border-[#1a2840] hover:border-[#243550] rounded-xl text-xs text-[#888] hover:text-[#f0f0f0] transition-colors text-center"
               >
                 Consent & Abschluss →
@@ -976,6 +1174,26 @@ export function ClosingWorkspaceClient({
       {/* ─── Tab: Angebote ──────────────────────────────────────────────────── */}
       {activeTab === "angebot" && (
         <div className="space-y-6">
+          {/*
+            Ein Angebot, das nur im Admin steht, ist kein Angebot.
+
+            Der Kundenbildschirm bleibt leer, bis „Dem Kunden zeigen"
+            geklickt ist — und das ist von hier aus nicht zu sehen. Also sagt
+            es die Oberfläche, solange es zutrifft.
+          */}
+          {closingSession.offers.some(
+            (o) => o.id === closingSession.activeOfferId && !o.presentedAt
+          ) && (
+            <div className="px-4 py-3 rounded-xl bg-[rgba(245,158,11,0.08)] border border-[#f59e0b]/25 flex items-start gap-2.5">
+              <Eye size={14} className="text-[#f59e0b] flex-shrink-0 mt-0.5" />
+              <p className="text-[#fbbf24] text-xs leading-relaxed">
+                <b>Der Kunde sieht dieses Angebot noch nicht.</b> Erst{" "}
+                <span className="font-semibold">Dem Kunden zeigen</span> schaltet es auf seinen
+                Bildschirm — mit Preis, Unterlagen und einem eigenen Übergang.
+              </p>
+            </div>
+          )}
+
           {closingSession.offers.length > 0 && (
             <div className="space-y-3">
               {closingSession.offers.map((offer) => (
@@ -999,16 +1217,56 @@ export function ClosingWorkspaceClient({
                       {offer.presentedAt && <span>Gezeigt: {new Date(offer.presentedAt).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>}
                     </div>
                   </div>
-                  {offer.status === "draft" && (
-                    <button onClick={() => handlePresentOffer(offer.id)} disabled={offerPending}
-                      className="flex items-center gap-2 px-3 py-2 bg-[#f59e0b] hover:bg-[#d97706] disabled:opacity-40 text-black font-semibold text-xs rounded-lg transition-colors">
-                      <Eye size={13} />
-                      Präsentieren
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {/*
+                      Gezeigt wird, was nicht gezeigt ist.
+
+                      Hier stand die Bedingung `offer.id !== activeOfferId` —
+                      und weil ein neu angelegtes Angebot sofort das aktive
+                      ist, war der Knopf beim ersten Angebot nie da. Das
+                      Angebot blieb damit für immer ein Entwurf, den der
+                      Interessent nicht sieht; sichtbar wurde es erst, wenn
+                      der Vertragsabschluss die Daten einfror. Genau das ist
+                      im Gespräch passiert.
+
+                      Die Bedingung ist jetzt der Zustand, um den es geht: Ist
+                      das Angebot noch nicht gezeigt, steht hier der Knopf, der
+                      es zeigt. Ein bereits gezeigtes lässt sich wieder
+                      aufrufen — im Gespräch kommt oft eine zweite Variante auf
+                      den Tisch, und dann zurück zur ersten.
+                    */}
+                    {kannGezeigtWerden(offer, closingSession.activeOfferId) && (
+                      <button onClick={() => handlePresentOffer(offer.id)} disabled={offerPending}
+                        className="flex items-center gap-2 px-3 py-2 bg-[#f59e0b] hover:bg-[#d97706] disabled:opacity-40 text-black font-semibold text-xs rounded-lg transition-colors">
+                        <Eye size={13} />
+                        {knopfBeschriftung(offer)}
+                      </button>
+                    )}
+                    {offer.id === closingSession.activeOfferId && offer.presentedAt && (
+                      <span className="flex items-center gap-1.5 text-[11px] font-semibold text-[#22c55e] whitespace-nowrap">
+                        <Eye size={12} />
+                        Auf dem Kundenbildschirm
+                      </span>
+                    )}
+                    {offer.id === closingSession.activeOfferId && (
+                      <button onClick={handleEmailOffer} disabled={offerMailPending}
+                        className="flex items-center gap-2 px-3 py-2 bg-[#1a2840] hover:bg-[#243550] disabled:opacity-40 text-[#f0f0f0] font-semibold text-xs rounded-lg transition-colors">
+                        <Mail size={13} />
+                        {offerMailPending ? "Wird gesendet…" : "Per E-Mail senden"}
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
+          )}
+
+          {offerMailResult && (
+            <p className={`text-xs ${offerMailResult.ok ? "text-[#22c55e]" : "text-[#ef4444]"}`}>
+              {offerMailResult.ok
+                ? `Angebot an ${offerMailResult.toEmail} gesendet.`
+                : offerMailResult.error}
+            </p>
           )}
 
           <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6">
@@ -1041,7 +1299,7 @@ export function ClosingWorkspaceClient({
                         className="flex items-center gap-1.5 px-4 py-2 border-t border-[#1a2840] text-xs text-[#888] hover:text-[#00b8ff] transition-colors"
                       >
                         <FileText size={11} />
-                        PDF anzeigen
+                        Angebot anzeigen
                       </a>
                     )}
                   </div>
@@ -1053,237 +1311,34 @@ export function ClosingWorkspaceClient({
       )}
 
       {/* ─── Tab: Consent & Abschluss ───────────────────────────────────────── */}
-      {activeTab === "consent" && (
-        <div className="space-y-6">
-          {consentError && (
-            <div className="px-4 py-3 bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.2)] rounded-lg text-[#ef4444] text-sm">{consentError}</div>
-          )}
-
-          {/* ── Unified contract flow ── */}
-          {closingSession.status !== "contract_closed" && (
-            <div className="bg-[#0c1520] border border-[rgba(34,197,94,0.2)] rounded-xl p-6 space-y-5">
-              <div>
-                <h2 className="text-sm font-bold text-[#f0f0f0] mb-0.5">Vertragsabschluss-Prozess</h2>
-                <p className="text-xs text-[#666]">Führt Aufzeichnung, Einwilligung und Vertragsabschluss in einem Schritt durch.</p>
-              </div>
-
-              {/* Step indicators */}
-              <div className="flex items-center gap-2 text-xs">
-                {(["Angebot besprochen", "Aufnahme & Einwilligung", "Bestätigung"] as const).map((label, i) => {
-                  const stepIdx = contractFlowStep === null ? -1 : contractFlowStep === "offer_confirmed" ? 0 : contractFlowStep === "recording_consent" ? 1 : 2;
-                  const done = i < stepIdx + 1;
-                  const current = i === stepIdx + (contractFlowStep !== null ? 0 : -1);
-                  return (
-                    <div key={label} className="flex items-center gap-2">
-                      {i > 0 && <div className="h-px w-6 bg-[#1a2840]" />}
-                      <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${done ? "bg-[rgba(34,197,94,0.1)] border-[rgba(34,197,94,0.3)] text-[#22c55e]" : current ? "bg-[rgba(0,184,255,0.08)] border-[rgba(0,184,255,0.3)] text-[#00b8ff]" : "border-[#1a2840] text-[#444]"}`}>
-                        {done ? <CheckCircle size={11} /> : <span>{i + 1}</span>}
-                        <span>{label}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* No flow started */}
-              {contractFlowStep === null && (
-                <div className="space-y-3">
-                  <p className="text-sm text-[#888]">Klicken Sie auf "Vertragsaufnahme starten", sobald das Angebot besprochen wurde.</p>
-                  {!closingSession.activeOfferId && (
-                    <p className="text-xs text-[#f59e0b]">Erst ein Angebot erstellen und präsentieren.</p>
-                  )}
-                  <button
-                    onClick={() => setContractFlowStep("offer_confirmed")}
-                    disabled={!closingSession.activeOfferId}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-[#22c55e] hover:bg-[#16a34a] disabled:opacity-40 text-black font-bold text-sm rounded-lg transition-colors"
-                  >
-                    <Play size={14} />
-                    Vertragsaufnahme starten
-                  </button>
-                </div>
-              )}
-
-              {/* Step 1: Offer confirmed — show recording consent prompt */}
-              {contractFlowStep === "offer_confirmed" && (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-[#22c55e] text-sm">
-                    <CheckCircle size={14} />
-                    Angebot besprochen ✓
-                  </div>
-                  <div className="bg-[rgba(239,68,68,0.05)] border border-[rgba(239,68,68,0.2)] rounded-xl p-4 space-y-3">
-                    <p className="text-xs font-semibold text-[#f0f0f0]">Aufnahme-Einwilligung des Closers bestätigen</p>
-                    <label className="flex items-start gap-2.5 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={recordingConsentChecked}
-                        onChange={(e) => setRecordingConsentChecked(e.target.checked)}
-                        className="mt-0.5 w-3.5 h-3.5 accent-[#ef4444] flex-shrink-0"
-                      />
-                      <span className="text-xs text-[#ccc] leading-snug">Ich bestätige, dass der Kunde der Aufzeichnung dieses Gesprächs ausdrücklich zugestimmt hat. Dem Kunden wird automatisch ein Einwilligungs-Popup angezeigt.</span>
-                    </label>
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={async () => {
-                          if (recordingConsentChecked) {
-                            setContractFlowStep("recording_consent");
-                            await handleStartRecording();
-                          }
-                        }}
-                        disabled={!recordingConsentChecked || recordingPending}
-                        className="flex items-center gap-1.5 px-4 py-2 bg-[rgba(239,68,68,0.1)] hover:bg-[rgba(239,68,68,0.15)] border border-[rgba(239,68,68,0.2)] text-[#ef4444] text-sm font-semibold rounded-lg transition-colors disabled:opacity-40"
-                      >
-                        <Mic size={13} />
-                        {recordingPending ? "Startet…" : "Aufnahme starten"}
-                      </button>
-                      <button
-                        onClick={() => { setContractFlowStep(null); setRecordingConsentChecked(false); }}
-                        className="text-xs text-[#666] hover:text-[#f0f0f0] transition-colors"
-                      >
-                        Abbrechen
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Step 2: Recording active */}
-              {contractFlowStep === "recording_consent" && recordingStatus === "recording" && (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 px-3 py-2 bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.3)] rounded-lg">
-                      <span className="w-2 h-2 rounded-full bg-[#ef4444] animate-pulse" />
-                      <span className="text-sm text-[#ef4444] font-medium">Aufzeichnung läuft</span>
-                    </div>
-                  </div>
-                  <div className="text-xs text-[#888] flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#8b5cf6] animate-pulse" />
-                    Dem Kunden wird ein Einwilligungs-Popup angezeigt.
-                  </div>
-                  {closingSession.consentRecords.length > 0 && (
-                    <div className="flex items-center gap-2 text-xs text-[#22c55e]">
-                      <CheckCircle size={12} />
-                      Kunde hat {closingSession.consentRecords.length} Dokument(e) bestätigt.
-                    </div>
-                  )}
-                  <button
-                    onClick={handleStopRecording}
-                    disabled={recordingPending}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-[#ef4444] hover:bg-[#dc2626] disabled:opacity-40 text-white font-bold text-sm rounded-lg transition-colors"
-                  >
-                    <Square size={13} />
-                    {recordingPending ? "Wird beendet…" : "Aufnahme stoppen & Vertrag abschließen"}
-                  </button>
-                </div>
-              )}
-
-              {/* Step 3: Recording stopped — confirm success */}
-              {contractFlowStep === "confirm" && (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-[#22c55e] text-sm">
-                    <CheckCircle size={14} />
-                    Aufnahme abgeschlossen · Vertrag automatisch abgeschlossen
-                  </div>
-                  <div className="bg-[#0e1a28] rounded-xl p-4 space-y-3">
-                    <p className="text-sm font-semibold text-[#f0f0f0]">Hat die Vertragsaufnahme erfolgreich geklappt?</p>
-                    {invoiceError && <p className="text-xs text-[#ef4444]">{invoiceError}</p>}
-                    {invoiceId ? (
-                      <div className="flex items-center gap-2 text-[#22c55e] text-sm">
-                        <CheckCircle size={14} />
-                        Rechnung automatisch erstellt.{" "}
-                        <a href="/admin/sales/rechnungen" className="text-[#00b8ff] hover:underline text-xs">Zur Rechnungs-Verwaltung →</a>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={handleConfirmSuccess}
-                          disabled={invoicePending}
-                          className="flex items-center gap-2 px-4 py-2.5 bg-[#22c55e] hover:bg-[#16a34a] disabled:opacity-40 text-black font-bold text-sm rounded-lg transition-colors"
-                        >
-                          <CheckCircle size={13} />
-                          {invoicePending ? "Rechnung wird erstellt…" : "Ja, alles geklappt → Rechnung erstellen"}
-                        </button>
-                        <button
-                          onClick={() => { setContractFlowStep(null); setConsentError("Vertragsaufnahme als fehlgeschlagen markiert."); }}
-                          className="px-4 py-2.5 bg-[rgba(239,68,68,0.1)] hover:bg-[rgba(239,68,68,0.15)] border border-[rgba(239,68,68,0.2)] text-[#ef4444] text-sm font-medium rounded-lg transition-colors"
-                        >
-                          Nein, Fehler aufgetreten
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Already closed */}
-          {closingSession.status === "contract_closed" && (
-            <div className="bg-[#0c1520] border border-[rgba(34,197,94,0.2)] rounded-xl p-6 space-y-4">
-              <div className="flex items-center gap-2 text-[#22c55e] text-sm font-semibold">
-                <CheckCircle size={16} />
-                Vertrag abgeschlossen
-              </div>
-              {invoiceId || invoiceError ? (
-                invoiceId ? (
-                  <div className="flex items-center gap-2 text-[#22c55e] text-sm">
-                    <CheckCircle size={14} />
-                    Rechnung erstellt.{" "}
-                    <a href="/admin/sales/rechnungen" className="text-[#00b8ff] hover:underline text-xs">Zur Rechnungs-Verwaltung →</a>
-                  </div>
-                ) : (
-                  <p className="text-xs text-[#ef4444]">{invoiceError}</p>
-                )
-              ) : null}
-            </div>
-          )}
-
-          {/* Consent records summary */}
-          {closingSession.consentRecords.length > 0 && (
-            <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6">
-              <h2 className="text-sm font-semibold text-[#f0f0f0] mb-4">Einwilligungs-Protokoll</h2>
-              <div className="space-y-2">
-                {closingSession.consentRecords.map((cr) => (
-                  <div key={cr.id} className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle size={13} className="text-[#22c55e]" />
-                      <span className="text-[#f0f0f0]">{cr.legalDocument.title}</span>
-                      <span className="text-xs text-[#555]">v{cr.legalDocument.version}</span>
-                    </div>
-                    <span className="text-xs text-[#555]">
-                      {new Date(cr.grantedAt).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Stripe payment */}
-          <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl p-6">
-            <h2 className="text-sm font-semibold text-[#f0f0f0] mb-2">Stripe-Zahlung anfordern</h2>
-            <p className="text-xs text-[#666] mb-4">Öffnet den Stripe-Checkout-Link (Karte, SEPA). Nach Zahlung wird das Unternehmen automatisch aktiviert.</p>
-            {isPaid ? (
-              <div className="flex items-center gap-2 text-[#22c55e] text-sm">
-                <CheckCircle size={15} />
-                Zahlung eingegangen — Unternehmen aktiviert.
-              </div>
-            ) : (closingSession.status === "payment_pending" || closingSession.status === "contract_closed") ? (
-              <div className="flex items-center gap-2 text-[#f59e0b] text-sm">
-                <Clock size={15} />
-                Warte auf Zahlung vom Kunden…
-              </div>
-            ) : (
-              <button onClick={handleRequestPayment} disabled={paymentPending || !closingSession.activeOfferId}
-                className="flex items-center gap-2 px-5 py-2.5 bg-[#6366f1] hover:bg-[#4f46e5] disabled:opacity-40 text-white font-bold text-sm rounded-lg transition-colors">
-                <CreditCard size={15} />
-                {paymentPending ? "Wird vorbereitet…" : "Stripe-Checkout öffnen"}
-              </button>
-            )}
-          </div>
+      {activeTab === "abschluss" && (
+        <div className="max-w-[980px]">
+          <ContractClosurePanel data={closure} />
         </div>
       )}
 
-      {/* ─── Tab: Protokoll ─────────────────────────────────────────────────── */}
+
+      {activeTab === "radar" && (
+        <RadarPanel
+          closingSessionId={closingSession.id}
+          initial={radar}
+          radarAufBuehne={radarAufBuehne}
+          companyName={closingSession.company.name}
+          onZumAngebot={() => setActiveTab("angebot")}
+          onGeaendert={() => router.refresh()}
+        />
+      )}
+
+      {activeTab === "praesentation" && (
+        <PresentationPanel
+          closingSessionId={closingSession.id}
+          presentations={presentations}
+          livePresentationId={livePresentationId}
+          liveSlidePosition={liveSlidePosition}
+          isAdmin={viewerRole === "ADMIN"}
+        />
+      )}
+
       {activeTab === "protokoll" && (
         <div className="bg-[#0c1520] border border-[#1a2840] rounded-xl overflow-hidden">
           {closingSession.events.length === 0 ? (
@@ -1327,69 +1382,6 @@ export function ClosingWorkspaceClient({
               })}
             </div>
           )}
-        </div>
-      )}
-
-      {/* ─── Embedded video overlay — draggable + resizable ───────────────────
-          Rendered once (never unmounted) so the call stays alive when switching
-          tabs. Drag via title bar, resize via corner handle. */}
-      {callActive && closingSession.appointment?.meetingUrl && (
-        <div
-          className="fixed z-50 flex flex-col shadow-2xl border border-[#1a2840] bg-[#080d14] rounded-xl overflow-hidden"
-          style={{ left: `${vidPos.x}px`, top: `${vidPos.y}px`, width: `${vidSize.w}px`, height: `${vidSize.h}px` }}
-        >
-          {/* Title bar — drag handle */}
-          <div
-            className="flex items-center justify-between px-3 py-2 bg-[#0c1520] border-b border-[#1a2840] flex-shrink-0 cursor-grab active:cursor-grabbing select-none"
-            onMouseDown={(e) => {
-              isDragging.current = true;
-              dragOrigin.current = { mx: e.clientX, my: e.clientY, x: vidPos.x, y: vidPos.y };
-              e.preventDefault();
-            }}
-          >
-            <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-[#ef4444] animate-pulse" />
-              <span className="text-xs font-medium text-[#f0f0f0]">Live-Gespräch</span>
-              {activeTab !== "maske" && (
-                <button
-                  onClick={() => setActiveTab("maske")}
-                  className="text-[10px] text-[#00b8ff] hover:underline"
-                  onMouseDown={(e) => e.stopPropagation()}
-                >
-                  → Maske
-                </button>
-              )}
-            </div>
-            <button
-              onClick={() => setCallActive(false)}
-              className="text-[#666] hover:text-[#ef4444] transition-colors"
-              title="Gespräch verlassen"
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              <Square size={11} />
-            </button>
-          </div>
-          <iframe
-            src={closingSession.appointment.meetingUrl}
-            allow="camera; microphone; fullscreen; display-capture; screen-wake-lock"
-            className="w-full flex-1 border-0"
-            title="Closing-Gespräch"
-          />
-          {/* Resize handle — bottom-right corner */}
-          <div
-            className="absolute bottom-0 right-0 w-5 h-5 cursor-se-resize z-10"
-            onMouseDown={(e) => {
-              isResizing.current = true;
-              resizeOrigin.current = { mx: e.clientX, my: e.clientY, w: vidSize.w, h: vidSize.h };
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-          >
-            <svg width="10" height="10" viewBox="0 0 10 10" className="absolute bottom-1 right-1 text-[#444]">
-              <path d="M 9 3 L 9 9 L 3 9" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M 9 6 L 6 9" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-            </svg>
-          </div>
         </div>
       )}
     </div>

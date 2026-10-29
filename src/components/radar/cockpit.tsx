@@ -1,0 +1,637 @@
+"use client";
+
+import { Check, Video } from "lucide-react";
+import { OkunLogo } from "@/components/layout/okun-logo";
+import type { LiveProfil } from "@/lib/radar/live";
+import { LiveDashboard } from "./live-dashboard";
+
+/**
+ * Die Hülle des OKUN Radar.
+ *
+ * Zwei Zonen statt dreier Spalten: links die Bühne mit der Frage, rechts ein
+ * durchgehendes Panel aus Gesprächsraum und Live-Analyse. Der erste Entwurf
+ * hatte drei Spalten unterschiedlicher Länge — und darunter jeweils eine große
+ * schwarze Fläche, weil keine die andere ausfüllte. Zwei Zonen, die beide bis
+ * zum Rand reichen, haben dieses Problem nicht: Die Bühne zentriert ihren
+ * Inhalt, das Panel lässt die Analyse den Rest einnehmen.
+ *
+ * Die Navigation ist in die Markenleiste gewandert. Drei Einträge, von denen
+ * während des Gesprächs meist zwei gesperrt sind, rechtfertigen keine eigene
+ * Spalte — sie haben nur Platz gekostet und Leere erzeugt.
+ *
+ * Material: Über allem liegt eine feine Körnung und eine Vignette. Beides
+ * zusammen nimmt der dunklen Fläche das Billige — ohne sie sieht jeder
+ * Verlauf nach Bildschirmschoner aus, mit ihnen nach Oberfläche.
+ */
+
+export type CockpitBereich = {
+  key: string;
+  label: string;
+  Symbol: React.ComponentType<{ size?: number | string; className?: string }>;
+  verfuegbar: boolean;
+};
+
+export type CockpitPhase = {
+  key: string;
+  nummer: number;
+  label: string;
+  unterzeile: string;
+  aktiv: boolean;
+  erledigt: boolean;
+};
+
+/**
+ * Feine Körnung als Datenbild.
+ *
+ * Der eine Kunstgriff, der dunkle Oberflächen am stärksten aufwertet: Er
+ * bricht die Farbverläufe auf, die sonst in sichtbaren Stufen bandieren, und
+ * gibt der Fläche eine Textur statt einer Farbe.
+ */
+const KOERNUNG =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E\")";
+
+type Props = {
+  firma: string;
+  eckdaten: string | null;
+  bereiche: CockpitBereich[];
+  aktiverBereich: string;
+  onBereich: (key: string) => void;
+  phasen: CockpitPhase[];
+  video?: React.ReactNode;
+  videoSteuerung?: React.ReactNode;
+  videoHinweis?: React.ReactNode;
+  laufzeitSekunden?: number | null;
+  teilnehmer?: number | null;
+  profil: LiveProfil;
+  /** Die Analyse ist abgeschlossen — das Live-Bild steht still. */
+  ruhig?: boolean;
+  verbunden?: boolean;
+  beraterName?: string | null;
+  children: React.ReactNode;
+};
+
+export function RadarCockpit({
+  firma,
+  eckdaten,
+  bereiche,
+  aktiverBereich,
+  onBereich,
+  phasen,
+  video,
+  videoSteuerung,
+  videoHinweis,
+  laufzeitSekunden,
+  teilnehmer,
+  profil,
+  ruhig,
+  verbunden = true,
+  beraterName,
+  children,
+}: Props) {
+  return (
+    <div className="relative h-full min-h-0 flex flex-col bg-[#04070d] overflow-y-auto lg:overflow-hidden">
+      {/* Lichtquellen, Körnung, Vignette — die Materialschicht. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-0"
+        style={{
+          background:
+            "radial-gradient(1200px 640px at 10% -10%, rgba(0,160,255,0.09), transparent 60%)," +
+            "radial-gradient(980px 560px at 92% 4%, rgba(46,230,197,0.055), transparent 58%)," +
+            "radial-gradient(1400px 800px at 50% 120%, rgba(0,110,190,0.05), transparent 62%)",
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-0 opacity-[0.035] mix-blend-overlay"
+        style={{ backgroundImage: KOERNUNG, backgroundRepeat: "repeat" }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-0"
+        style={{ boxShadow: "inset 0 0 220px 60px rgba(0,0,0,0.6)" }}
+      />
+
+      <div className="relative z-10 flex flex-col h-full min-h-0">
+        <Markenleiste
+          firma={firma}
+          eckdaten={eckdaten}
+          bereiche={bereiche}
+          aktiverBereich={aktiverBereich}
+          onBereich={onBereich}
+          laufzeitSekunden={laufzeitSekunden}
+          teilnehmer={teilnehmer}
+          verbunden={verbunden}
+        />
+
+        <Phasenschiene
+          phasen={phasen}
+          bereiche={bereiche}
+          aktiverBereich={aktiverBereich}
+          onBereich={onBereich}
+        />
+
+        <div className="flex-1 lg:min-h-0 flex flex-col lg:flex-row">
+          {/* ── Bühne ─────────────────────────────────────────────────── */}
+          <main className="relative order-2 lg:order-none flex-1 min-w-0 lg:min-h-0 lg:overflow-hidden flex">
+            {/*
+              Der Hintergrund der Bühne.
+
+              Vorher stand die Frage auf blankem Schwarz, und links und rechts
+              davon lag nichts — auf einem breiten Bildschirm mehr Nichts als
+              Inhalt. Ein Messgerät hat hinter seiner Anzeige auch keine
+              schwarze Wand, sondern ein Zifferblatt: konzentrische Ringe, ein
+              Fadenkreuz, ein feines Raster. Alles sehr schwach; es soll den
+              Blick nicht holen, sondern den Raum tragen.
+            */}
+            <Zifferblatt />
+
+            {/*
+              Zentriert über `my-auto`, nicht über `justify-center`.
+
+              Mit `justify-center` schneidet ein Inhalt, der höher ist als die
+              Bühne, oben und unten ab — und der obere Rand ist genau der, an
+              dem die Frage steht. `margin: auto` zentriert, solange Platz da
+              ist, und gibt ihn sonst sauber dem Bildlauf frei.
+            */}
+            <div className="relative z-10 w-full lg:h-full px-4 sm:px-8 lg:px-10 py-6 lg:py-8">
+              {/*
+                Die Platte unter dem Inhalt.
+
+                Sie gibt der Frage einen Körper: Rand, Tiefe, eine Lichtkante
+                oben. Ohne sie schwimmt jeder Text in derselben schwarzen
+                Fläche, und die Oberfläche wirkt unfertig — nicht weil etwas
+                fehlt, sondern weil nichts begrenzt ist.
+              */}
+              {/*
+                Die Platte nimmt die ganze Höhe der Bühne ein.
+
+                Nicht aus Symmetrie: Eine Platte, die in der Mitte schwebt,
+                lässt über und unter sich wieder genau die leere Fläche, derer
+                man sich entledigen wollte. Eine, die bis an beide Ränder
+                reicht, ist ein Gerät — oben die Frage, unten die Leiste, in
+                der Mitte die Antworten.
+              */}
+              <div className="mx-auto w-full max-w-[1080px] lg:h-full lg:flex lg:flex-col rounded-[26px] border border-[#122339] bg-[linear-gradient(168deg,rgba(11,21,36,0.92),rgba(6,12,21,0.86))] shadow-[0_44px_100px_-56px_rgba(0,0,0,0.95),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-[2px] px-5 sm:px-9 lg:px-11 py-7 sm:py-9">
+                {/*
+                  Kein Bildlauf an dieser Stelle.
+
+                  Die Leiste mit „Weiter" gehört an den unteren Rand der
+                  Platte und nicht ans Ende eines Bildlaufs — auf einem flachen
+                  Fenster stand sie sonst unterhalb des Randes, und der
+                  wichtigste Knopf des Gesprächs war unsichtbar. Welcher Teil
+                  läuft, entscheidet deshalb die jeweilige Ansicht.
+                */}
+                <div className="lg:flex-1 lg:min-h-0 lg:flex lg:flex-col">{children}</div>
+              </div>
+            </div>
+          </main>
+
+          {/* ── Panel ─────────────────────────────────────────────────── */}
+          {/*
+            Das Panel schwebt über dem Hintergrund, statt daneben zu kleben.
+
+            Eine angrenzende Fläche mit einer Trennlinie ist ein Layout. Eine
+            Platte mit Rand, Schatten und eigener Tiefe ist ein Gerät — und
+            genau das soll die rechte Spalte sein. Am Telefon bleibt sie eine
+            Leiste; dort kostet ein schwebender Kasten nur Rand.
+          */}
+          <aside className="order-1 lg:order-none flex-shrink-0 lg:w-[428px] lg:my-3 lg:mr-3 lg:rounded-[22px] border-b lg:border-b-0 lg:border border-[#122339] bg-[#060b14]/90 backdrop-blur-sm lg:shadow-[0_28px_70px_-32px_rgba(0,0,0,0.95),inset_0_1px_0_rgba(255,255,255,0.045)] overflow-hidden flex flex-col lg:min-h-0">
+            <Gespraechsraum
+              video={video}
+              steuerung={videoSteuerung}
+              hinweis={videoHinweis}
+              teilnehmer={teilnehmer}
+              beraterName={beraterName}
+            />
+            <div className="hidden lg:block flex-1 min-h-0 px-4 pb-4 pt-3">
+              <LiveDashboard profil={profil} ruhig={ruhig} fuellt />
+            </div>
+          </aside>
+
+          {/* Am Telefon steht die Analyse unter der Frage, nicht über ihr. */}
+          <div className="order-3 lg:hidden px-4 pb-5">
+            <LiveDashboard profil={profil} kompakt ruhig={ruhig} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Zifferblatt ─────────────────────────────────────────────────────────────
+
+/**
+ * Der ruhige Hintergrund der Bühne.
+ *
+ * Konzentrische Ringe um einen Punkt außerhalb des Bildes, ein Fadenkreuz und
+ * ein feines Raster — alles unter 5 % Deckkraft. Es gibt der Fläche eine
+ * Herkunft: Wer hinschaut, sieht ein Gerät; wer nicht hinschaut, sieht nichts.
+ */
+function Zifferblatt() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+      {/* Raster */}
+      <div
+        className="absolute inset-0 opacity-[0.55]"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(23,48,77,0.14) 1px, transparent 1px)," +
+            "linear-gradient(90deg, rgba(23,48,77,0.14) 1px, transparent 1px)",
+          backgroundSize: "64px 64px",
+          maskImage: "radial-gradient(120% 90% at 40% 45%, #000 20%, transparent 78%)",
+          WebkitMaskImage: "radial-gradient(120% 90% at 40% 45%, #000 20%, transparent 78%)",
+        }}
+      />
+
+      {/* Ringe und Fadenkreuz */}
+      <svg
+        className="absolute left-1/2 top-1/2 w-[1500px] h-[1500px] -translate-x-1/2 -translate-y-1/2"
+        viewBox="0 0 1000 1000"
+        fill="none"
+      >
+        {[180, 290, 400, 495].map((r) => (
+          <circle key={r} cx="500" cy="500" r={r} stroke="#0f2338" strokeWidth="1" />
+        ))}
+        <circle
+          cx="500"
+          cy="500"
+          r="400"
+          stroke="#13405e"
+          strokeWidth="1.5"
+          strokeDasharray="2 12"
+        />
+        <path d="M500 40 L500 960 M40 500 L960 500" stroke="#0d1f32" strokeWidth="1" />
+      </svg>
+
+      {/* Lichtkegel, damit die Mitte wärmer ist als der Rand */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(760px 560px at 42% 46%, rgba(0,150,255,0.07), transparent 70%)",
+        }}
+      />
+    </div>
+  );
+}
+
+// ─── Markenleiste ────────────────────────────────────────────────────────────
+
+function Markenleiste({
+  firma,
+  eckdaten,
+  bereiche,
+  aktiverBereich,
+  onBereich,
+  laufzeitSekunden,
+  teilnehmer,
+  verbunden,
+}: {
+  firma: string;
+  eckdaten: string | null;
+  bereiche: CockpitBereich[];
+  aktiverBereich: string;
+  onBereich: (key: string) => void;
+  laufzeitSekunden?: number | null;
+  teilnehmer?: number | null;
+  verbunden: boolean;
+}) {
+  return (
+    <header className="flex-shrink-0 border-b border-[#0f1d2f] bg-[linear-gradient(180deg,rgba(9,16,27,0.9),rgba(6,11,20,0.75))]">
+      <div className="px-4 sm:px-6 h-[68px] flex items-center gap-4">
+        {/*
+          Der Absender ist OKUN Systems — kein zweiter Markenname daneben.
+
+          Der Interessent weiß, bei wem er sitzt. Ein „OKUN Radar“ als eigene
+          Wortmarke in derselben Ecke macht aus einem Haus zwei und verwässert
+          beide. Wofür dieser Bildschirm da ist, sagt die Phasenschiene
+          darunter deutlicher, als eine Wortmarke es könnte.
+        */}
+        <div className="w-[122px] sm:w-[138px] flex-shrink-0">
+          <OkunLogo size="sm" />
+        </div>
+
+        <span className="hidden md:block w-px h-8 bg-[linear-gradient(180deg,transparent,#17293f,transparent)] flex-shrink-0" />
+
+        {/* Unternehmen */}
+        <div className="min-w-0 flex-1">
+          <p className="text-[#dce7f5] text-[13.5px] font-semibold truncate leading-tight">
+            {firma}
+          </p>
+          <p className="font-mono text-[#4a6383] text-[10px] uppercase tracking-[0.1em] truncate leading-tight mt-[3px]">
+            Potenzialanalyse{eckdaten ? ` · ${eckdaten}` : ""}
+          </p>
+        </div>
+
+        {/* Ansichten */}
+        <nav className="hidden md:flex items-center gap-0.5 p-1 rounded-xl border border-[#132439] bg-[#070e1a] flex-shrink-0">
+          {bereiche.map((b) => {
+            const aktiv = b.key === aktiverBereich;
+            const Symbol = b.Symbol;
+            return (
+              <button
+                key={b.key}
+                onClick={() => b.verfuegbar && onBereich(b.key)}
+                disabled={!b.verfuegbar}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11.5px] font-medium whitespace-nowrap transition-all duration-200 ${
+                  aktiv
+                    ? "bg-[linear-gradient(135deg,rgba(0,184,255,0.18),rgba(46,230,197,0.08))] text-[#5fd4ff] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+                    : b.verfuegbar
+                      ? "text-[#6d86a6] hover:text-[#cfe0f2]"
+                      : "text-[#2c3e55] cursor-not-allowed"
+                }`}
+              >
+                <Symbol size={13} />
+                {b.label}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Zustand */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-[11px] ${
+              verbunden
+                ? "border-[#13402c] bg-[rgba(34,197,94,0.06)]"
+                : "border-[#4a3410] bg-[rgba(245,158,11,0.08)]"
+            }`}
+          >
+            <span className="relative flex w-1.5 h-1.5">
+              {verbunden && (
+                <span className="absolute inline-flex w-full h-full rounded-full bg-[#22c55e] opacity-60 motion-safe:animate-ping" />
+              )}
+              <span
+                className="relative inline-flex w-1.5 h-1.5 rounded-full"
+                style={{ background: verbunden ? "#22c55e" : "#f59e0b" }}
+              />
+            </span>
+            <span className="hidden lg:inline text-[#8bb3a0] font-medium tracking-wide">
+              {verbunden ? "Live" : "Getrennt"}
+            </span>
+            {typeof laufzeitSekunden === "number" && (
+              <span className="font-mono text-[#dce7f5] tabular-nums font-semibold tracking-tight">
+                {uhr(laufzeitSekunden)}
+              </span>
+            )}
+          </span>
+          {typeof teilnehmer === "number" && teilnehmer > 0 && (
+            <span className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-[#132439] font-mono text-[#6d86a6] text-[10.5px] tabular-nums">
+              <span className="w-1 h-1 rounded-full bg-[#2b5078]" />
+              {teilnehmer} im Raum
+            </span>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+}
+
+// ─── Phasenschiene ───────────────────────────────────────────────────────────
+
+/**
+ * Die drei Phasen über die volle Breite.
+ *
+ * Jede Phase ist ein Segment mit eigenem Füllstand, nicht nur ein Punkt. So
+ * sieht man beides: wo man ist und wie weit die laufende Phase schon ist.
+ */
+function Phasenschiene({
+  phasen,
+  bereiche,
+  aktiverBereich,
+  onBereich,
+}: {
+  phasen: CockpitPhase[];
+  bereiche: CockpitBereich[];
+  aktiverBereich: string;
+  onBereich: (key: string) => void;
+}) {
+  // Nach der letzten Phase ist keine mehr aktiv — dann steht dort die
+  // Auswertung und nicht die zuletzt erledigte Phase, die ja hinter einem liegt.
+  const laufend = phasen.find((p) => p.aktiv) ?? null;
+
+  return (
+    <div className="flex-shrink-0 border-b border-[#0f1d2f] bg-[#050a12]/60">
+      {/*
+        Am Telefon eine Zeile statt dreier Segmente.
+
+        Drei Segmente nebeneinander lassen auf 420 Pixeln keinen Platz für
+        ihre Beschriftung — übrig bleiben drei Abzeichen ohne Text, die nichts
+        sagen. Eine Zeile sagt dasselbe in Worten: wo man ist, wie weit es
+        noch geht. Rechts daneben die Ansichten, die in der Kopfzeile keinen
+        Platz mehr haben.
+      */}
+      <div className="md:hidden flex items-center gap-3 px-4 py-2.5">
+        <span className="flex items-center gap-1 flex-shrink-0">
+          {phasen.map((p) => (
+            <span
+              key={p.key}
+              className={`h-1.5 rounded-full transition-all duration-300 ${
+                p.aktiv
+                  ? "w-5 bg-[#00b8ff] shadow-[0_0_10px_rgba(0,184,255,0.7)]"
+                  : p.erledigt
+                    ? "w-1.5 bg-[#22c55e]"
+                    : "w-1.5 bg-[#1b2d44]"
+              }`}
+            />
+          ))}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-mono text-[#3d5c7e] text-[9px] uppercase tracking-[0.18em] leading-none">
+            {laufend ? `Phase ${laufend.nummer} von ${phasen.length}` : "Alle Phasen erledigt"}
+          </p>
+          <p className="text-[#dce7f5] text-[12px] font-semibold truncate leading-tight mt-1">
+            {laufend ? laufend.label : "Auswertung"}
+          </p>
+        </div>
+        <nav className="flex items-center gap-0.5 p-0.5 rounded-lg border border-[#132439] bg-[#070e1a] flex-shrink-0">
+          {bereiche.map((b) => {
+            const aktiv = b.key === aktiverBereich;
+            const Symbol = b.Symbol;
+            return (
+              <button
+                key={b.key}
+                onClick={() => b.verfuegbar && onBereich(b.key)}
+                disabled={!b.verfuegbar}
+                aria-label={b.label}
+                aria-current={aktiv ? "page" : undefined}
+                className={`p-2 rounded-md transition-colors ${
+                  aktiv
+                    ? "bg-[rgba(0,184,255,0.16)] text-[#5fd4ff]"
+                    : b.verfuegbar
+                      ? "text-[#6d86a6]"
+                      : "text-[#2c3e55]"
+                }`}
+              >
+                <Symbol size={14} />
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+
+      <ol className="hidden md:flex items-stretch overflow-x-auto">
+        {phasen.map((p, i) => (
+          <li
+            key={p.key}
+            className={`relative flex-1 min-w-[150px] px-4 sm:px-6 py-3.5 flex items-center gap-3 ${
+              i > 0 ? "border-l border-[#0f1d2f]" : ""
+            } ${p.aktiv ? "bg-[linear-gradient(180deg,rgba(0,184,255,0.07),transparent)]" : ""}`}
+          >
+            <span
+              className={`flex-shrink-0 w-[30px] h-[30px] rounded-xl border flex items-center justify-center font-mono text-[12px] font-bold transition-all duration-300 ${
+                p.erledigt
+                  ? "border-[#1d5236] bg-[rgba(34,197,94,0.1)] text-[#4ade80]"
+                  : p.aktiv
+                    ? "border-[#00b8ff]/70 bg-[linear-gradient(140deg,rgba(0,184,255,0.2),rgba(46,230,197,0.08))] text-[#5fd4ff] shadow-[0_0_20px_-4px_rgba(0,184,255,0.7)]"
+                    : "border-[#152940] text-[#3a4f6b]"
+              }`}
+            >
+              {p.erledigt ? <Check size={14} strokeWidth={3} /> : p.nummer}
+            </span>
+            <div className="min-w-0">
+              <p
+                className={`text-[12.5px] font-semibold leading-tight truncate ${
+                  p.aktiv ? "text-[#dce7f5]" : p.erledigt ? "text-[#8aa3c0]" : "text-[#49607e]"
+                }`}
+              >
+                {p.label}
+              </p>
+              <p className="text-[#3f5572] text-[10.5px] leading-tight truncate mt-[2px]">
+                {p.unterzeile}
+              </p>
+            </div>
+
+            {/* Der Lichtbalken unter der laufenden Phase. */}
+            <span
+              aria-hidden
+              className={`absolute inset-x-0 bottom-0 h-[2px] transition-opacity duration-500 ${
+                p.aktiv ? "opacity-100" : "opacity-0"
+              }`}
+              style={{
+                background: "linear-gradient(90deg,transparent,#00b8ff,#2ee6c5,transparent)",
+                boxShadow: "0 0 14px rgba(0,184,255,0.6)",
+              }}
+            />
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+// ─── Gesprächsraum ───────────────────────────────────────────────────────────
+
+/**
+ * Der Gesprächsraum.
+ *
+ * Er steht oben im Panel und nimmt dort echten Platz ein — das Gespräch ist
+ * nicht die Randnotiz der Analyse, sondern ihr Anlass. Die Kacheln stehen
+ * nebeneinander über die volle Panelbreite; ohne laufendes Gespräch stehen
+ * dort zwei beschriftete, reservierte Plätze.
+ */
+/**
+ * Die Videoleiste der Bühne.
+ *
+ * Exportiert, weil die Angebots-Bühne dieselbe braucht: Wer vom Radar ins
+ * Angebot wechselt, soll nicht das Gefühl haben, in einem anderen Haus zu
+ * sein — gleiche Überschrift, gleiche Kachelform, gleicher Platzhalter.
+ */
+export function Gespraechsraum({
+  video,
+  steuerung,
+  hinweis,
+  teilnehmer,
+  beraterName,
+}: {
+  video?: React.ReactNode;
+  steuerung?: React.ReactNode;
+  hinweis?: React.ReactNode;
+  teilnehmer?: number | null;
+  beraterName?: string | null;
+}) {
+  /*
+    Der reservierte Platz hat dieselbe Form wie das echte Bild: das Gegenüber
+    groß, man selbst als Einblendung. Wer die Oberfläche zum ersten Mal sieht,
+    erkennt daran, wo wer erscheinen wird.
+  */
+  const platzhalter = (
+    <div className="relative">
+      <LeereKachel label={beraterName || "Ihr Berater"} />
+      <div className="absolute bottom-2.5 right-2.5 w-[38%] max-w-[150px]">
+        <LeereKachel label="Sie" winzig />
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="flex-shrink-0 p-4 space-y-3 border-b border-[#0f1d2f]">
+      <div className="flex items-center justify-between gap-2">
+        <span className="flex items-center gap-2 font-mono text-[#3f5572] text-[9.5px] uppercase tracking-[0.2em] font-semibold">
+          <span className="w-4 h-px bg-[#1d3b59]" />
+          Gesprächsraum
+        </span>
+        {typeof teilnehmer === "number" && teilnehmer > 0 && (
+          <span className="font-mono text-[#3f5572] text-[9.5px] tabular-nums">{teilnehmer} verbunden</span>
+        )}
+      </div>
+
+      {video ?? platzhalter}
+
+      {(steuerung || hinweis) && (
+        <div className="flex items-center justify-between gap-2 pt-0.5">
+          {hinweis ? <div className="min-w-0 flex-1">{hinweis}</div> : <span />}
+          {steuerung && <div className="scale-[0.84] origin-right flex-shrink-0">{steuerung}</div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LeereKachel({ label, winzig }: { label: string; winzig?: boolean }) {
+  return (
+    <div
+      className={`relative overflow-hidden border border-[#132439] bg-[linear-gradient(155deg,#0b1726,#060d18)] flex flex-col items-center justify-center gap-2 ${
+        winzig ? "aspect-video rounded-xl" : "aspect-[16/10] rounded-2xl"
+      }`}
+    >
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.07),transparent)]"
+      />
+      {/* Ein feines Raster im leeren Platz — er soll nach Gerät aussehen,
+          nicht nach fehlendem Bild. */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-[0.55]"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(35,64,95,0.14) 1px,transparent 1px)," +
+            "linear-gradient(90deg,rgba(35,64,95,0.14) 1px,transparent 1px)",
+          backgroundSize: "18px 18px",
+          maskImage: "radial-gradient(circle at 50% 46%, black 8%, transparent 70%)",
+        }}
+      />
+      <span
+        className={`relative rounded-full border border-dashed border-[#23405f] flex items-center justify-center ${
+          winzig ? "w-6 h-6" : "w-10 h-10"
+        }`}
+      >
+        <Video size={winzig ? 10 : 15} className="text-[#24415f]" />
+      </span>
+      {!winzig && (
+        <span className="relative font-mono text-[#3f5572] text-[9.5px] uppercase tracking-[0.16em] px-2 text-center leading-tight">
+          {label}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** Sekunden als mm:ss. */
+function uhr(sekunden: number): string {
+  const m = Math.floor(sekunden / 60);
+  const sek = Math.floor(sekunden % 60);
+  return `${m}:${String(sek).padStart(2, "0")}`;
+}

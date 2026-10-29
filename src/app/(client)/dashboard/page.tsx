@@ -30,7 +30,7 @@ export default async function DashboardPage() {
   if (!session?.user) redirect("/login");
 
   const user = await db.user.findUnique({
-    where: { id: (session.user as any).id },
+    where: { id: (session.user as { id: string }).id },
     include: { company: true },
   });
   if (!user) redirect("/login");

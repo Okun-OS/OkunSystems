@@ -203,13 +203,15 @@ export default async function IntegrationenPage() {
             ["R2", "R2_BUCKET_NAME"],
             ["R2", "R2_PUBLIC_URL"],
             ["E-Mail", "RESEND_API_KEY"],
-            ["E-Mail", "EMAIL_FROM (optional, Default: noreply@okun-systems.de)"],
-            ["E-Mail", "ADMIN_EMAIL (optional, Default: info@okun-systems.de)"],
+            ["E-Mail", "EMAIL_FROM (optional, Default: noreply@okun-systems.com)"],
+            ["E-Mail", "ADMIN_EMAIL (optional, Default: info@okun-systems.com)"],
             ["Stripe", "STRIPE_SECRET_KEY"],
             ["Stripe", "STRIPE_CARE_PRICE_ID"],
             ["Stripe", "STRIPE_WEBHOOK_SECRET"],
             ["Daily", "DAILY_API_KEY"],
             ["Daily", "DAILY_DOMAIN"],
+            ["Care", "OKUN_WHATSAPP (optional; ohne sie bleibt der WhatsApp-Knopf aus)"],
+            ["Care", "OKUN_CARE_EMAIL (optional, Default: care@okun-systems.com)"],
           ].map(([category, key]) => (
             <div key={key} className="flex items-baseline gap-3 py-0.5">
               <span className="text-[#555] w-20 flex-shrink-0">{category}</span>

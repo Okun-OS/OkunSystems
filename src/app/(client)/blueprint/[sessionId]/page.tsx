@@ -34,7 +34,12 @@ export default async function BlueprintSessionPage({
   // Verify session ownership and version
   const analysisSession = await db.analysisSession.findUnique({
     where: { id: sessionId },
-    select: { companyId: true, status: true, blueprintVersion: true },
+    select: {
+      companyId: true,
+      status: true,
+      blueprintVersion: true,
+      pillar3CompletedAt: true,
+    },
   });
 
   if (!analysisSession || analysisSession.companyId !== user.companyId) {
@@ -73,8 +78,12 @@ export default async function BlueprintSessionPage({
   const evaluated = evaluateSession(questions, sessionAnswers);
   const next = getNextPendingQuestion(evaluated);
 
-  // No more pending questions → complete the session
+  // Keine offenen Fragen mehr. Vor dem Abschluss kommt die dritte Säule:
+  // Programme, wiederkehrende Aufgaben, Abläufe.
   if (!next) {
+    if (!analysisSession.pillar3CompletedAt) {
+      redirect(`/blueprint/${sessionId}/ablaeufe`);
+    }
     await completeBlueprintSession(sessionId);
     redirect(`/blueprint/${sessionId}/abgeschlossen`);
   }
