@@ -365,7 +365,22 @@ function CallSurface({
     */
     void (async () => {
       try {
-        await daily.join(ohneKamera ? { startVideoOff: true } : {});
+        /*
+          Bild in der besseren Einstellung, nicht in der mittleren.
+
+          Daily sendet voreingestellt mit `bandwidth-and-quality-balanced` —
+          ein Kompromiss für jedes Netz, auch für Mobilfunk im Zug. In einem
+          Beratungsgespräch sitzen beide am Schreibtisch, und das Gesicht des
+          Gegenübers ist das Wichtigste auf dem Schirm. `quality-optimized`
+          hebt Auflösung und Datenrate der obersten Simulcast-Schicht an.
+
+          Gefährlich ist das nicht: Es ist eine Obergrenze, keine Vorgabe.
+          Reicht die Leitung nicht, regelt WebRTC wie bisher herunter.
+        */
+        await daily.join({
+          sendSettings: { video: "quality-optimized" },
+          ...(ohneKamera ? { startVideoOff: true } : {}),
+        });
         if (!ohneKamera) {
           try {
             daily.setLocalVideo(true);
@@ -1375,7 +1390,17 @@ function Kachel({
     fehlendes Selbstbild; es war beides dasselbe Problem.
   */
   const form = gross
-    ? "h-full w-full rounded-2xl"
+    /*
+      Füllt die Fläche — und fällt auf eine Mindesthöhe zurück.
+
+      In der Besprechung und beim Gast steht die Kachel in einem Bereich mit
+      fester Höhe; dort füllt `h-full` genau richtig. Im Strategiegespräch
+      und im Studio sitzt sie dagegen in einer schmalen Spalte, deren Höhe
+      sich nach ihrem Inhalt richtet — und eine Prozenthöhe in einem
+      Elternteil ohne feste Höhe ist nichts. Ohne die Mindesthöhe wäre das
+      Bild dort auf null zusammengefallen.
+    */
+    ? "h-full w-full min-h-[180px] rounded-2xl"
     : winzig
       ? "aspect-video rounded-xl"
       : "aspect-video rounded-xl";
