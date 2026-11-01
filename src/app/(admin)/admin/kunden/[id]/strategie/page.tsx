@@ -4,7 +4,6 @@ import { getActor } from "@/lib/auth-guards";
 import { mayDoStrategy } from "@/lib/team/roles";
 import { ladeSitzung } from "@/lib/strategie/sitzung";
 import StrategieClient from "./StrategieClient";
-import { GrundlagenKarte, type VorschlagZeile } from "./GrundlagenKarte";
 import { VorbereitungsChat, type ChatZeile } from "./VorbereitungsChat";
 import { ladeVerlauf } from "@/lib/vorbereitung/gespraech";
 
@@ -64,37 +63,6 @@ export default async function StrategiePage({
   const offeneSitzung = termine.find((t) => t.strategieSitzung)?.strategieSitzung ?? null;
   const sitzung = offeneSitzung ? await ladeSitzung(offeneSitzung.id) : null;
 
-  /*
-    Die Grundlagen-Schablone, soweit sie schon gerechnet wurde.
-
-    Bewusst nur das Gespeicherte: Bei jedem Aufruf neu zu rechnen hieße, dass
-    sich die Liste unter der Hand ändert, während jemand sie durchgeht.
-  */
-  const grundlagen: VorschlagZeile[] = sitzung
-    ? (
-        await db.grundlagenVorschlag.findMany({
-          where: { sitzungId: sitzung.id },
-          orderBy: { position: "asc" },
-        })
-      ).map((v) => ({
-        id: v.id,
-        bewegung: v.bewegung,
-        titel: v.titel,
-        begruendung: v.begruendung,
-        programme: leseListe(v.programme),
-        sparenProMonat: v.sparenProMonat,
-        erstZumVertragsende: v.erstZumVertragsende,
-        zustand: v.zustand,
-      }))
-    : [];
-
-  const programme = sitzung
-    ? await db.blueprintSystem.findMany({
-        where: { sessionId: sitzung.sessionId },
-        select: { kostenProMonat: true },
-      })
-    : [];
-
   const verlauf: ChatZeile[] = sitzung
     ? (await ladeVerlauf(sitzung.id)).map((n) => ({
         id: n.id,
@@ -142,14 +110,6 @@ export default async function StrategiePage({
           sitzungId={sitzung.id}
           verlauf={verlauf}
           vorbereitetAm={stand?.vorbereitetAm?.toISOString() ?? null}
-        />
-      )}
-      {sitzung && (
-        <GrundlagenKarte
-          sitzungId={sitzung.id}
-          vorschlaege={grundlagen}
-          ohneKosten={programme.filter((p) => p.kostenProMonat === null).length}
-          programme={programme.length}
         />
       )}
     </div>
