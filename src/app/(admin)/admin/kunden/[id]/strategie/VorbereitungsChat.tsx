@@ -2,7 +2,8 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Send, Sparkles, Wrench } from "lucide-react";
+import { Loader2, Mic, MicOff, Send, Sparkles, Wrench } from "lucide-react";
+import { useDiktat } from "@/lib/sprache/diktat";
 
 /**
  * Das Vorbereitungsgespräch.
@@ -56,6 +57,17 @@ export function VorbereitungsChat({
   const [laeuft, setzeLaeuft] = useState(false);
   const [fehler, setzeFehler] = useState<string | null>(null);
   const feld = useRef<HTMLTextAreaElement>(null);
+
+  /*
+    Diktieren statt tippen.
+
+    Wer ein Gespräch vorbereitet, redet lieber, als zu schreiben — zumal
+    die Sätze hier lang sind. Das Gesprochene landet im Feld, nicht
+    unmittelbar beim Modell: Ein Versprecher lässt sich so noch einfangen.
+  */
+  const diktat = useDiktat((satz) =>
+    setzeFrage((bisher) => (bisher ? `${bisher} ${satz}` : satz))
+  );
 
   async function senden(text: string) {
     const inhalt = text.trim();
@@ -177,6 +189,21 @@ export function VorbereitungsChat({
             text-[#f0f0f0] text-sm placeholder-[#444] resize-none
             focus:outline-none focus:border-[#00b8ff]/50 disabled:opacity-60"
         />
+        {diktat.moeglich && (
+          <button
+            onClick={() => (diktat.laeuft ? diktat.beenden() : diktat.starten())}
+            disabled={laeuft}
+            title={diktat.laeuft ? "Zuhören beenden" : "Diktieren"}
+            className={`px-3 py-2.5 rounded-xl border text-xs font-medium transition-colors
+              disabled:opacity-50 ${
+                diktat.laeuft
+                  ? "bg-[rgba(240,80,74,.12)] border-[rgba(240,80,74,.4)] text-[#f0a09a]"
+                  : "bg-[#060a10] border-[#1a2840] text-[#8899b4] hover:text-[#dce9f6]"
+              }`}
+          >
+            {diktat.laeuft ? <MicOff size={14} /> : <Mic size={14} />}
+          </button>
+        )}
         <button
           onClick={() => void senden(frage)}
           disabled={laeuft || !frage.trim()}
@@ -187,6 +214,13 @@ export function VorbereitungsChat({
           {laeuft ? "Arbeitet…" : "Senden"}
         </button>
       </div>
+      {diktat.laeuft && (
+        <p className="mt-2 text-[#2ee6c5] text-[11px]">
+          Hört zu — sprechen Sie. Der Text sammelt sich im Feld, abgeschickt wird er erst
+          auf Ihren Klick.
+        </p>
+      )}
+      {diktat.fehler && <p className="mt-2 text-[#f0504a] text-[11px]">{diktat.fehler}</p>}
       {laeuft && (
         <p className="mt-2 text-[#5b6b7f] text-[11px]">
           Kann eine Weile dauern — Recherche und Änderungen laufen in einem Zug.
