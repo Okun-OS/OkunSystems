@@ -104,13 +104,11 @@ export default function StrategieClient({
   company,
   termine,
   blueprintFertigAm,
-  leitfadenVorhanden,
   sitzung,
 }: {
   company: { id: string; name: string; contractPackage: string | null };
   termine: Termin[];
   blueprintFertigAm: string | null;
-  leitfadenVorhanden: boolean;
   sitzung: Sitzung | null;
 }) {
   const router = useRouter();
@@ -133,7 +131,6 @@ export default function StrategieClient({
           company={company}
           termine={termine}
           blueprintFertigAm={blueprintFertigAm}
-          leitfadenVorhanden={leitfadenVorhanden}
           pending={pending}
           fehler={fehler}
           onAufsetzen={(terminId) =>
@@ -226,12 +223,7 @@ function Rahmen({
               )}
             </>
           )}
-          <Link
-            href={`/admin/kunden/${company.id}/leitfaden`}
-            className="text-[#00b8ff] text-xs hover:underline"
-          >
-            → Leitfaden
-          </Link>
+
         </div>
       </div>
       {children}
@@ -245,7 +237,6 @@ function Aufsetzen({
   company,
   termine,
   blueprintFertigAm,
-  leitfadenVorhanden,
   pending,
   fehler,
   onAufsetzen,
@@ -254,7 +245,6 @@ function Aufsetzen({
   company: { id: string };
   termine: Termin[];
   blueprintFertigAm: string | null;
-  leitfadenVorhanden: boolean;
   pending: boolean;
   fehler: string | null;
   onAufsetzen: (terminId: string) => void;
@@ -278,14 +268,6 @@ function Aufsetzen({
             }
           />
           <Haken
-            erfuellt={leitfadenVorhanden}
-            text={
-              leitfadenVorhanden
-                ? "Ein Leitfaden liegt vor — daraus entstehen die Posten."
-                : "Noch kein Leitfaden. Ohne ihn hat das Gespräch nichts zur Wahl."
-            }
-          />
-          <Haken
             erfuellt={termine.length > 0}
             text={
               termine.length > 0
@@ -299,18 +281,10 @@ function Aufsetzen({
 
           Vorher war das eine Sackgasse: „Es ist kein Strategietermin
           angelegt." — und kein Wort dazu, wo man einen anlegt. Wer hier
-          landete, sah nur Vorbereitung und Leitfaden und hielt das
+          landete, sah nur zwei Stationen und hielt das
           Transformation Studio für verschwunden.
         */}
         <div className="mt-3 flex flex-wrap items-center gap-4">
-          {!leitfadenVorhanden && (
-            <Link
-              href={`/admin/kunden/${company.id}/leitfaden`}
-              className="text-[#00b8ff] text-xs hover:underline"
-            >
-              Leitfaden erzeugen →
-            </Link>
-          )}
           {termine.length === 0 && (
             <Link
               href={`/admin/kunden/${company.id}/termine`}
@@ -338,27 +312,12 @@ function Aufsetzen({
               Erst der Blueprint. Ohne abgeschlossene Aufnahme gibt es keine Zahlen,
               aus denen das Haus entsteht.
             </p>
-          ) : !leitfadenVorhanden ? (
-            <>
-              <p className="text-[#888] text-xs leading-relaxed">
-                Als Nächstes der Leitfaden: Aus ihm entstehen die Posten, die im
-                Gespräch zur Wahl stehen — und die Räume, durch die Sie führen.
-                Danach steht hier der Knopf, der das Gespräch aufsetzt.
-              </p>
-              <Link
-                href={`/admin/kunden/${company.id}/leitfaden`}
-                className="mt-3 inline-block px-4 py-2.5 rounded-lg bg-[#00b8ff]
-                  text-[#041018] text-xs font-bold hover:bg-[#33c7ff] transition-colors"
-              >
-                Leitfaden erzeugen →
-              </Link>
-            </>
           ) : (
             <>
               <p className="text-[#888] text-xs leading-relaxed">
-                Legt einen Strategietermin für die nächste volle Stunde an und setzt die
-                Sitzung darauf auf. Danach steht das Haus — und der Termin lässt sich
-                unter{" "}
+                Legt einen Strategietermin für die nächste volle Stunde an, erzeugt die
+                Posten aus dem Blueprint und setzt die Sitzung auf. Danach steht das
+                Haus — und der Termin lässt sich unter{" "}
                 <Link
                   href={`/admin/kunden/${company.id}/termine`}
                   className="text-[#00b8ff] hover:underline"
@@ -373,8 +332,14 @@ function Aufsetzen({
                 className="mt-3 px-4 py-2.5 rounded-lg bg-[#00b8ff] text-[#041018] text-xs
                   font-bold disabled:bg-[#16283d] disabled:text-[#4a5a70] transition-colors"
               >
-                {pending ? "…" : "Termin anlegen und Gespräch aufsetzen"}
+                {pending ? "Das Haus entsteht — das dauert ein paar Minuten …" : "Termin anlegen und Studio aufsetzen"}
               </button>
+              {pending && (
+                <p className="mt-2 text-[#5b6b7f] text-[11px] leading-relaxed">
+                  Die Posten werden aus dem Blueprint erarbeitet und gegengeprüft.
+                  Das Fenster darf dabei offen bleiben.
+                </p>
+              )}
             </>
           )}
         </Karte>
@@ -391,7 +356,7 @@ function Aufsetzen({
         <p className="text-[#888] text-xs leading-relaxed">
           Aus dem Blueprint entsteht das Haus des Betriebs: ein Rundgang vom Vorplatz
           bis in die Räume, durch den Sie im Termin führen. Sobald die Sitzung aufgesetzt
-          ist, stehen hier oben <b className="text-[#c9d4e4]">⬡ Haus ansehen</b> für den
+          ist, stehen oben <b className="text-[#c9d4e4]">⬡ Haus ansehen</b> für den
           Blick vorher und <b className="text-[#c9d4e4]">▶ Gespräch führen</b> für den
           Termin selbst — Haus, Gegenüber und Auswahl auf einer Fläche.
         </p>
@@ -400,9 +365,9 @@ function Aufsetzen({
       {offen.length > 0 && (
         <Karte titel="Sitzung aufsetzen">
           <p className="text-[#888] text-xs leading-relaxed mb-3">
-            Die Posten der neuesten Leitfaden-Fassung werden <b>abgeschrieben</b>. Wer den
-            Leitfaden danach nachschärft, ändert nichts mehr an dem, was im Gespräch auf dem
-            Tisch liegt.
+            Die Posten entstehen aus dem Blueprint und werden <b>abgeschrieben</b>: Was
+            danach am Blueprint geändert wird, ändert nichts mehr an dem, was im Gespräch
+            auf dem Tisch liegt. Beim ersten Mal dauert das ein paar Minuten.
           </p>
           <div className="space-y-2">
             {offen.map((t) => (
@@ -425,7 +390,7 @@ function Aufsetzen({
                 </div>
                 <button
                   onClick={() => onAufsetzen(t.id)}
-                  disabled={pending || !leitfadenVorhanden}
+                  disabled={pending}
                   className="flex-shrink-0 px-3.5 py-2 rounded-lg bg-[#00b8ff] text-[#041018] text-xs font-bold disabled:bg-[#16283d] disabled:text-[#4a5a70] transition-colors"
                 >
                   {pending ? "…" : "Aufsetzen"}
@@ -553,8 +518,8 @@ function Vorbereitung({
         )}
 
         <p className="text-[#44546b] text-[11px] leading-relaxed mt-4">
-          Vor der Freigabe sieht der Kunde nichts. Die Posten stammen aus dem Leitfaden und
-          nennen Produkte beim Namen — zwischen „der Leitfaden schlägt vor&ldquo; und „der Kunde
+          Vor der Freigabe sieht der Kunde nichts. Die Posten stammen aus dem Blueprint und
+          nennen Produkte beim Namen — zwischen „das Studio schlägt vor&ldquo; und „der Kunde
           liest es&ldquo; gehört ein Mensch.
         </p>
       </div>

@@ -14,6 +14,7 @@ import type { PostenArt, PostenZustand } from "@/lib/strategie/katalog";
 import { beruehre, ladeSitzung, setzeAufgaben, setzeSitzungAuf } from "@/lib/strategie/sitzung";
 import { berlinTeile, berlinZeitpunkt } from "@/lib/zeit";
 import { schabloneFuerSitzung, schreibeSchablone } from "@/lib/grundlagen/laden";
+import { speichereNeueFassung } from "@/lib/strategy-guide/service";
 
 /**
  * Die Vorbereitung des Strategiegesprächs.
@@ -43,9 +44,54 @@ async function hole(sitzungId: string) {
   return sitzung;
 }
 
+/**
+ * Die Posten des Studios — erzeugt, falls es noch keine gibt.
+ *
+ * Aus dem Leitfaden werden die Posten, die im Gespräch zur Wahl stehen;
+ * gebraucht wird er also immer. Als eigene Seite mit eigenem Knopf war er
+ * nur eine Tür, durch die man gehen musste, bevor es weitergeht — wer sie
+ * nicht fand, hielt das Transformation Studio für verschwunden. Jetzt
+ * entsteht er im selben Zug und ist nirgends mehr eine Station.
+ *
+ * Gibt einen Fehler zurück oder `null`, wenn alles bereit ist.
+ */
+async function stellePostenSicher(
+  companyId: string,
+  actorId: string
+): Promise<{ error: string } | null> {
+  const blueprint = await db.analysisSession.findFirst({
+    where: { companyId, blueprintVersion: "2.0", status: "COMPLETED" },
+    orderBy: { completedAt: "desc" },
+    select: { id: true },
+  });
+  if (!blueprint) {
+    return { error: "Zu diesem Betrieb gibt es keinen abgeschlossenen Blueprint." };
+  }
+
+  const vorhanden = await db.strategyGuide.findUnique({
+    where: { sessionId: blueprint.id },
+    select: { versions: { select: { id: true }, take: 1 } },
+  });
+  if (vorhanden && vorhanden.versions.length > 0) return null;
+
+  try {
+    await speichereNeueFassung({ sessionId: blueprint.id, companyId, userId: actorId });
+    return null;
+  } catch (fehler) {
+    console.error("[strategie] Posten ließen sich nicht erzeugen:", fehler);
+    return {
+      error:
+        "Die Posten für das Studio ließen sich nicht erzeugen. " +
+        (fehler instanceof Error ? fehler.message : "Unbekannter Grund."),
+    };
+  }
+}
+
 export async function sitzungAufsetzen(companyId: string, appointmentId: string) {
   return guarded(async () => {
     const actor = await erlaubt();
+    const posten = await stellePostenSicher(companyId, actor.id);
+    if (posten) return posten;
     const ergebnis = await setzeSitzungAuf({ appointmentId, beraterId: actor.id });
     if ("error" in ergebnis) return ergebnis;
     aktualisiere(companyId, ergebnis.sitzungId);
@@ -76,14 +122,9 @@ export async function terminUndSitzungAnlegen(companyId: string) {
     });
     if (!company) return { error: "Betrieb nicht gefunden." };
 
-    /*
-      Die nächste volle Stunde in Berlin.
+    const posten = await stellePostenSicher(companyId, actor.id);
+    if (posten) return posten;
 
-      Nicht „jetzt": Ein Termin, der in der Vergangenheit beginnt, steht
-      beim Kunden sofort als verpasst. Und nicht in drei Tagen, weil der
-      Termin ohnehin verschoben wird — er ist der Haken, an dem die Sitzung
-      hängt, nicht die Verabredung.
-    */
     const jetzt = new Date();
     const t = berlinTeile(jetzt);
     const beginn = berlinZeitpunkt(t.jahr, t.monat, t.tag, t.stunde + 1, 0);
