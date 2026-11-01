@@ -37,12 +37,21 @@ const ABSCHNITTE: Abschnitt[] = [
       { label: "Auswertung intern", href: "/analyse" },
     ],
   },
+  /*
+    Es gibt nur noch das Transformation Studio.
+
+    Hier standen „Vorbereitung" und „Leitfaden" nebeneinander — zwei
+    Stationen aus der Zeit vor dem Studio, von denen die zweite nur eine
+    Tür war, durch die man gehen musste. Der Leitfaden entsteht jetzt von
+    selbst, wenn das Gespräch aufgesetzt wird, und das Haus steht da, wo
+    man es sucht.
+  */
   {
-    label: "Strategiegespräch",
+    label: "Transformation Studio",
     href: "/strategie",
     unterpunkte: [
       { label: "Vorbereitung", href: "/strategie" },
-      { label: "Leitfaden", href: "/leitfaden" },
+      { label: "Haus ansehen", href: "/studio" },
     ],
   },
   /*

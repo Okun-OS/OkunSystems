@@ -60,9 +60,6 @@ export default async function StrategiePage({
     select: { id: true, completedAt: true },
   });
 
-  const leitfadenVorhanden = blueprint
-    ? (await db.strategyGuide.count({ where: { sessionId: blueprint.id } })) > 0
-    : false;
 
   const offeneSitzung = termine.find((t) => t.strategieSitzung)?.strategieSitzung ?? null;
   const sitzung = offeneSitzung ? await ladeSitzung(offeneSitzung.id) : null;
@@ -127,7 +124,6 @@ export default async function StrategiePage({
         sitzungStatus: t.strategieSitzung?.status ?? null,
       }))}
       blueprintFertigAm={blueprint?.completedAt?.toISOString() ?? null}
-      leitfadenVorhanden={leitfadenVorhanden}
       sitzung={
         sitzung
           ? {

@@ -97,7 +97,7 @@ export function VorbereitungsChat({
         )}
       </div>
       <p className="text-[#888] text-xs leading-relaxed">
-        Mit Zugriff auf Blueprint, Bericht, Leitfaden und Schablone — und auf die
+        Mit Zugriff auf Blueprint, Bericht, Posten und Schablone — und auf die
         Websuche. Was hier entschieden wird, steht danach oben in der Auswahl.
       </p>
 

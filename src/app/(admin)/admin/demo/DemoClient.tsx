@@ -84,10 +84,10 @@ export default function DemoClient({
             </div>
             <div className="flex flex-wrap gap-2.5">
               <Link
-                href={`/admin/kunden/${vorhandenId}/leitfaden`}
+                href={`/admin/kunden/${vorhandenId}/strategie`}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#00b8ff]/10 border border-[#00b8ff]/25 text-[#00b8ff] text-sm hover:bg-[#00b8ff]/15 transition-colors"
               >
-                Zum Leitfaden <ArrowRight size={14} />
+                Zur Vorbereitung <ArrowRight size={14} />
               </Link>
               <Link
                 href={`/admin/kunden/${vorhandenId}`}
@@ -127,7 +127,7 @@ export default function DemoClient({
               <p className="text-[#f0f0f0] font-semibold text-sm">{firmenname}</p>
               <p className="text-[#8899b4] text-xs mt-1 leading-relaxed">
                 Handwerksbetrieb, 48 Mitarbeitende, Hamburg. Vorgespräch, alle
-                Blueprint-Fragen und die dritte Säule sind gefüllt — Bericht und Leitfaden
+                Blueprint-Fragen und die dritte Säule sind gefüllt — Bericht und Posten
                 lassen sich sofort erzeugen.
               </p>
             </div>
