@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -121,6 +121,27 @@ export function ContractClosurePanel({ data }: { data: ContractClosureData }) {
       router.refresh();
     });
   }
+
+  /*
+    Auf den Kunden warten heißt: nachsehen.
+
+    Hier stand „Der Stand aktualisiert sich automatisch" — und nichts tat
+    es. Der Kunde hakt in seinem Portal ab, auf dieser Seite blieb alles
+    leer, und das Gespräch kam nicht weiter. Die Kundenseite fragt den
+    Stand regelmäßig ab; die Beraterseite tat es nie.
+
+    Also hier dasselbe, und zwar nur solange es etwas zu warten gibt: bis
+    alle erforderlichen Erklärungen da sind. Liegt der Rechner im
+    Hintergrund, wird nicht gefragt — ein Gespräch läuft im Vordergrund.
+  */
+  useEffect(() => {
+    if (data.allRequiredConfirmed || !data.snapshotId) return;
+    const id = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      router.refresh();
+    }, 5000);
+    return () => clearInterval(id);
+  }, [data.allRequiredConfirmed, data.snapshotId, router]);
 
   const stage = deriveStage(data);
 
@@ -283,9 +304,10 @@ export function ContractClosurePanel({ data }: { data: ContractClosureData }) {
           </div>
 
           {data.clientUrlHint && !data.allRequiredConfirmed && (
-            <p className="mt-3 text-[#8899b4] text-xs">
-              Der Kunde bestätigt über seinen Closing-Link. Der Stand aktualisiert sich
-              automatisch.
+            <p className="mt-3 flex items-center gap-2 text-[#8899b4] text-xs">
+              <Loader2 size={12} className="animate-spin text-[#00b8ff]" />
+              Der Kunde bestätigt über seinen Closing-Link. Diese Seite sieht alle fünf
+              Sekunden nach.
             </p>
           )}
         </Card>
