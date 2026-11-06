@@ -274,6 +274,7 @@ export async function evaluateConsentState(
     where: { closingSessionId },
     orderBy: { serverTimestamp: "asc" },
     select: {
+      id: true,
       consentDefinitionId: true,
       consentDefinitionVersion: true,
       accepted: true,
@@ -282,13 +283,22 @@ export async function evaluateConsentState(
     },
   });
 
+  /*
+    Überholt wird ein Ereignis, nicht eine Erklärung.
+
+    `supersedesEventId` zeigt auf das Ereignis, das ersetzt wurde. Verglichen
+    wurde es hier mit der Kennung der Erklärung — zwei verschiedene Dinge, die
+    nie zusammenpassen. Die Prüfung lief damit ins Leere: Ein zurückgenommenes
+    Häkchen hätte das alte Ereignis nicht verdrängt. Weil die Liste ohnehin
+    nach Zeit sortiert ist und der jüngste Eintrag gewinnt, fiel es nicht auf.
+  */
   const superseded = new Set(
     events.map((e) => e.supersedesEventId).filter((id): id is string => Boolean(id))
   );
 
   const latest = new Map<string, { accepted: boolean; at: Date }>();
   for (const event of events) {
-    if (!event.consentDefinitionId || superseded.has(event.consentDefinitionId)) continue;
+    if (!event.consentDefinitionId || superseded.has(event.id)) continue;
     latest.set(`${event.consentDefinitionId}:v${event.consentDefinitionVersion}`, {
       accepted: event.accepted,
       at: event.serverTimestamp,
